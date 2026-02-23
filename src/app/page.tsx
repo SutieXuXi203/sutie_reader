@@ -159,16 +159,6 @@ export default function Home() {
         <div className="flex flex-col items-center gap-6">
           {user ? (
             <>
-              {isAdmin && (
-                <Link
-                  href="/admin"
-                  title="Bảng điều khiển quản trị"
-                  className="w-12 h-12 rounded-none bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-black hover:opacity-90 transition-all shadow-xl active:scale-95"
-                >
-                  <LayoutDashboard className="w-6 h-6" />
-                </Link>
-              )}
-
               <div className="group relative">
                 <button
                   className="w-12 h-12 rounded-none overflow-hidden border-2 border-slate-100 dark:border-slate-800 hover:border-slate-900 dark:hover:border-white transition-all shadow-md"
