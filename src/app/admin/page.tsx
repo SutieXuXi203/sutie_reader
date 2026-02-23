@@ -87,39 +87,39 @@ export default function AdminDashboard() {
     }
 
     return (
-        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex">
+        <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans selection:bg-slate-200 dark:selection:bg-slate-800">
             {/* Simple Sidebar */}
-            <aside className="w-64 border-r border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 hidden lg:flex flex-col">
-                <div className="p-6 border-b border-slate-200 dark:border-slate-800">
-                    <div className="flex items-center gap-2 font-bold text-xl tracking-tighter">
-                        <div className="w-8 h-8 bg-slate-900 dark:bg-white rounded-lg flex items-center justify-center text-white dark:text-black">
-                            <LayoutDashboard className="w-5 h-5" />
+            <aside className="w-64 bg-white dark:bg-slate-900 hidden lg:flex flex-col shadow-2xl shadow-slate-200/50 dark:shadow-none z-20">
+                <div className="p-8">
+                    <div className="flex items-center gap-3 font-bold text-2xl tracking-tighter">
+                        <div className="w-10 h-10 bg-slate-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-black shadow-lg shadow-slate-900/20 dark:shadow-white/10">
+                            <LayoutDashboard className="w-6 h-6" />
                         </div>
-                        <span>Admin Panel</span>
+                        <span>Admin</span>
                     </div>
                 </div>
-                <nav className="flex-1 p-4 space-y-2">
-                    <Link
-                        href="/"
-                        className="flex items-center gap-3 px-4 py-2.5 rounded-xl text-slate-500 hover:bg-slate-50 dark:hover:bg-slate-800 transition-all"
-                    >
-                        <Home className="w-5 h-5" />
-                        <span>Trang chủ</span>
-                    </Link>
+                <nav className="flex-1 px-4 space-y-1.5">
                     <Link
                         href="/admin"
-                        className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-slate-100 dark:bg-slate-800 text-slate-900 dark:text-white font-medium shadow-sm transition-all"
+                        className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black font-semibold shadow-xl shadow-slate-900/20 dark:shadow-white/10 transition-all"
                     >
                         <FileText className="w-5 h-5" />
                         <span>Bài viết</span>
+                    </Link>
+                    <Link
+                        href="/"
+                        className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group"
+                    >
+                        <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                        <span>Trang chủ</span>
                     </Link>
                 </nav>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto">
+            <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950/40">
                 {/* Header */}
-                <header className="h-20 border-b border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-10">
+                <header className="h-24 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-6 sm:px-12 flex items-center justify-between sticky top-0 z-10 shadow-sm shadow-slate-100 dark:shadow-none">
                     <div className="lg:hidden">
                         <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tighter">
                             <LayoutDashboard className="w-6 h-6" />
@@ -127,48 +127,51 @@ export default function AdminDashboard() {
                         </Link>
                     </div>
                     <div className="hidden lg:block">
-                        <h1 className="text-xl font-bold">Quản lý bài viết</h1>
+                        <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Quản lý bài viết</h1>
+                        <p className="text-sm text-slate-500 font-medium">Chào mừng bạn trở lại, Admin</p>
                     </div>
 
                     <div className="flex items-center gap-4">
                         <Button
                             onClick={() => setIsCreateDialogOpen(true)}
-                            className="rounded-full bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 px-6"
+                            className="rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 px-8 h-12 font-bold shadow-lg shadow-slate-900/20 dark:shadow-white/10 transition-all active:scale-95"
                         >
-                            <Plus className="w-4 h-4 mr-2" />
+                            <Plus className="w-5 h-5 mr-2" />
                             Tạo bài mới
                         </Button>
                     </div>
                 </header>
 
-                <div className="p-6 sm:p-10 space-y-8 max-w-7xl mx-auto">
+                <div className="p-8 sm:p-12 space-y-12 max-w-7xl mx-auto">
                     {/* Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <p className="text-sm font-medium text-slate-500 mb-1">Tổng bài viết</p>
-                            <h3 className="text-3xl font-bold">{posts.length}</h3>
-                        </div>
-                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <p className="text-sm font-medium text-slate-500 mb-1">Tác giả</p>
-                            <h3 className="text-3xl font-bold">1</h3>
-                        </div>
-                        <div className="bg-white dark:bg-slate-900 p-6 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm">
-                            <p className="text-sm font-medium text-slate-500 mb-1">Trạng thái</p>
-                            <div className="flex items-center gap-2 mt-2">
-                                <div className="w-2.5 h-2.5 rounded-full bg-green-500 animate-pulse" />
-                                <span className="text-sm font-semibold">Hoạt động</span>
+                    <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+                        {[
+                            { label: 'Tổng bài viết', value: posts.length, color: 'bg-slate-900 dark:bg-white' },
+                            { label: 'Tác giả', value: '1', color: 'bg-slate-100 dark:bg-slate-800' },
+                            { label: 'Trạng thái', value: 'Hoạt động', color: 'bg-slate-100 dark:bg-slate-800' }
+                        ].map((stat, i) => (
+                            <div key={i} className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 dark:shadow-none transition-all hover:scale-[1.02] cursor-default">
+                                <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">{stat.label}</p>
+                                {typeof stat.value === 'number' ? (
+                                    <h3 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{stat.value}</h3>
+                                ) : (
+                                    <div className="flex items-center gap-3">
+                                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                                        <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{stat.value}</span>
+                                    </div>
+                                )}
                             </div>
-                        </div>
+                        ))}
                     </div>
 
                     {/* Table Area */}
-                    <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-200 dark:border-slate-800 shadow-sm overflow-hidden">
-                        <div className="p-6 border-b border-slate-200 dark:border-slate-800 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                            <div className="relative w-full sm:w-96">
-                                <Search className="absolute left-3 top-2.5 h-4 w-4 text-slate-400" />
+                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl shadow-slate-200/60 dark:shadow-none overflow-hidden">
+                        <div className="p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
+                            <div className="relative w-full sm:w-[450px] group">
+                                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-slate-900 dark:group-focus-within:text-white transition-colors" />
                                 <Input
-                                    placeholder="Tìm kiếm bài viết..."
-                                    className="pl-10 h-10 border-slate-200 dark:border-slate-800 rounded-xl"
+                                    placeholder="Tìm kiếm bài viết, tác giả..."
+                                    className="pl-12 h-14 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white transition-all text-base font-medium"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -177,66 +180,67 @@ export default function AdminDashboard() {
 
                         <div className="overflow-x-auto">
                             <table className="w-full text-left">
-                                <thead className="bg-slate-50 dark:bg-slate-800/50">
-                                    <tr className="text-xs font-semibold text-slate-500 uppercase tracking-wider">
-                                        <th className="px-6 py-4">Bài viết</th>
-                                        <th className="px-6 py-4">Tác giả</th>
-                                        <th className="px-6 py-4">Ngày tạo</th>
-                                        <th className="px-6 py-4 text-right">Thao tác</th>
+                                <thead className="bg-slate-50/50 dark:bg-slate-800/30">
+                                    <tr className="text-xs font-bold text-slate-400 uppercase tracking-[0.2em]">
+                                        <th className="px-8 py-6">Bài viết</th>
+                                        <th className="px-8 py-6">Tác giả</th>
+                                        <th className="px-8 py-6">Ngày tạo</th>
+                                        <th className="px-8 py-6 text-right">Thao tác</th>
                                     </tr>
                                 </thead>
-                                <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
+                                <tbody className="divide-y divide-slate-50 dark:divide-slate-800/50">
                                     {isLoading ? (
                                         <tr>
-                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                                                <Loader2 className="w-6 h-6 animate-spin mx-auto mb-2" />
-                                                Đang tải dữ liệu...
+                                            <td colSpan={4} className="px-8 py-20  text-center text-slate-400">
+                                                <Loader2 className="w-10 h-10 animate-spin mx-auto mb-4 text-slate-200" />
+                                                <p className="font-semibold tracking-tight">Đang tải dữ liệu của bạn...</p>
                                             </td>
                                         </tr>
                                     ) : filteredPosts.length === 0 ? (
                                         <tr>
-                                            <td colSpan={4} className="px-6 py-12 text-center text-slate-400">
-                                                {searchQuery ? 'Không tìm thấy kết quả nào' : 'Chưa có bài viết nào'}
+                                            <td colSpan={4} className="px-8 py-20 text-center text-slate-400">
+                                                <FileText className="w-12 h-12 mx-auto mb-4 opacity-20" />
+                                                <p className="font-semibold tracking-tight">{searchQuery ? 'Không tìm thấy kết quả nào' : 'Chưa có bài viết nào'}</p>
                                             </td>
                                         </tr>
                                     ) : filteredPosts.map((post) => (
-                                        <tr key={post._id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                                            <td className="px-6 py-4">
-                                                <div className="flex items-center gap-4">
-                                                    <div className="relative w-12 h-12 rounded-lg overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0">
+                                        <tr key={post._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
+                                            <td className="px-8 py-6">
+                                                <div className="flex items-center gap-5">
+                                                    <div className="relative w-16 h-16 rounded-[1.25rem] overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
                                                         {post.images[0] ? (
-                                                            <Image src={post.images[0]} alt={post.title} fill className="object-cover" unoptimized />
+                                                            <Image src={post.images[0]} alt={post.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" unoptimized />
                                                         ) : (
-                                                            <FileText className="w-6 h-6 m-3 text-slate-400" />
+                                                            <FileText className="w-8 h-8 m-4 text-slate-300" />
                                                         )}
                                                     </div>
-                                                    <div className="min-w-0 max-w-[240px] sm:max-w-xs">
-                                                        <p className="text-sm font-semibold text-slate-900 dark:text-white truncate">{post.title}</p>
-                                                        <p className="text-xs text-slate-500 truncate">{post.description}</p>
+                                                    <div className="min-w-0 max-w-[280px] sm:max-w-md">
+                                                        <p className="text-base font-bold text-slate-900 dark:text-white truncate group-hover:text-slate-600 dark:group-hover:text-slate-300 transition-colors">{post.title}</p>
+                                                        <p className="text-sm text-slate-400 font-medium truncate mt-0.5">{post.description}</p>
                                                     </div>
                                                 </div>
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                            <td className="px-8 py-6 text-sm font-bold text-slate-500 dark:text-slate-400">
                                                 {post.author}
                                             </td>
-                                            <td className="px-6 py-4 text-sm text-slate-600 dark:text-slate-400 whitespace-nowrap">
-                                                {new Date(post.createdAt).toLocaleDateString('vi-VN')}
+                                            <td className="px-8 py-6 text-sm font-semibold text-slate-400 dark:text-slate-500 whitespace-nowrap">
+                                                {new Date(post.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                             </td>
-                                            <td className="px-6 py-4 text-right">
-                                                <div className="flex justify-end gap-2">
+                                            <td className="px-8 py-6 text-right">
+                                                <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0">
                                                     <button
                                                         onClick={() => { setSelectedPost(post); setIsEditOpen(true); }}
-                                                        className="p-2 text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
-                                                        title="Chỉnh sửa"
+                                                        className="p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 rounded-xl shadow-none hover:shadow-lg transition-all"
+                                                        title="Chỉnh sửa bài viết"
                                                     >
-                                                        <Pencil className="w-4 h-4" />
+                                                        <Pencil className="w-5 h-5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(post._id)}
-                                                        className="p-2 text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-all"
-                                                        title="Xóa"
+                                                        className="p-3 text-slate-400 hover:text-red-500 hover:bg-white dark:hover:bg-slate-800 rounded-xl shadow-none hover:shadow-lg transition-all"
+                                                        title="Xóa bài viết"
                                                     >
-                                                        <Trash2 className="w-4 h-4" />
+                                                        <Trash2 className="w-5 h-5" />
                                                     </button>
                                                 </div>
                                             </td>
