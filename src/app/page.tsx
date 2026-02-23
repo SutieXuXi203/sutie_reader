@@ -7,6 +7,7 @@ import { Plus, BookOpen, Mail, Github, ArrowDown, Home as HomeIcon, LogOut, User
 import { PostCard } from '@/components/PostCard';
 import { CreatePostForm } from '@/components/CreatePostForm';
 import { AuthDialog } from '@/components/AuthDialog';
+import { ProfileDialog } from '@/components/ProfileDialog';
 import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
 
@@ -26,6 +27,8 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
   const { user, logout, isLoading: isAuthLoading, isAdmin } = useAuth();
   const [contactSent, setContactSent] = useState(false);
 
@@ -156,8 +159,15 @@ export default function Home() {
                     <p className="text-[11px] text-slate-400 truncate font-medium">{user.email}</p>
                   </div>
                   <button
+                    onClick={() => setIsProfileDialogOpen(true)}
+                    className="w-full flex items-center gap-3 px-3 py-3 text-sm font-bold text-slate-700 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-all border-b border-slate-50 dark:border-slate-800/50"
+                  >
+                    <UserIcon className="w-5 h-5" />
+                    <span>Hồ sơ cá nhân</span>
+                  </button>
+                  <button
                     onClick={logout}
-                    className="w-full flex items-center gap-3 px-3 py-3 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-none transition-all"
+                    className="w-full flex items-center gap-3 px-3 py-3 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
                   >
                     <LogOut className="w-5 h-5" />
                     <span>Đăng xuất</span>
@@ -419,6 +429,13 @@ export default function Home() {
         onOpenChange={setIsCreateDialogOpen}
         onPostCreated={fetchPosts}
       />
+
+      {user && (
+        <ProfileDialog
+          open={isProfileDialogOpen}
+          onOpenChange={setIsProfileDialogOpen}
+        />
+      )}
     </div>
   );
 }
