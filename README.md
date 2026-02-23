@@ -1,36 +1,89 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Blog Của Tôi - Nền Tảng Chia Sẻ Ảnh Câu Chuyện
 
-## Getting Started
+Một ứng dụng blog hiện đại để chia sẻ những hình ảnh câu chuyện với giao diện đẹp và hỗ trợ chế độ tối. Được xây dựng bằng Next.js, MongoDB, Tailwind CSS, và shadcn/ui.
 
-First, run the development server:
+## Các Tính Năng
 
+- 📸 **Tải Lên Nhiều Hình Ảnh** - Đăng câu chuyện với nhiều hình ảnh
+- 🌙 **Chế Độ Tối** - Hỗ trợ chủ đề tối đẹp với next-themes
+- 💾 **Backend MongoDB** - Lưu trữ dữ liệu liên tục với MongoDB
+- 🎨 **Giao Diện Hiện Đại** - Được xây dựng bằng các thành phần shadcn/ui và Tailwind CSS
+- ⚡ **Nhanh Chóng và Phản Hồi** - Kết xuất phía máy chủ với Next.js
+- 📝 **Tạo Bài Viết Phong Phú** - Thêm tiêu đề, mô tả và nội dung
+- 🗑️ **Quản Lý Dễ Dàng** - Xóa bài viết với xác nhận
+
+## Bắt Đầu
+
+### Yêu Cầu
+- Node.js 20.15.1+
+- MongoDB (cục bộ hoặc Atlas)
+
+### Cài Đặt
+
+1. Cài đặt các phụ thuộc:
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm install
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+2. Tạo `.env.local`:
+```bash
+cp .env.example .env.local
+```
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+3. Đặt MongoDB URI của bạn trong `.env.local`:
+```
+MONGODB_URI=mongodb://localhost:27017/my_blog
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+### Chạy Máy Chủ Phát Triển
+```bash
+npm run dev
+```
 
-## Learn More
+Mở [http://localhost:3000](http://localhost:3000) để xem blog của bạn.
 
-To learn more about Next.js, take a look at the following resources:
+## Ngăn Xếp Công Nghệ
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+- **Frontend**: Next.js 16+, React 19+, TypeScript
+- **Kiểu Dáng**: Tailwind CSS v4, shadcn/ui
+- **Chủ Đề**: next-themes cho chế độ tối
+- **Cơ Sở Dữ Liệu**: MongoDB với Mongoose
+- **Icons**: Lucide React
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+## Cấu Trúc Dự Án
 
-## Deploy on Vercel
+- `src/app/` - Thư mục ứng dụng Next.js
+- `src/components/` - Các thành phần React (Giao diện & tính năng)
+- `src/lib/` - Các hàm tiện ích và kết nối DB
+- `src/models/` - Lược đồ MongoDB
+- `src/providers/` - Nhà cung cấp ngữ cảnh (chủ đề)
+- `src/app/api/posts/` - Các tuyến API
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Các Tính Năng
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+### Tải Lên Hình Ảnh
+- Tải lên tới 10 hình ảnh trên mỗi bài viết
+- Mã hóa Base64 để lưu trữ
+- Xem trước hình ảnh với điều hướng
+
+### Chế Độ Tối
+- Phát hiện tự động tùy chọn hệ thống
+- Nút chuyển đổi thủ công
+- Chuyển đổi mượt mà
+
+### Quản Lý Bài Viết
+- Tạo, xem và xóa bài viết
+- Tích hợp MongoDB đầy đủ
+- Thiết kế phản hồi
+
+## Xây Dựng & Triển Khai
+
+```bash
+npm run build
+npm run start
+```
+
+## Giấy Phép
+
+MIT
+

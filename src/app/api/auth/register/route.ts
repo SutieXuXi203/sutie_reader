@@ -1,0 +1,42 @@
+import { connectDB } from '@/lib/db';
+import { User } from '@/models/User';
+import { NextRequest, NextResponse } from 'next/server';
+import bcrypt from 'bcryptjs';
+
+export async function POST(request: NextRequest) {
+    try {
+        await connectDB();
+        const { email, password, name, avatar } = await request.json();
+
+        if (!email || !password || !name) {
+            return NextResponse.json({ error: 'Thiếu thông tin đăng ký' }, { status: 400 });
+        }
+
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            return NextResponse.json({ error: 'Email đã được sử dụng' }, { status: 400 });
+        }
+
+        const hashedPassword = await bcrypt.hash(password, 12);
+
+        const user = await User.create({
+            email,
+            password: hashedPassword,
+            name,
+            avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+        });
+
+        return NextResponse.json({
+            message: 'Đăng ký thành công',
+            user: {
+                id: user._id,
+                email: user.email,
+                name: user.name,
+                avatar: user.avatar,
+            },
+        });
+    } catch (error) {
+        console.error('Lỗi đăng ký:', error);
+        return NextResponse.json({ error: 'Đăng ký không thành công' }, { status: 500 });
+    }
+}
