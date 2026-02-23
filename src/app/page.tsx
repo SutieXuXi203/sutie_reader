@@ -80,7 +80,7 @@ export default function Home() {
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors">
 
       {/* ── SIDEBAR NAVBAR ── */}
-      <nav className="fixed top-0 left-0 bottom-0 z-50 w-56 flex flex-col items-center py-8 gap-8
+      <nav className="fixed top-0 left-0 bottom-0 z-50 w-24 flex flex-col items-center py-8 gap-8
         bg-transparent transition-all duration-300">
         {/* Logo */}
         <div className="flex flex-col items-center gap-2">
@@ -181,7 +181,7 @@ export default function Home() {
       </nav>
 
       {/* ── HERO SECTION ── */}
-      <section className="relative min-h-screen flex items-center justify-center pl-56 px-12 overflow-hidden snap-start">
+      <section className="relative min-h-screen flex items-center justify-center pl-24 px-12 overflow-hidden snap-start">
         {/* Background gradient blobs */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-slate-200/20 dark:bg-slate-800/20 rounded-none blur-3xl opacity-50" />
@@ -248,7 +248,7 @@ export default function Home() {
       </section>
 
       {/* ── POSTS SECTION ── */}
-      <section id="posts" className="min-h-screen flex items-center py-32 pl-36 px-12 bg-slate-50 dark:bg-slate-900/50 snap-start">
+      <section id="posts" className="min-h-screen flex items-center py-32 pl-24 px-12 bg-slate-50 dark:bg-slate-900/50 snap-start">
         <div className="max-w-7xl mx-auto w-full">
           {/* Section header */}
           <div className="reveal flex items-end justify-between mb-12">
@@ -314,7 +314,7 @@ export default function Home() {
       </section>
 
       {/* ── CONTACT SECTION ── */}
-      <section id="contact" className="min-h-screen flex items-center py-32 pl-36 px-12 snap-start">
+      <section id="contact" className="min-h-screen flex items-center py-32 pl-24 px-12 snap-start">
         <div className="max-w-5xl mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-16 items-start">
             {/* Left: info */}
@@ -394,7 +394,7 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-slate-100 dark:border-slate-800 py-12 pl-36 px-12 snap-start">
+      <footer className="border-t border-slate-100 dark:border-slate-800 py-12 pl-24 px-12 snap-start">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <BookOpen className="w-4 h-4" />

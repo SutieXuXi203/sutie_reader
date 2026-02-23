@@ -89,7 +89,7 @@ export default function AdminDashboard() {
     return (
         <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex font-sans selection:bg-slate-200 dark:selection:bg-slate-800">
             {/* Simple Sidebar */}
-            <aside className="w-64 bg-white dark:bg-slate-900 hidden lg:flex flex-col shadow-2xl shadow-slate-200/50 dark:shadow-none z-20">
+            <aside className="w-56 bg-white dark:bg-slate-900 hidden lg:flex flex-col shadow-2xl shadow-slate-200/50 dark:shadow-none z-20">
                 <div className="p-8">
                     <div className="flex items-center gap-3 font-bold text-2xl tracking-tighter">
                         <div className="w-10 h-10 bg-slate-900 dark:bg-white rounded-none flex items-center justify-center text-white dark:text-black shadow-lg shadow-slate-900/20 dark:shadow-white/10">
