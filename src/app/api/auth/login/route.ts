@@ -46,6 +46,10 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
             }
             isMatch = await bcrypt.compare(password, user.password);
+
+            if (isMatch && !user.isVerified) {
+                return NextResponse.json({ error: 'Tài khoản chưa được xác thực. Vui lòng kiểm tra email.' }, { status: 403 });
+            }
         }
 
         if (!isMatch) {

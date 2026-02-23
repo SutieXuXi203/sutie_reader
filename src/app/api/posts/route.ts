@@ -3,13 +3,10 @@ import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
 
-export const config = {
-  api: {
-    bodyParser: {
-      sizeLimit: '50mb',
-    },
-  },
-};
+// Limit body size for Next.js 15+ App Router
+export const maxDuration = 60; // Optional, set to your max duration needed
+
+
 
 export async function GET() {
   try {

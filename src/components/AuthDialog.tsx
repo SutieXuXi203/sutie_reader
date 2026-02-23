@@ -10,11 +10,11 @@ import { useAuth } from '@/providers/AuthContext';
 interface AuthDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    initialMode?: 'login' | 'register' | 'forgot-password';
+    initialMode?: 'login' | 'register' | 'forgot-password' | 'verify';
 }
 
 export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDialogProps) {
-    const [mode, setMode] = useState<'login' | 'register' | 'forgot-password'>(initialMode);
+    const [mode, setMode] = useState<'login' | 'register' | 'forgot-password' | 'verify'>(initialMode);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -24,6 +24,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [name, setName] = useState('');
+    const [verificationCode, setVerificationCode] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
 
     const resetState = () => {
@@ -32,6 +33,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         setEmail('');
         setPassword('');
         setName('');
+        setVerificationCode('');
     };
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -50,6 +52,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             } else if (mode === 'register') {
                 url = '/api/auth/register';
                 payload = { email, password, name };
+            } else if (mode === 'verify') {
+                url = '/api/auth/verify';
+                payload = { email, code: verificationCode };
             } else if (mode === 'forgot-password') {
                 // Simple mock for forgot password
                 setSuccess('Hướng dẫn khôi phục mật khẩu đã được gửi đến email của bạn.');
@@ -73,7 +78,15 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 login(data.user);
                 onOpenChange(false);
             } else if (mode === 'register') {
-                setSuccess('Đăng ký thành công! Vui lòng đăng nhập.');
+                if (data.requireVerification) {
+                    setSuccess('Vui lòng kiểm tra email của bạn để lấy mã xác thực.');
+                    setMode('verify');
+                } else {
+                    setSuccess('Đăng ký thành công! Vui lòng đăng nhập.');
+                    setMode('login');
+                }
+            } else if (mode === 'verify') {
+                setSuccess('Xác thực thành công! Vui lòng đăng nhập.');
                 setMode('login');
             }
         } catch (err: any) {
@@ -91,11 +104,13 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         {mode === 'login' && 'Chào mừng trở lại'}
                         {mode === 'register' && 'Tạo tài khoản mới'}
                         {mode === 'forgot-password' && 'Khôi phục mật khẩu'}
+                        {mode === 'verify' && 'Xác thực tài khoản'}
                     </DialogTitle>
                     <DialogDescription className="text-center text-slate-500 dark:text-slate-400">
                         {mode === 'login' && 'Đăng nhập để tiếp tục viết câu chuyện của bạn'}
                         {mode === 'register' && 'Tham gia cộng đồng và chia sẻ ý tưởng của bạn'}
                         {mode === 'forgot-password' && 'Nhập email để nhận liên kết đặt lại mật khẩu'}
+                        {mode === 'verify' && 'Nhập mã gồm 6 chữ số được gửi đến email của bạn'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -137,7 +152,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         />
                     </div>
 
-                    {mode !== 'forgot-password' && (
+                    {mode !== 'forgot-password' && mode !== 'verify' && (
                         <div className="relative">
                             <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                             <Input
@@ -150,6 +165,57 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                             />
                         </div>
                     )}
+
+                    {mode === 'verify' && (
+                        <div className="flex flex-col gap-3 items-center w-full">
+                            <span className="text-sm text-slate-500 font-medium">Nhập mã 6 chữ số</span>
+                            <div className="flex gap-2 sm:gap-3 justify-center w-full">
+                                {[...Array(6)].map((_, index) => (
+                                    <input
+                                        key={index}
+                                        type="text"
+                                        maxLength={1}
+                                        value={verificationCode[index] || ''}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (!/^[0-9]*$/.test(value)) return;
+
+                                            const newCode = verificationCode.split('');
+                                            newCode[index] = value;
+                                            const finalCode = newCode.join('');
+                                            setVerificationCode(finalCode);
+
+                                            // Auto focus next input
+                                            if (value && index < 5) {
+                                                const nextInput = document.getElementById(`otp-${index + 1}`);
+                                                nextInput?.focus();
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            // Handle backspace to focus previous
+                                            if (e.key === 'Backspace' && !verificationCode[index] && index > 0) {
+                                                const prevInput = document.getElementById(`otp-${index - 1}`);
+                                                prevInput?.focus();
+                                            }
+                                        }}
+                                        onPaste={(e) => {
+                                            e.preventDefault();
+                                            const pastedData = e.clipboardData.getData('text').slice(0, 6).replace(/\D/g, '');
+                                            if (pastedData) {
+                                                setVerificationCode(pastedData);
+                                                const nextFocusIndex = Math.min(pastedData.length, 5);
+                                                document.getElementById(`otp-${nextFocusIndex}`)?.focus();
+                                            }
+                                        }}
+                                        id={`otp-${index}`}
+                                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-none focus:outline-none focus:border-slate-900 dark:focus:border-slate-300 transition-colors shadow-sm"
+                                        required={index === 0} // Optional visual queue
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
 
                     {mode === 'login' && (
                         <div className="flex items-center justify-between">
@@ -184,6 +250,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 {mode === 'login' && 'Đăng nhập'}
                                 {mode === 'register' && 'Đăng ký'}
                                 {mode === 'forgot-password' && 'Gửi liên kết'}
+                                {mode === 'verify' && 'Xác thực'}
                             </>
                         )}
                     </Button>
@@ -198,10 +265,10 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                             </button>
                         </p>
                     )}
-                    {(mode === 'register' || mode === 'forgot-password') && (
+                    {(mode === 'register' || mode === 'forgot-password' || mode === 'verify') && (
                         <p>
                             Đã có tài khoản?{' '}
-                            <button onClick={() => setMode('login')} className="text-slate-900 dark:text-white font-semibold hover:underline decoration-2">
+                            <button type="button" onClick={() => setMode('login')} className="text-slate-900 dark:text-white font-semibold hover:underline decoration-2">
                                 Đăng nhập
                             </button>
                         </p>
