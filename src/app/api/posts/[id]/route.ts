@@ -2,6 +2,7 @@ import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
+import { isAdmin } from '@/lib/auth';
 
 export const config = {
   api: { bodyParser: { sizeLimit: '50mb' } },
@@ -37,6 +38,9 @@ export async function PUT(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!(await isAdmin(request))) {
+      return NextResponse.json({ error: 'Bạn không có quyền thực hiện hành động này' }, { status: 403 });
+    }
     await connectDB();
     const { id } = await params;
 

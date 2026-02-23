@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
+import { isAdmin } from '@/lib/auth';
 
 export const config = {
   api: {
@@ -23,6 +24,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
+    if (!(await isAdmin(request))) {
+      return NextResponse.json({ error: 'Bạn không có quyền thực hiện hành động này' }, { status: 403 });
+    }
     await connectDB();
     const { title, description, content, images, author } = await request.json();
 

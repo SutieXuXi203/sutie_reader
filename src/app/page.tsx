@@ -3,11 +3,12 @@
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Plus, BookOpen, Mail, Github, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock } from 'lucide-react';
+import { Plus, BookOpen, Mail, Github, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import { CreatePostForm } from '@/components/CreatePostForm';
 import { AuthDialog } from '@/components/AuthDialog';
 import { useAuth } from '@/providers/AuthContext';
+import Link from 'next/link';
 
 interface Post {
   _id: string;
@@ -25,7 +26,7 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const { user, logout, isLoading: isAuthLoading } = useAuth();
+  const { user, logout, isLoading: isAuthLoading, isAdmin } = useAuth();
   const [contactSent, setContactSent] = useState(false);
 
   useEffect(() => {
@@ -91,12 +92,12 @@ export default function Home() {
 
         {/* Nav links */}
         <div className="flex flex-col items-center justify-center gap-5 flex-1">
-          <a href="/"
+          <Link href="/"
             title="Trang chủ"
             className="flex flex-col items-center gap-1 text-[9px] text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
             <HomeIcon className="w-5 h-5" />
             Trang chủ
-          </a>
+          </Link>
           <a href="#posts"
             title="Bài viết"
             className="flex flex-col items-center gap-1 text-[9px] text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors group">
@@ -112,19 +113,38 @@ export default function Home() {
             <Mail className="w-5 h-5" />
             Liên hệ
           </a>
+          {isAdmin && (
+            <Link href="/admin"
+              title="Dashboard"
+              className="flex flex-col items-center gap-1 text-[9px] text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
+              <LayoutDashboard className="w-5 h-5" />
+              Admin
+            </Link>
+          )}
         </div>
 
         {/* Bottom actions */}
         <div className="flex flex-col items-center gap-4">
           {user ? (
             <>
-              <button
-                onClick={() => setIsCreateDialogOpen(true)}
-                title="Viết bài"
-                className="w-10 h-10 rounded-xl bg-slate-900 dark:bg-slate-100 flex items-center justify-center text-white dark:text-black hover:opacity-80 transition-all shadow-md active:scale-95"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
+              {isAdmin && (
+                <>
+                  <Link
+                    href="/admin"
+                    title="Dashboard"
+                    className="w-10 h-10 rounded-xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-700 transition-all shadow-sm active:scale-95"
+                  >
+                    <LayoutDashboard className="w-5 h-5" />
+                  </Link>
+                  <button
+                    onClick={() => setIsCreateDialogOpen(true)}
+                    title="Viết bài"
+                    className="w-10 h-10 rounded-xl bg-slate-900 dark:bg-slate-100 flex items-center justify-center text-white dark:text-black hover:opacity-80 transition-all shadow-md active:scale-95"
+                  >
+                    <Plus className="w-5 h-5" />
+                  </button>
+                </>
+              )}
 
               <div className="w-8 h-[1px] bg-slate-200 dark:bg-slate-800 my-1" />
 
@@ -141,18 +161,18 @@ export default function Home() {
                   )}
                 </button>
 
-                {/* User context menu */}
-                <div className="absolute left-full ml-4 bottom-0 w-48 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 transform translate-x-[-10px] group-hover:translate-x-0 z-[100] p-1">
+                {/* Profile dropdown */}
+                <div className="absolute left-full ml-2 bottom-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 rounded-xl shadow-xl p-2 min-w-[200px] z-50">
                   <div className="px-3 py-2 border-b border-slate-100 dark:border-slate-800 mb-1">
-                    <p className="text-xs font-bold text-slate-900 dark:text-white truncate">{user.name}</p>
+                    <p className="text-sm font-semibold truncate">{user.name}</p>
                     <p className="text-[10px] text-slate-500 truncate">{user.email}</p>
                   </div>
                   <button
-                    onClick={() => logout()}
-                    className="flex w-full items-center gap-2 px-3 py-2 text-xs text-red-500 hover:bg-red-50 dark:hover:bg-red-900/10 rounded-lg transition-colors"
+                    onClick={logout}
+                    className="w-full flex items-center gap-2 px-3 py-2 text-sm text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 rounded-lg transition-all"
                   >
                     <LogOut className="w-4 h-4" />
-                    Đăng xuất
+                    <span>Đăng xuất</span>
                   </button>
                 </div>
               </div>
@@ -160,18 +180,20 @@ export default function Home() {
           ) : (
             <button
               onClick={() => setIsAuthDialogOpen(true)}
-              title="Đăng nhập"
-              className="w-10 h-10 rounded-full bg-slate-100 dark:bg-slate-800 flex items-center justify-center text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all active:scale-95"
+              className="w-10 h-10 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:border-slate-900 dark:hover:border-slate-100 hover:text-slate-900 dark:hover:text-slate-100 transition-all active:scale-95"
+              title="Đăng ký / Đăng nhập"
             >
               <LogIn className="w-5 h-5" />
             </button>
           )}
+
+          <div className="w-6 h-px bg-slate-200 dark:bg-slate-800 my-1" />
           <ThemeToggle />
         </div>
       </nav>
 
       {/* ── HERO SECTION ── */}
-      <section className="relative min-h-screen flex items-center justify-center pl-56 px-12 overflow-hidden snap-start">
+      <section className="relative min-h-screen flex items-center justify-center pl-36 px-12 overflow-hidden snap-start">
         {/* Background gradient blobs */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-slate-200/20 dark:bg-slate-800/20 rounded-full blur-3xl opacity-50" />
@@ -186,7 +208,7 @@ export default function Home() {
 
           <h1 className="hero-animate hero-delay-1 text-5xl md:text-7xl font-bold text-slate-900 dark:text-white mb-6 leading-tight tracking-tight">
             Nơi{' '}
-            <span>
+            <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400">
               ý tưởng
             </span>{' '}
             trở thành câu chuyện
@@ -198,14 +220,16 @@ export default function Home() {
 
           <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row gap-4 justify-center">
             {user ? (
-              <Button
-                onClick={() => setIsCreateDialogOpen(true)}
-                size="lg"
-                className="rounded-full px-8 py-3 text-base font-semibold bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 border-0 shadow-xl"
-              >
-                <Plus className="w-5 h-5 mr-2" />
-                Tạo bài viết
-              </Button>
+              isAdmin && (
+                <Button
+                  onClick={() => setIsCreateDialogOpen(true)}
+                  size="lg"
+                  className="rounded-full px-8 py-3 text-base font-semibold bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 border-0 shadow-xl"
+                >
+                  <Plus className="w-5 h-5 mr-2" />
+                  Tạo bài viết
+                </Button>
+              )
             ) : (
               <Button
                 onClick={() => setIsAuthDialogOpen(true)}
@@ -226,7 +250,6 @@ export default function Home() {
               <ArrowDown className="w-4 h-4 ml-2" />
             </Button>
           </div>
-
         </div>
 
         {/* Scroll indicator */}
@@ -237,7 +260,7 @@ export default function Home() {
       </section>
 
       {/* ── POSTS SECTION ── */}
-      <section id="posts" className="min-h-screen flex items-center py-32 pl-56 px-12 bg-slate-50 dark:bg-slate-900/50 snap-start">
+      <section id="posts" className="min-h-screen flex items-center py-32 pl-36 px-12 bg-slate-50 dark:bg-slate-900/50 snap-start">
         <div className="max-w-7xl mx-auto w-full">
           {/* Section header */}
           <div className="reveal flex items-end justify-between mb-12">
@@ -245,14 +268,16 @@ export default function Home() {
               <p className="text-sm font-medium text-slate-500 mb-2 uppercase tracking-widest">Khám phá</p>
               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">Bài viết mới nhất</h2>
             </div>
-            <Button
-              onClick={() => setIsCreateDialogOpen(true)}
-              variant="outline"
-              size="sm"
-              className="rounded-full hidden sm:flex items-center gap-1.5"
-            >
-              <Plus className="w-4 h-4" /> Viết bài
-            </Button>
+            {isAdmin && (
+              <Button
+                onClick={() => setIsCreateDialogOpen(true)}
+                variant="outline"
+                size="sm"
+                className="rounded-full hidden sm:flex items-center gap-1.5"
+              >
+                <Plus className="w-4 h-4" /> Viết bài
+              </Button>
+            )}
           </div>
 
           {/* Conditionally render content */}
@@ -301,7 +326,7 @@ export default function Home() {
       </section>
 
       {/* ── CONTACT SECTION ── */}
-      <section id="contact" className="min-h-screen flex items-center py-32 pl-56 px-12 snap-start">
+      <section id="contact" className="min-h-screen flex items-center py-32 pl-36 px-12 snap-start">
         <div className="max-w-5xl mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-16 items-start">
             {/* Left: info */}
@@ -370,7 +395,7 @@ export default function Home() {
                       className="w-full px-4 py-2.5 rounded-lg border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 transition resize-none"
                     />
                   </div>
-                  <Button type="submit" className="w-full rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-black hover:opacity-90 border-0">
+                  <Button type="submit" className="w-full rounded-lg bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 border-0">
                     Gửi tin nhắn
                   </Button>
                 </form>
@@ -381,7 +406,7 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-slate-100 dark:border-slate-800 py-12 pl-56 px-12 snap-start">
+      <footer className="border-t border-slate-100 dark:border-slate-800 py-12 pl-36 px-12 snap-start">
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <BookOpen className="w-4 h-4" />
@@ -395,7 +420,7 @@ export default function Home() {
         </div>
       </footer>
 
-      {/* Create Post Dialog */}
+      {/* Dialogs */}
       <AuthDialog
         open={isAuthDialogOpen}
         onOpenChange={setIsAuthDialogOpen}

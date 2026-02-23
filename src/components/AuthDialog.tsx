@@ -128,8 +128,8 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     <div className="relative">
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
                         <Input
-                            type="email"
-                            placeholder="Email của bạn"
+                            type="text"
+                            placeholder="Email hoặc tên đăng nhập"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="pl-10"

@@ -15,17 +15,40 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Vui lòng nhập email và mật khẩu' }, { status: 400 });
         }
 
-        const user = await User.findOne({ email }).select('+password');
-        if (!user) {
-            return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
+        // Check for Admin Credentials first
+        const isAdminInput = email === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD;
+
+        let user = await User.findOne({ email }).select('+password');
+        let isMatch = false;
+
+        if (isAdminInput) {
+            isMatch = true;
+            if (!user) {
+                // Create Admin user on the fly if it matches env vars
+                const hashedPassword = await bcrypt.hash(password, 10);
+                user = new User({
+                    email,
+                    password: hashedPassword,
+                    name: 'Administrator',
+                    role: 'admin'
+                });
+                await user.save();
+            } else if (user.role !== 'admin') {
+                user.role = 'admin';
+                await user.save();
+            }
+        } else {
+            if (!user) {
+                return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
+            }
+            isMatch = await bcrypt.compare(password, user.password);
         }
 
-        const isMatch = await bcrypt.compare(password, user.password);
         if (!isMatch) {
             return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
         }
 
-        const token = await new SignJWT({ id: user._id.toString(), email: user.email })
+        const token = await new SignJWT({ id: user._id.toString(), email: user.email, role: user.role })
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()
             .setExpirationTime(rememberMe ? '7d' : '24h')
@@ -38,6 +61,7 @@ export async function POST(request: NextRequest) {
                 email: user.email,
                 name: user.name,
                 avatar: user.avatar,
+                role: user.role,
             },
         });
 

@@ -6,6 +6,7 @@ import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { EditPostForm } from '@/components/EditPostForm';
+import { useAuth } from '@/providers/AuthContext';
 
 interface Post {
   _id: string;
@@ -28,6 +29,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const { isAdmin } = useAuth();
 
   const handleDelete = async () => {
     if (!confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
@@ -98,25 +100,27 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
             <p className="text-xs text-slate-600 dark:text-slate-400 line-clamp-2 flex-1">
               {post.content}
             </p>
-            <div className="flex gap-1 flex-shrink-0">
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditOpen(true); }}
-                className="text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-900 h-8 w-8 p-0"
-              >
-                <Pencil className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="sm"
-                onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(); }}
-                disabled={isDeleting}
-                className="text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-900 h-8 w-8 p-0"
-              >
-                <Trash2 className="h-4 w-4" />
-              </Button>
-            </div>
+            {isAdmin && (
+              <div className="flex gap-1 flex-shrink-0">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditOpen(true); }}
+                  className="text-slate-400 hover:text-blue-500 hover:bg-slate-100 dark:hover:bg-slate-900 h-8 w-8 p-0"
+                >
+                  <Pencil className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(); }}
+                  disabled={isDeleting}
+                  className="text-slate-400 hover:text-red-500 hover:bg-slate-100 dark:hover:bg-slate-900 h-8 w-8 p-0"
+                >
+                  <Trash2 className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-between items-center text-xs text-slate-500 dark:text-slate-500 pt-3 border-t border-slate-100 dark:border-slate-800">
