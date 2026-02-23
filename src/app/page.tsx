@@ -221,19 +221,19 @@ export default function Home() {
         <div className="relative z-10 max-w-3xl w-full text-center">
           <div className="hero-animate inline-flex items-center gap-2 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-xs font-medium px-3 py-1.5 rounded-none mb-8 border border-slate-200 dark:border-slate-800">
             <span className="w-1.5 h-1.5 bg-green-500 rounded-none animate-pulse" />
-            Chia sẻ câu chuyện của bạn
+            Góc dịch thuật của Sutie
           </div>
 
           <h1 className="hero-animate hero-delay-1 text-5xl md:text-7xl font-bold text-slate-900 dark:text-white mb-6 leading-tight tracking-tight">
-            Nơi{' '}
+            Những bản{' '}
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400">
-              ý tưởng
+              dịch thuật
             </span>{' '}
-            trở thành câu chuyện
+            của Sutie Xù Xì
           </h1>
 
           <p className="hero-animate hero-delay-2 text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-12 font-light leading-relaxed max-w-xl mx-auto">
-            Tạo, chia sẻ và khám phá những bài viết đầy cảm hứng cùng hình ảnh sống động.
+            Nơi tôi chia sẻ niềm đam mê ngôn ngữ qua từng trang sách và những câu chuyện được chuyển ngữ với tất cả tâm huyết.
           </p>
 
           <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row gap-4 justify-center">
@@ -361,12 +361,12 @@ export default function Home() {
                   </div>
                   <span className="text-sm font-medium">sutiexuxi.supp.0410@gmail.com</span>
                 </a>
-                <a href="https://github.com" target="_blank" rel="noopener noreferrer"
+                <a href="https://github.com/DinhManh203" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white transition-colors group">
                   <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-none flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
                     <Github className="w-4 h-4" />
                   </div>
-                  <span className="text-sm font-medium">github.com/myblog</span>
+                  <span className="text-sm font-medium">https://github.com/DinhManh203</span>
                 </a>
               </div>
             </div>

@@ -14,8 +14,8 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sutie Xù Xì",
-  description: "Chia sẻ những bức ảnh câu chuyện của bạn với những bài viết blog tuyệt đẹp",
+  title: "Sutie Xù Xì | Bản dịch thuật",
+  description: "Nơi lưu giữ những bản dịch thuật tâm huyết của Sutie Xù Xì.",
 };
 
 export default function RootLayout({
