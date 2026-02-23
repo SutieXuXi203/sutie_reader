@@ -161,7 +161,7 @@ export default function Home() {
             <>
               <div className="group relative">
                 <button
-                  className="w-12 h-12 rounded-none overflow-hidden border-2 border-slate-100 dark:border-slate-800 hover:border-slate-900 dark:hover:border-white transition-all shadow-md"
+                  className="w-12 h-12 rounded-full overflow-hidden border-2 border-slate-100 dark:border-slate-800 hover:border-slate-900 dark:hover:border-white transition-all shadow-md"
                 >
                   {user.avatar ? (
                     <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -198,7 +198,7 @@ export default function Home() {
           ) : (
             <button
               onClick={() => setIsAuthDialogOpen(true)}
-              className="w-12 h-12 rounded-none border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-900 dark:hover:border-slate-100 transition-all active:scale-95"
+              className="w-12 h-12 rounded-full border-2 border-dashed border-slate-300 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 hover:border-slate-900 dark:hover:border-slate-100 transition-all active:scale-95"
               title="Đăng nhập"
             >
               <LogIn className="w-6 h-6" />

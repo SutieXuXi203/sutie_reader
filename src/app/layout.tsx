@@ -14,7 +14,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Sutie Xù Xì | Bản dịch thuật",
+  title: "Sutie Xù Xì | Dịch Truyện Tranh",
   description: "Nơi lưu giữ những bản dịch thuật tâm huyết của Sutie Xù Xì.",
 };
 
@@ -27,6 +27,7 @@ export default function RootLayout({
     <html lang="vi" suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} antialiased bg-white dark:bg-slate-950 text-slate-950 dark:text-slate-50`}
+        suppressHydrationWarning
       >
         <Providers>{children}</Providers>
       </body>
