@@ -81,7 +81,7 @@ export default function Home() {
 
       {/* ── SIDEBAR NAVBAR ── */}
       <nav className="fixed top-0 left-0 bottom-0 z-50 w-56 flex flex-col items-center py-8 gap-8
-        bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl border-r border-slate-100 dark:border-slate-800/40 transition-all duration-300">
+        bg-transparent transition-all duration-300">
         {/* Logo */}
         <div className="flex flex-col items-center gap-2">
           <div className="w-12 h-12 bg-slate-900 dark:bg-white rounded-none flex items-center justify-center text-white dark:text-black shadow-lg">

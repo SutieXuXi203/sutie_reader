@@ -119,7 +119,7 @@ export default function AdminDashboard() {
             {/* Main Content */}
             <main className="flex-1 overflow-auto bg-slate-50 dark:bg-slate-950/40">
                 {/* Header */}
-                <header className="h-24 bg-white/80 dark:bg-slate-900/80 backdrop-blur-xl px-6 sm:px-12 flex items-center justify-between sticky top-0 z-10 shadow-sm shadow-slate-100 dark:shadow-none">
+                <header className="h-24 bg-transparent px-6 sm:px-12 flex items-center justify-between sticky top-0 z-10">
                     <div className="lg:hidden">
                         <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tighter">
                             <LayoutDashboard className="w-6 h-6" />
