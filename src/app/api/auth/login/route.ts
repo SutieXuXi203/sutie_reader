@@ -25,7 +25,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
         }
 
-        const token = await new SignJWT({ id: user._id, email: user.email })
+        const token = await new SignJWT({ id: user._id.toString(), email: user.email })
             .setProtectedHeader({ alg: 'HS256' })
             .setIssuedAt()
             .setExpirationTime(rememberMe ? '7d' : '24h')

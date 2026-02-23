@@ -8,16 +8,19 @@ const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-fall
 export async function GET(request: NextRequest) {
     try {
         const token = request.cookies.get('token')?.value;
+        console.log('Session Check - Token present:', !!token);
 
         if (!token) {
             return NextResponse.json({ user: null });
         }
 
         const { payload } = await jwtVerify(token, JWT_SECRET);
+        console.log('Session Check - Payload verified:', payload.id);
         const userId = payload.id as string;
 
         await connectDB();
         const user = await User.findById(userId);
+        console.log('Session Check - User found:', !!user);
 
         if (!user) {
             return NextResponse.json({ user: null });

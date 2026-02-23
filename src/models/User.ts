@@ -22,7 +22,7 @@ const UserSchema = new Schema<IUser>(
             type: String,
             required: [true, 'Mật khẩu là bắt buộc'],
             minlength: [6, 'Mật khẩu phải có ít nhất 6 ký tự'],
-            select: false, // Don't return password by default
+            select: false,
         },
         name: {
             type: String,

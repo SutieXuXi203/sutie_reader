@@ -25,10 +25,9 @@ export default function Home() {
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const { user, logout } = useAuth();
+  const { user, logout, isLoading: isAuthLoading } = useAuth();
   const [contactSent, setContactSent] = useState(false);
 
-  // IntersectionObserver — trigger .reveal animations on scroll
   useEffect(() => {
     const els = document.querySelectorAll('.reveal');
     const observer = new IntersectionObserver(
@@ -44,7 +43,7 @@ export default function Home() {
     );
     els.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [posts]);
+  }, [posts, user, isLoading, isAuthLoading]);
 
   const fetchPosts = async () => {
     try {
@@ -92,7 +91,7 @@ export default function Home() {
 
         {/* Nav links */}
         <div className="flex flex-col items-center justify-center gap-5 flex-1">
-          <a href="/#posts"
+          <a href="/"
             title="Trang chủ"
             className="flex flex-col items-center gap-1 text-[9px] text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
             <HomeIcon className="w-5 h-5" />
@@ -256,7 +255,8 @@ export default function Home() {
             </Button>
           </div>
 
-          {isLoading ? (
+          {/* Conditionally render content */}
+          {isLoading || isAuthLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-white dark:bg-slate-800 rounded-xl h-72 animate-pulse" />
@@ -279,7 +279,7 @@ export default function Home() {
               </Button>
             </div>
           ) : posts.length === 0 ? (
-            <div className="text-center py-24">
+            <div className="reveal hero-delay-2 text-center py-24">
               <div className="w-16 h-16 bg-slate-100 dark:bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
                 <BookOpen className="w-7 h-7 text-slate-400" />
               </div>
