@@ -97,30 +97,30 @@ export default function Home() {
 
         {/* Nav links */}
         <div className="flex flex-col items-center justify-center gap-8 flex-1">
-          <Link href="/"
+          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             title="Trang chủ"
-            className="flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all hover:scale-110 active:scale-95">
+            className="flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all hover:scale-110 active:scale-95 cursor-pointer">
             <HomeIcon className="w-6 h-6" />
-            Home
-          </Link>
+            Trang chủ
+          </button>
           <a href="#posts"
             title="Bài viết"
             className="flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all hover:scale-110 active:scale-95 group">
             <FileText className="w-6 h-6" />
-            Posts
+            Bài viết
           </a>
           <a href="#contact"
             title="Liên hệ"
             className="flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-all hover:scale-110 active:scale-95">
             <Mail className="w-6 h-6" />
-            Contact
+            Liên hệ
           </a>
           {isAdmin && (
             <Link href="/admin"
               title="Dashboard"
               className="flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-slate-900 dark:text-white hover:opacity-70 transition-all hover:scale-110 active:scale-95">
               <LayoutDashboard className="w-6 h-6" />
-              Admin
+              Quản trị
             </Link>
           )}
         </div>
@@ -132,7 +132,7 @@ export default function Home() {
               {isAdmin && (
                 <Link
                   href="/admin"
-                  title="Admin Dashboard"
+                  title="Bảng điều khiển quản trị"
                   className="w-12 h-12 rounded-none bg-slate-900 dark:bg-white flex items-center justify-center text-white dark:text-black hover:opacity-90 transition-all shadow-xl active:scale-95"
                 >
                   <LayoutDashboard className="w-6 h-6" />
@@ -251,7 +251,7 @@ export default function Home() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-slate-400">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 ml-6 flex flex-col items-center gap-2 text-slate-400">
           <span className="text-xs">Cuộn xuống</span>
           <div className="w-px h-8 bg-gradient-to-b from-slate-300 to-transparent" />
         </div>
@@ -410,7 +410,7 @@ export default function Home() {
             <BookOpen className="w-4 h-4" />
             <span className="text-sm font-medium">myblog</span>
           </div>
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} myblog. All rights reserved.</p>
+          <p className="text-xs text-slate-400">© {new Date().getFullYear()} myblog. Mọi quyền được bảo lưu.</p>
           <div className="flex gap-5 text-xs text-slate-400">
             <a href="#posts" className="hover:text-slate-700 dark:hover:text-slate-200 transition-colors">Bài viết</a>
             <a href="#contact" className="hover:text-slate-700 dark:hover:text-slate-200 transition-colors">Liên hệ</a>

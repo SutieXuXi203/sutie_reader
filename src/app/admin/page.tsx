@@ -95,7 +95,7 @@ export default function AdminDashboard() {
                         <div className="w-10 h-10 bg-slate-900 dark:bg-white rounded-none flex items-center justify-center text-white dark:text-black shadow-lg shadow-slate-900/20 dark:shadow-white/10">
                             <LayoutDashboard className="w-6 h-6" />
                         </div>
-                        <span>Admin</span>
+                        <span>Quản trị viên</span>
                     </div>
                 </div>
                 <nav className="flex-1 px-4 space-y-1.5">
@@ -123,12 +123,12 @@ export default function AdminDashboard() {
                     <div className="lg:hidden">
                         <Link href="/" className="flex items-center gap-2 font-bold text-xl tracking-tighter">
                             <LayoutDashboard className="w-6 h-6" />
-                            <span>Admin</span>
+                            <span>Quản trị viên</span>
                         </Link>
                     </div>
                     <div className="hidden lg:block">
                         <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-white">Quản lý bài viết</h1>
-                        <p className="text-sm text-slate-500 font-medium">Chào mừng bạn trở lại, Admin</p>
+                        <p className="text-sm text-slate-500 font-medium">Chào mừng bạn trở lại, Quản trị viên</p>
                     </div>
 
                     <div className="flex items-center gap-4">
