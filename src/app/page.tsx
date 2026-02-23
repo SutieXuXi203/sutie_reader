@@ -286,16 +286,15 @@ export default function Home() {
               <p className="text-sm font-medium text-slate-500 mb-2 uppercase tracking-widest">Khám phá</p>
               <h2 className="text-3xl md:text-4xl font-bold text-slate-900 dark:text-white">Bài viết mới nhất</h2>
             </div>
-            {isAdmin && (
+            <Link href="/products" passHref>
               <Button
-                onClick={() => setIsCreateDialogOpen(true)}
                 variant="outline"
                 size="sm"
-                className="rounded-none hidden sm:flex items-center gap-1.5"
+                className="rounded-none hidden sm:flex items-center gap-1.5 hover:bg-slate-900 hover:text-white dark:hover:bg-white dark:hover:text-black transition-colors"
               >
-                <Plus className="w-4 h-4" /> Viết bài
+                Xem Tất Cả
               </Button>
-            )}
+            </Link>
           </div>
 
           {/* Conditionally render content */}
