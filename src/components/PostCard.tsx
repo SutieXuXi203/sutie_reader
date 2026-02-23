@@ -70,7 +70,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
     <>
       <Link
         href={`/posts/${post._id}`}
-        className="border border-slate-200 dark:border-slate-800 rounded-md overflow-hidden hover:border-slate-400 dark:hover:border-slate-600 transition-colors cursor-pointer block group/card"
+        className="border border-slate-200 dark:border-slate-800 rounded-none overflow-hidden hover:border-slate-400 dark:hover:border-slate-600 transition-colors cursor-pointer block group/card"
       >
         <div
           className="relative w-full h-48 bg-slate-100 dark:bg-slate-900"
@@ -140,7 +140,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
       {/* Animated image preview on hover */}
       {showPreview && post.images.length > 0 && (
         <div className="fixed inset-0 z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-[2px] bg-white/5 dark:bg-black/5">
-          <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-2xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] border border-white/20 dark:border-slate-800/50 bg-slate-100 dark:bg-slate-900">
+          <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-none overflow-hidden shadow-[0_32px_64px_-16px_rgba(0,0,0,0.3)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] border border-white/20 dark:border-slate-800/50 bg-slate-100 dark:bg-slate-900">
             <Image
               src={post.images[0]}
               alt="Preview"

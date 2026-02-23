@@ -102,7 +102,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                     </span>
                     <button
                         onClick={() => onOpenChange(false)}
-                        className="p-2 rounded-lg bg-white/10 hover:bg-red-500/80 text-white transition-colors"
+                        className="p-2 rounded-none bg-white/10 hover:bg-red-500/80 text-white transition-colors"
                     >
                         <X className="w-4 h-4" />
                     </button>
@@ -135,11 +135,11 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
 
                     {/* End of chapter */}
                     <div className="flex flex-col items-center gap-3 py-12 text-center">
-                        <div className="w-12 h-0.5 bg-orange-400/60 rounded" />
+                        <div className="w-12 h-0.5 bg-orange-400/60 rounded-none" />
                         <p className="text-slate-500 text-sm">Hết chương</p>
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="mt-2 px-6 py-2 rounded-full bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors"
+                            className="mt-2 px-6 py-2 rounded-none bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors"
                         >
                             Đóng
                         </button>

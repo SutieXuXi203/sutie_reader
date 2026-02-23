@@ -99,7 +99,7 @@ export default function PostDetailPage() {
     if (!user) {
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white px-6 text-center">
-                <div className="w-20 h-20 bg-white/5 rounded-full flex items-center justify-center mb-8 border border-white/10">
+                <div className="w-20 h-20 bg-white/5 rounded-none flex items-center justify-center mb-8 border border-white/10">
                     <Lock className="w-10 h-10 text-slate-400" />
                 </div>
                 <h1 className="text-3xl font-bold mb-4">Quyền truy cập bị giới hạn</h1>
@@ -108,7 +108,7 @@ export default function PostDetailPage() {
                 </p>
                 <Link
                     href="/#posts"
-                    className="px-10 py-4 rounded-full bg-white text-black font-bold hover:bg-slate-200 transition-all active:scale-95 shadow-xl shadow-white/5"
+                    className="px-10 py-4 rounded-none bg-white text-black font-bold hover:bg-slate-200 transition-all active:scale-95 shadow-xl shadow-white/5"
                 >
                     Về trang chủ đăng nhập
                 </Link>
@@ -131,7 +131,7 @@ export default function PostDetailPage() {
           ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
                 <div className="flex items-center gap-4">
-                    <Link href="/#posts" className="p-2 rounded-full bg-white/10 hover:bg-white/20 text-white transition-colors">
+                    <Link href="/#posts" className="p-2 rounded-none bg-white/10 hover:bg-white/20 text-white transition-colors">
                         <ArrowLeft className="w-5 h-5" />
                     </Link>
                     <div className="flex items-center gap-3">
@@ -144,12 +144,12 @@ export default function PostDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-4">
-                    <span className="text-white text-sm font-bold bg-white/10 px-3 py-1 rounded-full backdrop-blur-sm border border-white/10">
+                    <span className="text-white text-sm font-bold bg-white/10 px-3 py-1 rounded-none backdrop-blur-sm border border-white/10">
                         {currentPage + 1} / {total}
                     </span>
                     <Link
                         href="/#posts"
-                        className="p-2 rounded-full bg-white/10 hover:bg-red-500/80 text-white transition-colors"
+                        className="p-2 rounded-none bg-white/10 hover:bg-red-500/80 text-white transition-colors"
                     >
                         <X className="w-5 h-5" />
                     </Link>
@@ -179,13 +179,13 @@ export default function PostDetailPage() {
 
                     {/* End of chapter */}
                     <div className="flex flex-col items-center gap-4 py-20 text-center w-full max-w-md px-6 z-10">
-                        <div className="w-16 h-1 bg-white/20 rounded-full mb-2" />
+                        <div className="w-16 h-1 bg-white/20 rounded-none mb-2" />
                         <h2 className="text-white text-xl font-bold">Cảm ơn đã theo dõi!</h2>
                         <p className="text-slate-500 text-sm">Bạn đã đọc hết "{post.title}".</p>
                         <div className="flex gap-4 mt-4">
                             <Link
                                 href="/#posts"
-                                className="px-8 py-3 rounded-full bg-white text-black hover:bg-slate-200 text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-white/5"
+                                className="px-8 py-3 rounded-none bg-white text-black hover:bg-slate-200 text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-white/5"
                             >
                                 Quay lại trang chủ
                             </Link>

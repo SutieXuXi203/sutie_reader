@@ -105,43 +105,43 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-md no-scrollbar">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-none no-scrollbar">
         <DialogHeader>
           <DialogTitle className="text-xl font-medium">New post</DialogTitle>
         </DialogHeader>
 
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
-            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-2 rounded text-sm">
+            <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-2 rounded-none text-sm">
               {error}
             </div>
           )}
 
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Title</label>
-            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Post title" maxLength={100} disabled={isSubmitting} className="rounded-md border-slate-200 dark:border-slate-700" />
+            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Post title" maxLength={100} disabled={isSubmitting} className="rounded-none border-slate-200 dark:border-slate-700" />
             <p className="text-xs text-slate-400 mt-1">{title.length}/100</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Description</label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description" maxLength={300} rows={2} disabled={isSubmitting} className="rounded-md border-slate-200 dark:border-slate-700" />
+            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Brief description" maxLength={300} rows={2} disabled={isSubmitting} className="rounded-none border-slate-200 dark:border-slate-700" />
             <p className="text-xs text-slate-400 mt-1">{description.length}/300</p>
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Content</label>
-            <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Post content" rows={4} disabled={isSubmitting} className="rounded-md border-slate-200 dark:border-slate-700" />
+            <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Post content" rows={4} disabled={isSubmitting} className="rounded-none border-slate-200 dark:border-slate-700" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Author name (optional)</label>
-            <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Your name" disabled={isSubmitting} className="rounded-md border-slate-200 dark:border-slate-700" />
+            <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Your name" disabled={isSubmitting} className="rounded-none border-slate-200 dark:border-slate-700" />
           </div>
 
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Images</label>
-            <div className="border border-slate-200 dark:border-slate-700 rounded-md p-6 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
+            <div className="border border-slate-200 dark:border-slate-700 rounded-none p-6 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
               <input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isSubmitting} className="hidden" id="image-input" />
               <label htmlFor="image-input" className="cursor-pointer block">
                 <Upload className="h-6 w-6 mx-auto mb-2 text-slate-400" />
@@ -156,12 +156,12 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
               <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Selected ({imagePreviews.length})</label>
               <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                 {imagePreviews.map((preview, index) => (
-                  <div key={index} className="relative group bg-slate-100 dark:bg-slate-800 rounded-md overflow-hidden h-24">
+                  <div key={index} className="relative group bg-slate-100 dark:bg-slate-800 rounded-none overflow-hidden h-24">
                     <Image src={preview} alt={`Preview ${index}`} fill className="object-cover" />
                     <button
                       type="button"
                       onClick={() => removeImage(index)}
-                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded opacity-0 group-hover:opacity-100 transition-opacity text-xs"
+                      className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-none opacity-0 group-hover:opacity-100 transition-opacity text-xs"
                     >
                       <X className="h-3 w-3" />
                     </button>
@@ -172,10 +172,10 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
           )}
 
           <div className="flex gap-2 justify-end pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-md" size="sm">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-none" size="sm">
               Cancel
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="rounded-md" size="sm">
+            <Button type="submit" disabled={isSubmitting} className="rounded-none" size="sm">
               {isSubmitting ? 'Publishing...' : 'Publish'}
             </Button>
           </div>

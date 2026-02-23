@@ -92,7 +92,7 @@ export default function AdminDashboard() {
             <aside className="w-64 bg-white dark:bg-slate-900 hidden lg:flex flex-col shadow-2xl shadow-slate-200/50 dark:shadow-none z-20">
                 <div className="p-8">
                     <div className="flex items-center gap-3 font-bold text-2xl tracking-tighter">
-                        <div className="w-10 h-10 bg-slate-900 dark:bg-white rounded-2xl flex items-center justify-center text-white dark:text-black shadow-lg shadow-slate-900/20 dark:shadow-white/10">
+                        <div className="w-10 h-10 bg-slate-900 dark:bg-white rounded-none flex items-center justify-center text-white dark:text-black shadow-lg shadow-slate-900/20 dark:shadow-white/10">
                             <LayoutDashboard className="w-6 h-6" />
                         </div>
                         <span>Admin</span>
@@ -101,14 +101,14 @@ export default function AdminDashboard() {
                 <nav className="flex-1 px-4 space-y-1.5">
                     <Link
                         href="/admin"
-                        className="flex items-center gap-3 px-4 py-3 rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black font-semibold shadow-xl shadow-slate-900/20 dark:shadow-white/10 transition-all"
+                        className="flex items-center gap-3 px-4 py-3 rounded-none bg-slate-900 dark:bg-white text-white dark:text-black font-semibold shadow-xl shadow-slate-900/20 dark:shadow-white/10 transition-all"
                     >
                         <FileText className="w-5 h-5" />
                         <span>Bài viết</span>
                     </Link>
                     <Link
                         href="/"
-                        className="flex items-center gap-3 px-4 py-3 rounded-2xl text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-all group"
+                        className="flex items-center gap-3 px-4 py-3 rounded-none text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 transition-all group"
                     >
                         <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
                         <span>Trang chủ</span>
@@ -134,7 +134,7 @@ export default function AdminDashboard() {
                     <div className="flex items-center gap-4">
                         <Button
                             onClick={() => setIsCreateDialogOpen(true)}
-                            className="rounded-2xl bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 px-8 h-12 font-bold shadow-lg shadow-slate-900/20 dark:shadow-white/10 transition-all active:scale-95"
+                            className="rounded-none bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 px-8 h-12 font-bold shadow-lg shadow-slate-900/20 dark:shadow-white/10 transition-all active:scale-95"
                         >
                             <Plus className="w-5 h-5 mr-2" />
                             Tạo bài mới
@@ -150,13 +150,13 @@ export default function AdminDashboard() {
                             { label: 'Tác giả', value: '1', color: 'bg-slate-100 dark:bg-slate-800' },
                             { label: 'Trạng thái', value: 'Hoạt động', color: 'bg-slate-100 dark:bg-slate-800' }
                         ].map((stat, i) => (
-                            <div key={i} className="bg-white dark:bg-slate-900 p-8 rounded-[2rem] shadow-xl shadow-slate-200/50 dark:shadow-none transition-all hover:scale-[1.02] cursor-default">
+                            <div key={i} className="bg-white dark:bg-slate-900 p-8 rounded-none shadow-xl shadow-slate-200/50 dark:shadow-none transition-all hover:scale-[1.02] cursor-default">
                                 <p className="text-sm font-bold text-slate-400 uppercase tracking-widest mb-3">{stat.label}</p>
                                 {typeof stat.value === 'number' ? (
                                     <h3 className="text-5xl font-black text-slate-900 dark:text-white tracking-tighter">{stat.value}</h3>
                                 ) : (
                                     <div className="flex items-center gap-3">
-                                        <div className="w-3 h-3 rounded-full bg-green-500 animate-pulse" />
+                                        <div className="w-3 h-3 rounded-none bg-green-500 animate-pulse" />
                                         <span className="text-xl font-bold text-slate-900 dark:text-white tracking-tight">{stat.value}</span>
                                     </div>
                                 )}
@@ -165,13 +165,13 @@ export default function AdminDashboard() {
                     </div>
 
                     {/* Table Area */}
-                    <div className="bg-white dark:bg-slate-900 rounded-[2.5rem] shadow-2xl shadow-slate-200/60 dark:shadow-none overflow-hidden">
+                    <div className="bg-white dark:bg-slate-900 rounded-none shadow-2xl shadow-slate-200/60 dark:shadow-none overflow-hidden">
                         <div className="p-8 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6">
                             <div className="relative w-full sm:w-[450px] group">
                                 <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400 group-focus-within:text-slate-900 dark:group-focus-within:text-white transition-colors" />
                                 <Input
                                     placeholder="Tìm kiếm bài viết, tác giả..."
-                                    className="pl-12 h-14 bg-slate-50 dark:bg-slate-800/50 border-none rounded-2xl focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white transition-all text-base font-medium"
+                                    className="pl-12 h-14 bg-slate-50 dark:bg-slate-800/50 border-none rounded-none focus-visible:ring-2 focus-visible:ring-slate-900 dark:focus-visible:ring-white transition-all text-base font-medium"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -207,7 +207,7 @@ export default function AdminDashboard() {
                                         <tr key={post._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-all duration-300">
                                             <td className="px-8 py-6">
                                                 <div className="flex items-center gap-5">
-                                                    <div className="relative w-16 h-16 rounded-[1.25rem] overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
+                                                    <div className="relative w-16 h-16 rounded-none overflow-hidden bg-slate-100 dark:bg-slate-800 flex-shrink-0 shadow-sm group-hover:shadow-md transition-shadow">
                                                         {post.images[0] ? (
                                                             <Image src={post.images[0]} alt={post.title} fill className="object-cover group-hover:scale-110 transition-transform duration-500" unoptimized />
                                                         ) : (
@@ -230,14 +230,14 @@ export default function AdminDashboard() {
                                                 <div className="flex justify-end gap-3 opacity-0 group-hover:opacity-100 transition-opacity translate-x-4 group-hover:translate-x-0">
                                                     <button
                                                         onClick={() => { setSelectedPost(post); setIsEditOpen(true); }}
-                                                        className="p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 rounded-xl shadow-none hover:shadow-lg transition-all"
+                                                        className="p-3 text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-white dark:hover:bg-slate-800 rounded-none shadow-none hover:shadow-lg transition-all"
                                                         title="Chỉnh sửa bài viết"
                                                     >
                                                         <Pencil className="w-5 h-5" />
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(post._id)}
-                                                        className="p-3 text-slate-400 hover:text-red-500 hover:bg-white dark:hover:bg-slate-800 rounded-xl shadow-none hover:shadow-lg transition-all"
+                                                        className="p-3 text-slate-400 hover:text-red-500 hover:bg-white dark:hover:bg-slate-800 rounded-none shadow-none hover:shadow-lg transition-all"
                                                         title="Xóa bài viết"
                                                     >
                                                         <Trash2 className="w-5 h-5" />

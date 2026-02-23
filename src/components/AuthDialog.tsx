@@ -100,13 +100,13 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 </DialogHeader>
 
                 {error && (
-                    <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-lg text-sm font-medium border border-red-100 dark:border-red-900/30">
+                    <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-none text-sm font-medium border border-red-100 dark:border-red-900/30">
                         {error}
                     </div>
                 )}
 
                 {success && (
-                    <div className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-lg text-sm font-medium border border-green-100 dark:border-green-900/30">
+                    <div className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-none text-sm font-medium border border-green-100 dark:border-green-900/30">
                         {success}
                     </div>
                 )}
@@ -158,7 +158,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     type="checkbox"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 rounded border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-500 accent-slate-900 dark:accent-slate-100"
+                                    className="w-4 h-4 rounded-none border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-500 accent-slate-900 dark:accent-slate-100"
                                 />
                                 <span className="text-xs text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">Ghi nhớ đăng nhập</span>
                             </label>
@@ -175,7 +175,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="w-full bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 font-semibold py-6 text-base rounded-xl transition-all active:scale-[0.98]"
+                        className="rounded-none w-full shadow-lg"
                     >
                         {isLoading ? (
                             <Loader2 className="w-5 h-5 animate-spin" />
@@ -208,6 +208,6 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     )}
                 </div>
             </DialogContent>
-        </Dialog>
+        </Dialog >
     );
 }
