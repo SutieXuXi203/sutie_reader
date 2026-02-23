@@ -18,6 +18,10 @@ export async function POST(request: NextRequest) {
         // Check for Admin Credentials first
         const isAdminInput = email === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD;
 
+        if (!isAdminInput && !email.toLowerCase().endsWith('@gmail.com')) {
+            return NextResponse.json({ error: 'Vui lòng sử dụng tài khoản Gmail hợp lệ' }, { status: 400 });
+        }
+
         let user = await User.findOne({ email }).select('+password');
         let isMatch = false;
 

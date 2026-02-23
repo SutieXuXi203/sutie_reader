@@ -100,18 +100,18 @@ export default function AdminDashboard() {
                 </div>
                 <nav className="flex-1 px-4 space-y-1.5">
                     <Link
-                        href="/admin"
-                        className="flex items-center gap-3 px-4 py-3 rounded-none bg-slate-900 dark:bg-white text-white dark:text-black font-semibold shadow-xl shadow-slate-900/20 dark:shadow-white/10 transition-all"
-                    >
-                        <FileText className="w-5 h-5" />
-                        <span>Bài viết</span>
-                    </Link>
-                    <Link
                         href="/"
                         className="flex items-center gap-3 px-4 py-3 rounded-none text-slate-500 hover:text-slate-900 dark:hover:text-slate-200 transition-all group"
                     >
                         <Home className="w-5 h-5 group-hover:scale-110 transition-transform" />
                         <span>Trang chủ</span>
+                    </Link>
+                    <Link
+                        href="/admin"
+                        className="flex items-center gap-3 px-4 py-3 rounded-none bg-slate-900 dark:bg-white text-white dark:text-black font-semibold shadow-xl shadow-slate-900/20 dark:shadow-white/10 transition-all"
+                    >
+                        <FileText className="w-5 h-5" />
+                        <span>Bài viết</span>
                     </Link>
                 </nav>
             </aside>

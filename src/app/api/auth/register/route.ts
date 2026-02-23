@@ -12,6 +12,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Thiếu thông tin đăng ký' }, { status: 400 });
         }
 
+        const isAdminEmail = email === process.env.ADMIN_USERNAME;
+        if (!isAdminEmail && !email.toLowerCase().endsWith('@gmail.com')) {
+            return NextResponse.json({ error: 'Vui lòng sử dụng tài khoản Gmail hợp lệ' }, { status: 400 });
+        }
+
+
         const existingUser = await User.findOne({ email });
         if (existingUser) {
             return NextResponse.json({ error: 'Email đã được sử dụng' }, { status: 400 });
