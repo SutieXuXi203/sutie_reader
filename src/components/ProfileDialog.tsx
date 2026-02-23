@@ -130,7 +130,10 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
 
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
-            <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <DialogContent
+                className="sm:max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                onOpenAutoFocus={(e) => e.preventDefault()}
+            >
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold text-center text-slate-900 dark:text-white mb-2">
                         Hồ sơ của bạn

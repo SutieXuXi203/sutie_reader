@@ -72,11 +72,41 @@ export default function Home() {
     setPosts((prev) => prev.filter((post) => post._id !== postId));
   };
 
-  const handleContactSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+  const [isSending, setIsSending] = useState(false);
+  const [contactError, setContactError] = useState<string | null>(null);
+
+  const handleContactSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    setContactSent(true);
-    (e.target as HTMLFormElement).reset();
-    setTimeout(() => setContactSent(false), 4000);
+    setIsSending(true);
+    setContactError(null);
+    setContactSent(false);
+
+    const formData = new FormData(e.currentTarget);
+    const name = formData.get('name') as string || user?.name || '';
+    const email = formData.get('email') as string || user?.email || '';
+    const message = formData.get('message') as string;
+
+    try {
+      const response = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name, email, message }),
+      });
+
+      if (response.ok) {
+        setContactSent(true);
+        (e.target as HTMLFormElement).reset();
+        setTimeout(() => setContactSent(false), 5000);
+      } else {
+        const errorData = await response.json();
+        setContactError(errorData.error || 'Có lỗi xảy ra, vui lòng thử lại.');
+      }
+    } catch (error) {
+      console.error('Lỗi khi gửi liên hệ:', error);
+      setContactError('Có lỗi xảy ra, vui lòng thử lại.');
+    } finally {
+      setIsSending(false);
+    }
   };
 
   return (
@@ -335,12 +365,12 @@ export default function Home() {
                 Có ý tưởng, câu hỏi, hoặc đơn giản chỉ muốn nói chuyện? Tôi rất vui khi được lắng nghe.
               </p>
               <div className="space-y-4">
-                <a href="mailto:hello@myblog.com"
+                <a href="mailto:sutiexuxi.supp.0410@gmail.com"
                   className="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white transition-colors group">
                   <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-none flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
                     <Mail className="w-4 h-4" />
                   </div>
-                  <span className="text-sm font-medium">hello@myblog.com</span>
+                  <span className="text-sm font-medium">sutiexuxi.supp.0410@gmail.com</span>
                 </a>
                 <a href="https://github.com" target="_blank" rel="noopener noreferrer"
                   className="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white transition-colors group">
@@ -368,33 +398,67 @@ export default function Home() {
                 <form onSubmit={handleContactSubmit} className="space-y-5">
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Tên</label>
-                    <input
-                      required
-                      type="text"
-                      placeholder="Tên của bạn"
-                      className="w-full px-4 py-2.5 rounded-none border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 transition"
-                    />
+                    {user ? (
+                      <input
+                        key="user-name"
+                        type="text"
+                        name="name"
+                        value={user.name || ''}
+                        readOnly
+                        className="w-full px-4 py-2.5 rounded-none border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-sm cursor-not-allowed"
+                      />
+                    ) : (
+                      <input
+                        key="guest-name"
+                        required
+                        type="text"
+                        name="name"
+                        defaultValue=""
+                        placeholder="Tên của bạn"
+                        className="w-full px-4 py-2.5 rounded-none border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 transition"
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Email</label>
-                    <input
-                      required
-                      type="email"
-                      placeholder="email@example.com"
-                      className="w-full px-4 py-2.5 rounded-none border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 transition"
-                    />
+                    {user ? (
+                      <input
+                        key="user-email"
+                        type="email"
+                        name="email"
+                        value={user.email || ''}
+                        readOnly
+                        className="w-full px-4 py-2.5 rounded-none border border-slate-200 dark:border-slate-600 bg-slate-50 dark:bg-slate-800/80 text-slate-500 dark:text-slate-400 text-sm cursor-not-allowed"
+                      />
+                    ) : (
+                      <input
+                        key="guest-email"
+                        required
+                        type="email"
+                        name="email"
+                        defaultValue=""
+                        placeholder="email@example.com"
+                        className="w-full px-4 py-2.5 rounded-none border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 transition"
+                      />
+                    )}
                   </div>
                   <div>
                     <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1.5">Tin nhắn</label>
                     <textarea
                       required
+                      name="message"
                       rows={4}
                       placeholder="Nội dung tin nhắn..."
                       className="w-full px-4 py-2.5 rounded-none border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 text-slate-900 dark:text-white placeholder:text-slate-400 text-sm focus:outline-none focus:ring-2 focus:ring-violet-500 transition resize-none"
                     />
                   </div>
-                  <Button type="submit" className="w-full rounded-none bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 border-0">
-                    Gửi tin nhắn
+
+                  {contactError && (
+                    <p className="text-red-500 text-sm font-medium">{contactError}</p>
+                  )}
+
+                  <Button type="submit" disabled={isSending} className="w-full rounded-none bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 border-0 disabled:opacity-50">
+                    {isSending ? 'Đang gửi...' : 'Gửi tin nhắn'}
                   </Button>
                 </form>
               )}

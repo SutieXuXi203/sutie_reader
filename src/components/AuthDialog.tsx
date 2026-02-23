@@ -1,11 +1,21 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, User, Loader2, Key } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
+
+const getPasswordStrength = (pass: string) => {
+    let score = 0;
+    if (!pass) return 0;
+    if (pass.length >= 8) score += 1;
+    if (/[A-Z]/.test(pass) && /[a-z]/.test(pass)) score += 1;
+    if (/\d/.test(pass)) score += 1;
+    if (/[^A-Za-z0-9]/.test(pass)) score += 1;
+    return score;
+};
 
 interface AuthDialogProps {
     open: boolean;
@@ -23,6 +33,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     // Form states
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
     const [name, setName] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
@@ -32,9 +43,17 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         setSuccess('');
         setEmail('');
         setPassword('');
+        setConfirmPassword('');
         setName('');
         setVerificationCode('');
     };
+
+    useEffect(() => {
+        if (open) {
+            setMode(initialMode);
+            resetState();
+        }
+    }, [open, initialMode]);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
@@ -50,6 +69,17 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 url = '/api/auth/login';
                 payload = { email, password, rememberMe };
             } else if (mode === 'register') {
+                if (password !== confirmPassword) {
+                    setError('Mật khẩu xác nhận không khớp.');
+                    setIsLoading(false);
+                    return;
+                }
+                const strength = getPasswordStrength(password);
+                if (strength < 2) {
+                    setError('Mật khẩu quá yếu. Vui lòng bao gồm chữ hoa, chữ thường và số.');
+                    setIsLoading(false);
+                    return;
+                }
                 url = '/api/auth/register';
                 payload = { email, password, name };
             } else if (mode === 'verify') {
@@ -153,16 +183,62 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     </div>
 
                     {mode !== 'forgot-password' && mode !== 'verify' && (
-                        <div className="relative">
-                            <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
-                            <Input
-                                type="password"
-                                placeholder="Mật khẩu"
-                                value={password}
-                                onChange={(e) => setPassword(e.target.value)}
-                                className="pl-10"
-                                required
-                            />
+                        <div className="space-y-4">
+                            <div className="relative">
+                                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                                <Input
+                                    type="password"
+                                    placeholder="Mật khẩu"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    className="pl-10"
+                                    required
+                                />
+                            </div>
+
+                            {mode === 'register' && password.length > 0 && (
+                                <div className="space-y-1.5 px-1">
+                                    <div className="flex gap-1.5 h-1.5">
+                                        {[1, 2, 3, 4].map((level) => {
+                                            const strength = getPasswordStrength(password);
+                                            let bgColor = 'bg-slate-200 dark:bg-slate-700';
+                                            if (strength >= level) {
+                                                if (strength === 1) bgColor = 'bg-red-500';
+                                                else if (strength === 2) bgColor = 'bg-orange-500';
+                                                else if (strength === 3) bgColor = 'bg-yellow-500';
+                                                else if (strength === 4) bgColor = 'bg-emerald-500';
+                                            }
+                                            return (
+                                                <div
+                                                    key={level}
+                                                    className={`flex-1 rounded-none transition-colors duration-300 ${bgColor}`}
+                                                />
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="text-[11px] font-medium text-right text-slate-500 dark:text-slate-400">
+                                        {getPasswordStrength(password) === 0 && 'Rất yếu'}
+                                        {getPasswordStrength(password) === 1 && 'Yếu'}
+                                        {getPasswordStrength(password) === 2 && 'Trung bình'}
+                                        {getPasswordStrength(password) === 3 && 'Khá'}
+                                        {getPasswordStrength(password) === 4 && 'Mạnh'}
+                                    </div>
+                                </div>
+                            )}
+
+                            {mode === 'register' && (
+                                <div className="relative">
+                                    <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                                    <Input
+                                        type="password"
+                                        placeholder="Xác nhận mật khẩu"
+                                        value={confirmPassword}
+                                        onChange={(e) => setConfirmPassword(e.target.value)}
+                                        className="pl-10"
+                                        required
+                                    />
+                                </div>
+                            )}
                         </div>
                     )}
 
