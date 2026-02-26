@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 
 interface User {
     id: string;
@@ -25,7 +25,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
 
-    const checkAuth = async () => {
+    const checkAuth = useCallback(async () => {
         try {
             const res = await fetch('/api/auth/me');
             if (res.ok) {
@@ -40,24 +40,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         checkAuth();
+    }, [checkAuth]);
+
+    const login = useCallback((userData: User) => {
+        setUser(userData);
     }, []);
 
-    const login = (userData: User) => {
-        setUser(userData);
-    };
-
-    const logout = async () => {
+    const logout = useCallback(async () => {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
             setUser(null);
         } catch (error) {
             console.error('Logout failed', error);
         }
-    };
+    }, []);
 
     return (
         <AuthContext.Provider value={{ user, isLoading, login, logout, checkAuth, isAdmin: user?.role === 'admin' }}>

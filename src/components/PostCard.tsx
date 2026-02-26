@@ -82,8 +82,8 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
               src={post.images[0]}
               alt={post.title}
               fill
+              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
               className="object-cover transition-transform duration-500 group-hover/card:scale-105"
-              unoptimized
             />
           )}
         </div>
@@ -145,8 +145,8 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
               src={post.images[0]}
               alt="Preview"
               fill
+              sizes="420px"
               className="object-cover"
-              unoptimized
             />
             {/* Elegant overlay gradient */}
             <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent" />

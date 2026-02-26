@@ -24,7 +24,7 @@ export async function POST(request: Request) {
             from: `"${name}" <${email}>`,
             to: 'sutiexuxi.supp.0410@gmail.com',
             replyTo: email,
-            subject: `[my_blog] Tin nhắn liên hệ từ ${name}`,
+            subject: `[Sutie Archive] Tin nhắn liên hệ từ ${name}`,
             text: `Bạn nhận được một tin nhắn liên hệ mới từ ${name} (${email}):\n\n${message}`,
             html: `
         <h3>Tin nhắn liên hệ mới</h3>

@@ -1,15 +1,18 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Plus, BookOpen, Mail, Github, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, FileText } from 'lucide-react';
+import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, FileText } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
-import { CreatePostForm } from '@/components/CreatePostForm';
-import { AuthDialog } from '@/components/AuthDialog';
-import { ProfileDialog } from '@/components/ProfileDialog';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
+import Image from 'next/image';
+
+const CreatePostForm = dynamic(() => import('@/components/CreatePostForm').then(m => ({ default: m.CreatePostForm })), { ssr: false });
+const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
+const ProfileDialog = dynamic(() => import('@/components/ProfileDialog').then(m => ({ default: m.ProfileDialog })), { ssr: false });
 
 interface Post {
   _id: string;
@@ -68,14 +71,14 @@ export default function Home() {
     fetchPosts();
   }, []);
 
-  const handlePostDeleted = (postId: string) => {
+  const handlePostDeleted = useCallback((postId: string) => {
     setPosts((prev) => prev.filter((post) => post._id !== postId));
-  };
+  }, []);
 
   const [isSending, setIsSending] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
 
-  const handleContactSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+  const handleContactSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSending(true);
     setContactError(null);
@@ -107,7 +110,7 @@ export default function Home() {
     } finally {
       setIsSending(false);
     }
-  };
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-white dark:bg-slate-950 transition-colors">
@@ -211,67 +214,89 @@ export default function Home() {
       </nav>
 
       {/* ── HERO SECTION ── */}
-      <section className="relative min-h-screen flex items-center justify-center pl-24 px-12 overflow-hidden snap-start">
+      <section className="relative min-h-screen flex items-center justify-center px-12 pl-24 overflow-hidden snap-start">
         {/* Background gradient blobs */}
         <div className="absolute inset-0 pointer-events-none">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-slate-200/20 dark:bg-slate-800/20 rounded-none blur-3xl opacity-50" />
           <div className="absolute bottom-1/3 right-1/4 w-80 h-80 bg-slate-100/30 dark:bg-slate-900/10 rounded-none blur-3xl opacity-50" />
         </div>
 
-        <div className="relative z-10 max-w-3xl w-full text-center">
-          <div className="hero-animate inline-flex items-center gap-2 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-xs font-medium px-3 py-1.5 rounded-none mb-8 border border-slate-200 dark:border-slate-800">
-            <span className="w-1.5 h-1.5 bg-green-500 rounded-none animate-pulse" />
-            Góc dịch thuật của Sutie
+        <div className="relative z-10 max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+          {/* ── LEFT SIDE: TEXT CONTENT ── */}
+          <div className="flex flex-col">
+            <div className="hero-animate inline-flex items-center gap-2 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 text-xs font-medium px-3 py-1.5 rounded-none mb-8 border border-slate-200 dark:border-slate-800 w-fit">
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-none animate-pulse" />
+              Góc dịch thuật của Sutie
+            </div>
+
+            <h1 className="hero-animate hero-delay-1 text-5xl md:text-6xl font-bold text-slate-900 dark:text-white mb-6 leading-tight tracking-tight">
+              Những bản{' '}
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400">
+                dịch thuật
+              </span>{' '}
+              của Sutie Xù Xì
+            </h1>
+
+            <p className="hero-animate hero-delay-2 text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-12 font-light leading-relaxed">
+              Nơi tôi chia sẻ niềm đam mê ngôn ngữ qua từng trang sách và những câu chuyện được chuyển ngữ với tất cả tâm huyết.
+            </p>
+
+            <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row gap-4">
+              {user ? (
+                isAdmin && (
+                  <Button
+                    onClick={() => setIsCreateDialogOpen(true)}
+                    size="lg"
+                    className="rounded-none px-8 py-3 text-base font-semibold bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 border-0 shadow-xl w-fit"
+                  >
+                    <Plus className="w-5 h-5 mr-2" />
+                    Tạo bài viết
+                  </Button>
+                )
+              ) : (
+                <Button
+                  onClick={() => setIsAuthDialogOpen(true)}
+                  size="lg"
+                  className="rounded-none px-8 py-3 text-base font-semibold bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 border-0 shadow-xl w-fit"
+                >
+                  <LogIn className="w-5 h-5 mr-2" />
+                  Bắt đầu ngay
+                </Button>
+              )}
+              <Button
+                variant="outline"
+                size="lg"
+                className="rounded-none px-8 py-3 text-base w-fit"
+                onClick={() => document.getElementById('posts')?.scrollIntoView({ behavior: 'smooth' })}
+              >
+                Khám phá
+                <ArrowDown className="w-4 h-4 ml-2" />
+              </Button>
+            </div>
           </div>
 
-          <h1 className="hero-animate hero-delay-1 text-5xl md:text-7xl font-bold text-slate-900 dark:text-white mb-6 leading-tight tracking-tight">
-            Những bản{' '}
-            <span className="text-transparent bg-clip-text bg-gradient-to-r from-slate-900 to-slate-500 dark:from-white dark:to-slate-400">
-              dịch thuật
-            </span>{' '}
-            của Sutie Xù Xì
-          </h1>
-
-          <p className="hero-animate hero-delay-2 text-lg md:text-xl text-slate-500 dark:text-slate-400 mb-12 font-light leading-relaxed max-w-xl mx-auto">
-            Nơi tôi chia sẻ niềm đam mê ngôn ngữ qua từng trang sách và những câu chuyện được chuyển ngữ với tất cả tâm huyết.
-          </p>
-
-          <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row gap-4 justify-center">
-            {user ? (
-              isAdmin && (
-                <Button
-                  onClick={() => setIsCreateDialogOpen(true)}
-                  size="lg"
-                  className="rounded-none px-8 py-3 text-base font-semibold bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 border-0 shadow-xl"
-                >
-                  <Plus className="w-5 h-5 mr-2" />
-                  Tạo bài viết
-                </Button>
-              )
-            ) : (
-              <Button
-                onClick={() => setIsAuthDialogOpen(true)}
-                size="lg"
-                className="rounded-none px-8 py-3 text-base font-semibold bg-slate-900 dark:bg-white text-white dark:text-black hover:opacity-90 border-0 shadow-xl"
-              >
-                <LogIn className="w-5 h-5 mr-2" />
-                Bắt đầu ngay
-              </Button>
-            )}
-            <Button
-              variant="outline"
-              size="lg"
-              className="rounded-none px-8 py-3 text-base"
-              onClick={() => document.getElementById('posts')?.scrollIntoView({ behavior: 'smooth' })}
-            >
-              Khám phá
-              <ArrowDown className="w-4 h-4 ml-2" />
-            </Button>
+          {/* ── RIGHT SIDE: DRAGON IMAGE ── */}
+          <div className="hero-animate hero-delay-2 flex items-center justify-center relative h-full min-h-96">
+            <div className="group relative w-full max-w-[500px] aspect-square rounded-[8px] overflow-hidden cursor-pointer">
+              <Image
+                src="/dragon.png"
+                alt="Sutie's Dragon Avatar"
+                fill
+                priority
+                className="object-cover drop-shadow-2xl"
+              />
+              {/* Tooltip */}
+              <div className="absolute inset-0 flex items-end justify-center pb-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                <div className="bg-black/75 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-none max-w-[90%] text-center shadow-xl">
+                  Hình ảnh là sản phẩm của AI và không có tác giả
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 ml-6 flex flex-col items-center gap-2 text-slate-400">
+        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-slate-400">
           <span className="text-xs">Cuộn xuống</span>
           <div className="w-px h-8 bg-gradient-to-b from-slate-300 to-transparent" />
         </div>
@@ -368,6 +393,13 @@ export default function Home() {
                   </div>
                   <span className="text-sm font-medium">https://github.com/DinhManh203</span>
                 </a>
+                <a href="https://www.facebook.com/profile.php?id=61585590627494" target="_blank" rel="noopener noreferrer"
+                  className="flex items-center gap-3 text-slate-600 dark:text-slate-400 hover:text-black dark:hover:text-white transition-colors group">
+                  <div className="w-10 h-10 bg-slate-100 dark:bg-slate-800 rounded-none flex items-center justify-center group-hover:bg-slate-200 dark:group-hover:bg-slate-700 transition-colors">
+                    <Facebook className="w-4 h-4" />
+                  </div>
+                  <span className="text-sm font-medium">Facebook</span>
+                </a>
               </div>
             </div>
 
@@ -461,9 +493,9 @@ export default function Home() {
         <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
           <div className="flex items-center gap-2 text-slate-500 dark:text-slate-400">
             <BookOpen className="w-4 h-4" />
-            <span className="text-sm font-medium">myblog</span>
+            <span className="text-sm font-medium">Sutie Archive</span>
           </div>
-          <p className="text-xs text-slate-400">© {new Date().getFullYear()} myblog. Mọi quyền được bảo lưu.</p>
+          <p className="text-xs text-slate-400">© {new Date().getFullYear()} Sutie Archive. Mọi quyền được bảo lưu.</p>
           <div className="flex gap-5 text-xs text-slate-400">
             <a href="#posts" className="hover:text-slate-700 dark:hover:text-slate-200 transition-colors">Bài viết</a>
             <a href="#contact" className="hover:text-slate-700 dark:hover:text-slate-200 transition-colors">Liên hệ</a>

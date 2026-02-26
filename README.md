@@ -32,7 +32,7 @@ cp .env.example .env.local
 
 3. Đặt MongoDB URI của bạn trong `.env.local`:
 ```
-MONGODB_URI=mongodb://localhost:27017/my_blog
+MONGODB_URI=mongodb://localhost:27017/sutie_archive
 ```
 
 ### Chạy Máy Chủ Phát Triển
