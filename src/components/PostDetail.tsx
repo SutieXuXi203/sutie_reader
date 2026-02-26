@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, BookOpen } from 'lucide-react';
+import { X, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 
 interface Post {
@@ -78,31 +78,38 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
     if (!open) return null;
 
     const total = post.images.length;
+    const progress = total > 1 ? (currentPage / (total - 1)) * 100 : 100;
 
     return (
-        <div className="fixed inset-0 z-50 bg-black flex flex-col" onMouseMove={resetUiTimer}>
+        <div className="fixed inset-0 z-50 bg-[#0a0000] flex flex-col" onMouseMove={resetUiTimer}>
 
             {/* ── TOP BAR ── */}
             <div
                 className={`absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3
-          bg-gradient-to-b from-black/90 to-transparent transition-opacity duration-500
+          bg-gradient-to-b from-black/90 via-black/60 to-transparent transition-opacity duration-500
           ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
-                <div className="flex items-center gap-3">
-                    <BookOpen className="w-5 h-5 text-orange-400 flex-shrink-0" />
+                <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <div className="w-8 h-8 gradient-red rounded-none flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-900/50">
+                        <BookOpen className="w-4 h-4 text-white" />
+                    </div>
                     <div className="min-w-0">
-                        <p className="text-white font-semibold text-sm leading-tight line-clamp-1">{post.title}</p>
-                        <p className="text-slate-400 text-xs">{post.author}</p>
+                        <p className="text-white font-bold text-sm leading-tight line-clamp-1 tracking-tight">{post.title}</p>
+                        <p className="text-red-300/70 text-xs font-medium">{post.author}</p>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-3">
-                    <span className="text-orange-400 text-xs font-medium">
-                        {currentPage + 1}/{total}
-                    </span>
+                <div className="flex items-center gap-3 flex-shrink-0">
+                    <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-none">
+                        <span className="text-red-300 text-xs font-bold tracking-wider">
+                            {currentPage + 1}
+                        </span>
+                        <span className="text-white/30 text-xs">/</span>
+                        <span className="text-white/50 text-xs font-medium">{total}</span>
+                    </div>
                     <button
                         onClick={() => onOpenChange(false)}
-                        className="p-2 rounded-none bg-white/10 hover:bg-red-500/80 text-white transition-colors"
+                        className="w-8 h-8 rounded-none bg-white/10 hover:bg-red-600 text-white transition-all flex items-center justify-center hover:shadow-lg hover:shadow-red-900/30"
                     >
                         <X className="w-4 h-4" />
                     </button>
@@ -134,12 +141,16 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                     ))}
 
                     {/* End of chapter */}
-                    <div className="flex flex-col items-center gap-3 py-12 text-center">
-                        <div className="w-12 h-0.5 bg-orange-400/60 rounded-none" />
-                        <p className="text-slate-500 text-sm">Hết chương</p>
+                    <div className="flex flex-col items-center gap-4 py-16 text-center">
+                        <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
+                        <div className="w-8 h-8 gradient-red rounded-none flex items-center justify-center shadow-lg shadow-red-900/40">
+                            <BookOpen className="w-4 h-4 text-white" />
+                        </div>
+                        <p className="text-red-300/60 text-sm font-medium tracking-widest uppercase">Hết chương</p>
+                        <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="mt-2 px-6 py-2 rounded-none bg-orange-500 hover:bg-orange-600 text-white text-sm font-medium transition-colors"
+                            className="mt-2 px-8 py-2.5 rounded-none gradient-red text-white text-sm font-bold transition-all hover:opacity-90 shadow-xl shadow-red-900/40 active:scale-95 cursor-pointer"
                         >
                             Đóng
                         </button>
@@ -151,10 +162,16 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
             <div
                 className={`absolute bottom-0 left-0 right-0 z-20 transition-opacity duration-500 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
+                {/* Progress info */}
+                <div className="flex justify-center pb-2">
+                    <span className="text-[10px] text-white/30 font-medium tracking-widest uppercase">
+                        {Math.round(progress)}% · Trang {currentPage + 1}/{total}
+                    </span>
+                </div>
                 <div className="h-1 bg-white/10">
                     <div
-                        className="h-full bg-orange-400 transition-all duration-300"
-                        style={{ width: `${total > 1 ? (currentPage / (total - 1)) * 100 : 100}%` }}
+                        className="h-full bg-gradient-to-r from-red-700 to-red-400 transition-all duration-300 shadow-sm shadow-red-500/50"
+                        style={{ width: `${progress}%` }}
                     />
                 </div>
             </div>

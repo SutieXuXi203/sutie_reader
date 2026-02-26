@@ -158,7 +158,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated }: EditPo
                                     <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-none overflow-hidden h-24">
                                         <Image src={src} alt={`Ảnh ${idx + 1}`} fill className="object-cover" unoptimized />
                                         <button type="button" onClick={() => removeKept(idx)}
-                                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-none opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                                             <X className="h-3 w-3" />
                                         </button>
                                     </div>
@@ -188,7 +188,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated }: EditPo
                                     <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-none overflow-hidden h-24">
                                         <Image src={preview} alt={`Preview ${idx}`} fill className="object-cover" />
                                         <button type="button" onClick={() => removeNew(idx)}
-                                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-none opacity-0 group-hover:opacity-100 transition-opacity">
+                                            className="absolute top-1 right-1 bg-red-500 hover:bg-red-600 text-white p-1 rounded-none opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
                                             <X className="h-3 w-3" />
                                         </button>
                                     </div>
