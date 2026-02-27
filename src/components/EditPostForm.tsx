@@ -135,7 +135,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated }: EditPo
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-none border-none shadow-none no-scrollbar dark:bg-black/60 dark:backdrop-blur-xl"
+                className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-none border-none shadow-none no-scrollbar"
                 onOpenAutoFocus={(e) => e.preventDefault()}
             >
                 <DialogHeader>
