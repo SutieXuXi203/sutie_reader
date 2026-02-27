@@ -33,7 +33,7 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Providers>
-          <DevToolsProtection />
+          {/* <DevToolsProtection /> */}
           {children}
         </Providers>
       </body>

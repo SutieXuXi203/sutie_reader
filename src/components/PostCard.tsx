@@ -71,7 +71,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
     <>
       <Link
         href={`/posts/${post._id}`}
-        className="group/card flex flex-col h-full bg-white dark:bg-[#140606] border border-red-50 dark:border-red-950/50 hover:border-red-200 dark:hover:border-red-900/40 rounded-xl overflow-hidden hover:shadow-[0_8px_30px_rgb(220,38,38,0.08)] dark:hover:shadow-[0_8px_30px_rgb(220,38,38,0.05)] hover:-translate-y-1 transition-all duration-300 relative"
+        className="group/card flex flex-col h-full bg-white dark:bg-[#140606] border border-red-50 dark:border-red-950/50 hover:border-red-200 dark:hover:border-red-900/40 rounded-none overflow-hidden hover:shadow-[0_8px_30px_rgb(220,38,38,0.08)] dark:hover:shadow-[0_8px_30px_rgb(220,38,38,0.05)] hover:-translate-y-1 transition-all duration-300 relative"
       >
         {/* Top accent line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-red-400 to-red-600 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 z-10" />
@@ -109,7 +109,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
             {post.description}
           </p>
 
-          <div className="flex items-center gap-2 mb-6 text-red-600 dark:text-red-400 font-semibold bg-red-50/50 dark:bg-red-900/10 w-fit px-3 py-1.5 rounded-full border border-red-100 dark:border-red-900/30">
+          <div className="flex items-center gap-2 mb-6 text-red-600 dark:text-red-400 font-semibold bg-red-50/50 dark:bg-red-900/10 w-fit px-3 py-1.5 rounded-none border border-red-100 dark:border-red-900/30">
             <User className="w-4 h-4" />
             <span className="text-sm">{post.author}</span>
           </div>
@@ -125,7 +125,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
               <div className="flex items-center gap-1 ml-auto">
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditOpen(true); }}
-                  className="p-1.5 sm:p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all cursor-pointer"
+                  className="p-1.5 sm:p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-none transition-all cursor-pointer"
                   title="Chỉnh sửa"
                 >
                   <Pencil className="h-4 w-4" />
@@ -133,7 +133,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(); }}
                   disabled={isDeleting}
-                  className="p-1.5 sm:p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all disabled:opacity-50 cursor-pointer"
+                  className="p-1.5 sm:p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-none transition-all disabled:opacity-50 cursor-pointer"
                   title="Xóa"
                 >
                   <Trash2 className="h-4 w-4" />
@@ -152,7 +152,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
       />
       {showPreview && post.images.length > 0 && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-red-950/5 dark:bg-black/10">
-          <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-2xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(153,27,27,0.3)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] border border-red-200/30 dark:border-red-900/40 bg-red-50 dark:bg-red-950">
+          <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-none overflow-hidden shadow-[0_32px_64px_-16px_rgba(153,27,27,0.3)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] border border-red-200/30 dark:border-red-900/40 bg-red-50 dark:bg-red-950">
             <Image
               src={getOptimizedImageUrl(post.images[0])}
               alt="Preview"
