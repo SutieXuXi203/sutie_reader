@@ -254,7 +254,7 @@ export default function Home() {
         <div className="relative z-10 max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-12 items-center text-center lg:text-left mt-8 md:mt-0">
           {/* ── LEFT SIDE: TEXT CONTENT ── */}
           <div className="flex flex-col items-center lg:items-start order-2 lg:order-1">
-            <div className="hero-animate inline-flex items-center gap-2 bg-red-50 dark:bg-white/5 text-red-600 dark:text-red-200 text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-none mb-6 md:mb-8 border border-red-200 dark:border-white/20 w-fit">
+            <div className="hidden lg:inline-flex hero-animate items-center gap-2 bg-red-50 dark:bg-white/5 text-red-600 dark:text-red-200 text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-none mb-6 md:mb-8 border border-red-200 dark:border-white/20 w-fit">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-none animate-pulse" />
               Góc dịch thuật của Sutie
             </div>
@@ -305,7 +305,11 @@ export default function Home() {
           </div>
 
           {/* ── RIGHT SIDE: DRAGON IMAGE ── */}
-          <div className="hero-animate hero-delay-2 flex items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2">
+          <div className="hero-animate hero-delay-2 flex flex-col items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2 gap-4 lg:gap-0">
+            <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-red-50 dark:bg-white/5 text-red-600 dark:text-red-200 text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-none border border-red-200 dark:border-white/20 w-fit">
+              <span className="w-1.5 h-1.5 bg-red-500 rounded-none animate-pulse" />
+              Góc dịch thuật của Sutie
+            </div>
             <div className="group relative w-[280px] sm:w-[350px] md:w-full max-w-[500px] aspect-square rounded-[8px] overflow-hidden cursor-pointer animate-float">
               <Image
                 src="/dragon.png"
