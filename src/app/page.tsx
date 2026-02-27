@@ -305,7 +305,7 @@ export default function Home() {
           </div>
 
           {/* ── RIGHT SIDE: DRAGON IMAGE ── */}
-          <div className="hero-animate hero-delay-2 flex flex-col items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2 gap-4 lg:gap-0">
+          <div className="hero-animate hero-delay-2 flex flex-col items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2 gap-8 lg:gap-0">
             <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-red-50 dark:bg-white/5 text-red-600 dark:text-red-200 text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-none border border-red-200 dark:border-white/20 w-fit">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-none animate-pulse" />
               Góc dịch thuật của Sutie
