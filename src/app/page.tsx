@@ -369,7 +369,7 @@ export default function Home() {
 
           {/* Conditionally render content */}
           {isLoading || isAuthLoading ? (
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
                 <div key={i} className="bg-red-50 dark:bg-red-900/20 rounded-none h-72 animate-pulse" />
               ))}
@@ -399,7 +399,7 @@ export default function Home() {
               <p className="text-red-400/70 dark:text-red-500/60 text-lg">Chưa có bài viết nào</p>
             </div>
           ) : (
-            <div className="reveal hero-delay-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+            <div className="reveal hero-delay-2 grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6 lg:gap-8">
               {posts.map((post) => (
                 <PostCard
                   key={post._id}
