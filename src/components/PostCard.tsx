@@ -1,12 +1,12 @@
 'use client';
 
-import { Button } from '@/components/ui/button';
 import { Trash2, Pencil, CalendarDays, User } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { createPortal } from 'react-dom';
 import { EditPostForm } from '@/components/EditPostForm';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { useAuth } from '@/providers/AuthContext';
 import { getOptimizedImageUrl } from '@/lib/utils';
 
@@ -31,13 +31,10 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const { isAdmin } = useAuth();
 
   const handleDelete = async () => {
-    if (!confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) {
-      return;
-    }
-
     setIsDeleting(true);
     try {
       const response = await fetch(`/api/posts/${post._id}`, {
@@ -46,6 +43,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
 
       if (response.ok) {
         onDelete(post._id);
+        setIsDeleteConfirmOpen(false);
       } else {
         alert('Xóa bài viết không thành công');
       }
@@ -127,7 +125,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
                   <Pencil className="h-4 w-4" />
                 </button>
                 <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); handleDelete(); }}
+                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDeleteConfirmOpen(true); }}
                   disabled={isDeleting}
                   className="p-1.5 sm:p-2 text-red-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-none transition-all disabled:opacity-50 cursor-pointer"
                   title="Xóa"
@@ -145,6 +143,15 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         onPostUpdated={() => { setIsEditOpen(false); onUpdate(); }}
+      />
+      <DeleteConfirmDialog
+        open={isDeleteConfirmOpen}
+        onOpenChange={setIsDeleteConfirmOpen}
+        onConfirm={handleDelete}
+        isLoading={isDeleting}
+        title="Xóa bài viết?"
+        description={`Bạn có chắc chắn muốn xóa "${post.title}"? Hành động này không thể hoàn tác.`}
+        confirmLabel={isDeleting ? 'Đang xóa...' : 'Xóa'}
       />
       {showPreview && post.images.length > 0 && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-red-950/5 dark:bg-black/10">

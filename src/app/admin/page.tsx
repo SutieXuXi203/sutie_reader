@@ -9,6 +9,7 @@ import Link from 'next/link';
 import Image from 'next/image';
 import { CreatePostForm } from '@/components/CreatePostForm';
 import { EditPostForm } from '@/components/EditPostForm';
+import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { Input } from '@/components/ui/input';
 import { getOptimizedImageUrl } from '@/lib/utils';
 
@@ -22,12 +23,21 @@ interface Post {
     createdAt: string;
 }
 
+interface AdminUser {
+    _id: string;
+    email: string;
+    name?: string;
+    role?: string;
+    avatar?: string;
+    createdAt: string;
+}
+
 export default function AdminDashboard() {
     const { user, isAdmin, isLoading: isAuthLoading } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'posts' | 'users'>('posts');
     const [posts, setPosts] = useState<Post[]>([]);
-    const [usersList, setUsersList] = useState<any[]>([]);
+    const [usersList, setUsersList] = useState<AdminUser[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isUsersLoading, setIsUsersLoading] = useState(false);
     const [searchQuery, setSearchQuery] = useState('');
@@ -35,6 +45,12 @@ export default function AdminDashboard() {
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
     const [sessionSeconds, setSessionSeconds] = useState(0);
+    const [deleteTarget, setDeleteTarget] = useState<
+        | { type: 'post'; id: string; title: string }
+        | { type: 'user'; id: string; email: string }
+        | null
+    >(null);
+    const [isDeletingTarget, setIsDeletingTarget] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -92,43 +108,61 @@ export default function AdminDashboard() {
         }
     };
 
-    const handleDelete = async (postId: string) => {
-        if (!confirm('Bạn có chắc chắn muốn xóa bài viết này không?')) return;
-
-        try {
-            const res = await fetch(`/api/posts/${postId}`, {
-                method: 'DELETE',
-            });
-            if (res.ok) {
-                setPosts(posts.filter(p => p._id !== postId));
-            } else {
-                alert('Xóa thất bại');
-            }
-        } catch (error) {
-            console.error('Error deleting post:', error);
-        }
+    const handleDelete = (post: Post) => {
+        setDeleteTarget({
+            type: 'post',
+            id: post._id,
+            title: post.title,
+        });
     };
 
-    const handleDeleteUser = async (userId: string, email: string) => {
-        if (email === user?.email) {
+    const handleDeleteUser = (targetUser: AdminUser) => {
+        if (targetUser.email === user?.email) {
             alert('Bạn không thể xóa tài khoản của chính mình.');
             return;
         }
-        if (!confirm('Bạn có chắc chắn muốn xóa người dùng này không? Hành động này không thể hoàn tác.')) return;
 
+        setDeleteTarget({
+            type: 'user',
+            id: targetUser._id,
+            email: targetUser.email,
+        });
+    };
+
+    const handleConfirmDelete = async () => {
+        if (!deleteTarget) return;
+
+        setIsDeletingTarget(true);
         try {
-            const res = await fetch(`/api/admin/users/${userId}`, {
-                method: 'DELETE',
-            });
-            if (res.ok) {
-                setUsersList(usersList.filter(u => u._id !== userId));
+            if (deleteTarget.type === 'post') {
+                const res = await fetch(`/api/posts/${deleteTarget.id}`, {
+                    method: 'DELETE',
+                });
+
+                if (res.ok) {
+                    setPosts((prev) => prev.filter((p) => p._id !== deleteTarget.id));
+                    setDeleteTarget(null);
+                } else {
+                    alert('Xóa thất bại');
+                }
             } else {
-                const data = await res.json();
-                alert(data.error || 'Xóa thất bại');
+                const res = await fetch(`/api/admin/users/${deleteTarget.id}`, {
+                    method: 'DELETE',
+                });
+
+                if (res.ok) {
+                    setUsersList((prev) => prev.filter((u) => u._id !== deleteTarget.id));
+                    setDeleteTarget(null);
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Xóa thất bại');
+                }
             }
         } catch (error) {
-            console.error('Error deleting user:', error);
+            console.error('Error deleting target:', error);
             alert('Đã xảy ra lỗi mạng');
+        } finally {
+            setIsDeletingTarget(false);
         }
     };
 
@@ -332,7 +366,7 @@ export default function AdminDashboard() {
                                                             <Pencil className="w-4 h-4" />
                                                         </button>
                                                         <button
-                                                            onClick={() => handleDelete(post._id)}
+                                                            onClick={() => handleDelete(post)}
                                                             className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors"
                                                             title="Xóa"
                                                         >
@@ -417,7 +451,7 @@ export default function AdminDashboard() {
                                                 <td className="px-5 py-4">
                                                     <div className="flex justify-end">
                                                         <button
-                                                            onClick={() => handleDeleteUser(u._id, u.email)}
+                                                            onClick={() => handleDeleteUser(u)}
                                                             className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors"
                                                             title="Xóa"
                                                         >
@@ -443,12 +477,29 @@ export default function AdminDashboard() {
             />
             {selectedPost && (
                 <EditPostForm
-                    post={selectedPost as any}
+                    post={selectedPost}
                     open={isEditOpen}
                     onOpenChange={setIsEditOpen}
                     onPostUpdated={() => { setIsEditOpen(false); fetchPosts(); }}
                 />
             )}
+            <DeleteConfirmDialog
+                open={!!deleteTarget}
+                onOpenChange={(open) => {
+                    if (!open && !isDeletingTarget) {
+                        setDeleteTarget(null);
+                    }
+                }}
+                onConfirm={handleConfirmDelete}
+                isLoading={isDeletingTarget}
+                title={deleteTarget?.type === 'user' ? 'Xóa người dùng?' : 'Xóa bài viết?'}
+                description={
+                    deleteTarget?.type === 'user'
+                        ? `Bạn có chắc chắn muốn xóa người dùng "${deleteTarget.email}"? Hành động này không thể hoàn tác.`
+                        : `Bạn có chắc chắn muốn xóa bài viết "${deleteTarget?.title || ''}"? Hành động này không thể hoàn tác.`
+                }
+                confirmLabel={isDeletingTarget ? 'Đang xóa...' : 'Xóa'}
+            />
         </div>
     );
 }
