@@ -97,12 +97,9 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
               </svg>
             </div>
           )}
-
-          {/* Slight gradient over image */}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
-
-        {/* Content (Bottom) */}
+        
         <div className="p-5 md:p-6 flex flex-col flex-grow">
           <h3 className="text-lg font-bold text-red-950 dark:text-red-50 mb-3 group-hover/card:text-red-600 dark:group-hover/card:text-red-400 transition-colors line-clamp-2 leading-tight">
             {post.title}
@@ -123,8 +120,6 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
                 {formatDate(post.createdAt)}
               </span>
             </div>
-
-            {/* Admin actions safely placed in content footer */}
             {isAdmin && (
               <div className="flex items-center gap-1 ml-auto">
                 <button
@@ -154,8 +149,6 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
         onOpenChange={setIsEditOpen}
         onPostUpdated={() => { setIsEditOpen(false); onUpdate(); }}
       />
-
-      {/* Animated image preview on hover - blur full screen, keep original colors */}
       {showPreview && post.images.length > 0 && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-red-950/5 dark:bg-black/10">
           <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-2xl overflow-hidden shadow-[0_32px_64px_-16px_rgba(153,27,27,0.3)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] border border-red-200/30 dark:border-red-900/40 bg-red-50 dark:bg-red-950">
@@ -166,10 +159,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
               sizes="420px"
               className="object-cover"
             />
-            {/* Elegant overlay gradient */}
             <div className="absolute inset-0 bg-gradient-to-t from-red-950/60 via-transparent to-transparent" />
-
-            {/* Title overlay in preview */}
             <div className="absolute bottom-0 left-0 right-0 p-6">
               <h4 className="text-white font-bold text-lg drop-shadow-md line-clamp-1">{post.title}</h4>
               <p className="text-red-200/80 text-xs drop-shadow-sm mt-1">Xem chi tiết bài viết</p>
