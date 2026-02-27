@@ -73,8 +73,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
         href={`/posts/${post._id}`}
         className="group/card flex flex-col h-full bg-white dark:bg-[#140606] border border-red-50 dark:border-red-950/50 hover:border-red-200 dark:hover:border-red-900/40 rounded-none overflow-hidden hover:shadow-[0_8px_30px_rgb(220,38,38,0.08)] dark:hover:shadow-[0_8px_30px_rgb(220,38,38,0.05)] hover:-translate-y-1 transition-all duration-300 relative"
       >
-        {/* Top accent line */}
-        <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-red-400 to-red-600 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 z-10" />
+
 
         {/* Image (Top) */}
         <div
