@@ -124,7 +124,7 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-none border-none shadow-none no-scrollbar">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-none border-none shadow-none no-scrollbar dark:bg-black/60 dark:backdrop-blur-xl">
         <DialogHeader>
           <DialogTitle className="text-xl font-medium">Tạo bài viết mới</DialogTitle>
         </DialogHeader>
