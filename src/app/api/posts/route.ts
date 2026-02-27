@@ -27,7 +27,7 @@ export async function POST(request: NextRequest) {
     await connectDB();
     const { title, description, content, images, author } = await request.json();
 
-    if (!title || !description || !content || !images?.length) {
+    if (!title || !content || !images?.length) {
       return NextResponse.json(
         { error: 'Các trường bắt buộc bị thiếu' },
         { status: 400 }

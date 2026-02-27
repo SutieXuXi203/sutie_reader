@@ -93,8 +93,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated }: EditPo
         e.preventDefault();
         setError('');
 
-        if (!title || !description || !content) {
-            setError('Vui lòng điền tất cả các trường bắt buộc');
+        if (!title || !content) {
+            setError('Vui lòng điền tiêu đề và nội dung');
             return;
         }
         if (keptImages.length + newImageFiles.length === 0) {
@@ -156,7 +156,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated }: EditPo
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Mô tả</label>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Mô tả ngắn (không bắt buộc)</label>
                         <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả ngắn" maxLength={300} rows={2} disabled={isSubmitting} className="rounded-[8px]" />
                         <p className="text-xs text-slate-400 mt-1">{description.length}/300</p>
                     </div>

@@ -49,7 +49,7 @@ export async function PUT(
 
     const { title, description, content, author, images } = await request.json();
 
-    if (!title || !description || !content) {
+    if (!title || !content) {
       return NextResponse.json({ error: 'Các trường bắt buộc bị thiếu' }, { status: 400 });
     }
 

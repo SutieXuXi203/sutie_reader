@@ -76,7 +76,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
         {/* Top accent line */}
         <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-600 via-red-400 to-red-600 opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 z-10" />
 
-        {/* Image */}
+        {/* Image (Top) */}
         <div
           className="relative w-full aspect-[16/9] bg-red-50 dark:bg-red-950/20 overflow-hidden"
           onMouseEnter={() => setShowPreview(true)}
@@ -102,21 +102,22 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
 
-        {/* Content */}
+        {/* Content (Bottom) */}
         <div className="p-5 md:p-6 flex flex-col flex-grow">
           <h3 className="text-lg font-bold text-red-950 dark:text-red-50 mb-3 group-hover/card:text-red-600 dark:group-hover/card:text-red-400 transition-colors line-clamp-2 leading-tight">
             {post.title}
           </h3>
-          <p className="text-sm text-red-700/70 dark:text-red-300/60 mb-6 line-clamp-3 leading-relaxed flex-grow">
+          <p className="text-sm text-red-700/70 dark:text-red-300/60 mb-4 line-clamp-3 leading-relaxed flex-grow">
             {post.description}
           </p>
 
+          <div className="flex items-center gap-2 mb-6 text-red-600 dark:text-red-400 font-semibold bg-red-50/50 dark:bg-red-900/10 w-fit px-3 py-1.5 dark:border-red-900/30">
+            <User className="w-4 h-4" />
+            <span className="text-sm">{post.author}</span>
+          </div>
+
           <div className="flex flex-wrap items-center justify-between gap-y-3 text-[12px] sm:text-[13px] pt-4 border-t border-red-50 dark:border-red-900/20 mt-auto">
             <div className="flex flex-wrap items-center gap-x-3 md:gap-x-4 gap-y-1 text-red-400/80 dark:text-red-500/60 font-medium">
-              <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <User className="w-3.5 h-3.5" />
-                {post.author}
-              </span>
               <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <CalendarDays className="w-3.5 h-3.5" />
                 {formatDate(post.createdAt)}
