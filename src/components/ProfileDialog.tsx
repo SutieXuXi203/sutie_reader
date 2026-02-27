@@ -131,14 +131,14 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="sm:max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800"
+                className="sm:max-w-md bg-card border-border"
                 onOpenAutoFocus={(e) => e.preventDefault()}
             >
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-center text-slate-900 dark:text-white mb-2">
+                    <DialogTitle className="text-2xl font-bold text-center text-card-foreground mb-2">
                         Hồ sơ của bạn
                     </DialogTitle>
-                    <DialogDescription className="text-center text-slate-500 dark:text-slate-400">
+                    <DialogDescription className="text-center text-muted-foreground">
                         Cập nhật thông tin cá nhân và ảnh đại diện
                     </DialogDescription>
                 </DialogHeader>
@@ -158,7 +158,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
 
                 {imageSrc ? (
                     <div className="flex flex-col gap-4 mt-4 h-[400px]">
-                        <div className="relative w-full flex-grow bg-black">
+                        <div className="relative w-full grow bg-black">
                             <Cropper
                                 image={imageSrc}
                                 crop={crop}
@@ -180,12 +180,12 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                                 step={0.1}
                                 aria-labelledby="Zoom"
                                 onChange={(e) => setZoom(Number(e.target.value))}
-                                className="w-full h-2 bg-slate-200 rounded-lg appearance-none cursor-pointer"
+                                className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
                             />
                         </div>
                         <div className="flex justify-end gap-2 mt-2">
-                            <Button type="button" variant="outline" onClick={cancelCrop} className="rounded-none">Hủy</Button>
-                            <Button type="button" onClick={applyCrop} disabled={isUploading} className="rounded-none bg-slate-900 text-white hover:bg-slate-800">
+                            <Button type="button" variant="outline" onClick={cancelCrop} className="rounded-[8px]">Hủy</Button>
+                            <Button type="button" onClick={applyCrop} disabled={isUploading} className="rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90">
                                 {isUploading ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : null}
                                 Cắt & Lưu
                             </Button>
@@ -196,14 +196,14 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                         {/* Avatar Upload Selection */}
                         <div className="flex flex-col items-center gap-4">
                             <div
-                                className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800 group cursor-pointer"
+                                className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-border bg-muted group cursor-pointer"
                                 onClick={() => fileInputRef.current?.click()}
                             >
                                 {avatarUrl ? (
                                     <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
                                 ) : (
                                     <div className="w-full h-full flex items-center justify-center">
-                                        <User className="w-10 h-10 text-slate-400" />
+                                        <User className="w-10 h-10 text-muted-foreground" />
                                     </div>
                                 )}
 
@@ -212,12 +212,12 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                                 </div>
 
                                 {isUploading && (
-                                    <div className="absolute inset-0 bg-white/80 dark:bg-black/80 flex items-center justify-center">
-                                        <Loader2 className="w-6 h-6 animate-spin text-slate-900 dark:text-white" />
+                                    <div className="absolute inset-0 bg-background/80 flex items-center justify-center">
+                                        <Loader2 className="w-6 h-6 animate-spin text-foreground" />
                                     </div>
                                 )}
                             </div>
-                            <p className="text-xs text-slate-500 font-medium tracking-tight">Nhấn vào ảnh để thay đổi</p>
+                            <p className="text-xs text-muted-foreground font-medium tracking-tight">Nhấn vào ảnh để thay đổi</p>
                             <input
                                 type="file"
                                 accept="image/*"
@@ -229,19 +229,19 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
 
                         <div className="space-y-4">
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Email</label>
+                                <label className="text-sm font-medium text-foreground">Email</label>
                                 <Input
                                     type="text"
                                     value={user.email}
                                     disabled
-                                    className="bg-slate-50 dark:bg-slate-800/50 text-slate-500 cursor-not-allowed"
+                                    className="bg-muted text-muted-foreground cursor-not-allowed"
                                 />
                             </div>
 
                             <div className="space-y-2">
-                                <label className="text-sm font-medium text-slate-700 dark:text-slate-300">Tên hiển thị</label>
+                                <label className="text-sm font-medium text-foreground">Tên hiển thị</label>
                                 <div className="relative">
-                                    <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                                    <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                                     <Input
                                         type="text"
                                         placeholder="Tên của bạn"
@@ -257,7 +257,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                         <Button
                             type="submit"
                             disabled={isLoading || isUploading}
-                            className="rounded-none w-full shadow-lg h-12 text-base font-bold bg-slate-900 dark:bg-white text-white dark:text-slate-900 hover:opacity-90"
+                            className="rounded-none w-full shadow-lg h-12 text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                             {isLoading ? (
                                 <div className="flex items-center gap-2">

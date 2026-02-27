@@ -13,6 +13,16 @@ const nextConfig: NextConfig = {
         hostname: '**',
       },
     ],
+    localPatterns: [
+      {
+        pathname: '/api/image',
+        search: '?id=*',
+      },
+      {
+        pathname: '/**',
+        search: '',
+      },
+    ],
   },
 
   experimental: {

@@ -54,7 +54,7 @@ export default function ProductsPage() {
                 <div className="mb-12 flex flex-col md:flex-row md:items-center justify-between gap-6">
                     <div>
                         <Link href="/" passHref>
-                            <Button variant="ghost" size="sm" className="mb-4 -ml-4 text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 rounded-none">
+                            <Button variant="ghost" size="sm" className="mb-4 -ml-4 text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 rounded-[8px]">
                                 <ArrowLeft className="w-4 h-4 mr-2" />
                                 Quay lại trang chủ
                             </Button>
@@ -86,7 +86,7 @@ export default function ProductsPage() {
                         </p>
                         <Button
                             onClick={() => setIsAuthDialogOpen(true)}
-                            className="rounded-none px-8 gradient-red text-white hover:opacity-90 border-0 shadow-lg shadow-red-500/20 cursor-pointer"
+                            className="rounded-[8px] px-8 gradient-red text-white hover:opacity-90 border-0 shadow-lg shadow-red-500/20 cursor-pointer"
                         >
                             Đăng nhập ngay
                         </Button>

@@ -139,59 +139,61 @@ export default function Home() {
       {/* Subtle grid pattern background */}
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.red.200)_1px,transparent_1px)] dark:bg-[radial-gradient(theme(colors.red.900)_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.25] dark:opacity-[0.07] z-0 mix-blend-multiply dark:mix-blend-screen" />
 
-      {/* ── SIDEBAR NAVBAR ── */}
-      <nav className="fixed top-0 left-0 bottom-0 z-50 w-24 flex flex-col items-center py-8 gap-8
-        bg-transparent transition-all duration-300">
-        {/* Logo */}
-        <div className="flex flex-col items-center gap-2">
+      {/* ── SIDEBAR / BOTTOM NAVBAR ── */}
+      <nav className="fixed md:top-0 md:left-0 bottom-0 left-0 right-0 z-50 md:w-24 w-full flex md:flex-col flex-row items-center justify-around md:justify-start md:py-8 py-3 md:gap-8 px-4 md:px-0 bg-white/90 md:bg-transparent dark:bg-[#1a0808]/90 md:dark:bg-transparent backdrop-blur-md border-t border-red-100 dark:border-red-900/30 md:border-t-0 transition-all duration-300 shadow-[0_-4px_20px_-10px_rgba(220,38,38,0.15)] md:shadow-none">
+        {/* Logo (Desktop only) */}
+        <div className="hidden md:flex flex-col items-center gap-2">
           <div className="w-12 h-12 gradient-red rounded-none flex items-center justify-center text-white shadow-lg shadow-red-500/30">
             <BookOpen className="w-6 h-6" />
           </div>
           <span className="text-[10px] font-bold text-red-600 dark:text-red-400 tracking-[0.2em] uppercase">Sutie</span>
         </div>
 
-        <div className="w-10 h-px bg-red-100 dark:bg-white/20" />
+        <div className="hidden md:block w-10 h-px bg-red-100 dark:bg-white/20" />
 
         {/* Nav links */}
-        <div className="flex flex-col items-center justify-center gap-8 flex-1">
+        <div className="flex md:flex-col flex-row items-center justify-center gap-6 md:gap-8 flex-1 md:flex-none">
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             title="Trang chủ"
             className="relative flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 transition-all hover:scale-110 active:scale-95 cursor-pointer">
-            <HomeIcon className="w-6 h-6" />
-            Trang chủ
-            <span className={`absolute right-0 translate-x-full top-1/2 -translate-y-1/2 h-0.5 w-10 bg-gradient-to-r from-transparent via-red-400/50 dark:via-red-400/40 to-transparent transition-all duration-500 ease-in-out origin-left ${activeSection === 'home' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
+            <HomeIcon className="w-6 h-6 md:w-6 md:h-6" />
+            <span className="hidden md:block">Trang chủ</span>
+            <span className={`absolute right-0 translate-x-full top-1/2 -translate-y-1/2 h-px w-8 bg-gradient-to-r from-transparent via-red-400/35 dark:via-red-400/25 to-transparent transition-all duration-500 ease-out origin-left hidden md:block ${activeSection === 'home' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
+            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-red-500/60 md:hidden transition-all duration-300 ${activeSection === 'home' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
           </button>
           <a href="#posts"
             title="Bài viết"
             className="relative flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 transition-all hover:scale-110 active:scale-95 group">
-            <FileText className="w-6 h-6" />
-            Bài viết
-            <span className={`absolute right-0 translate-x-full top-1/2 -translate-y-1/2 h-0.5 w-10 bg-gradient-to-r from-transparent via-red-400/50 dark:via-red-400/40 to-transparent transition-all duration-500 ease-in-out origin-left ${activeSection === 'posts' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
+            <FileText className="w-6 h-6 md:w-6 md:h-6" />
+            <span className="hidden md:block">Bài viết</span>
+            <span className={`absolute right-0 translate-x-full top-1/2 -translate-y-1/2 h-px w-8 bg-gradient-to-r from-transparent via-red-400/35 dark:via-red-400/25 to-transparent transition-all duration-500 ease-out origin-left hidden md:block ${activeSection === 'posts' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
+            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-red-500/60 md:hidden transition-all duration-300 ${activeSection === 'posts' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
           </a>
           <a href="#contact"
             title="Liên hệ"
             className="relative flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 transition-all hover:scale-110 active:scale-95">
-            <Mail className="w-6 h-6" />
-            Liên hệ
-            <span className={`absolute right-0 translate-x-full top-1/2 -translate-y-1/2 h-0.5 w-10 bg-gradient-to-r from-transparent via-red-400/50 dark:via-red-400/40 to-transparent transition-all duration-500 ease-in-out origin-left ${activeSection === 'contact' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
+            <Mail className="w-6 h-6 md:w-6 md:h-6" />
+            <span className="hidden md:block">Liên hệ</span>
+            <span className={`absolute right-0 translate-x-full top-1/2 -translate-y-1/2 h-px w-8 bg-gradient-to-r from-transparent via-red-400/35 dark:via-red-400/25 to-transparent transition-all duration-500 ease-out origin-left hidden md:block ${activeSection === 'contact' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
+            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-red-500/60 md:hidden transition-all duration-300 ${activeSection === 'contact' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
           </a>
           {isAdmin && (
             <Link href="/admin"
               title="Dashboard"
               className="flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-red-600 dark:text-red-400 hover:opacity-70 transition-all hover:scale-110 active:scale-95">
-              <LayoutDashboard className="w-6 h-6" />
-              Quản trị
+              <LayoutDashboard className="w-6 h-6 md:w-6 md:h-6" />
+              <span className="hidden md:block">Quản trị</span>
             </Link>
           )}
         </div>
 
         {/* Bottom actions */}
-        <div className="flex flex-col items-center gap-6">
+        <div className="flex flex-row md:flex-col items-center gap-4 md:gap-6 mt-0 md:mt-auto">
           {user ? (
             <>
               <div className="group relative">
                 <button
-                  className="w-12 h-12 rounded-full overflow-hidden border-2 border-red-100 dark:border-white/25 hover:border-red-500 dark:hover:border-red-300 transition-all shadow-md shadow-red-500/10"
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-red-100 dark:border-white/25 hover:border-red-500 dark:hover:border-red-300 transition-all shadow-md shadow-red-500/10"
                 >
                   {user.avatar ? (
                     <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
@@ -203,7 +205,7 @@ export default function Home() {
                 </button>
 
                 {/* Profile dropdown */}
-                <div className="absolute left-full ml-4 bottom-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 bg-white dark:bg-[#1a0808] border border-red-100 dark:border-red-900/30 rounded-none shadow-2xl shadow-red-500/10 p-4 min-w-[240px] z-50 transform translate-x-[-10px] group-hover:translate-x-0">
+                <div className="absolute left-1/2 md:left-full -translate-x-1/2 md:translate-x-0 md:ml-4 bottom-[calc(100%+8px)] md:bottom-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 bg-white dark:bg-[#1a0808] border border-red-100 dark:border-red-900/30 rounded-none shadow-2xl shadow-red-500/10 p-4 min-w-[240px] z-50 transform translate-y-[10px] md:translate-y-0 md:translate-x-[-10px] group-hover:translate-y-0 md:group-hover:translate-x-0">
                   <div className="px-3 py-2 border-b border-red-50 dark:border-red-900/20 mb-2">
                     <p className="text-sm font-black text-red-900 dark:text-red-100 truncate tracking-tight">{user.name}</p>
                     <p className="text-[11px] text-red-400 truncate font-medium">{user.email}</p>
@@ -228,20 +230,20 @@ export default function Home() {
           ) : (
             <button
               onClick={() => setIsAuthDialogOpen(true)}
-              className="w-12 h-12 rounded-full border-2 border-dashed border-red-200 dark:border-white/30 flex items-center justify-center text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 hover:border-red-500 dark:hover:border-red-300 transition-all active:scale-95"
+              className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-dashed border-red-200 dark:border-white/30 flex items-center justify-center text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 hover:border-red-500 dark:hover:border-red-300 transition-all active:scale-95"
               title="Đăng nhập"
             >
-              <LogIn className="w-6 h-6" />
+              <LogIn className="w-5 h-5 md:w-6 md:h-6" />
             </button>
           )}
 
-          <div className="w-8 h-px bg-red-100 dark:bg-white/20" />
+          <div className="hidden md:block w-8 h-px bg-red-100 dark:bg-white/20" />
           <ThemeToggle />
         </div>
       </nav>
 
       {/* ── HERO SECTION ── */}
-      <section data-section="home" className="relative min-h-screen flex items-center justify-center px-12 pl-24 overflow-hidden snap-start">
+      <section data-section="home" className="relative min-h-screen flex items-center justify-center px-6 md:px-12 md:pl-24 pt-16 pb-24 md:pt-0 md:pb-0 overflow-hidden snap-start">
         {/* Background gradient blobs */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-200/40 dark:bg-red-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] opacity-60 animate-blob" />
@@ -249,34 +251,34 @@ export default function Home() {
           <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-red-300/30 dark:bg-red-950/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-40 animate-blob animation-delay-4000" />
         </div>
 
-        <div className="relative z-10 max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+        <div className="relative z-10 max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-12 items-center text-center lg:text-left mt-8 md:mt-0">
           {/* ── LEFT SIDE: TEXT CONTENT ── */}
-          <div className="flex flex-col">
-            <div className="hero-animate inline-flex items-center gap-2 bg-red-50 dark:bg-white/5 text-red-600 dark:text-red-200 text-xs font-medium px-3 py-1.5 rounded-none mb-8 border border-red-200 dark:border-white/20 w-fit">
+          <div className="flex flex-col items-center lg:items-start order-2 lg:order-1">
+            <div className="hero-animate inline-flex items-center gap-2 bg-red-50 dark:bg-white/5 text-red-600 dark:text-red-200 text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-none mb-6 md:mb-8 border border-red-200 dark:border-white/20 w-fit">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-none animate-pulse" />
               Góc dịch thuật của Sutie
             </div>
 
-            <h1 className="hero-animate hero-delay-1 text-5xl md:text-6xl font-bold text-red-950 dark:text-red-50 mb-6 leading-tight tracking-tight">
-              Kho lưu trữ{' '}
+            <h1 className="hero-animate hero-delay-1 text-4xl sm:text-5xl md:text-6xl font-bold text-red-950 dark:text-red-50 mb-4 md:mb-6 leading-tight tracking-tight">
+              Kho lưu trữ<br className="block sm:hidden" />{' '}
               <span className="text-gradient-red">
                 của Sutie
               </span>
             </h1>
 
-            <p className="hero-animate hero-delay-2 text-lg md:text-xl text-red-700/70 dark:text-red-200 mb-12 font-medium leading-relaxed">
-              Nơi tôi chia sẻ niềm đam mê ngôn ngữ qua từng trang sách và những câu chuyện được chuyển ngữ với tất cả tâm huyết.
+            <p className="hero-animate hero-delay-2 text-base md:text-lg lg:text-xl text-red-700/70 dark:text-red-200 mb-8 md:mb-12 font-medium leading-relaxed max-w-lg">
+              Nơi mình chia sẻ niềm đam mê ngôn ngữ qua từng trang sách và những câu chuyện được chuyển ngữ với tất cả tâm huyết.
             </p>
 
-            <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row gap-4">
+            <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
               {user ? (
                 isAdmin && (
                   <Button
                     onClick={() => setIsCreateDialogOpen(true)}
                     size="lg"
-                    className="rounded-none px-8 py-3 text-base font-semibold gradient-red text-white hover:opacity-90 border-0 shadow-xl shadow-red-500/30 w-fit"
+                    className="rounded-[8px] px-6 md:px-8 py-3 text-sm md:text-base font-semibold gradient-red text-white hover:opacity-90 border-0 shadow-xl shadow-red-500/30 w-full sm:w-fit"
                   >
-                    <Plus className="w-5 h-5 mr-2" />
+                    <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                     Tạo bài viết
                   </Button>
                 )
@@ -284,16 +286,16 @@ export default function Home() {
                 <Button
                   onClick={() => setIsAuthDialogOpen(true)}
                   size="lg"
-                  className="rounded-none px-8 py-3 text-base font-semibold gradient-red text-white hover:opacity-90 border-0 shadow-xl shadow-red-500/30 w-fit"
+                  className="rounded-[8px] px-6 md:px-8 py-3 text-sm md:text-base font-semibold gradient-red text-white hover:opacity-90 border-0 shadow-xl shadow-red-500/30 w-full sm:w-fit"
                 >
-                  <LogIn className="w-5 h-5 mr-2" />
+                  <LogIn className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                   Bắt đầu ngay
                 </Button>
               )}
               <Button
                 variant="outline"
                 size="lg"
-                className="rounded-none px-8 py-3 text-base w-fit border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-400"
+                className="rounded-[8px] px-6 md:px-8 py-3 text-sm md:text-base w-full sm:w-fit border-red-200 dark:border-red-800/50 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:border-red-400"
                 onClick={() => document.getElementById('posts')?.scrollIntoView({ behavior: 'smooth' })}
               >
                 Khám phá
@@ -303,8 +305,8 @@ export default function Home() {
           </div>
 
           {/* ── RIGHT SIDE: DRAGON IMAGE ── */}
-          <div className="hero-animate hero-delay-2 flex items-center justify-center relative h-full min-h-96">
-            <div className="group relative w-full max-w-[500px] aspect-square rounded-[8px] overflow-hidden cursor-pointer animate-float">
+          <div className="hero-animate hero-delay-2 flex items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2">
+            <div className="group relative w-[280px] sm:w-[350px] md:w-full max-w-[500px] aspect-square rounded-[8px] overflow-hidden cursor-pointer animate-float">
               <Image
                 src="/dragon.png"
                 alt="Sutie's Dragon Avatar"
@@ -323,30 +325,42 @@ export default function Home() {
         </div>
 
         {/* Scroll indicator */}
-        <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 text-red-400">
+        <div className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 text-red-400">
           <span className="text-xs">Cuộn xuống</span>
           <div className="w-px h-8 bg-gradient-to-b from-red-400 to-transparent" />
         </div>
       </section>
 
       {/* ── POSTS SECTION ── */}
-      <section id="posts" data-section="posts" className="min-h-screen flex items-center py-32 pl-24 px-12 bg-red-50/50 dark:bg-red-950/10 snap-start">
-        <div className="max-w-7xl mx-auto w-full">
+      <section id="posts" data-section="posts" className="min-h-screen flex items-start pt-32 pb-28 md:pt-40 md:pb-32 px-6 md:px-12 md:pl-24 bg-red-50/50 dark:bg-red-950/10 snap-start">
+        <div className="max-w-7xl mx-auto w-full text-center sm:text-left">
           {/* Section header */}
-          <div className="reveal flex items-end justify-between mb-12">
+          <div className="reveal flex flex-col sm:flex-row items-center sm:items-end justify-between mb-10 md:mb-12 gap-4 sm:gap-0">
             <div>
-              <p className="text-sm font-medium text-red-400 dark:text-red-500 mb-2 uppercase tracking-widest">Khám phá</p>
+              <p className="text-xs md:text-sm font-medium text-red-400 dark:text-red-500 mb-2 uppercase tracking-widest">Khám phá</p>
               <h2 className="text-3xl md:text-4xl font-bold text-red-950 dark:text-red-50">Bài viết mới nhất</h2>
             </div>
-            <Link href="/products" passHref>
-              <Button
-                variant="outline"
-                size="sm"
-                className="rounded-none hidden sm:flex items-center gap-1.5 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-600 dark:hover:bg-red-500 hover:text-white hover:border-transparent transition-colors cursor-pointer"
-              >
-                Xem Tất Cả
-              </Button>
-            </Link>
+            <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
+              {isAdmin && (
+                <Button
+                  onClick={() => setIsCreateDialogOpen(true)}
+                  size="sm"
+                  className="rounded-md flex items-center gap-1.5 gradient-red text-white hover:opacity-90 border-0 shadow-sm w-full sm:w-auto"
+                >
+                  <Plus className="w-4 h-4" />
+                  Tạo bài viết
+                </Button>
+              )}
+              <Link href="/products" passHref className="w-full sm:w-auto">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="rounded-md flex w-full justify-center sm:w-auto items-center gap-1.5 border-red-200 dark:border-red-800/50 text-red-600 dark:text-red-400 hover:bg-red-600 dark:hover:bg-red-500 hover:text-white hover:border-transparent transition-colors cursor-pointer"
+                >
+                  Xem Tất Cả
+                </Button>
+              </Link>
+            </div>
           </div>
 
           {/* Conditionally render content */}
@@ -396,17 +410,17 @@ export default function Home() {
       </section>
 
       {/* ── CONTACT SECTION ── */}
-      <section id="contact" data-section="contact" className="min-h-screen flex items-center py-32 pl-24 px-12 snap-start">
+      <section id="contact" data-section="contact" className="min-h-screen flex items-center py-20 pb-32 md:py-32 px-6 md:px-12 md:pl-24 snap-start">
         <div className="max-w-5xl mx-auto w-full">
-          <div className="grid md:grid-cols-2 gap-16 items-start">
+          <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-start">
             {/* Left: info */}
-            <div className="reveal">
-              <p className="text-sm font-medium text-red-400 dark:text-red-500 mb-2 uppercase tracking-widest">Liên hệ</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-red-950 dark:text-red-50 mb-6">Kết nối với tôi</h2>
-              <p className="text-red-700/60 dark:text-red-200 leading-relaxed mb-10">
+            <div className="reveal text-center md:text-left">
+              <p className="text-xs md:text-sm font-medium text-red-400 dark:text-red-500 mb-2 uppercase tracking-widest">Liên hệ</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-red-950 dark:text-red-50 mb-4 md:mb-6">Kết nối với tôi</h2>
+              <p className="text-sm md:text-base text-red-700/60 dark:text-red-200 leading-relaxed mb-8 md:mb-10 max-w-sm mx-auto md:mx-0">
                 Có ý tưởng, câu hỏi, hoặc đơn giản chỉ muốn nói chuyện? Tôi rất vui khi được lắng nghe.
               </p>
-              <div className="space-y-4">
+              <div className="space-y-4 inline-flex flex-col items-start w-full sm:w-auto text-left">
                 <a href="mailto:sutiexuxi.supp.0410@gmail.com"
                   className="flex items-center gap-3 text-red-700 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors group">
                   <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-none flex items-center justify-center group-hover:bg-red-100 dark:group-hover:bg-red-900/40 transition-colors">
@@ -432,7 +446,7 @@ export default function Home() {
             </div>
 
             {/* Right: form */}
-            <div className="reveal reveal-delay-2 bg-red-50/60 dark:bg-red-900/10 rounded-none p-8 border border-red-100 dark:border-red-900/30">
+            <div className="reveal reveal-delay-2 bg-red-50/60 dark:bg-red-900/10 rounded-none p-6 md:p-8 border border-red-100 dark:border-red-900/30">
               {contactSent ? (
                 <div className="text-center py-8">
                   <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-none flex items-center justify-center mx-auto mb-4">
@@ -506,7 +520,7 @@ export default function Home() {
                     <p className="text-red-500 text-sm font-medium">{contactError}</p>
                   )}
 
-                  <Button type="submit" disabled={isSending} className="w-full rounded-none gradient-red text-white hover:opacity-90 border-0 shadow-lg shadow-red-500/20 disabled:opacity-50">
+                  <Button type="submit" disabled={isSending} className="w-full rounded-[8px] gradient-red text-white hover:opacity-90 border-0 shadow-lg shadow-red-500/20 disabled:opacity-50">
                     {isSending ? 'Đang gửi...' : 'Gửi tin nhắn'}
                   </Button>
                 </form>
@@ -517,8 +531,8 @@ export default function Home() {
       </section>
 
       {/* ── FOOTER ── */}
-      <footer className="border-t border-red-100 dark:border-red-900/30 py-12 pl-24 px-12 snap-start bg-gradient-to-r from-white via-red-50/30 to-white dark:from-[#0e0505] dark:via-red-950/20 dark:to-[#0e0505]">
-        <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-6">
+      <footer className="border-t border-red-100 dark:border-red-900/30 py-10 pb-24 md:pb-12 px-6 md:px-12 md:pl-24 snap-start bg-gradient-to-r from-white via-red-50/30 to-white dark:from-[#0e0505] dark:via-red-950/20 dark:to-[#0e0505]">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div className="flex items-center gap-2 text-red-500 dark:text-red-400">
             <BookOpen className="w-4 h-4" />
             <span className="text-sm font-medium">Sutie Archive</span>

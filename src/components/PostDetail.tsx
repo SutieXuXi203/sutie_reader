@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
+import { getOptimizedImageUrl } from '@/lib/utils';
 
 interface Post {
     _id: string;
@@ -129,7 +130,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                             className="w-full max-w-5xl relative"
                         >
                             <Image
-                                src={img}
+                                src={getOptimizedImageUrl(img)}
                                 alt={`Trang ${idx + 1}`}
                                 width={800}
                                 height={1200}

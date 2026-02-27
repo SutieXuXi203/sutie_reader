@@ -317,7 +317,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     <Button
                         type="submit"
                         disabled={isLoading}
-                        className="rounded-none w-full shadow-lg"
+                        className="rounded-[8px] w-full shadow-lg"
                     >
                         {isLoading ? (
                             <Loader2 className="w-5 h-5 animate-spin" />

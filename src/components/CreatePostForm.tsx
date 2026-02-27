@@ -7,6 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Upload, X } from 'lucide-react';
 import Image from 'next/image';
+import imageCompression from 'browser-image-compression';
 
 interface CreatePostFormProps {
   onPostCreated: () => void;
@@ -42,9 +43,27 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
 
-  const uploadImages = async (files: File[]): Promise<string[]> => {
+  const uploadImages = async (files: File[], uploadTitle: string): Promise<string[]> => {
+    // Nén ảnh trước khi upload
+    const compressedFiles = await Promise.all(
+      files.map(async (file) => {
+        const options = {
+          maxSizeMB: 1,
+          maxWidthOrHeight: 1920,
+          useWebWorker: true,
+        };
+        try {
+          return await imageCompression(file, options);
+        } catch (error) {
+          console.error('Lỗi khi nén ảnh:', error);
+          return file; // Nén lỗi thì upload ảnh gốc
+        }
+      })
+    );
+
     const formData = new FormData();
-    files.forEach((file) => formData.append('files', file));
+    formData.append('title', uploadTitle);
+    compressedFiles.forEach((file) => formData.append('files', file));
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -66,7 +85,7 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
     setIsSubmitting(true);
     try {
       // 1. Upload images to filesystem first
-      const imageUrls = await uploadImages(imageFiles);
+      const imageUrls = await uploadImages(imageFiles, title);
 
       // 2. Create post with image paths (not base64)
       const response = await fetch('/api/posts', {
@@ -105,7 +124,7 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-none no-scrollbar">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-none border-none shadow-none no-scrollbar">
         <DialogHeader>
           <DialogTitle className="text-xl font-medium">Tạo bài viết mới</DialogTitle>
         </DialogHeader>
@@ -172,10 +191,10 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
           )}
 
           <div className="flex gap-2 justify-end pt-2">
-            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-none" size="sm">
+            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-[8px]" size="sm">
               Hủy
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="rounded-none" size="sm">
+            <Button type="submit" disabled={isSubmitting} className="rounded-[8px]" size="sm">
               {isSubmitting ? 'Đang đăng bài...' : 'Đăng bài'}
             </Button>
           </div>
