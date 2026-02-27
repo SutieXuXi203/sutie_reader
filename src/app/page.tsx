@@ -332,7 +332,7 @@ export default function Home() {
       </section>
 
       {/* ── POSTS SECTION ── */}
-      <section id="posts" data-section="posts" className="min-h-screen flex items-start pt-32 pb-28 md:pt-40 md:pb-32 px-6 md:px-12 md:pl-24 bg-red-50/50 dark:bg-red-950/10 snap-start">
+      <section id="posts" data-section="posts" className="min-h-screen flex items-start pt-24 pb-20 md:pt-40 md:pb-32 px-6 md:px-12 md:pl-24 bg-red-50/50 dark:bg-red-950/10 snap-start">
         <div className="max-w-7xl mx-auto w-full text-center sm:text-left">
           {/* Section header */}
           <div className="reveal flex flex-col sm:flex-row items-center sm:items-end justify-between mb-10 md:mb-12 gap-4 sm:gap-0">

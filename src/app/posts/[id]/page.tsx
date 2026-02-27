@@ -127,38 +127,38 @@ export default function PostDetailPage() {
 
             {/* ── TOP BAR ── */}
             <div
-                className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-6 py-4
+                className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-3 md:px-6 md:py-4
           bg-transparent transition-opacity duration-500
           ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
-                <div className="flex items-center gap-4">
-                    <Link href="/#posts" className="p-2 rounded-[8px] bg-white/10 hover:bg-white/20 text-white transition-colors">
-                        <ArrowLeft className="w-5 h-5" />
+                <div className="flex items-center gap-2 md:gap-4">
+                    <Link href="/#posts" className="p-1.5 md:p-2 rounded-[8px] bg-white/10 hover:bg-white/20 text-white transition-colors">
+                        <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
                     </Link>
-                    <div className="flex items-center gap-3">
-                        <BookOpen className="w-5 h-5 text-slate-400 flex-shrink-0" />
+                    <div className="flex items-center gap-2 md:gap-3">
+                        <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-slate-400 flex-shrink-0" />
                         <div className="min-w-0">
-                            <h1 className="text-white font-bold text-base leading-tight line-clamp-1">{post.title}</h1>
-                            <p className="text-slate-400 text-xs">{post.author}</p>
+                            <h1 className="text-white font-bold text-sm md:text-base leading-tight line-clamp-1">{post.title}</h1>
+                            <p className="text-slate-400 text-[10px] md:text-xs">{post.author}</p>
                         </div>
                     </div>
                 </div>
 
-                <div className="flex items-center gap-4">
-                    <span className="text-white text-sm font-bold bg-white/10 px-3 py-1 rounded-[8px] backdrop-blur-sm border border-white/10">
+                <div className="flex items-center gap-2 md:gap-4">
+                    <span className="text-white text-xs md:text-sm font-bold bg-white/10 px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-white/10">
                         {currentPage + 1} / {total}
                     </span>
                     <Link
                         href="/#posts"
-                        className="p-2 rounded-[8px] bg-white/10 hover:bg-red-500/80 text-white transition-colors"
+                        className="p-1.5 md:p-2 rounded-[8px] bg-white/10 hover:bg-red-500/80 text-white transition-colors"
                     >
-                        <X className="w-5 h-5" />
+                        <X className="w-4 h-4 md:w-5 md:h-5" />
                     </Link>
                 </div>
             </div>
 
             {/* ── CONTENT CONTAINER ── */}
-            <main className="w-full flex-1 flex flex-col items-center pt-24 pb-20">
+            <main className="w-full flex-1 flex flex-col items-center pt-14 md:pt-24 pb-16 md:pb-20">
                 <div className="flex flex-col items-center w-full gap-0">
                     {post.images.map((img, idx) => (
                         <div
