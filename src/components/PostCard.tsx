@@ -71,11 +71,8 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
     <>
       <Link
         href={`/posts/${post._id}`}
-        className="group/card flex flex-col h-full bg-white dark:bg-[#140606] border border-red-50 dark:border-red-950/50 hover:border-red-200 dark:hover:border-red-900/40 rounded-none overflow-hidden hover:shadow-[0_8px_30px_rgb(220,38,38,0.08)] dark:hover:shadow-[0_8px_30px_rgb(220,38,38,0.05)] hover:-translate-y-1 transition-all duration-300 relative"
+        className="group/card flex flex-col h-full bg-white dark:bg-[#140606] border border-red-50 dark:border-red-950/50 hover:border-red-200 dark:hover:border-red-900/40 rounded-[8px] overflow-hidden hover:shadow-[0_8px_30px_rgb(220,38,38,0.08)] dark:hover:shadow-[0_8px_30px_rgb(220,38,38,0.05)] hover:-translate-y-1 transition-all duration-300 relative"
       >
-
-
-        {/* Image (Top) */}
         <div
           className="relative w-full aspect-[16/9] bg-red-50 dark:bg-red-950/20 overflow-hidden border-b border-red-50 dark:border-red-950/50"
           onMouseEnter={() => setShowPreview(true)}
