@@ -128,7 +128,7 @@ export default function PostDetailPage() {
             {/* ── TOP BAR ── */}
             <div
                 className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-3 md:px-6 md:py-4
-          bg-transparent transition-opacity duration-500
+          bg-black/60 backdrop-blur-md border-b border-white/10 transition-opacity duration-500
           ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
                 <div className="flex items-center gap-2 md:gap-4">
