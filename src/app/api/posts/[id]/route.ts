@@ -7,6 +7,28 @@ import { isAdmin } from '@/lib/auth';
 // Limit body size for Next.js 15+ App Router
 export const maxDuration = 60;
 
+const normalizeTags = (value: unknown): string[] => {
+  if (!Array.isArray(value)) return [];
+
+  const seen = new Set<string>();
+  const tags: string[] = [];
+
+  for (const rawTag of value) {
+    if (typeof rawTag !== 'string') continue;
+    const tag = rawTag.trim().replace(/\s+/g, ' ');
+    if (!tag || tag.length > 30) continue;
+
+    const key = tag.toLowerCase();
+    if (seen.has(key)) continue;
+
+    seen.add(key);
+    tags.push(tag);
+    if (tags.length >= 20) break;
+  }
+
+  return tags;
+};
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -47,7 +69,8 @@ export async function PUT(
       return NextResponse.json({ error: 'ID bài viết không hợp lệ' }, { status: 400 });
     }
 
-    const { title, description, content, author, images } = await request.json();
+    const { title, description, tags, content, author, images } = await request.json();
+    const normalizedTags = normalizeTags(tags);
 
     if (!title || !content) {
       return NextResponse.json({ error: 'Các trường bắt buộc bị thiếu' }, { status: 400 });
@@ -57,11 +80,26 @@ export async function PUT(
       return NextResponse.json({ error: 'Cần có ít nhất một hình ảnh' }, { status: 400 });
     }
 
-    const updated = await Post.findByIdAndUpdate(
-      id,
-      { title, description, content, author: author || 'Không rõ tác giả', images },
-      { new: true, runValidators: true }
-    );
+    const updatePayload: {
+      title: string;
+      tags: string[];
+      content: string;
+      author: string;
+      images: string[];
+      description?: string;
+    } = {
+      title,
+      tags: normalizedTags,
+      content,
+      author: author || 'Không rõ tác giả',
+      images,
+    };
+
+    if (typeof description === 'string') {
+      updatePayload.description = description.trim().slice(0, 300);
+    }
+
+    const updated = await Post.findByIdAndUpdate(id, updatePayload, { new: true, runValidators: true });
 
     if (!updated) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });

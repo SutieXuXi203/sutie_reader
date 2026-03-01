@@ -4,6 +4,7 @@ import { Trash2, Pencil, CalendarDays, User } from 'lucide-react';
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import { EditPostForm } from '@/components/EditPostForm';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
@@ -13,7 +14,8 @@ import { getOptimizedImageUrl } from '@/lib/utils';
 interface Post {
   _id: string;
   title: string;
-  description: string;
+  description?: string;
+  tags?: string[];
   content: string;
   images: string[];
   author: string;
@@ -28,11 +30,18 @@ interface PostCardProps {
 }
 
 export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
+  const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const { isAdmin } = useAuth();
+
+  const handleTagClick = (e: React.MouseEvent, tag: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    router.push(`/products?tag=${encodeURIComponent(tag)}`);
+  };
 
   const handleDelete = async () => {
     setIsDeleting(true);
@@ -99,9 +108,29 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
           <h3 className="text-lg font-bold text-red-950 dark:text-red-50 mb-3 group-hover/card:text-red-600 dark:group-hover/card:text-red-400 transition-colors line-clamp-2 leading-tight">
             {post.title}
           </h3>
-          <p className="text-sm text-red-700/70 dark:text-red-300/60 mb-4 line-clamp-3 leading-relaxed flex-grow">
-            {post.description}
-          </p>
+          {post.tags && post.tags.length > 0 ? (
+            <div className="mb-4 flex flex-wrap gap-2 min-h-[40px]">
+              {post.tags.slice(0, 4).map((tag) => (
+                <button
+                  type="button"
+                  onClick={(e) => handleTagClick(e, tag)}
+                  key={`${post._id}-${tag}`}
+                  className="inline-flex items-center rounded-[8px] border border-red-100 dark:border-red-900/40 bg-red-50/70 dark:bg-red-900/20 px-2 py-1 text-xs text-red-700 dark:text-red-300 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-100/70 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
+                >
+                  #{tag}
+                </button>
+              ))}
+              {post.tags.length > 4 && (
+                <span className="inline-flex items-center rounded-[8px] border border-red-100 dark:border-red-900/40 bg-red-50/70 dark:bg-red-900/20 px-2 py-1 text-xs text-red-700 dark:text-red-300">
+                  +{post.tags.length - 4}
+                </span>
+              )}
+            </div>
+          ) : (
+            <p className="text-sm text-red-700/70 dark:text-red-300/60 mb-4 line-clamp-3 leading-relaxed flex-grow">
+              {post.description || 'Chưa gắn tag'}
+            </p>
+          )}
 
           <div className="flex items-center gap-2 mb-6 text-red-600 dark:text-red-400 font-semibold bg-red-50/50 dark:bg-red-900/10 w-fit px-3 py-1.5 rounded-none border border-red-100 dark:border-red-900/30">
             <User className="w-4 h-4" />
@@ -143,6 +172,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
         open={isEditOpen}
         onOpenChange={setIsEditOpen}
         onPostUpdated={() => { setIsEditOpen(false); onUpdate(); }}
+        availableTags={post.tags || []}
       />
       <DeleteConfirmDialog
         open={isDeleteConfirmOpen}
@@ -155,7 +185,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
       />
       {showPreview && post.images.length > 0 && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-red-950/5 dark:bg-black/10">
-          <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-none overflow-hidden shadow-[0_32px_64px_-16px_rgba(153,27,27,0.3)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] border border-red-200/30 dark:border-red-900/40 bg-red-50 dark:bg-red-950">
+          <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-[8px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(153,27,27,0.3)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] border border-red-200/30 dark:border-red-900/40 bg-red-50 dark:bg-red-950">
             <Image
               src={getOptimizedImageUrl(post.images[0])}
               alt="Preview"

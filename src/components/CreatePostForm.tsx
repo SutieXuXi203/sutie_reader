@@ -8,17 +8,19 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/u
 import { Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
+import { TagPicker } from '@/components/TagPicker';
 
 interface CreatePostFormProps {
   onPostCreated: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  availableTags?: string[];
 }
 
-export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePostFormProps) {
+export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTags = [] }: CreatePostFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState('');
-  const [description, setDescription] = useState('');
+  const [tags, setTags] = useState<string[]>([]);
   const [content, setContent] = useState('');
   const [author, setAuthor] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
@@ -93,7 +95,7 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
-          description,
+          tags,
           content,
           author: author || 'Không rõ tác giả',
           images: imageUrls,
@@ -106,7 +108,7 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
       }
 
       setTitle('');
-      setDescription('');
+      setTags([]);
       setContent('');
       setAuthor('');
       setImageFiles([]);
@@ -143,9 +145,14 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange }: CreatePost
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Mô tả ngắn (không bắt buộc)</label>
-            <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả ngắn gọn" maxLength={300} rows={2} disabled={isSubmitting} className="rounded-none border-slate-200 dark:border-slate-700" />
-            <p className="text-xs text-slate-400 mt-1">{description.length}/300</p>
+            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tag (không bắt buộc)</label>
+            <TagPicker
+              selectedTags={tags}
+              onChange={setTags}
+              availableTags={availableTags}
+              disabled={isSubmitting}
+              placeholder="Nhập tag rồi nhấn Enter"
+            />
           </div>
 
           <div>

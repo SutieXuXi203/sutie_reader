@@ -17,7 +17,8 @@ const ProfileDialog = dynamic(() => import('@/components/ProfileDialog').then(m 
 interface Post {
   _id: string;
   title: string;
-  description: string;
+  description?: string;
+  tags?: string[];
   content: string;
   images: string[];
   author: string;
@@ -559,6 +560,7 @@ export default function Home() {
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onPostCreated={fetchPosts}
+        availableTags={Array.from(new Set(posts.flatMap((post) => post.tags || [])))}
       />
 
       {user && (

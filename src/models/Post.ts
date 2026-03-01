@@ -3,6 +3,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IPost extends Document {
   title: string;
   description: string;
+  tags: string[];
   content: string;
   images: string[];
   author: string;
@@ -21,6 +22,10 @@ const PostSchema = new Schema<IPost>(
       type: String,
       default: '',
       maxlength: 300,
+    },
+    tags: {
+      type: [String],
+      default: [],
     },
     content: {
       type: String,

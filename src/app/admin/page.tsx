@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,8 @@ import { getOptimizedImageUrl } from '@/lib/utils';
 interface Post {
     _id: string;
     title: string;
-    description: string;
+    description?: string;
+    tags?: string[];
     content: string;
     images: string[];
     author: string;
@@ -166,9 +167,20 @@ export default function AdminDashboard() {
         }
     };
 
+    const availablePostTags = useMemo(
+        () =>
+            Array.from(
+                new Set(
+                    posts.flatMap((post) => (post.tags || []).map((tag) => tag.trim()).filter(Boolean))
+                )
+            ).sort((a, b) => a.localeCompare(b, 'vi')),
+        [posts]
+    );
+
     const filteredPosts = posts.filter(post =>
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.author.toLowerCase().includes(searchQuery.toLowerCase())
+        post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (post.tags || []).some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
     );
 
     const filteredUsers = usersList.filter(u =>
@@ -301,7 +313,7 @@ export default function AdminDashboard() {
                             <div className="relative w-full sm:w-[400px]">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input
-                                    placeholder={activeTab === 'posts' ? "Tìm bài viết, tác giả..." : "Tìm tên, email..."}
+                                    placeholder={activeTab === 'posts' ? "Tìm bài viết, tác giả, tag..." : "Tìm tên, email..."}
                                     className="pl-10 h-10 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-[8px] focus-visible:ring-1 focus-visible:ring-slate-400 text-sm"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
@@ -348,7 +360,25 @@ export default function AdminDashboard() {
                                                         </div>
                                                         <div className="min-w-0 max-w-xs">
                                                             <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{post.title}</p>
-                                                            <p className="text-xs text-slate-500 truncate mt-0.5">{post.description}</p>
+                                                            {post.tags && post.tags.length > 0 ? (
+                                                                <div className="mt-1 flex flex-wrap gap-1">
+                                                                    {post.tags.slice(0, 3).map((tag) => (
+                                                                        <span
+                                                                            key={`${post._id}-${tag}`}
+                                                                            className="inline-flex rounded-[8px] border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-500 dark:text-slate-300"
+                                                                        >
+                                                                            #{tag}
+                                                                        </span>
+                                                                    ))}
+                                                                    {post.tags.length > 3 && (
+                                                                        <span className="inline-flex rounded-[8px] border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">
+                                                                            +{post.tags.length - 3}
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            ) : (
+                                                                <p className="text-xs text-slate-400 mt-0.5">Chua gan tag</p>
+                                                            )}
                                                         </div>
                                                     </div>
                                                 </td>
@@ -474,6 +504,7 @@ export default function AdminDashboard() {
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
                 onPostCreated={fetchPosts}
+                availableTags={availablePostTags}
             />
             {selectedPost && (
                 <EditPostForm
@@ -481,6 +512,7 @@ export default function AdminDashboard() {
                     open={isEditOpen}
                     onOpenChange={setIsEditOpen}
                     onPostUpdated={() => { setIsEditOpen(false); fetchPosts(); }}
+                    availableTags={availablePostTags}
                 />
             )}
             <DeleteConfirmDialog

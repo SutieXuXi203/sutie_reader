@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -9,11 +9,13 @@ import { Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
 import { getOptimizedImageUrl } from '@/lib/utils';
+import { TagPicker } from '@/components/TagPicker';
 
 interface Post {
     _id: string;
     title: string;
-    description: string;
+    description?: string;
+    tags?: string[];
     content: string;
     images: string[];
     author: string;
@@ -24,12 +26,13 @@ interface EditPostFormProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
     onPostUpdated: () => void;
+    availableTags?: string[];
 }
 
-export function EditPostForm({ post, open, onOpenChange, onPostUpdated }: EditPostFormProps) {
+export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availableTags = [] }: EditPostFormProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState(post.title);
-    const [description, setDescription] = useState(post.description);
+    const [tags, setTags] = useState<string[]>(post.tags || []);
     const [content, setContent] = useState(post.content);
     const [author, setAuthor] = useState(post.author);
     // Keep existing image paths (strings, not base64 blobs)
@@ -37,6 +40,17 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated }: EditPo
     const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
     const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
     const [error, setError] = useState('');
+
+    useEffect(() => {
+        setTitle(post.title);
+        setTags(post.tags || []);
+        setContent(post.content);
+        setAuthor(post.author);
+        setKeptImages(post.images);
+        setNewImageFiles([]);
+        setNewImagePreviews([]);
+        setError('');
+    }, [post, open]);
 
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
@@ -113,7 +127,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated }: EditPo
             const response = await fetch(`/api/posts/${post._id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, description, content, author, images: allImages }),
+                body: JSON.stringify({ title, tags, content, author, images: allImages }),
             });
 
             if (!response.ok) {
@@ -157,9 +171,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated }: EditPo
                     </div>
 
                     <div>
-                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Mô tả ngắn (không bắt buộc)</label>
-                        <Textarea value={description} onChange={(e) => setDescription(e.target.value)} placeholder="Mô tả ngắn" maxLength={300} rows={2} disabled={isSubmitting} className="rounded-[8px]" />
-                        <p className="text-xs text-slate-400 mt-1">{description.length}/300</p>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tag (không bắt buộc)</label>
+                        <TagPicker
+                            selectedTags={tags}
+                            onChange={setTags}
+                            availableTags={availableTags}
+                            disabled={isSubmitting}
+                            placeholder="Nhập tag rồi nhấn Enter"
+                        />
                     </div>
 
                     <div>
