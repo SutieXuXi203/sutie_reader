@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
-import { useSearchParams } from 'next/navigation';
 import { ArrowLeft, BookOpen, Lock, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostCard } from '@/components/PostCard';
@@ -28,7 +27,6 @@ export default function ProductsPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const { user, isLoading: isAuthLoading } = useAuth();
-    const searchParams = useSearchParams();
 
     const fetchPosts = async () => {
         try {
@@ -50,11 +48,12 @@ export default function ProductsPage() {
     }, []);
 
     useEffect(() => {
-        const tagFromUrl = searchParams.get('tag');
+        const params = new URLSearchParams(window.location.search);
+        const tagFromUrl = params.get('tag');
         if (tagFromUrl) {
             setSearchTerm(tagFromUrl);
         }
-    }, [searchParams]);
+    }, []);
 
     const handlePostDeleted = (postId: string) => {
         setPosts((prev) => prev.filter((post) => post._id !== postId));
