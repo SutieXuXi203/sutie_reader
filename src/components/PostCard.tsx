@@ -1,7 +1,7 @@
 'use client';
 
 import { Trash2, Pencil, CalendarDays, User } from 'lucide-react';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -33,9 +33,25 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+  const [canHoverPreview, setCanHoverPreview] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const { isAdmin } = useAuth();
+
+  useEffect(() => {
+    const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
+    const updateHoverCapability = () => setCanHoverPreview(mediaQuery.matches);
+
+    updateHoverCapability();
+
+    if (typeof mediaQuery.addEventListener === 'function') {
+      mediaQuery.addEventListener('change', updateHoverCapability);
+      return () => mediaQuery.removeEventListener('change', updateHoverCapability);
+    }
+
+    mediaQuery.addListener(updateHoverCapability);
+    return () => mediaQuery.removeListener(updateHoverCapability);
+  }, []);
 
   const handleTagClick = (e: React.MouseEvent, tag: string) => {
     e.preventDefault();
@@ -82,7 +98,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
       >
         <div
           className="relative w-full aspect-[16/9] bg-red-50 dark:bg-red-950/20 overflow-hidden border-b border-red-50 dark:border-red-950/50"
-          onMouseEnter={() => setShowPreview(true)}
+          onMouseEnter={() => { if (canHoverPreview) setShowPreview(true); }}
           onMouseLeave={() => setShowPreview(false)}
         >
           {post.images.length > 0 ? (
@@ -183,7 +199,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
         description={`Bạn có chắc chắn muốn xóa "${post.title}"? Hành động này không thể hoàn tác.`}
         confirmLabel={isDeleting ? 'Đang xóa...' : 'Xóa'}
       />
-      {showPreview && post.images.length > 0 && typeof document !== 'undefined' && createPortal(
+      {canHoverPreview && showPreview && post.images.length > 0 && typeof document !== 'undefined' && createPortal(
         <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-red-950/5 dark:bg-black/10">
           <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-[8px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(153,27,27,0.3)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] border border-red-200/30 dark:border-red-900/40 bg-red-50 dark:bg-red-950">
             <Image
