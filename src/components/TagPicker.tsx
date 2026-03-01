@@ -13,7 +13,7 @@ interface TagPickerProps {
   maxTags?: number;
 }
 
-const normalizeTag = (value: string): string => value.trim().replace(/\s+/g, ' ');
+const normalizeTag = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase();
 
 export function TagPicker({
   selectedTags,
@@ -66,12 +66,19 @@ export function TagPicker({
     }
   };
 
+  const onInputBlur = () => {
+    if (normalizeTag(draft)) {
+      addTag(draft);
+    }
+  };
+
   return (
     <div className="space-y-3">
       <Input
         value={draft}
         onChange={(e) => setDraft(e.target.value)}
         onKeyDown={onKeyDown}
+        onBlur={onInputBlur}
         disabled={disabled || selectedTags.length >= maxTags}
         placeholder={placeholder}
         className="rounded-[8px]"
@@ -84,13 +91,13 @@ export function TagPicker({
               key={tag}
               className="inline-flex items-center gap-1.5 rounded-[8px] border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200"
             >
-              <span>#{tag}</span>
+              <span>#{tag.toLowerCase()}</span>
               <button
                 type="button"
                 onClick={() => removeTag(tag)}
                 disabled={disabled}
                 className="text-slate-400 hover:text-red-500 transition-colors disabled:opacity-40 cursor-pointer"
-                aria-label={`Xoa tag ${tag}`}
+                aria-label={`Xoa tag ${tag.toLowerCase()}`}
               >
                 <X className="h-3 w-3" />
               </button>
@@ -122,7 +129,7 @@ export function TagPicker({
                 disabled={disabled}
                 className="rounded-[8px] border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer disabled:opacity-50"
               >
-                #{tag}
+                #{tag.toLowerCase()}
               </button>
             ))}
           </div>
@@ -130,7 +137,7 @@ export function TagPicker({
       )}
 
       <p className="text-xs text-slate-400">
-        Nhan Enter hoac dau phay de them tag. Toi da {maxTags} tag, moi tag toi da 30 ky tu.
+        Nhấn Enter hoặc dấu phẩy để thêm tag. Tối đa {maxTags} tag, mỗi tag tối đa 30 ký tự.
       </p>
     </div>
   );

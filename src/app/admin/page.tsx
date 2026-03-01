@@ -171,7 +171,7 @@ export default function AdminDashboard() {
         () =>
             Array.from(
                 new Set(
-                    posts.flatMap((post) => (post.tags || []).map((tag) => tag.trim()).filter(Boolean))
+                    posts.flatMap((post) => (post.tags || []).map((tag) => tag.trim().toLowerCase()).filter(Boolean))
                 )
             ).sort((a, b) => a.localeCompare(b, 'vi')),
         [posts]
@@ -367,7 +367,7 @@ export default function AdminDashboard() {
                                                                             key={`${post._id}-${tag}`}
                                                                             className="inline-flex rounded-[8px] border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-500 dark:text-slate-300"
                                                                         >
-                                                                            #{tag}
+                                                                            #{tag.toLowerCase()}
                                                                         </span>
                                                                     ))}
                                                                     {post.tags.length > 3 && (
@@ -377,7 +377,7 @@ export default function AdminDashboard() {
                                                                     )}
                                                                 </div>
                                                             ) : (
-                                                                <p className="text-xs text-slate-400 mt-0.5">Chua gan tag</p>
+                                                                <p className="text-xs text-slate-400 mt-0.5">Chưa gắn tag</p>
                                                             )}
                                                         </div>
                                                     </div>
@@ -390,14 +390,14 @@ export default function AdminDashboard() {
                                                     <div className="flex justify-end gap-2">
                                                         <button
                                                             onClick={() => { setSelectedPost(post); setIsEditOpen(true); }}
-                                                            className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-[8px] transition-colors"
+                                                            className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-[8px] transition-colors cursor-pointer"
                                                             title="Chỉnh sửa"
                                                         >
                                                             <Pencil className="w-4 h-4" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(post)}
-                                                            className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors"
+                                                            className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors cursor-pointer"
                                                             title="Xóa"
                                                         >
                                                             <Trash2 className="w-4 h-4" />

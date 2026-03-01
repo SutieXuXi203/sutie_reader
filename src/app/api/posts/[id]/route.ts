@@ -15,7 +15,7 @@ const normalizeTags = (value: unknown): string[] => {
 
   for (const rawTag of value) {
     if (typeof rawTag !== 'string') continue;
-    const tag = rawTag.trim().replace(/\s+/g, ' ');
+    const tag = rawTag.trim().replace(/\s+/g, ' ').toLowerCase();
     if (!tag || tag.length > 30) continue;
 
     const key = tag.toLowerCase();

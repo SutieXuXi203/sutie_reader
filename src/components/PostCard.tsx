@@ -56,7 +56,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
   const handleTagClick = (e: React.MouseEvent, tag: string) => {
     e.preventDefault();
     e.stopPropagation();
-    router.push(`/products?tag=${encodeURIComponent(tag)}`);
+    router.push(`/products?tag=${encodeURIComponent(tag.toLowerCase())}`);
   };
 
   const handleDelete = async () => {
@@ -133,7 +133,7 @@ export function PostCard({ post, onDelete, onUpdate }: PostCardProps) {
                   key={`${post._id}-${tag}`}
                   className="inline-flex items-center rounded-[8px] border border-red-100 dark:border-red-900/40 bg-red-50/70 dark:bg-red-900/20 px-2 py-1 text-xs text-red-700 dark:text-red-300 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-100/70 dark:hover:bg-red-900/30 transition-colors cursor-pointer"
                 >
-                  #{tag}
+                  #{tag.toLowerCase()}
                 </button>
               ))}
               {post.tags.length > 4 && (
