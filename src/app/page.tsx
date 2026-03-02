@@ -451,7 +451,7 @@ export default function Home() {
             </div>
 
             {/* Right: form */}
-            <div className="reveal reveal-delay-2 bg-red-50/60 dark:bg-red-900/10 rounded-none p-6 md:p-8 border border-red-100 dark:border-red-900/30">
+            <div className="reveal reveal-delay-2 bg-red-50/60 dark:bg-red-900/10 rounded-[8px] p-6 md:p-8 border border-red-100 dark:border-red-900/30">
               {contactSent ? (
                 <div className="text-center py-8">
                   <div className="w-14 h-14 bg-red-100 dark:bg-red-900/30 rounded-none flex items-center justify-center mx-auto mb-4">
@@ -473,7 +473,7 @@ export default function Home() {
                         name="name"
                         value={user.name || ''}
                         readOnly
-                        className="w-full px-4 py-3 rounded-none border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 text-red-500 dark:text-red-400 text-sm cursor-not-allowed transition-all"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 text-red-500 dark:text-red-400 text-sm cursor-not-allowed transition-all"
                       />
                     ) : (
                       <input
@@ -483,7 +483,7 @@ export default function Home() {
                         name="name"
                         defaultValue=""
                         placeholder="Tên của bạn"
-                        className="w-full px-4 py-3 rounded-none border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none focus:ring-4 focus:ring-red-500/15 focus:border-red-400 dark:focus:ring-red-500/20 dark:focus:border-red-500 transition-all backdrop-blur-sm shadow-sm"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none focus:ring-4 focus:ring-red-500/15 focus:border-red-400 dark:focus:ring-red-500/20 dark:focus:border-red-500 transition-all backdrop-blur-sm shadow-sm"
                       />
                     )}
                   </div>
@@ -496,7 +496,7 @@ export default function Home() {
                         name="email"
                         value={user.email || ''}
                         readOnly
-                        className="w-full px-4 py-3 rounded-none border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 text-red-500 dark:text-red-400 text-sm cursor-not-allowed transition-all"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 text-red-500 dark:text-red-400 text-sm cursor-not-allowed transition-all"
                       />
                     ) : (
                       <input
@@ -506,7 +506,7 @@ export default function Home() {
                         name="email"
                         defaultValue=""
                         placeholder="email@example.com"
-                        className="w-full px-4 py-3 rounded-none border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none focus:ring-4 focus:ring-red-500/15 focus:border-red-400 dark:focus:ring-red-500/20 dark:focus:border-red-500 transition-all backdrop-blur-sm shadow-sm"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none focus:ring-4 focus:ring-red-500/15 focus:border-red-400 dark:focus:ring-red-500/20 dark:focus:border-red-500 transition-all backdrop-blur-sm shadow-sm"
                       />
                     )}
                   </div>
@@ -517,7 +517,7 @@ export default function Home() {
                       name="message"
                       rows={4}
                       placeholder="Nội dung tin nhắn..."
-                      className="w-full px-4 py-3 rounded-none border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none focus:ring-4 focus:ring-red-500/15 focus:border-red-400 dark:focus:ring-red-500/20 dark:focus:border-red-500 transition-all backdrop-blur-sm shadow-sm resize-none"
+                      className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none focus:ring-4 focus:ring-red-500/15 focus:border-red-400 dark:focus:ring-red-500/20 dark:focus:border-red-500 transition-all backdrop-blur-sm shadow-sm resize-none"
                     />
                   </div>
 
