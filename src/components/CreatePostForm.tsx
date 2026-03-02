@@ -65,7 +65,7 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
 
     const formData = new FormData();
     formData.append('title', uploadTitle);
-    compressedFiles.forEach((file) => formData.append('files', file));
+    compressedFiles.forEach((compressed, i) => formData.append('files', compressed, files[i].name));
     const res = await fetch('/api/upload', { method: 'POST', body: formData });
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));

@@ -93,7 +93,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         );
         const formData = new FormData();
         formData.append('title', uploadTitle);
-        compressedFiles.forEach((f) => formData.append('files', f));
+        compressedFiles.forEach((compressed, i) => formData.append('files', compressed, files[i].name));
         const res = await fetch('/api/upload', { method: 'POST', body: formData });
         if (!res.ok) {
             const data = await res.json().catch(() => ({}));
