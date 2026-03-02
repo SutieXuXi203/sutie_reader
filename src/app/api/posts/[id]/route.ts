@@ -3,6 +3,7 @@ import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin } from '@/lib/auth';
+import { google } from 'googleapis';
 
 // Limit body size for Next.js 15+ App Router
 export const maxDuration = 60;
@@ -28,6 +29,43 @@ const normalizeTags = (value: unknown): string[] => {
 
   return tags;
 };
+
+async function getDriveService() {
+  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
+  const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
+
+  if (!clientId || !clientSecret || !refreshToken) return null;
+
+  const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret, 'https://developers.google.com/oauthplayground');
+  oAuth2Client.setCredentials({ refresh_token: refreshToken });
+  return google.drive({ version: 'v3', auth: oAuth2Client });
+}
+
+async function deleteDriveFolder(postTitle: string) {
+  try {
+    const drive = await getDriveService();
+    if (!drive) return;
+
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    if (!folderId) return;
+
+    // Find the folder by post title
+    const searchRes = await drive.files.list({
+      q: `mimeType='application/vnd.google-apps.folder' and name='${postTitle.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,
+      fields: 'files(id, name)',
+      spaces: 'drive',
+    });
+
+    if (searchRes.data.files && searchRes.data.files.length > 0) {
+      const targetFolderId = searchRes.data.files[0].id!;
+      await drive.files.delete({ fileId: targetFolderId });
+      console.log(`Đã xóa folder Drive "${postTitle}" (${targetFolderId})`);
+    }
+  } catch (err) {
+    console.warn(`Không thể xóa folder Drive cho bài "${postTitle}":`, err);
+  }
+}
 
 export async function GET(
   request: NextRequest,
@@ -134,9 +172,15 @@ export async function DELETE(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
+    // Xóa folder trên Google Drive (best-effort, không block response)
+    deleteDriveFolder(deletedPost.title).catch((err) =>
+      console.warn('Lỗi khi xóa folder Drive:', err)
+    );
+
     return NextResponse.json({ message: 'Bài viết đã được xóa thành công' });
   } catch (error) {
     console.error('Lỗi khi xóa bài viết:', error);
     return NextResponse.json({ error: 'Xóa bài viết không thành công' }, { status: 500 });
   }
 }
+
