@@ -401,14 +401,17 @@ export default function Home() {
             </div>
           ) : (
             <div className="reveal hero-delay-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {posts.map((post) => (
-                <PostCard
-                  key={post._id}
-                  post={post}
-                  onDelete={handlePostDeleted}
-                  onUpdate={fetchPosts}
-                />
-              ))}
+              {[...posts]
+                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+                .slice(0, 6)
+                .map((post) => (
+                  <PostCard
+                    key={post._id}
+                    post={post}
+                    onDelete={handlePostDeleted}
+                    onUpdate={fetchPosts}
+                  />
+                ))}
             </div>
           )}
         </div>
