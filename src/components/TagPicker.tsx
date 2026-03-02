@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, type KeyboardEventHandler } from 'react';
+import { useMemo, useState, useRef, useEffect, type KeyboardEventHandler } from 'react';
 import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 
@@ -20,10 +20,24 @@ export function TagPicker({
   onChange,
   availableTags = [],
   disabled = false,
-  placeholder = 'Nhap tag roi nhan Enter',
+  placeholder = 'Tìm kiếm tag...',
   maxTags = 20,
 }: TagPickerProps) {
   const [draft, setDraft] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
+        setIsFocused(false);
+      }
+    };
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, []);
 
   const selectedLookup = useMemo(
     () => new Set(selectedTags.map((tag) => normalizeTag(tag).toLowerCase())),
@@ -37,8 +51,7 @@ export function TagPicker({
       .filter((tag) => tag.length > 0)
       .filter((tag, index, arr) => arr.findIndex((item) => item.toLowerCase() === tag.toLowerCase()) === index)
       .filter((tag) => !selectedLookup.has(tag.toLowerCase()))
-      .filter((tag) => (normalizedDraft ? tag.toLowerCase().includes(normalizedDraft) : true))
-      .slice(0, 12);
+      .filter((tag) => (normalizedDraft ? tag.toLowerCase().includes(normalizedDraft) : true));
   }, [availableTags, draft, selectedLookup]);
 
   const addTag = (rawValue: string) => {
@@ -50,6 +63,10 @@ export function TagPicker({
       return;
     }
 
+    // Only allow adding tags that are in availableTags
+    const isAvailable = availableTags.some(t => normalizeTag(t).toLowerCase() === tag.toLowerCase());
+    if (!isAvailable) return;
+
     onChange([...selectedTags, tag]);
     setDraft('');
   };
@@ -60,29 +77,57 @@ export function TagPicker({
   };
 
   const onKeyDown: KeyboardEventHandler<HTMLInputElement> = (e) => {
-    if (e.key === 'Enter' || e.key === ',') {
+    if (e.key === 'Enter') {
       e.preventDefault();
-      addTag(draft);
-    }
-  };
-
-  const onInputBlur = () => {
-    if (normalizeTag(draft)) {
-      addTag(draft);
+      // If there's an exact match in visible suggestions, select it
+      const exactMatch = visibleSuggestions.find(t => t.toLowerCase() === draft.toLowerCase());
+      if (exactMatch) {
+        addTag(exactMatch);
+      } else if (visibleSuggestions.length > 0) {
+        // Optionally, select the first suggestion on Enter
+        addTag(visibleSuggestions[0]);
+      }
     }
   };
 
   return (
-    <div className="space-y-3">
-      <Input
-        value={draft}
-        onChange={(e) => setDraft(e.target.value)}
-        onKeyDown={onKeyDown}
-        onBlur={onInputBlur}
-        disabled={disabled || selectedTags.length >= maxTags}
-        placeholder={placeholder}
-        className="rounded-[8px]"
-      />
+    <div className="space-y-3" ref={containerRef}>
+      <div className="relative">
+        <Input
+          value={draft}
+          onChange={(e) => setDraft(e.target.value)}
+          onKeyDown={onKeyDown}
+          onFocus={() => setIsFocused(true)}
+          disabled={disabled || selectedTags.length >= maxTags}
+          placeholder={placeholder}
+          className="rounded-none border-slate-200 dark:border-slate-700"
+        />
+
+        {isFocused && (
+          <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-[#140808] border border-t-0 border-slate-200 dark:border-slate-700 rounded-none p-3 shadow-lg max-h-[200px] overflow-y-auto">
+            <p className="text-xs text-red-400/70 dark:text-red-400/60 mb-2">Những tag có sẵn</p>
+            <div className="flex flex-wrap gap-2">
+              {visibleSuggestions.length > 0 ? visibleSuggestions.map((tag) => (
+                <button
+                  key={tag}
+                  type="button"
+                  onMouseDown={(e) => e.preventDefault()}
+                  onClick={() => {
+                    addTag(tag);
+                    setIsFocused(true);
+                  }}
+                  disabled={disabled}
+                  className="rounded-none border border-red-100 dark:border-red-900/40 bg-red-50/70 dark:bg-red-900/20 px-2.5 py-1 text-xs text-red-700 dark:text-red-300 hover:border-red-300 dark:hover:border-red-700 hover:bg-red-100/70 dark:hover:bg-red-900/30 transition-colors cursor-pointer disabled:opacity-50"
+                >
+                  #{tag.toLowerCase()}
+                </button>
+              )) : (
+                <p className="text-xs text-slate-400 dark:text-slate-500">Không có tag nào</p>
+              )}
+            </div>
+          </div>
+        )}
+      </div>
 
       {selectedTags.length > 0 && (
         <div className="flex flex-wrap gap-2">
@@ -106,38 +151,8 @@ export function TagPicker({
         </div>
       )}
 
-      {normalizeTag(draft) && (
-        <button
-          type="button"
-          onClick={() => addTag(draft)}
-          disabled={disabled}
-          className="text-xs font-medium text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white transition-colors cursor-pointer disabled:opacity-50"
-        >
-          Tao tag &quot;{normalizeTag(draft)}&quot;
-        </button>
-      )}
-
-      {visibleSuggestions.length > 0 && (
-        <div className="space-y-2">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Những tag có sẵn</p>
-          <div className="flex flex-wrap gap-2">
-            {visibleSuggestions.map((tag) => (
-              <button
-                key={tag}
-                type="button"
-                onClick={() => addTag(tag)}
-                disabled={disabled}
-                className="rounded-[8px] border border-slate-200 dark:border-slate-700 px-2.5 py-1 text-xs text-slate-600 dark:text-slate-300 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                #{tag.toLowerCase()}
-              </button>
-            ))}
-          </div>
-        </div>
-      )}
-
       <p className="text-xs text-slate-400">
-        Nhấn Enter hoặc dấu phẩy để thêm tag. Tối đa {maxTags} tag, mỗi tag tối đa 30 ký tự.
+        Bạn có thể chọn tối đa {maxTags} tag có sẵn từ danh sách.
       </p>
     </div>
   );

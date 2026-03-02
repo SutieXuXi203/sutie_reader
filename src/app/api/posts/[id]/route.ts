@@ -67,6 +67,36 @@ async function deleteDriveFolder(postTitle: string) {
   }
 }
 
+async function renameDriveFolder(oldTitle: string, newTitle: string) {
+  try {
+    const drive = await getDriveService();
+    if (!drive) return;
+
+    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    if (!folderId) return;
+
+    // Find the folder by old post title
+    const searchRes = await drive.files.list({
+      q: `mimeType='application/vnd.google-apps.folder' and name='${oldTitle.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,
+      fields: 'files(id, name)',
+      spaces: 'drive',
+    });
+
+    if (searchRes.data.files && searchRes.data.files.length > 0) {
+      const targetFolderId = searchRes.data.files[0].id!;
+      await drive.files.update({
+        fileId: targetFolderId,
+        requestBody: { name: newTitle },
+      });
+      console.log(`Đã đổi tên folder Drive từ "${oldTitle}" thành "${newTitle}" (${targetFolderId})`);
+    } else {
+      console.log(`Không tìm thấy folder Drive cũ "${oldTitle}" để đổi tên thành "${newTitle}"`);
+    }
+  } catch (err) {
+    console.warn(`Không thể đổi tên folder Drive từ "${oldTitle}" thành "${newTitle}":`, err);
+  }
+}
+
 export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -118,6 +148,14 @@ export async function PUT(
       return NextResponse.json({ error: 'Cần có ít nhất một hình ảnh' }, { status: 400 });
     }
 
+    // Retrieve the existing post to check if title changed
+    const existingPost = await Post.findById(id);
+    if (!existingPost) {
+      return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
+    }
+
+    const titleChanged = existingPost.title !== title;
+
     const updatePayload: {
       title: string;
       tags: string[];
@@ -141,6 +179,16 @@ export async function PUT(
 
     if (!updated) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
+    }
+
+    // If title changed, rename the drive folder
+    if (titleChanged) {
+      console.log(`Bắt đầu đổi tên folder Drive từ "${existingPost.title}" sang "${title}"...`);
+      try {
+        await renameDriveFolder(existingPost.title, title);
+      } catch (err) {
+        console.warn('Lỗi khi đổi tên folder Drive:', err);
+      }
     }
 
     return NextResponse.json(updated);

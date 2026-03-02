@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User, Tag } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { CreatePostForm } from '@/components/CreatePostForm';
@@ -36,7 +36,7 @@ interface AdminUser {
 export default function AdminDashboard() {
     const { user, isAdmin, isLoading: isAuthLoading } = useAuth();
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'posts' | 'users'>('posts');
+    const [activeTab, setActiveTab] = useState<'posts' | 'users' | 'tags'>('posts');
     const [posts, setPosts] = useState<Post[]>([]);
     const [usersList, setUsersList] = useState<AdminUser[]>([]);
     const [isLoading, setIsLoading] = useState(true);
@@ -49,9 +49,17 @@ export default function AdminDashboard() {
     const [deleteTarget, setDeleteTarget] = useState<
         | { type: 'post'; id: string; title: string }
         | { type: 'user'; id: string; email: string }
+        | { type: 'tag'; id: string; name: string }
         | null
     >(null);
     const [isDeletingTarget, setIsDeletingTarget] = useState(false);
+
+    // Tag management state
+    const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
+    const [editingTag, setEditingTag] = useState<{ oldName: string, newName: string } | null>(null);
+    const [isUpdatingTag, setIsUpdatingTag] = useState(false);
+    const [newTagName, setNewTagName] = useState('');
+    const [isCreatingTag, setIsCreatingTag] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -75,9 +83,22 @@ export default function AdminDashboard() {
             } else {
                 fetchPosts();
                 fetchUsers();
+                fetchTags();
             }
         }
     }, [user, isAdmin, isAuthLoading]);
+
+    const fetchTags = async () => {
+        try {
+            const res = await fetch('/api/tags');
+            if (res.ok) {
+                const data = await res.json();
+                setStandaloneTags(data);
+            }
+        } catch (error) {
+            console.error('Error fetching tags:', error);
+        }
+    };
 
     const fetchPosts = async () => {
         setIsLoading(true);
@@ -146,7 +167,7 @@ export default function AdminDashboard() {
                 } else {
                     alert('Xóa thất bại');
                 }
-            } else {
+            } else if (deleteTarget.type === 'user') {
                 const res = await fetch(`/api/admin/users/${deleteTarget.id}`, {
                     method: 'DELETE',
                 });
@@ -158,6 +179,19 @@ export default function AdminDashboard() {
                     const data = await res.json();
                     alert(data.error || 'Xóa thất bại');
                 }
+            } else if (deleteTarget.type === 'tag') {
+                const res = await fetch(`/api/tags?tag=${encodeURIComponent(deleteTarget.id)}`, {
+                    method: 'DELETE',
+                });
+
+                if (res.ok) {
+                    await fetchPosts(); // Refresh posts to reflect removed tag
+                    await fetchTags(); // Refresh standalone tags
+                    setDeleteTarget(null);
+                } else {
+                    const data = await res.json();
+                    alert(data.error || 'Xóa tag thất bại');
+                }
             }
         } catch (error) {
             console.error('Error deleting target:', error);
@@ -167,15 +201,88 @@ export default function AdminDashboard() {
         }
     };
 
-    const availablePostTags = useMemo(
-        () =>
-            Array.from(
-                new Set(
-                    posts.flatMap((post) => (post.tags || []).map((tag) => tag.trim().toLowerCase()).filter(Boolean))
-                )
-            ).sort((a, b) => a.localeCompare(b, 'vi')),
-        [posts]
-    );
+    const handleUpdateTag = async () => {
+        if (!editingTag || !editingTag.newName.trim()) return;
+        if (editingTag.oldName === editingTag.newName.trim()) {
+            setEditingTag(null);
+            return;
+        }
+
+        setIsUpdatingTag(true);
+        try {
+            const res = await fetch('/api/tags', {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    oldTag: editingTag.oldName,
+                    newTag: editingTag.newName.trim()
+                })
+            });
+
+            if (res.ok) {
+                await fetchPosts();
+                await fetchTags();
+                setEditingTag(null);
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Cập nhật tag thất bại');
+            }
+        } catch (error) {
+            console.error('Lỗi khi sửa tag:', error);
+            alert('Đã xảy ra lỗi mạng');
+        } finally {
+            setIsUpdatingTag(false);
+        }
+    }
+
+    const handleCreateTag = async (e: React.FormEvent) => {
+        e.preventDefault();
+        const tagValue = newTagName.trim();
+        if (!tagValue) return;
+
+        setIsCreatingTag(true);
+        try {
+            const res = await fetch('/api/tags', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ name: tagValue })
+            });
+
+            if (res.ok) {
+                setNewTagName('');
+                await fetchTags();
+            } else {
+                const data = await res.json();
+                alert(data.error || 'Tạo tag thất bại');
+            }
+        } catch (error) {
+            console.error('Lỗi khi tạo tag:', error);
+            alert('Đã xảy ra lỗi mạng');
+        } finally {
+            setIsCreatingTag(false);
+        }
+    };
+
+    const availablePostTags = useMemo(() => {
+        const postTags = posts.flatMap((post) => (post.tags || []).map((tag) => tag.trim().toLowerCase()).filter(Boolean));
+        const standaloneNames = standaloneTags.map(t => t.name.trim().toLowerCase()).filter(Boolean);
+
+        return Array.from(new Set([...postTags, ...standaloneNames]))
+            .sort((a, b) => a.localeCompare(b, 'vi'));
+    }, [posts, standaloneTags]);
+
+    const tagCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        posts.forEach(post => {
+            (post.tags || []).forEach(tag => {
+                const normalized = tag.trim().toLowerCase();
+                if (normalized) {
+                    counts[normalized] = (counts[normalized] || 0) + 1;
+                }
+            });
+        });
+        return counts;
+    }, [posts]);
 
     const filteredPosts = posts.filter(post =>
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -225,6 +332,13 @@ export default function AdminDashboard() {
                         <Users className="w-5 h-5" />
                         <span>Người dùng</span>
                     </button>
+                    <button
+                        onClick={() => setActiveTab('tags')}
+                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'tags' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                    >
+                        <Tag className="w-5 h-5" />
+                        <span>Quản lý Tag</span>
+                    </button>
                 </nav>
                 {/* Tài khoản đang hoạt động */}
                 <div className="p-4 border-t border-slate-200 dark:border-slate-800">
@@ -256,7 +370,7 @@ export default function AdminDashboard() {
                         </div>
                         <div className="hidden lg:flex items-center gap-4">
                             <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
-                                {activeTab === 'posts' ? 'Quản lý bài viết' : 'Quản lý người dùng'}
+                                {activeTab === 'posts' ? 'Quản lý bài viết' : activeTab === 'users' ? 'Quản lý người dùng' : 'Quản lý thẻ Tag'}
                             </h1>
                             <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-slate-100 dark:bg-slate-800">
                                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
@@ -283,29 +397,54 @@ export default function AdminDashboard() {
 
                 <div className="p-6 sm:p-10 space-y-6 max-w-6xl mx-auto">
                     {/* Stats */}
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        {(activeTab === 'posts' ? [
-                            { label: 'Tổng bài viết', value: posts.length },
-                            { label: 'Tác giả', value: '1' },
-                            { label: 'Trạng thái', value: 'Hoạt động' }
-                        ] : [
-                            { label: 'Tổng người dùng', value: usersList.length },
-                            { label: 'Quản trị viên', value: usersList.filter(u => u.role === 'admin').length },
-                            { label: 'Người dùng', value: usersList.filter(u => u.role !== 'admin').length }
-                        ]).map((stat, i) => (
-                            <div key={i} className="bg-white dark:bg-slate-900 p-5 rounded-[8px] border border-slate-200 dark:border-slate-800">
-                                <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">{stat.label}</p>
-                                {typeof stat.value === 'number' ? (
-                                    <p className="text-2xl font-semibold text-slate-800 dark:text-slate-200">{stat.value}</p>
-                                ) : (
-                                    <div className="flex items-center gap-2">
-                                        <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                        <span className="text-base font-medium text-slate-800 dark:text-slate-200">{stat.value}</span>
-                                    </div>
-                                )}
+                    {activeTab !== 'tags' && (
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                            {(activeTab === 'posts' ? [
+                                { label: 'Tổng bài viết', value: posts.length },
+                                { label: 'Tác giả', value: '1' },
+                                { label: 'Trạng thái', value: 'Hoạt động' }
+                            ] : [
+                                { label: 'Tổng người dùng', value: usersList.length },
+                                { label: 'Quản trị viên', value: usersList.filter(u => u.role === 'admin').length },
+                                { label: 'Người dùng', value: usersList.filter(u => u.role !== 'admin').length }
+                            ]).map((stat, i) => (
+                                <div key={i} className="bg-white dark:bg-slate-900 p-5 rounded-[8px] border border-slate-200 dark:border-slate-800">
+                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">{stat.label}</p>
+                                    {typeof stat.value === 'number' ? (
+                                        <p className="text-2xl font-semibold text-slate-800 dark:text-slate-200">{stat.value}</p>
+                                    ) : (
+                                        <div className="flex items-center gap-2">
+                                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                            <span className="text-base font-medium text-slate-800 dark:text-slate-200">{stat.value}</span>
+                                        </div>
+                                    )}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+
+                    {/* Tags List */}
+                    {activeTab === 'posts' && availablePostTags.length > 0 && (
+                        <div className="bg-white dark:bg-slate-900 p-5 rounded-[8px] border border-slate-200 dark:border-slate-800">
+                            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
+                                <Tag className="w-4 h-4 text-slate-400" />
+                                Danh sách Tag đã sử dụng ({availablePostTags.length})
+                            </h3>
+                            <div className="flex flex-wrap gap-2 mt-3">
+                                {availablePostTags.map((tag) => (
+                                    <button
+                                        key={tag}
+                                        type="button"
+                                        onClick={() => setSearchQuery(tag)}
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
+                                        title={`Lọc bài viết theo thẻ: ${tag}`}
+                                    >
+                                        #{tag}
+                                    </button>
+                                ))}
                             </div>
-                        ))}
-                    </div>
+                        </div>
+                    )}
 
                     {/* Table Area */}
                     <div className="bg-white dark:bg-slate-900 rounded-[8px] border border-slate-200 dark:border-slate-800 overflow-hidden">
@@ -313,12 +452,28 @@ export default function AdminDashboard() {
                             <div className="relative w-full sm:w-[400px]">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
                                 <Input
-                                    placeholder={activeTab === 'posts' ? "Tìm bài viết, tác giả, tag..." : "Tìm tên, email..."}
+                                    placeholder={activeTab === 'posts' ? "Tìm bài viết, tác giả, tag..." : activeTab === 'users' ? "Tìm tên, email..." : "Tìm thẻ tag..."}
                                     className="pl-10 h-10 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-[8px] focus-visible:ring-1 focus-visible:ring-slate-400 text-sm"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
+
+                            {activeTab === 'tags' && (
+                                <form onSubmit={handleCreateTag} className="flex gap-2 w-full sm:w-auto">
+                                    <Input
+                                        placeholder="Tên tag mới..."
+                                        value={newTagName}
+                                        onChange={e => setNewTagName(e.target.value)}
+                                        className="h-10 text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[8px] transition-colors"
+                                        disabled={isCreatingTag}
+                                        maxLength={30}
+                                    />
+                                    <Button type="submit" disabled={isCreatingTag || !newTagName.trim()} className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[8px] font-medium shadow-sm transition-all duration-200 ease-in-out hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                                        {isCreatingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1.5" /><span>Thêm</span></>}
+                                    </Button>
+                                </form>
+                            )}
                         </div>
 
                         <div className="overflow-x-auto">
@@ -408,7 +563,7 @@ export default function AdminDashboard() {
                                         ))}
                                     </tbody>
                                 </table>
-                            ) : (
+                            ) : activeTab === 'users' ? (
                                 <table className="w-full text-left">
                                     <thead>
                                         <tr className="text-xs font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
@@ -493,14 +648,94 @@ export default function AdminDashboard() {
                                         ))}
                                     </tbody>
                                 </table>
-                            )}
+                            ) : activeTab === 'tags' ? (
+                                <table className="w-full text-left">
+                                    <thead>
+                                        <tr className="text-xs font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                                            <th className="px-5 py-4 text-left">Tên thẻ (Tag)</th>
+                                            <th className="px-5 py-4 text-left">Số bài viết đang sử dụng</th>
+                                            <th className="px-5 py-4 text-right">Thao tác</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                                        {availablePostTags
+                                            .filter(tag => tag.includes(searchQuery.toLowerCase()))
+                                            .map((tag) => (
+                                                <tr key={tag} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                                    <td className="px-5 py-4">
+                                                        {editingTag?.oldName === tag ? (
+                                                            <div className="flex items-center gap-2">
+                                                                <Input
+                                                                    value={editingTag.newName}
+                                                                    onChange={(e) => setEditingTag({ ...editingTag, newName: e.target.value })}
+                                                                    className="h-8 text-sm"
+                                                                    autoFocus
+                                                                    disabled={isUpdatingTag}
+                                                                />
+                                                            </div>
+                                                        ) : (
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-sm font-medium bg-slate-100 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                                #{tag}
+                                                            </span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                                        {tagCounts[tag] || 0} bài viết
+                                                    </td>
+                                                    <td className="px-5 py-4">
+                                                        <div className="flex justify-end gap-2">
+                                                            {editingTag?.oldName === tag ? (
+                                                                <>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        variant="ghost"
+                                                                        className="h-8 rounded-[8px]"
+                                                                        onClick={() => setEditingTag(null)}
+                                                                        disabled={isUpdatingTag}
+                                                                    >
+                                                                        Hủy
+                                                                    </Button>
+                                                                    <Button
+                                                                        size="sm"
+                                                                        className="h-8 rounded-[8px]"
+                                                                        onClick={handleUpdateTag}
+                                                                        disabled={isUpdatingTag}
+                                                                    >
+                                                                        {isUpdatingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lưu'}
+                                                                    </Button>
+                                                                </>
+                                                            ) : (
+                                                                <>
+                                                                    <button
+                                                                        onClick={() => setEditingTag({ oldName: tag, newName: tag })}
+                                                                        className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-[8px] transition-colors"
+                                                                        title="Sửa tên tag trên toàn bộ bài viết"
+                                                                    >
+                                                                        <Pencil className="w-4 h-4" />
+                                                                    </button>
+                                                                    <button
+                                                                        onClick={() => setDeleteTarget({ type: 'tag', id: tag, name: tag })}
+                                                                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors"
+                                                                        title="Xóa tag khỏi toàn bộ bài viết"
+                                                                    >
+                                                                        <Trash2 className="w-4 h-4" />
+                                                                    </button>
+                                                                </>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                    </tbody>
+                                </table>
+                            ) : null}
                         </div>
                     </div>
                 </div>
-            </main>
+            </main >
 
             {/* Forms */}
-            <CreatePostForm
+            < CreatePostForm
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
                 onPostCreated={fetchPosts}
@@ -514,7 +749,8 @@ export default function AdminDashboard() {
                     onPostUpdated={() => { setIsEditOpen(false); fetchPosts(); }}
                     availableTags={availablePostTags}
                 />
-            )}
+            )
+            }
             <DeleteConfirmDialog
                 open={!!deleteTarget}
                 onOpenChange={(open) => {
@@ -524,14 +760,16 @@ export default function AdminDashboard() {
                 }}
                 onConfirm={handleConfirmDelete}
                 isLoading={isDeletingTarget}
-                title={deleteTarget?.type === 'user' ? 'Xóa người dùng?' : 'Xóa bài viết?'}
+                title={deleteTarget?.type === 'user' ? 'Xóa người dùng?' : deleteTarget?.type === 'post' ? 'Xóa bài viết?' : 'Xóa thẻ tag?'}
                 description={
                     deleteTarget?.type === 'user'
                         ? `Bạn có chắc chắn muốn xóa người dùng "${deleteTarget.email}"? Hành động này không thể hoàn tác.`
-                        : `Bạn có chắc chắn muốn xóa bài viết "${deleteTarget?.title || ''}"? Hành động này không thể hoàn tác.`
+                        : deleteTarget?.type === 'post'
+                            ? `Bạn có chắc chắn muốn xóa bài viết "${deleteTarget?.title || ''}"? Hành động này không thể hoàn tác.`
+                            : `Bạn có chắc muốn xóa thẻ tag "#${deleteTarget?.name || ''}" khỏi toàn bộ ${tagCounts[deleteTarget?.name || ''] || 0} bài viết? Hành động này không thể hoàn tác.`
                 }
                 confirmLabel={isDeletingTarget ? 'Đang xóa...' : 'Xóa'}
             />
-        </div>
+        </div >
     );
 }

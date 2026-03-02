@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, BookOpen, ArrowLeft, Loader2 } from 'lucide-react';
+import { X, BookOpen, ArrowLeft, Loader2, ShieldAlert } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -13,6 +13,7 @@ interface Post {
     _id: string;
     title: string;
     description: string;
+    tags?: string[];
     content: string;
     images: string[];
     author: string;
@@ -27,6 +28,7 @@ export default function PostDetailPage() {
     const [isLoading, setIsLoading] = useState(true);
     const [showUI, setShowUI] = useState(true);
     const [currentPage, setCurrentPage] = useState(0);
+    const [nsfwAccepted, setNsfwAccepted] = useState(false);
     const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
@@ -118,6 +120,56 @@ export default function PostDetailPage() {
     }
 
     if (!post) return null;
+
+    const isNSFW = (post.tags || []).some(tag => tag.toLowerCase().includes('18+'));
+
+    // 18+ Content Warning Gate
+    if (isNSFW && !nsfwAccepted) {
+        return (
+            <div className="fixed inset-0 bg-[#050505] flex flex-col items-center justify-center text-white px-6 text-center z-[9999]" onMouseMove={resetUiTimer} onClick={resetUiTimer}>
+                {/* Subtle red glow behind the center */}
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/10 filter blur-[100px] rounded-full pointer-events-none" />
+
+                <div className="relative z-10 flex flex-col items-center max-w-[500px]">
+                    {/* Icon Container */}
+                    <div className="w-16 h-16 bg-[#1a0505] rounded-[16px] flex items-center justify-center mb-8 border border-red-900/30">
+                        <ShieldAlert className="w-8 h-8 text-red-500" />
+                    </div>
+
+                    {/* Title */}
+                    <h1 className="text-3xl sm:text-4xl font-extrabold mb-5 text-white tracking-tight">Cảnh báo nội dung</h1>
+
+                    {/* Tag Pill */}
+                    <div className="inline-flex items-center gap-2 bg-[#1a0505] text-red-500 text-[11px] font-bold px-4 py-1.5 rounded-full mb-8 border border-red-900/30">
+                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                        Nội dung 18+
+                    </div>
+
+                    {/* Description Text */}
+                    <p className="text-slate-400 max-w-sm mb-12 leading-relaxed text-xs sm:text-sm">
+                        Bài viết này chứa nội dung dành cho người trên 18 tuổi. Bằng việc tiếp tục, bạn xác nhận rằng bạn đã đủ 18 tuổi.
+                    </p>
+
+                    {/* Buttons */}
+                    <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center justify-center">
+                        <button
+                            onClick={(e) => { e.stopPropagation(); setNsfwAccepted(true); }}
+                            className="w-full sm:w-[200px] py-3.5 rounded-[8px] bg-[#ff0000] text-white font-bold transition-all hover:bg-red-600 active:scale-95 shadow-[0_0_20px_rgba(255,0,0,0.3)] text-sm cursor-pointer border border-transparent"
+                        >
+                            Tôi đã đủ 18 tuổi, tiếp tục
+                        </button>
+                        <Link
+                            href="/#posts"
+                            onClick={(e) => e.stopPropagation()}
+                            className="w-full sm:w-[120px] py-3.5 rounded-[8px] bg-[#1a1a1a] hover:bg-[#2a2a2a] text-[#a0a0a0] hover:text-white font-bold transition-all active:scale-95 text-sm text-center border border-white/5 cursor-pointer"
+                        >
+                            Quay lại
+                        </Link>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     const total = post.images.length;
 

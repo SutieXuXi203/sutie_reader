@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, FileText } from 'lucide-react';
@@ -75,6 +75,19 @@ export default function Home() {
     return () => observer.disconnect();
   }, [posts, user, isLoading, isAuthLoading]);
 
+  const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
+
+  const fetchTags = async () => {
+    try {
+      const response = await fetch('/api/tags');
+      if (response.ok) {
+        setStandaloneTags(await response.json());
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải tags:', error);
+    }
+  };
+
   const fetchPosts = async () => {
     try {
       setIsLoading(true);
@@ -92,7 +105,14 @@ export default function Home() {
 
   useEffect(() => {
     fetchPosts();
+    fetchTags();
   }, []);
+
+  const availableTags = useMemo(() => {
+    const postTags = posts.flatMap((post) => post.tags || []);
+    const standaloneNames = standaloneTags.map(t => t.name);
+    return Array.from(new Set([...postTags, ...standaloneNames])).filter(Boolean);
+  }, [posts, standaloneTags]);
 
   const handlePostDeleted = useCallback((postId: string) => {
     setPosts((prev) => prev.filter((post) => post._id !== postId));
@@ -563,7 +583,7 @@ export default function Home() {
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onPostCreated={fetchPosts}
-        availableTags={Array.from(new Set(posts.flatMap((post) => post.tags || [])))}
+        availableTags={availableTags}
       />
 
       {user && (
