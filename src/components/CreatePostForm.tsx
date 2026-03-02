@@ -30,7 +30,7 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const newFiles = [...imageFiles, ...files];
-    if (newFiles.length > 10) { setError('Tối đa 10 hình ảnh được phép'); return; }
+
     setImageFiles(newFiles);
     setError('');
     files.forEach((file) => {
@@ -172,7 +172,7 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
               <label htmlFor="image-input" className="cursor-pointer block">
                 <Upload className="h-6 w-6 mx-auto mb-2 text-slate-400" />
                 <p className="text-sm text-slate-700 dark:text-slate-300">Nhấp để tải ảnh lên</p>
-                <p className="text-xs text-slate-500 mt-1">PNG, JPG, GIF tối đa 50MB (tối đa 10 ảnh)</p>
+                <p className="text-xs text-slate-500 mt-1">PNG, JPG, GIF tối đa 50MB</p>
               </label>
             </div>
           </div>

@@ -119,7 +119,7 @@ export function TagPicker({
 
       {visibleSuggestions.length > 0 && (
         <div className="space-y-2">
-          <p className="text-xs text-slate-500 dark:text-slate-400">Tag co san</p>
+          <p className="text-xs text-slate-500 dark:text-slate-400">Những tag có sẵn</p>
           <div className="flex flex-wrap gap-2">
             {visibleSuggestions.map((tag) => (
               <button
