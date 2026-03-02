@@ -506,7 +506,7 @@ export default function Home() {
                         name="name"
                         defaultValue=""
                         placeholder="Tên của bạn"
-                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none focus:ring-4 focus:ring-red-500/15 focus:border-red-400 dark:focus:ring-red-500/20 dark:focus:border-red-500 transition-all backdrop-blur-sm shadow-sm"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm"
                       />
                     )}
                   </div>
@@ -529,7 +529,7 @@ export default function Home() {
                         name="email"
                         defaultValue=""
                         placeholder="email@example.com"
-                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none focus:ring-4 focus:ring-red-500/15 focus:border-red-400 dark:focus:ring-red-500/20 dark:focus:border-red-500 transition-all backdrop-blur-sm shadow-sm"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm"
                       />
                     )}
                   </div>
@@ -540,7 +540,7 @@ export default function Home() {
                       name="message"
                       rows={4}
                       placeholder="Nội dung tin nhắn..."
-                      className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none focus:ring-4 focus:ring-red-500/15 focus:border-red-400 dark:focus:ring-red-500/20 dark:focus:border-red-500 transition-all backdrop-blur-sm shadow-sm resize-none"
+                      className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm resize-none"
                     />
                   </div>
 
