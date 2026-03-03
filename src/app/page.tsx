@@ -228,12 +228,12 @@ export default function Home() {
                 {/* Profile dropdown */}
                 <div className="absolute left-1/2 md:left-full -translate-x-1/2 md:translate-x-0 md:ml-4 bottom-[calc(100%+8px)] md:bottom-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 bg-white dark:bg-[#1a0808] border border-red-100 dark:border-red-900/30 rounded-none shadow-2xl shadow-red-500/10 p-4 min-w-[240px] z-50 transform translate-y-[10px] md:translate-y-0 md:translate-x-[-10px] group-hover:translate-y-0 md:group-hover:translate-x-0">
                   <div className="px-3 py-2 border-b border-red-50 dark:border-red-900/20 mb-2">
-                    <p className="text-sm font-black text-red-900 dark:text-red-100 truncate tracking-tight">{user.name}</p>
-                    <p className="text-[11px] text-red-400 truncate font-medium">{user.email}</p>
+                    <p className="text-sm font-black text-neutral-900 dark:text-neutral-100 truncate tracking-tight">{user.name}</p>
+                    <p className="text-[11px] text-neutral-500 dark:text-neutral-400 truncate font-medium">{user.email}</p>
                   </div>
                   <button
                     onClick={() => setIsProfileDialogOpen(true)}
-                    className="w-full flex items-center gap-3 px-3 py-3 text-sm font-bold text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all border-b border-red-50 dark:border-red-900/20"
+                    className="w-full flex items-center gap-3 px-3 py-3 text-sm font-bold text-neutral-800 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all border-b border-red-50 dark:border-red-900/20"
                   >
                     <UserIcon className="w-5 h-5" />
                     <span>Hồ sơ cá nhân</span>
@@ -280,14 +280,14 @@ export default function Home() {
               Góc dịch thuật của Sutie
             </div>
 
-            <h1 className="hero-animate hero-delay-1 text-4xl sm:text-5xl md:text-6xl font-bold text-red-950 dark:text-red-50 mb-4 md:mb-6 leading-tight tracking-tight">
+            <h1 className="hero-animate hero-delay-1 text-4xl sm:text-5xl md:text-6xl font-bold text-neutral-900 dark:text-neutral-50 mb-4 md:mb-6 leading-tight tracking-tight">
               Kho lưu trữ<br className="block sm:hidden" />{' '}
               <span className="text-gradient-red">
                 của Sutie
               </span>
             </h1>
 
-            <p className="hero-animate hero-delay-2 text-base md:text-lg lg:text-xl text-red-700/70 dark:text-red-200 mb-8 md:mb-12 font-medium leading-relaxed max-w-lg">
+            <p className="hero-animate hero-delay-2 text-base md:text-lg lg:text-xl text-neutral-600 dark:text-neutral-300 mb-8 md:mb-12 font-medium leading-relaxed max-w-lg">
               Nơi mình chia sẻ niềm đam mê ngôn ngữ qua từng trang sách và những câu chuyện được chuyển ngữ với tất cả tâm huyết.
             </p>
 
@@ -362,8 +362,8 @@ export default function Home() {
           {/* Section header */}
           <div className="reveal flex flex-col sm:flex-row items-center sm:items-end justify-between mb-10 md:mb-12 gap-4 sm:gap-0">
             <div>
-              <p className="text-xs md:text-sm font-medium text-red-400 dark:text-red-500 mb-2 uppercase tracking-widest">Khám phá</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-red-950 dark:text-red-50">Bài viết mới nhất</h2>
+              <p className="text-xs md:text-sm font-medium text-red-500 dark:text-red-400 mb-2 uppercase tracking-widest">Khám phá</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-neutral-50">Bài viết mới nhất</h2>
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-3 w-full sm:w-auto mt-2 sm:mt-0">
               {isAdmin && (
@@ -401,8 +401,8 @@ export default function Home() {
               <div className="relative z-10 w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-none flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                 <Lock className="w-8 h-8 text-red-400 group-hover:text-red-500 transition-colors" />
               </div>
-              <h3 className="relative z-10 text-xl font-bold text-red-950 dark:text-red-100 mb-2">Nội dung đã bị khóa</h3>
-              <p className="relative z-10 text-red-600/60 dark:text-red-400/60 max-w-sm mb-8 leading-relaxed">
+              <h3 className="relative z-10 text-xl font-bold text-neutral-900 dark:text-neutral-100 mb-2">Nội dung đã bị khóa</h3>
+              <p className="relative z-10 text-neutral-600 dark:text-neutral-400 max-w-sm mb-8 leading-relaxed">
                 Bạn cần đăng nhập hoặc tạo tài khoản mới để có thể xem được danh sách các bài viết và câu chuyện.
               </p>
               <Button
@@ -417,7 +417,7 @@ export default function Home() {
               <div className="w-16 h-16 bg-red-50 dark:bg-red-900/20 rounded-none flex items-center justify-center mx-auto mb-4">
                 <BookOpen className="w-7 h-7 text-red-400" />
               </div>
-              <p className="text-red-400/70 dark:text-red-500/60 text-lg">Chưa có bài viết nào</p>
+              <p className="text-neutral-500 dark:text-neutral-400 text-lg">Chưa có bài viết nào</p>
             </div>
           ) : (
             <div className="reveal hero-delay-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
@@ -443,28 +443,28 @@ export default function Home() {
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-start">
             {/* Left: info */}
             <div className="reveal text-center md:text-left">
-              <p className="text-xs md:text-sm font-medium text-red-400 dark:text-red-500 mb-2 uppercase tracking-widest">Liên hệ</p>
-              <h2 className="text-3xl md:text-4xl font-bold text-red-950 dark:text-red-50 mb-4 md:mb-6">Kết nối với tôi</h2>
-              <p className="text-sm md:text-base text-red-700/60 dark:text-red-200 leading-relaxed mb-8 md:mb-10 max-w-sm mx-auto md:mx-0">
+              <p className="text-xs md:text-sm font-medium text-red-500 dark:text-red-400 mb-2 uppercase tracking-widest">Liên hệ</p>
+              <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-neutral-50 mb-4 md:mb-6">Kết nối với tôi</h2>
+              <p className="text-sm md:text-base text-neutral-600 dark:text-neutral-300 leading-relaxed mb-8 md:mb-10 max-w-sm mx-auto md:mx-0">
                 Có ý tưởng, câu hỏi, hoặc đơn giản chỉ muốn nói chuyện? Tôi rất vui khi được lắng nghe.
               </p>
               <div className="space-y-4 inline-flex flex-col items-start w-full sm:w-auto text-left">
                 <a href="mailto:sutiexuxi.supp.0410@gmail.com"
-                  className="flex items-center gap-3 text-red-700 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors group">
+                  className="flex items-center gap-3 text-neutral-700 dark:text-neutral-300 hover:text-red-600 dark:hover:text-red-300 transition-colors group">
                   <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-none flex items-center justify-center group-hover:bg-red-100 dark:group-hover:bg-red-900/40 transition-colors">
                     <Mail className="w-4 h-4" />
                   </div>
                   <span className="text-sm font-medium">sutiexuxi.supp.0410@gmail.com</span>
                 </a>
                 <a href="https://github.com/DinhManh203" target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-red-700 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors group">
+                  className="flex items-center gap-3 text-neutral-700 dark:text-neutral-300 hover:text-red-600 dark:hover:text-red-300 transition-colors group">
                   <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-none flex items-center justify-center group-hover:bg-red-100 dark:group-hover:bg-red-900/40 transition-colors">
                     <Github className="w-4 h-4" />
                   </div>
                   <span className="text-sm font-medium">https://github.com/DinhManh203</span>
                 </a>
                 <a href="https://www.facebook.com/profile.php?id=61585590627494" target="_blank" rel="noopener noreferrer"
-                  className="flex items-center gap-3 text-red-700 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 transition-colors group">
+                  className="flex items-center gap-3 text-neutral-700 dark:text-neutral-300 hover:text-red-600 dark:hover:text-red-300 transition-colors group">
                   <div className="w-10 h-10 bg-red-50 dark:bg-red-900/20 rounded-none flex items-center justify-center group-hover:bg-red-100 dark:group-hover:bg-red-900/40 transition-colors">
                     <Facebook className="w-4 h-4" />
                   </div>
@@ -482,13 +482,13 @@ export default function Home() {
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                     </svg>
                   </div>
-                  <p className="font-semibold text-red-900 dark:text-red-100 mb-1">Đã gửi!</p>
-                  <p className="text-sm text-red-500/70">Cảm ơn bạn, tôi sẽ phản hồi sớm nhất có thể.</p>
+                  <p className="font-semibold text-neutral-900 dark:text-neutral-100 mb-1">Đã gửi!</p>
+                  <p className="text-sm text-neutral-500 dark:text-neutral-400">Cảm ơn bạn, tôi sẽ phản hồi sớm nhất có thể.</p>
                 </div>
               ) : (
                 <form onSubmit={handleContactSubmit} className="space-y-5">
                   <div>
-                    <label className="block text-sm font-medium text-red-700 dark:text-red-300 mb-1.5">Tên</label>
+                    <label className="block text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-1.5">Tên</label>
                     {user ? (
                       <input
                         key="user-name"
@@ -496,7 +496,7 @@ export default function Home() {
                         name="name"
                         value={user.name || ''}
                         readOnly
-                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 text-red-500 dark:text-red-400 text-sm cursor-not-allowed transition-all"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 text-neutral-500 dark:text-neutral-400 text-sm cursor-not-allowed transition-all"
                       />
                     ) : (
                       <input
@@ -506,12 +506,12 @@ export default function Home() {
                         name="name"
                         defaultValue=""
                         placeholder="Tên của bạn"
-                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm"
                       />
                     )}
                   </div>
                   <div className="reveal-delay-1">
-                    <label className="block text-sm font-medium text-red-700 dark:text-red-300 mb-1.5">Email</label>
+                    <label className="block text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-1.5">Email</label>
                     {user ? (
                       <input
                         key="user-email"
@@ -519,7 +519,7 @@ export default function Home() {
                         name="email"
                         value={user.email || ''}
                         readOnly
-                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 text-red-500 dark:text-red-400 text-sm cursor-not-allowed transition-all"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-red-50 dark:bg-red-900/10 text-neutral-500 dark:text-neutral-400 text-sm cursor-not-allowed transition-all"
                       />
                     ) : (
                       <input
@@ -529,18 +529,18 @@ export default function Home() {
                         name="email"
                         defaultValue=""
                         placeholder="email@example.com"
-                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm"
+                        className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm"
                       />
                     )}
                   </div>
                   <div className="reveal-delay-2">
-                    <label className="block text-sm font-medium text-red-700 dark:text-red-300 mb-1.5">Tin nhắn</label>
+                    <label className="block text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-1.5">Tin nhắn</label>
                     <textarea
                       required
                       name="message"
                       rows={4}
                       placeholder="Nội dung tin nhắn..."
-                      className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-red-900 dark:text-red-100 placeholder:text-red-300 dark:placeholder:text-red-400 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm resize-none"
+                      className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm resize-none"
                     />
                   </div>
 
@@ -565,8 +565,8 @@ export default function Home() {
             <BookOpen className="w-4 h-4" />
             <span className="text-sm font-medium">Sutie Archive</span>
           </div>
-          <p className="text-xs text-red-400/70 dark:text-red-300">© {new Date().getFullYear()} Sutie Archive. Mọi quyền được bảo lưu.</p>
-          <div className="flex gap-5 text-xs text-red-400/70">
+          <p className="text-xs text-neutral-500 dark:text-neutral-400">© {new Date().getFullYear()} Sutie Archive. Mọi quyền được bảo lưu.</p>
+          <div className="flex gap-5 text-xs text-neutral-500 dark:text-neutral-400">
             <a href="#posts" className="hover:text-red-600 dark:hover:text-red-300 transition-colors">Bài viết</a>
             <a href="#contact" className="hover:text-red-600 dark:hover:text-red-300 transition-colors">Liên hệ</a>
           </div>

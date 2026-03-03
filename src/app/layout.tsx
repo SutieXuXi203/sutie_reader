@@ -19,6 +19,10 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "Sutie Xù Xì | Kho lưu trữ bản dịch thuật",
   description: "Nơi lưu giữ những bản dịch thuật tâm huyết của Sutie Xù Xì.",
+  icons: {
+    icon: "/icon_meta.png",
+    apple: "/icon_meta.png",
+  },
 };
 
 export default function RootLayout({

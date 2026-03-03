@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User, Tag, AlertTriangle, X } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { CreatePostForm } from '@/components/CreatePostForm';
@@ -60,6 +60,16 @@ export default function AdminDashboard() {
     const [isUpdatingTag, setIsUpdatingTag] = useState(false);
     const [newTagName, setNewTagName] = useState('');
     const [isCreatingTag, setIsCreatingTag] = useState(false);
+
+    // Toast notification state
+    const [toastMessage, setToastMessage] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (toastMessage) {
+            const timer = setTimeout(() => setToastMessage(null), 4000);
+            return () => clearTimeout(timer);
+        }
+    }, [toastMessage]);
 
     useEffect(() => {
         if (!user) return;
@@ -140,7 +150,7 @@ export default function AdminDashboard() {
 
     const handleDeleteUser = (targetUser: AdminUser) => {
         if (targetUser.email === user?.email) {
-            alert('Bạn không thể xóa tài khoản của chính mình.');
+            setToastMessage('Bạn không thể xóa tài khoản của chính mình.');
             return;
         }
 
@@ -165,7 +175,7 @@ export default function AdminDashboard() {
                     setPosts((prev) => prev.filter((p) => p._id !== deleteTarget.id));
                     setDeleteTarget(null);
                 } else {
-                    alert('Xóa thất bại');
+                    setToastMessage('Xóa thất bại');
                 }
             } else if (deleteTarget.type === 'user') {
                 const res = await fetch(`/api/admin/users/${deleteTarget.id}`, {
@@ -177,7 +187,7 @@ export default function AdminDashboard() {
                     setDeleteTarget(null);
                 } else {
                     const data = await res.json();
-                    alert(data.error || 'Xóa thất bại');
+                    setToastMessage(data.error || 'Xóa thất bại');
                 }
             } else if (deleteTarget.type === 'tag') {
                 const res = await fetch(`/api/tags?tag=${encodeURIComponent(deleteTarget.id)}`, {
@@ -190,12 +200,12 @@ export default function AdminDashboard() {
                     setDeleteTarget(null);
                 } else {
                     const data = await res.json();
-                    alert(data.error || 'Xóa tag thất bại');
+                    setToastMessage(data.error || 'Xóa tag thất bại');
                 }
             }
         } catch (error) {
             console.error('Error deleting target:', error);
-            alert('Đã xảy ra lỗi mạng');
+            setToastMessage('Đã xảy ra lỗi mạng');
         } finally {
             setIsDeletingTarget(false);
         }
@@ -225,11 +235,11 @@ export default function AdminDashboard() {
                 setEditingTag(null);
             } else {
                 const data = await res.json();
-                alert(data.error || 'Cập nhật tag thất bại');
+                setToastMessage(data.error || 'Cập nhật tag thất bại');
             }
         } catch (error) {
             console.error('Lỗi khi sửa tag:', error);
-            alert('Đã xảy ra lỗi mạng');
+            setToastMessage('Đã xảy ra lỗi mạng');
         } finally {
             setIsUpdatingTag(false);
         }
@@ -253,11 +263,11 @@ export default function AdminDashboard() {
                 await fetchTags();
             } else {
                 const data = await res.json();
-                alert(data.error || 'Tạo tag thất bại');
+                setToastMessage(data.error || 'Tạo tag thất bại');
             }
         } catch (error) {
             console.error('Lỗi khi tạo tag:', error);
-            alert('Đã xảy ra lỗi mạng');
+            setToastMessage('Đã xảy ra lỗi mạng');
         } finally {
             setIsCreatingTag(false);
         }
@@ -297,96 +307,96 @@ export default function AdminDashboard() {
 
     if (isAuthLoading || !user || user.role !== 'admin') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-slate-950">
-                <Loader2 className="w-8 h-8 animate-spin text-slate-400" />
+            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0e0505]">
+                <Loader2 className="w-8 h-8 animate-spin text-red-500" />
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-slate-100 dark:bg-slate-950 flex font-sans selection:bg-slate-200 dark:selection:bg-slate-800">
+        <div className="min-h-screen bg-red-50/30 dark:bg-[#0e0505] flex font-sans selection:bg-red-200 dark:selection:bg-red-900/50">
             {/* Sidebar */}
-            <aside className="w-56 bg-white dark:bg-slate-900 hidden lg:flex flex-col border-r border-slate-200 dark:border-slate-800 z-20">
+            <aside className="w-56 bg-white dark:bg-[#1a0808] hidden lg:flex flex-col border-r border-red-100 dark:border-red-900/30 z-20">
                 <div className="p-6">
-                    <h2 className="font-semibold text-lg text-slate-800 dark:text-slate-200">Quản trị</h2>
+                    <h2 className="font-semibold text-lg text-neutral-900 dark:text-neutral-100">Quản trị</h2>
                 </div>
                 <nav className="flex-1 px-3 space-y-0.5">
                     <Link
                         href="/"
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200 transition-colors cursor-pointer"
+                        className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-neutral-700 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300 transition-colors cursor-pointer"
                     >
                         <Home className="w-5 h-5" />
                         <span>Trang chủ</span>
                     </Link>
                     <button
                         onClick={() => setActiveTab('posts')}
-                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'posts' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'posts' ? 'bg-red-700 dark:bg-red-800 text-white' : 'text-neutral-700 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300'}`}
                     >
                         <FileText className="w-5 h-5" />
                         <span>Bài viết</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('users')}
-                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'users' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'}`}
-                    >
-                        <Users className="w-5 h-5" />
-                        <span>Người dùng</span>
-                    </button>
-                    <button
                         onClick={() => setActiveTab('tags')}
-                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'tags' ? 'bg-slate-800 dark:bg-slate-700 text-white' : 'text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-slate-200'}`}
+                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'tags' ? 'bg-red-700 dark:bg-red-800 text-white' : 'text-neutral-700 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300'}`}
                     >
                         <Tag className="w-5 h-5" />
                         <span>Quản lý Tag</span>
                     </button>
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'users' ? 'bg-red-700 dark:bg-red-800 text-white' : 'text-neutral-700 dark:text-neutral-300 hover:bg-red-50 dark:hover:bg-red-900/20 hover:text-red-700 dark:hover:text-red-300'}`}
+                    >
+                        <Users className="w-5 h-5" />
+                        <span>Người dùng</span>
+                    </button>
                 </nav>
                 {/* Tài khoản đang hoạt động */}
-                <div className="p-4 border-t border-slate-200 dark:border-slate-800">
-                    <p className="text-xs font-medium text-slate-400 dark:text-slate-500 mb-2">Tài khoản đang hoạt động</p>
-                    <div className="flex items-center gap-3 p-3 rounded-[8px] bg-slate-50 dark:bg-slate-800/50">
-                        <div className="relative w-10 h-10 rounded-[8px] overflow-hidden bg-slate-200 dark:bg-slate-700 shrink-0">
+                <div className="p-4 border-t border-red-100 dark:border-red-900/30">
+                    <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Tài khoản đang hoạt động</p>
+                    <div className="flex items-center gap-3 p-3 rounded-[8px] bg-red-50/50 dark:bg-red-900/10">
+                        <div className="relative w-10 h-10 rounded-[8px] overflow-hidden bg-red-100 dark:bg-red-900/30 shrink-0">
                             {user.avatar ? (
                                 <Image src={getOptimizedImageUrl(user.avatar)} alt={user.name || 'Avatar'} fill className="object-cover" unoptimized />
                             ) : (
-                                <User className="w-5 h-5 m-2.5 text-slate-400" />
+                                <User className="w-5 h-5 m-2.5 text-red-400" />
                             )}
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{user.name || 'Quản trị viên'}</p>
-                            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">{user.email}</p>
-                            <p className="text-xs font-mono text-emerald-600 dark:text-emerald-400 mt-1 tabular-nums">{formatSessionTime(sessionSeconds)}</p>
+                            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">{user.name || 'Quản trị viên'}</p>
+                            <p className="text-xs text-neutral-500 dark:text-neutral-400 truncate">{user.email}</p>
+                            <p className="text-xs font-mono text-red-600 dark:text-red-400 mt-1 tabular-nums">{formatSessionTime(sessionSeconds)}</p>
                         </div>
                     </div>
                 </div>
             </aside>
 
             {/* Main Content */}
-            <main className="flex-1 overflow-auto bg-slate-100 dark:bg-slate-950">
+            <main className="flex-1 overflow-auto bg-red-50/30 dark:bg-[#0e0505]">
                 {/* Header */}
-                <header className="h-20 bg-white dark:bg-slate-900 border-b border-slate-200 dark:border-slate-800 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-10">
+                <header className="h-20 bg-white dark:bg-[#1a0808] border-b border-red-100 dark:border-red-900/30 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-10">
                     <div className="flex items-center gap-6">
                         <div className="lg:hidden">
-                            <Link href="/" className="text-base font-medium text-slate-700 dark:text-slate-300">Quản trị</Link>
+                            <Link href="/" className="text-base font-medium text-neutral-800 dark:text-neutral-200">Quản trị</Link>
                         </div>
                         <div className="hidden lg:flex items-center gap-4">
-                            <h1 className="text-lg font-semibold text-slate-800 dark:text-slate-200">
+                            <h1 className="text-lg font-semibold text-neutral-900 dark:text-neutral-100">
                                 {activeTab === 'posts' ? 'Quản lý bài viết' : activeTab === 'users' ? 'Quản lý người dùng' : 'Quản lý thẻ Tag'}
                             </h1>
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-slate-100 dark:bg-slate-800">
+                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-red-50 dark:bg-red-900/20">
                                 <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                <span className="text-xs font-medium text-slate-600 dark:text-slate-400">Tài khoản đang hoạt động</span>
+                                <span className="text-xs font-medium text-neutral-600 dark:text-neutral-400">Tài khoản đang hoạt động</span>
                             </div>
                         </div>
                     </div>
                     <div className="flex items-center gap-3">
-                        <div className="lg:hidden flex items-center gap-2 px-3 py-2 rounded-[8px] bg-slate-100 dark:bg-slate-800">
+                        <div className="lg:hidden flex items-center gap-2 px-3 py-2 rounded-[8px] bg-red-50 dark:bg-red-900/20">
                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="text-xs text-slate-600 dark:text-slate-400 truncate max-w-[120px]">{user.email}</span>
+                            <span className="text-xs text-neutral-600 dark:text-neutral-400 truncate max-w-[120px]">{user.email}</span>
                         </div>
                         {activeTab === 'posts' && (
                             <Button
                                 onClick={() => setIsCreateDialogOpen(true)}
-                                className="rounded-[8px] bg-slate-800 dark:bg-slate-700 text-white hover:bg-slate-700 dark:hover:bg-slate-600 px-5 h-10 font-medium transition-colors"
+                                className="rounded-[8px] bg-red-700 dark:bg-red-800 text-white hover:bg-red-600 dark:hover:bg-red-700 px-5 h-10 font-medium transition-colors"
                             >
                                 <Plus className="w-4 h-4 mr-2" />
                                 Tạo bài mới
@@ -408,14 +418,14 @@ export default function AdminDashboard() {
                                 { label: 'Quản trị viên', value: usersList.filter(u => u.role === 'admin').length },
                                 { label: 'Người dùng', value: usersList.filter(u => u.role !== 'admin').length }
                             ]).map((stat, i) => (
-                                <div key={i} className="bg-white dark:bg-slate-900 p-5 rounded-[8px] border border-slate-200 dark:border-slate-800">
-                                    <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-2">{stat.label}</p>
+                                <div key={i} className="bg-white dark:bg-[#1a0808] p-5 rounded-[8px] border border-red-100 dark:border-red-900/30">
+                                    <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">{stat.label}</p>
                                     {typeof stat.value === 'number' ? (
-                                        <p className="text-2xl font-semibold text-slate-800 dark:text-slate-200">{stat.value}</p>
+                                        <p className="text-2xl font-semibold text-neutral-900 dark:text-neutral-100">{stat.value}</p>
                                     ) : (
                                         <div className="flex items-center gap-2">
                                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                            <span className="text-base font-medium text-slate-800 dark:text-slate-200">{stat.value}</span>
+                                            <span className="text-base font-medium text-neutral-900 dark:text-neutral-100">{stat.value}</span>
                                         </div>
                                     )}
                                 </div>
@@ -425,9 +435,9 @@ export default function AdminDashboard() {
 
                     {/* Tags List */}
                     {activeTab === 'posts' && availablePostTags.length > 0 && (
-                        <div className="bg-white dark:bg-slate-900 p-5 rounded-[8px] border border-slate-200 dark:border-slate-800">
-                            <h3 className="text-sm font-semibold text-slate-800 dark:text-slate-200 mb-3 flex items-center gap-2">
-                                <Tag className="w-4 h-4 text-slate-400" />
+                        <div className="bg-white dark:bg-[#1a0808] p-5 rounded-[8px] border border-red-100 dark:border-red-900/30">
+                            <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-3 flex items-center gap-2">
+                                <Tag className="w-4 h-4 text-red-500" />
                                 Danh sách Tag đã sử dụng ({availablePostTags.length})
                             </h3>
                             <div className="flex flex-wrap gap-2 mt-3">
@@ -436,7 +446,7 @@ export default function AdminDashboard() {
                                         key={tag}
                                         type="button"
                                         onClick={() => setSearchQuery(tag)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium bg-slate-100 dark:bg-slate-800/60 text-slate-600 dark:text-slate-300 border border-slate-200 dark:border-slate-700 hover:border-slate-400 dark:hover:border-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors cursor-pointer"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium bg-red-50 dark:bg-red-900/20 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800/50 hover:border-red-400 dark:hover:border-red-600 hover:text-red-900 dark:hover:text-red-100 transition-colors cursor-pointer"
                                         title={`Lọc bài viết theo thẻ: ${tag}`}
                                     >
                                         #{tag}
@@ -447,13 +457,13 @@ export default function AdminDashboard() {
                     )}
 
                     {/* Table Area */}
-                    <div className="bg-white dark:bg-slate-900 rounded-[8px] border border-slate-200 dark:border-slate-800 overflow-hidden">
-                        <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-slate-200 dark:border-slate-800">
+                    <div className="bg-white dark:bg-[#1a0808] rounded-[8px] border border-red-100 dark:border-red-900/30 overflow-hidden">
+                        <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-red-100 dark:border-red-900/30">
                             <div className="relative w-full sm:w-[400px]">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-neutral-400" />
                                 <Input
                                     placeholder={activeTab === 'posts' ? "Tìm bài viết, tác giả, tag..." : activeTab === 'users' ? "Tìm tên, email..." : "Tìm thẻ tag..."}
-                                    className="pl-10 h-10 bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-[8px] focus-visible:ring-1 focus-visible:ring-slate-400 text-sm"
+                                    className="pl-10 h-10 bg-neutral-50 dark:bg-neutral-900/30 border border-red-200 dark:border-red-800/40 rounded-[8px] focus-visible:ring-1 focus-visible:ring-red-400 text-sm text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -465,11 +475,11 @@ export default function AdminDashboard() {
                                         placeholder="Tên tag mới..."
                                         value={newTagName}
                                         onChange={e => setNewTagName(e.target.value)}
-                                        className="h-10 text-sm bg-slate-50 dark:bg-slate-800 border-slate-200 dark:border-slate-700 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[8px] transition-colors"
+                                        className="h-10 text-sm bg-neutral-50 dark:bg-neutral-900/30 border-red-200 dark:border-red-800/40 focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[8px] transition-colors text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500"
                                         disabled={isCreatingTag}
                                         maxLength={30}
                                     />
-                                    <Button type="submit" disabled={isCreatingTag || !newTagName.trim()} className="h-10 px-5 bg-emerald-600 hover:bg-emerald-700 text-white rounded-[8px] font-medium shadow-sm transition-all duration-200 ease-in-out hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <Button type="submit" disabled={isCreatingTag || !newTagName.trim()} className="h-10 px-5 bg-red-600 hover:bg-red-700 text-white rounded-[8px] font-medium shadow-sm transition-all duration-200 ease-in-out hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
                                         {isCreatingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1.5" /><span>Thêm</span></>}
                                     </Button>
                                 </form>
@@ -480,79 +490,79 @@ export default function AdminDashboard() {
                             {activeTab === 'posts' ? (
                                 <table className="w-full text-left">
                                     <thead>
-                                        <tr className="text-xs font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                                        <tr className="text-xs font-medium text-neutral-500 dark:text-neutral-400 border-b border-red-100 dark:border-red-900/30">
                                             <th className="px-5 py-4 text-left">Bài viết</th>
                                             <th className="px-5 py-4 text-left">Tác giả</th>
                                             <th className="px-5 py-4 text-left">Ngày tạo</th>
                                             <th className="px-5 py-4 text-right">Thao tác</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                                    <tbody className="divide-y divide-red-100 dark:divide-red-900/30">
                                         {isLoading ? (
                                             <tr>
-                                                <td colSpan={4} className="px-5 py-16 text-center text-slate-500">
-                                                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3" />
+                                                <td colSpan={4} className="px-5 py-16 text-center text-neutral-500">
+                                                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-red-500" />
                                                     <p className="text-sm">Đang tải...</p>
                                                 </td>
                                             </tr>
                                         ) : filteredPosts.length === 0 ? (
                                             <tr>
-                                                <td colSpan={4} className="px-5 py-16 text-center text-slate-500">
+                                                <td colSpan={4} className="px-5 py-16 text-center text-neutral-500">
                                                     <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
                                                     <p className="text-sm">{searchQuery ? 'Không tìm thấy' : 'Chưa có bài viết'}</p>
                                                 </td>
                                             </tr>
                                         ) : filteredPosts.map((post) => (
-                                            <tr key={post._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                            <tr key={post._id} className="group hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors">
                                                 <td className="px-5 py-4">
                                                     <div className="flex items-center gap-4">
-                                                        <div className="relative w-12 h-12 rounded-[8px] overflow-hidden bg-slate-100 dark:bg-slate-800 shrink-0">
+                                                        <div className="relative w-12 h-12 rounded-[8px] overflow-hidden bg-red-50 dark:bg-red-900/20 shrink-0">
                                                             {post.images[0] ? (
                                                                 <Image src={getOptimizedImageUrl(post.images[0])} alt={post.title} fill className="object-cover" unoptimized />
                                                             ) : (
-                                                                <FileText className="w-6 h-6 m-3 text-slate-400" />
+                                                                <FileText className="w-6 h-6 m-3 text-red-400" />
                                                             )}
                                                         </div>
                                                         <div className="min-w-0 max-w-xs">
-                                                            <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate">{post.title}</p>
+                                                            <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate">{post.title}</p>
                                                             {post.tags && post.tags.length > 0 ? (
                                                                 <div className="mt-1 flex flex-wrap gap-1">
                                                                     {post.tags.slice(0, 3).map((tag) => (
                                                                         <span
                                                                             key={`${post._id}-${tag}`}
-                                                                            className="inline-flex rounded-[8px] border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-500 dark:text-slate-300"
+                                                                            className="inline-flex rounded-[8px] border border-red-200 dark:border-red-800/50 px-1.5 py-0.5 text-[10px] text-red-600 dark:text-red-300"
                                                                         >
                                                                             #{tag.toLowerCase()}
                                                                         </span>
                                                                     ))}
                                                                     {post.tags.length > 3 && (
-                                                                        <span className="inline-flex rounded-[8px] border border-slate-200 dark:border-slate-700 px-1.5 py-0.5 text-[10px] text-slate-400">
+                                                                        <span className="inline-flex rounded-[8px] border border-red-200 dark:border-red-800/50 px-1.5 py-0.5 text-[10px] text-neutral-400">
                                                                             +{post.tags.length - 3}
                                                                         </span>
                                                                     )}
                                                                 </div>
                                                             ) : (
-                                                                <p className="text-xs text-slate-400 mt-0.5">Chưa gắn tag</p>
+                                                                <p className="text-xs text-neutral-400 mt-0.5">Chưa gắn tag</p>
                                                             )}
                                                         </div>
                                                     </div>
                                                 </td>
-                                                <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">{post.author}</td>
-                                                <td className="px-5 py-4 text-sm text-slate-500 whitespace-nowrap">
+                                                <td className="px-5 py-4 text-sm text-neutral-700 dark:text-neutral-300">{post.author}</td>
+                                                <td className="px-5 py-4 text-sm text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
                                                     {new Date(post.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                                 </td>
                                                 <td className="px-5 py-4">
                                                     <div className="flex justify-end gap-2">
                                                         <button
                                                             onClick={() => { setSelectedPost(post); setIsEditOpen(true); }}
-                                                            className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-[8px] transition-colors cursor-pointer"
+                                                            className="p-2 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors cursor-pointer"
                                                             title="Chỉnh sửa"
                                                         >
                                                             <Pencil className="w-4 h-4" />
                                                         </button>
                                                         <button
                                                             onClick={() => handleDelete(post)}
-                                                            className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors cursor-pointer"
+                                                            className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors cursor-pointer"
                                                             title="Xóa"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -566,7 +576,7 @@ export default function AdminDashboard() {
                             ) : activeTab === 'users' ? (
                                 <table className="w-full text-left">
                                     <thead>
-                                        <tr className="text-xs font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                                        <tr className="text-xs font-medium text-neutral-500 dark:text-neutral-400 border-b border-red-100 dark:border-red-900/30">
                                             <th className="px-5 py-4 text-left">Người dùng</th>
                                             <th className="px-5 py-4 text-left">Email</th>
                                             <th className="px-5 py-4 text-left">Vai trò</th>
@@ -575,50 +585,50 @@ export default function AdminDashboard() {
                                             <th className="px-5 py-4 text-right">Thao tác</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                                    <tbody className="divide-y divide-red-100 dark:divide-red-900/30">
                                         {isUsersLoading ? (
                                             <tr>
-                                                <td colSpan={6} className="px-5 py-16 text-center text-slate-500">
-                                                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3" />
+                                                <td colSpan={6} className="px-5 py-16 text-center text-neutral-500">
+                                                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-red-500" />
                                                     <p className="text-sm">Đang tải...</p>
                                                 </td>
                                             </tr>
                                         ) : filteredUsers.length === 0 ? (
                                             <tr>
-                                                <td colSpan={6} className="px-5 py-16 text-center text-slate-500">
+                                                <td colSpan={6} className="px-5 py-16 text-center text-neutral-500">
                                                     <Users className="w-10 h-10 mx-auto mb-3 opacity-30" />
                                                     <p className="text-sm">{searchQuery ? 'Không tìm thấy' : 'Chưa có người dùng'}</p>
                                                 </td>
                                             </tr>
                                         ) : filteredUsers.map((u) => (
-                                            <tr key={u._id} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                            <tr key={u._id} className="group hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors">
                                                 <td className="px-5 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="relative shrink-0">
-                                                            <div className="relative w-10 h-10 rounded-[8px] overflow-hidden bg-slate-100 dark:bg-slate-800">
+                                                            <div className="relative w-10 h-10 rounded-[8px] overflow-hidden bg-red-50 dark:bg-red-900/20">
                                                                 {u.avatar ? (
                                                                     <Image src={getOptimizedImageUrl(u.avatar)} alt={u.name || 'Avatar'} fill className="object-cover" unoptimized />
                                                                 ) : (
-                                                                    <User className="w-5 h-5 m-2.5 text-slate-400" />
+                                                                    <User className="w-5 h-5 m-2.5 text-red-400" />
                                                                 )}
                                                             </div>
                                                             {u.email === user?.email ? (
-                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-slate-900" title="Tài khoản đang đăng nhập" />
+                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#1a0808]" title="Tài khoản đang đăng nhập" />
                                                             ) : (
-                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-slate-400 ring-2 ring-white dark:ring-slate-900" title="Không hoạt động" />
+                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neutral-300 dark:bg-neutral-600 ring-2 ring-white dark:ring-[#1a0808]" title="Không hoạt động" />
                                                             )}
                                                         </div>
-                                                        <p className="text-sm font-medium text-slate-800 dark:text-slate-200 truncate max-w-[150px]">{u.name || 'Ẩn danh'}</p>
+                                                        <p className="text-sm font-medium text-neutral-900 dark:text-neutral-100 truncate max-w-[150px]">{u.name || 'Ẩn danh'}</p>
                                                     </div>
                                                 </td>
-                                                <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">{u.email}</td>
+                                                <td className="px-5 py-4 text-sm text-neutral-700 dark:text-neutral-300">{u.email}</td>
                                                 <td className="px-5 py-4">
                                                     {u.role === 'admin' ? (
-                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-700 dark:text-slate-300">
+                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-xs font-medium bg-red-100 dark:bg-red-900/30 text-red-800 dark:text-red-200">
                                                             <ShieldAlert className="w-3 h-3" /> Quản trị
                                                         </span>
                                                     ) : (
-                                                        <span className="inline-flex px-2.5 py-1 rounded-[8px] text-xs font-medium bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-400">
+                                                        <span className="inline-flex px-2.5 py-1 rounded-[8px] text-xs font-medium bg-neutral-100 dark:bg-neutral-800/50 text-neutral-600 dark:text-neutral-400">
                                                             Người dùng
                                                         </span>
                                                     )}
@@ -627,17 +637,17 @@ export default function AdminDashboard() {
                                                     {u.email === user?.email ? (
                                                         <span className="font-mono text-emerald-600 dark:text-emerald-400 tabular-nums">{formatSessionTime(sessionSeconds)}</span>
                                                     ) : (
-                                                        <span className="text-slate-400">—</span>
+                                                        <span className="text-neutral-300 dark:text-neutral-600">—</span>
                                                     )}
                                                 </td>
-                                                <td className="px-5 py-4 text-sm text-slate-500 whitespace-nowrap">
+                                                <td className="px-5 py-4 text-sm text-neutral-500 dark:text-neutral-400 whitespace-nowrap">
                                                     {new Date(u.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
                                                 </td>
                                                 <td className="px-5 py-4">
                                                     <div className="flex justify-end">
                                                         <button
                                                             onClick={() => handleDeleteUser(u)}
-                                                            className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors"
+                                                            className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors"
                                                             title="Xóa"
                                                         >
                                                             <Trash2 className="w-4 h-4" />
@@ -651,35 +661,35 @@ export default function AdminDashboard() {
                             ) : activeTab === 'tags' ? (
                                 <table className="w-full text-left">
                                     <thead>
-                                        <tr className="text-xs font-medium text-slate-500 dark:text-slate-400 border-b border-slate-200 dark:border-slate-800">
+                                        <tr className="text-xs font-medium text-neutral-500 dark:text-neutral-400 border-b border-red-100 dark:border-red-900/30">
                                             <th className="px-5 py-4 text-left">Tên thẻ (Tag)</th>
                                             <th className="px-5 py-4 text-left">Số bài viết đang sử dụng</th>
                                             <th className="px-5 py-4 text-right">Thao tác</th>
                                         </tr>
                                     </thead>
-                                    <tbody className="divide-y divide-slate-200 dark:divide-slate-800">
+                                    <tbody className="divide-y divide-red-100 dark:divide-red-900/30">
                                         {availablePostTags
                                             .filter(tag => tag.includes(searchQuery.toLowerCase()))
                                             .map((tag) => (
-                                                <tr key={tag} className="group hover:bg-slate-50 dark:hover:bg-slate-800/30 transition-colors">
+                                                <tr key={tag} className="group hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors">
                                                     <td className="px-5 py-4">
                                                         {editingTag?.oldName === tag ? (
                                                             <div className="flex items-center gap-2">
                                                                 <Input
                                                                     value={editingTag.newName}
                                                                     onChange={(e) => setEditingTag({ ...editingTag, newName: e.target.value })}
-                                                                    className="h-8 text-sm"
+                                                                    className="h-8 text-sm text-neutral-900 dark:text-neutral-100"
                                                                     autoFocus
                                                                     disabled={isUpdatingTag}
                                                                 />
                                                             </div>
                                                         ) : (
-                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-sm font-medium bg-slate-100 dark:bg-slate-800/60 text-slate-700 dark:text-slate-300 border border-slate-200 dark:border-slate-700">
+                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-sm font-medium bg-red-50 dark:bg-red-900/20 text-red-800 dark:text-red-200 border border-red-200 dark:border-red-800/50">
                                                                 #{tag}
                                                             </span>
                                                         )}
                                                     </td>
-                                                    <td className="px-5 py-4 text-sm text-slate-600 dark:text-slate-400">
+                                                    <td className="px-5 py-4 text-sm text-neutral-700 dark:text-neutral-300">
                                                         {tagCounts[tag] || 0} bài viết
                                                     </td>
                                                     <td className="px-5 py-4">
@@ -689,7 +699,7 @@ export default function AdminDashboard() {
                                                                     <Button
                                                                         size="sm"
                                                                         variant="ghost"
-                                                                        className="h-8 rounded-[8px]"
+                                                                        className="h-8 rounded-[8px] text-neutral-600 dark:text-neutral-400"
                                                                         onClick={() => setEditingTag(null)}
                                                                         disabled={isUpdatingTag}
                                                                     >
@@ -697,7 +707,7 @@ export default function AdminDashboard() {
                                                                     </Button>
                                                                     <Button
                                                                         size="sm"
-                                                                        className="h-8 rounded-[8px]"
+                                                                        className="h-8 rounded-[8px] bg-red-600 hover:bg-red-700 text-white"
                                                                         onClick={handleUpdateTag}
                                                                         disabled={isUpdatingTag}
                                                                     >
@@ -708,14 +718,14 @@ export default function AdminDashboard() {
                                                                 <>
                                                                     <button
                                                                         onClick={() => setEditingTag({ oldName: tag, newName: tag })}
-                                                                        className="p-2 text-slate-500 hover:text-slate-800 dark:hover:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-[8px] transition-colors"
+                                                                        className="p-2 text-neutral-500 hover:text-red-600 dark:hover:text-red-400 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors"
                                                                         title="Sửa tên tag trên toàn bộ bài viết"
                                                                     >
                                                                         <Pencil className="w-4 h-4" />
                                                                     </button>
                                                                     <button
                                                                         onClick={() => setDeleteTarget({ type: 'tag', id: tag, name: tag })}
-                                                                        className="p-2 text-slate-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors"
+                                                                        className="p-2 text-neutral-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-[8px] transition-colors"
                                                                         title="Xóa tag khỏi toàn bộ bài viết"
                                                                     >
                                                                         <Trash2 className="w-4 h-4" />
@@ -770,6 +780,24 @@ export default function AdminDashboard() {
                 }
                 confirmLabel={isDeletingTarget ? 'Đang xóa...' : 'Xóa'}
             />
+
+            {/* Toast Notification */}
+            {toastMessage && (
+                <div className="fixed top-6 right-6 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
+                    <div className="flex items-center gap-3 px-5 py-4 rounded-[8px] bg-white dark:bg-[#1a0808] border border-red-200 dark:border-red-800/50 shadow-2xl shadow-red-500/10 max-w-sm">
+                        <div className="shrink-0 w-9 h-9 rounded-full bg-red-100 dark:bg-red-900/30 flex items-center justify-center">
+                            <AlertTriangle className="w-5 h-5 text-red-600 dark:text-red-400" />
+                        </div>
+                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 flex-1">{toastMessage}</p>
+                        <button
+                            onClick={() => setToastMessage(null)}
+                            className="shrink-0 p-1 text-neutral-400 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors rounded-[4px] hover:bg-neutral-100 dark:hover:bg-red-900/20 cursor-pointer"
+                        >
+                            <X className="w-4 h-4" />
+                        </button>
+                    </div>
+                </div>
+            )}
         </div >
     );
 }
