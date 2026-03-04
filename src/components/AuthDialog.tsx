@@ -128,15 +128,15 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
     return (
         <Dialog open={open} onOpenChange={(val) => { onOpenChange(val); if (!val) resetState(); }}>
-            <DialogContent className="sm:max-w-md bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+            <DialogContent className="sm:max-w-md bg-white dark:bg-[#1a0808] border-red-200 dark:border-red-900/30">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-center text-slate-900 dark:text-white mb-2">
+                    <DialogTitle className="text-2xl font-bold text-center text-neutral-900 dark:text-neutral-100 mb-2">
                         {mode === 'login' && 'Chào mừng trở lại'}
                         {mode === 'register' && 'Tạo tài khoản mới'}
                         {mode === 'forgot-password' && 'Khôi phục mật khẩu'}
                         {mode === 'verify' && 'Xác thực tài khoản'}
                     </DialogTitle>
-                    <DialogDescription className="text-center text-slate-500 dark:text-slate-400">
+                    <DialogDescription className="text-center text-neutral-500 dark:text-neutral-400">
                         {mode === 'login' && 'Đăng nhập để tiếp tục viết câu chuyện của bạn'}
                         {mode === 'register' && 'Tham gia cộng đồng và chia sẻ ý tưởng của bạn'}
                         {mode === 'forgot-password' && 'Nhập email để nhận liên kết đặt lại mật khẩu'}
@@ -159,7 +159,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 <form onSubmit={handleSubmit} className="space-y-4 mt-4">
                     {mode === 'register' && (
                         <div className="relative">
-                            <User className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                            <User className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                             <Input
                                 placeholder="Họ và tên"
                                 value={name}
@@ -171,7 +171,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     )}
 
                     <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                        <Mail className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                         <Input
                             type="text"
                             placeholder="Email hoặc tên đăng nhập"
@@ -185,7 +185,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     {mode !== 'forgot-password' && mode !== 'verify' && (
                         <div className="space-y-4">
                             <div className="relative">
-                                <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                                <Lock className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                                 <Input
                                     type="password"
                                     placeholder="Mật khẩu"
@@ -201,7 +201,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     <div className="flex gap-1.5 h-1.5">
                                         {[1, 2, 3, 4].map((level) => {
                                             const strength = getPasswordStrength(password);
-                                            let bgColor = 'bg-slate-200 dark:bg-slate-700';
+                                            let bgColor = 'bg-red-100 dark:bg-red-900/30';
                                             if (strength >= level) {
                                                 if (strength === 1) bgColor = 'bg-red-500';
                                                 else if (strength === 2) bgColor = 'bg-orange-500';
@@ -216,7 +216,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                             );
                                         })}
                                     </div>
-                                    <div className="text-[11px] font-medium text-right text-slate-500 dark:text-slate-400">
+                                    <div className="text-[11px] font-medium text-right text-neutral-500 dark:text-neutral-400">
                                         {getPasswordStrength(password) === 0 && 'Rất yếu'}
                                         {getPasswordStrength(password) === 1 && 'Yếu'}
                                         {getPasswordStrength(password) === 2 && 'Trung bình'}
@@ -228,7 +228,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
                             {mode === 'register' && (
                                 <div className="relative">
-                                    <Lock className="absolute left-3 top-3 h-4 w-4 text-slate-400" />
+                                    <Lock className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                                     <Input
                                         type="password"
                                         placeholder="Xác nhận mật khẩu"
@@ -244,7 +244,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
                     {mode === 'verify' && (
                         <div className="flex flex-col gap-3 items-center w-full">
-                            <span className="text-sm text-slate-500 font-medium">Nhập mã 6 chữ số</span>
+                            <span className="text-sm text-neutral-500 font-medium">Nhập mã 6 chữ số</span>
                             <div className="flex gap-2 sm:gap-3 justify-center w-full">
                                 {[...Array(6)].map((_, index) => (
                                     <input
@@ -284,7 +284,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                             }
                                         }}
                                         id={`otp-${index}`}
-                                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl font-bold bg-white dark:bg-slate-800 border-2 border-slate-200 dark:border-slate-700 rounded-none focus:outline-none focus:border-slate-900 dark:focus:border-slate-300 transition-colors shadow-sm"
+                                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl font-bold bg-white dark:bg-[#1a0808] border-2 border-red-200 dark:border-red-800/50 rounded-none focus:outline-none focus:border-red-500 dark:focus:border-red-400 transition-colors shadow-sm text-neutral-900 dark:text-neutral-100"
                                         required={index === 0} // Optional visual queue
                                     />
                                 ))}
@@ -300,14 +300,14 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     type="checkbox"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 rounded-none border-slate-300 dark:border-slate-700 text-slate-900 focus:ring-slate-500 accent-slate-900 dark:accent-slate-100"
+                                    className="w-4 h-4 rounded-none border-red-300 dark:border-red-700 text-red-600 focus:ring-red-500 accent-red-600 dark:accent-red-400"
                                 />
-                                <span className="text-xs text-slate-500 group-hover:text-slate-700 dark:group-hover:text-slate-300 transition-colors">Ghi nhớ đăng nhập</span>
+                                <span className="text-xs text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300 transition-colors">Ghi nhớ đăng nhập</span>
                             </label>
                             <button
                                 type="button"
                                 onClick={() => setMode('forgot-password')}
-                                className="text-xs text-slate-500 hover:text-slate-900 dark:hover:text-slate-100 transition-colors"
+                                className="text-xs text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                             >
                                 Quên mật khẩu?
                             </button>
@@ -332,11 +332,11 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     </Button>
                 </form>
 
-                <div className="mt-6 text-center text-sm text-slate-500">
+                <div className="mt-6 text-center text-sm text-neutral-500">
                     {mode === 'login' && (
                         <p>
                             Chưa có tài khoản?{' '}
-                            <button onClick={() => setMode('register')} className="text-slate-900 dark:text-white font-semibold hover:underline decoration-2">
+                            <button onClick={() => setMode('register')} className="text-red-600 dark:text-red-400 font-semibold hover:underline decoration-2">
                                 Đăng ký ngay
                             </button>
                         </p>
@@ -344,7 +344,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     {(mode === 'register' || mode === 'forgot-password' || mode === 'verify') && (
                         <p>
                             Đã có tài khoản?{' '}
-                            <button type="button" onClick={() => setMode('login')} className="text-slate-900 dark:text-white font-semibold hover:underline decoration-2">
+                            <button type="button" onClick={() => setMode('login')} className="text-red-600 dark:text-red-400 font-semibold hover:underline decoration-2">
                                 Đăng nhập
                             </button>
                         </p>

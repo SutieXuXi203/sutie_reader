@@ -36,6 +36,7 @@ export default function Home() {
   const { user, logout, isLoading: isAuthLoading, isAdmin } = useAuth();
   const [contactSent, setContactSent] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
+  const [scrollProgress, setScrollProgress] = useState(0);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -43,6 +44,11 @@ export default function Home() {
       const half = window.innerHeight / 2;
       const postsEl = document.getElementById('posts');
       const contactEl = document.getElementById('contact');
+
+      // Update scroll progress
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? Math.min(scrollY / docHeight, 1) : 0;
+      setScrollProgress(progress);
 
       if (contactEl && scrollY >= (contactEl as HTMLElement).offsetTop - half) {
         setActiveSection('contact');
@@ -157,59 +163,88 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0e0505] transition-colors relative selection:bg-red-200 selection:text-red-900 dark:selection:bg-red-900/50 dark:selection:text-red-100">
+      {/* ── SCROLL PROGRESS BAR ── */}
+      <div className="fixed top-0 left-0 right-0 z-[60] h-[3px] bg-transparent">
+        <div
+          className="h-full bg-gradient-to-r from-red-500 via-red-400 to-rose-500 shadow-[0_0_10px_rgba(239,68,68,0.5)] transition-[width] duration-150 ease-out"
+          style={{ width: `${scrollProgress * 100}%` }}
+        />
+      </div>
+
       {/* Subtle grid pattern background */}
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.red.200)_1px,transparent_1px)] dark:bg-[radial-gradient(theme(colors.red.900)_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.25] dark:opacity-[0.07] z-0 mix-blend-multiply dark:mix-blend-screen" />
 
       {/* ── SIDEBAR / BOTTOM NAVBAR ── */}
-      <nav className="fixed md:top-0 md:left-0 bottom-0 left-0 right-0 z-50 md:w-24 w-full flex md:flex-col flex-row items-center justify-around md:justify-start md:py-8 py-3 md:gap-8 px-4 md:px-0 bg-white/90 md:bg-transparent dark:bg-[#1a0808]/90 md:dark:bg-transparent backdrop-blur-md border-t border-red-100 dark:border-red-900/30 md:border-t-0 transition-all duration-300 shadow-[0_-4px_20px_-10px_rgba(220,38,38,0.15)] md:shadow-none">
-        {/* Logo (Desktop only) */}
-        <div className="hidden md:flex flex-col items-center gap-2">
-          <div className="w-12 h-12 gradient-red rounded-none flex items-center justify-center text-white shadow-lg shadow-red-500/30">
-            <BookOpen className="w-6 h-6" />
-          </div>
-          <span className="text-[10px] font-bold text-red-600 dark:text-red-400 tracking-[0.2em] uppercase">Sutie</span>
+      <nav className="fixed md:top-0 md:left-0 bottom-0 left-0 right-0 z-50 md:w-16 md:h-screen w-full flex md:flex-col flex-row items-center justify-around md:justify-start md:py-8 py-3 px-4 md:px-0 bg-white/90 md:bg-transparent dark:bg-[#1a0808]/90 md:dark:bg-transparent backdrop-blur-md border-t border-red-100 dark:border-red-900/30 md:border-t-0 transition-all duration-300 shadow-[0_-4px_20px_-10px_rgba(220,38,38,0.15)] md:shadow-none">
+
+        {/* Dot navigation - absolutely centered on desktop */}
+        <div className="hidden md:flex md:flex-col md:items-center md:gap-8 md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
+          {[
+            { id: 'home', label: 'Trang chủ' },
+            { id: 'posts', label: 'Bài viết' },
+            { id: 'contact', label: 'Liên hệ' },
+          ].map((section) => (
+            <button
+              key={section.id}
+              onClick={() => {
+                if (section.id === 'home') {
+                  window.scrollTo({ top: 0, behavior: 'smooth' });
+                } else {
+                  document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth' });
+                }
+              }}
+              className="group relative flex items-center cursor-pointer"
+              title={section.label}
+            >
+              {/* Dot */}
+              <div className={`w-1.5 h-1.5 rounded-full border-[1.5px] transition-all duration-300 ${activeSection === section.id
+                ? 'bg-red-500 border-red-500 scale-150 shadow-[0_0_6px_rgba(239,68,68,0.5)]'
+                : 'bg-transparent border-red-300/50 dark:border-red-700/50 hover:border-red-400 dark:hover:border-red-500 hover:scale-125'
+                }`} />
+              {/* Label tooltip - appears to the right */}
+              <span className={`absolute left-full ml-3 text-xs font-semibold whitespace-nowrap px-2.5 py-1 rounded-md transition-all duration-300 ${activeSection === section.id
+                ? 'opacity-100 translate-x-0 text-red-500 dark:text-red-400'
+                : 'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 text-neutral-500 dark:text-neutral-400'
+                }`}>
+                {section.label}
+              </span>
+            </button>
+          ))}
+          {/* Connecting line */}
+          <div className="absolute top-0 bottom-0 left-[2px] w-px bg-red-200/30 dark:bg-red-800/20 -z-10" />
         </div>
 
-        <div className="hidden md:block w-10 h-px bg-red-100 dark:bg-white/20" />
-
-        {/* Nav links */}
-        <div className="flex md:flex-col flex-row items-center justify-center gap-6 md:gap-8 flex-1 md:flex-none">
+        {/* Mobile nav links */}
+        <div className="flex md:hidden flex-row items-center justify-center gap-6 flex-1">
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             title="Trang chủ"
             className="relative flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 transition-all hover:scale-110 active:scale-95 cursor-pointer">
-            <HomeIcon className="w-6 h-6 md:w-6 md:h-6" />
-            <span className="hidden md:block">Trang chủ</span>
-            <span className={`absolute right-0 translate-x-full top-1/2 -translate-y-1/2 h-px w-8 bg-gradient-to-r from-transparent via-red-400/35 dark:via-red-400/25 to-transparent transition-all duration-500 ease-out origin-left hidden md:block ${activeSection === 'home' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
-            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-red-500/60 md:hidden transition-all duration-300 ${activeSection === 'home' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
+            <HomeIcon className="w-6 h-6" />
+            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-red-500/60 transition-all duration-300 ${activeSection === 'home' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
           </button>
           <a href="#posts"
             title="Bài viết"
             className="relative flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 transition-all hover:scale-110 active:scale-95 group">
-            <FileText className="w-6 h-6 md:w-6 md:h-6" />
-            <span className="hidden md:block">Bài viết</span>
-            <span className={`absolute right-0 translate-x-full top-1/2 -translate-y-1/2 h-px w-8 bg-gradient-to-r from-transparent via-red-400/35 dark:via-red-400/25 to-transparent transition-all duration-500 ease-out origin-left hidden md:block ${activeSection === 'posts' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
-            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-red-500/60 md:hidden transition-all duration-300 ${activeSection === 'posts' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
+            <FileText className="w-6 h-6" />
+            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-red-500/60 transition-all duration-300 ${activeSection === 'posts' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
           </a>
           <a href="#contact"
             title="Liên hệ"
             className="relative flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-red-400 dark:text-red-300 hover:text-red-600 dark:hover:text-red-100 transition-all hover:scale-110 active:scale-95">
-            <Mail className="w-6 h-6 md:w-6 md:h-6" />
-            <span className="hidden md:block">Liên hệ</span>
-            <span className={`absolute right-0 translate-x-full top-1/2 -translate-y-1/2 h-px w-8 bg-gradient-to-r from-transparent via-red-400/35 dark:via-red-400/25 to-transparent transition-all duration-500 ease-out origin-left hidden md:block ${activeSection === 'contact' ? 'opacity-100 scale-x-100' : 'opacity-0 scale-x-0'}`} />
-            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-red-500/60 md:hidden transition-all duration-300 ${activeSection === 'contact' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
+            <Mail className="w-6 h-6" />
+            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-red-500/60 transition-all duration-300 ${activeSection === 'contact' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
           </a>
           {isAdmin && (
             <Link href="/admin"
               title="Dashboard"
               className="flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-red-600 dark:text-red-400 hover:opacity-70 transition-all hover:scale-110 active:scale-95">
-              <LayoutDashboard className="w-6 h-6 md:w-6 md:h-6" />
-              <span className="hidden md:block">Quản trị</span>
+              <LayoutDashboard className="w-6 h-6" />
             </Link>
           )}
         </div>
 
         {/* Bottom actions */}
-        <div className="flex flex-row md:flex-col items-center gap-4 md:gap-6 mt-0 md:mt-auto">
+        <div className="flex flex-row md:flex-col items-center gap-4 md:gap-6 md:mt-auto">
           {user ? (
             <>
               <div className="group relative">
@@ -238,6 +273,15 @@ export default function Home() {
                     <UserIcon className="w-5 h-5" />
                     <span>Hồ sơ cá nhân</span>
                   </button>
+                  {isAdmin && (
+                    <Link
+                      href="/admin"
+                      className="w-full flex items-center gap-3 px-3 py-3 text-sm font-bold text-neutral-800 dark:text-neutral-200 hover:bg-red-50 dark:hover:bg-red-900/20 transition-all border-b border-red-50 dark:border-red-900/20"
+                    >
+                      <LayoutDashboard className="w-5 h-5" />
+                      <span>Quản trị</span>
+                    </Link>
+                  )}
                   <button
                     onClick={logout}
                     className="w-full flex items-center gap-3 px-3 py-3 text-sm font-bold text-red-500 hover:bg-red-50 dark:hover:bg-red-500/10 transition-all"
