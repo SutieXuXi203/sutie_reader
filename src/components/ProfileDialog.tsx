@@ -26,7 +26,6 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     const fileInputRef = useRef<HTMLInputElement>(null);
     const [isUploading, setIsUploading] = useState(false);
 
-    // Cropper states
     const [imageSrc, setImageSrc] = useState<string | null>(null);
     const [crop, setCrop] = useState({ x: 0, y: 0 });
     const [zoom, setZoom] = useState(1);
@@ -74,7 +73,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
             setIsUploading(true);
             const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
             setAvatarUrl(croppedImage);
-            setImageSrc(null); // Close cropper UI
+            setImageSrc(null);
         } catch (e: any) {
             setError('Không thể cắt ảnh');
             console.error(e);
@@ -110,7 +109,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
             }
 
             setSuccess('Cập nhật thông tin thành công!');
-            // Update auth context
+
             if (user) {
                 login({ ...user, name: data.user.name, avatar: data.user.avatar });
             }
@@ -193,7 +192,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                     </div>
                 ) : (
                     <form onSubmit={handleSubmit} className="space-y-6 mt-4">
-                        {/* Avatar Upload Selection */}
+
                         <div className="flex flex-col items-center gap-4">
                             <div
                                 className="relative w-24 h-24 rounded-full overflow-hidden border-2 border-border bg-muted group cursor-pointer"

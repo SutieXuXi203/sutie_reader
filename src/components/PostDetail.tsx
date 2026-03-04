@@ -1,10 +1,8 @@
 'use client';
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
 import Image from 'next/image';
 import { getOptimizedImageUrl } from '@/lib/utils';
-
 interface Post {
     _id: string;
     title: string;
@@ -14,26 +12,22 @@ interface Post {
     author: string;
     createdAt: string;
 }
-
 interface PostDetailProps {
     post: Post;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
-
 export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
     const [showUI, setShowUI] = useState(true);
     const [currentPage, setCurrentPage] = useState(0);
     const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
-
     const resetUiTimer = useCallback(() => {
         setShowUI(true);
         if (uiTimer.current) clearTimeout(uiTimer.current);
         uiTimer.current = setTimeout(() => setShowUI(false), 3000);
     }, []);
-
     useEffect(() => {
         if (!open) {
             setCurrentPage(0);
@@ -44,7 +38,6 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
         uiTimer.current = setTimeout(() => setShowUI(false), 3000);
         return () => { if (uiTimer.current) clearTimeout(uiTimer.current); };
     }, [open]);
-
     useEffect(() => {
         if (!open) return;
         const handleKey = (e: KeyboardEvent) => {
@@ -53,13 +46,10 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
     }, [open, onOpenChange]);
-
-    // Track which image is in view
     useEffect(() => {
         if (!open) return;
         const container = scrollRef.current;
         if (!container) return;
-
         const observer = new IntersectionObserver(
             (entries) => {
                 entries.forEach((entry) => {
@@ -71,20 +61,14 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
             },
             { root: container, threshold: 0.4 }
         );
-
         imageRefs.current.forEach((ref) => { if (ref) observer.observe(ref); });
         return () => observer.disconnect();
     }, [open, post.images.length]);
-
     if (!open) return null;
-
     const total = post.images.length;
     const progress = total > 1 ? (currentPage / (total - 1)) * 100 : 100;
-
     return (
         <div className="fixed inset-0 z-50 bg-[#0a0000] flex flex-col" onMouseMove={resetUiTimer}>
-
-            {/* ── TOP BAR ── */}
             <div
                 className={`absolute top-0 left-0 right-0 z-20 flex items-center justify-between px-4 py-3
           bg-gradient-to-b from-black/90 via-black/60 to-transparent transition-opacity duration-500
@@ -99,7 +83,6 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                         <p className="text-red-300/70 text-xs font-medium">{post.author}</p>
                     </div>
                 </div>
-
                 <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-none">
                         <span className="text-red-300 text-xs font-bold tracking-wider">
@@ -116,8 +99,6 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                     </button>
                 </div>
             </div>
-
-            {/* ── SCROLL CONTAINER ── */}
             <div
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto overflow-x-hidden no-scrollbar"
@@ -140,8 +121,6 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                             />
                         </div>
                     ))}
-
-                    {/* End of chapter */}
                     <div className="flex flex-col items-center gap-4 py-16 text-center">
                         <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
                         <div className="w-8 h-8 gradient-red rounded-none flex items-center justify-center shadow-lg shadow-red-900/40">
@@ -158,12 +137,9 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                     </div>
                 </div>
             </div>
-
-            {/* ── PROGRESS BAR (bottom) ── */}
             <div
                 className={`absolute bottom-0 left-0 right-0 z-20 transition-opacity duration-500 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
-                {/* Progress info */}
                 <div className="flex justify-center pb-2">
                     <span className="text-[10px] text-white/30 font-medium tracking-widest uppercase">
                         {Math.round(progress)}% · Trang {currentPage + 1}/{total}

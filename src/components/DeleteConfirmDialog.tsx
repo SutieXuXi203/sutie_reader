@@ -1,5 +1,4 @@
 'use client';
-
 import { AlertTriangle } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
@@ -9,7 +8,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
-
 interface DeleteConfirmDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -20,7 +18,6 @@ interface DeleteConfirmDialogProps {
   confirmLabel?: string;
   cancelLabel?: string;
 }
-
 export function DeleteConfirmDialog({
   open,
   onOpenChange,
@@ -48,7 +45,6 @@ export function DeleteConfirmDialog({
             {description}
           </DialogDescription>
         </DialogHeader>
-
         <div className="flex items-center justify-end gap-2 pt-2">
           <Button
             type="button"

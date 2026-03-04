@@ -1,17 +1,14 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
-
 export async function POST(request: Request) {
     try {
         const { name, email, message } = await request.json();
-
         if (!name || !email || !message) {
             return NextResponse.json(
                 { error: 'Vui lòng cung cấp đầy đủ tên, email và tin nhắn.' },
                 { status: 400 }
             );
         }
-
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
@@ -19,7 +16,6 @@ export async function POST(request: Request) {
                 pass: process.env.EMAIL_PASS,
             },
         });
-
         const mailOptions = {
             from: `"${name}" <${email}>`,
             to: 'sutiexuxi.supp.0410@gmail.com',
@@ -34,9 +30,7 @@ export async function POST(request: Request) {
         <p style="white-space: pre-wrap;">${message}</p>
       `,
         };
-
         await transporter.sendMail(mailOptions);
-
         return NextResponse.json(
             { message: 'Tin nhắn đã được gửi thành công.' },
             { status: 200 }

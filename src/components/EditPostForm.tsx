@@ -1,5 +1,4 @@
 'use client';
-
 import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -10,7 +9,6 @@ import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { TagPicker } from '@/components/TagPicker';
-
 interface Post {
     _id: string;
     title: string;
@@ -20,7 +18,6 @@ interface Post {
     images: string[];
     author: string;
 }
-
 interface EditPostFormProps {
     post: Post;
     open: boolean;
@@ -28,19 +25,16 @@ interface EditPostFormProps {
     onPostUpdated: () => void;
     availableTags?: string[];
 }
-
 export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availableTags = [] }: EditPostFormProps) {
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState(post.title);
     const [tags, setTags] = useState<string[]>(post.tags || []);
     const [content, setContent] = useState(post.content);
     const [author, setAuthor] = useState(post.author);
-    // Keep existing image paths (strings, not base64 blobs)
     const [keptImages, setKeptImages] = useState<string[]>(post.images);
     const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
     const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
     const [error, setError] = useState('');
-
     useEffect(() => {
         setTitle(post.title);
         setTags(post.tags || []);
@@ -51,11 +45,9 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         setNewImagePreviews([]);
         setError('');
     }, [post, open]);
-
     const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
         const files = Array.from(e.target.files || []);
         const total = keptImages.length + newImageFiles.length + files.length;
-
         setNewImageFiles((prev) => [...prev, ...files]);
         setError('');
         files.forEach((file) => {
@@ -64,18 +56,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             reader.readAsDataURL(file);
         });
     };
-
     const removeKept = (idx: number) =>
         setKeptImages((prev) => prev.filter((_, i) => i !== idx));
-
     const removeNew = (idx: number) => {
         setNewImageFiles((prev) => prev.filter((_, i) => i !== idx));
         setNewImagePreviews((prev) => prev.filter((_, i) => i !== idx));
     };
-
     const uploadNewImages = async (files: File[], uploadTitle: string): Promise<string[]> => {
         if (!files.length) return [];
-        // Nén ảnh mới trước khi upload
         const compressedFiles = await Promise.all(
             files.map(async (file) => {
                 const options = {
@@ -87,7 +75,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     return await imageCompression(file, options);
                 } catch (error) {
                     console.error('Lỗi khi nén ảnh:', error);
-                    return file; // Nén lỗi thì upload ảnh gốc
+                    return file;
                 }
             })
         );
@@ -102,11 +90,9 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         const { urls } = await res.json();
         return urls as string[];
     };
-
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setError('');
-
         if (!title || !content) {
             setError('Vui lòng điền tiêu đề và nội dung');
             return;
@@ -115,26 +101,19 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             setError('Cần có ít nhất một hình ảnh');
             return;
         }
-
         setIsSubmitting(true);
         try {
-            // 1. Upload new files to filesystem, get paths
             const newUrls = await uploadNewImages(newImageFiles, title);
-
-            // 2. Merge: kept existing paths + new paths (no base64 sent to MongoDB)
             const allImages = [...keptImages, ...newUrls];
-
             const response = await fetch(`/api/posts/${post._id}`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title, tags, content, author, images: allImages }),
             });
-
             if (!response.ok) {
                 const data = await response.json().catch(() => ({}));
                 throw new Error(data?.details || data?.error || `Server error ${response.status}`);
             }
-
             onOpenChange(false);
             onPostUpdated();
         } catch (err) {
@@ -145,7 +124,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             setIsSubmitting(false);
         }
     };
-
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
@@ -156,20 +134,17 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 <DialogHeader>
                     <DialogTitle className="text-xl font-medium">Chỉnh sửa bài viết</DialogTitle>
                 </DialogHeader>
-
                 <form onSubmit={handleSubmit} className="space-y-5">
                     {error && (
                         <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-2 rounded-none text-sm">
                             {error}
                         </div>
                     )}
-
                     <div>
                         <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tiêu đề</label>
                         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tiêu đề" maxLength={100} disabled={isSubmitting} className="rounded-[8px]" />
                         <p className="text-xs text-slate-400 mt-1">{title.length}/100</p>
                     </div>
-
                     <div>
                         <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tag (không bắt buộc)</label>
                         <TagPicker
@@ -180,18 +155,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                             placeholder="Nhập tag rồi nhấn Enter"
                         />
                     </div>
-
                     <div>
                         <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Nội dung</label>
                         <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Nội dung bài viết" rows={4} disabled={isSubmitting} className="rounded-[8px]" />
                     </div>
-
                     <div>
                         <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tác giả (tuỳ chọn)</label>
                         <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tên của bạn" disabled={isSubmitting} className="rounded-[8px]" />
                     </div>
-
-                    {/* Kept existing images */}
                     {keptImages.length > 0 && (
                         <div>
                             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh hiện tại ({keptImages.length})</label>
@@ -208,8 +179,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                             </div>
                         </div>
                     )}
-
-                    {/* Upload new images */}
                     <div>
                         <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Thêm ảnh mới</label>
                         <div className="border border-slate-200 dark:border-slate-700 rounded-[8px] p-6 text-center hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
@@ -221,7 +190,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                             </label>
                         </div>
                     </div>
-
                     {newImagePreviews.length > 0 && (
                         <div>
                             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh mới ({newImagePreviews.length})</label>
@@ -238,7 +206,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                             </div>
                         </div>
                     )}
-
                     <div className="flex gap-2 justify-end pt-2">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-[8px]" size="sm">Hủy</Button>
                         <Button type="submit" disabled={isSubmitting} className="rounded-[8px]" size="sm">

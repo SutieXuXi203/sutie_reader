@@ -1,5 +1,4 @@
 'use client';
-
 import { Trash2, Pencil, CalendarDays, User, ShieldAlert, Eye } from 'lucide-react';
 import { useEffect, useState } from 'react';
 import Image from 'next/image';
@@ -10,7 +9,6 @@ import { EditPostForm } from '@/components/EditPostForm';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { useAuth } from '@/providers/AuthContext';
 import { getOptimizedImageUrl } from '@/lib/utils';
-
 interface Post {
   _id: string;
   title: string;
@@ -22,14 +20,12 @@ interface Post {
   createdAt: string;
   updatedAt: string;
 }
-
 interface PostCardProps {
   post: Post;
   onDelete: (id: string) => void;
   onUpdate: () => void;
   availableTags?: string[];
 }
-
 export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
@@ -40,51 +36,41 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
   const [nsfwRevealed, setNsfwRevealed] = useState(false);
   const [showNsfwConfirm, setShowNsfwConfirm] = useState(false);
   const { isAdmin } = useAuth();
-
   const isNSFW = (post.tags || []).some(tag => tag.toLowerCase().includes('18+'));
-
   useEffect(() => {
     const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
     const updateHoverCapability = () => setCanHoverPreview(mediaQuery.matches);
-
     updateHoverCapability();
-
     if (typeof mediaQuery.addEventListener === 'function') {
       mediaQuery.addEventListener('change', updateHoverCapability);
       return () => mediaQuery.removeEventListener('change', updateHoverCapability);
     }
-
     mediaQuery.addListener(updateHoverCapability);
     return () => mediaQuery.removeListener(updateHoverCapability);
   }, []);
-
-  // 10-second auto-hide timeout for NSFW content
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
     if (nsfwRevealed) {
       timeout = setTimeout(() => {
         setNsfwRevealed(false);
-        setShowPreview(false); // Also close the hover preview if they are currently hovering
+        setShowPreview(false);
       }, 5000);
     }
     return () => {
       if (timeout) clearTimeout(timeout);
     };
   }, [nsfwRevealed]);
-
   const handleTagClick = (e: React.MouseEvent, tag: string) => {
     e.preventDefault();
     e.stopPropagation();
     router.push(`/products?tag=${encodeURIComponent(tag.toLowerCase())}`);
   };
-
   const handleDelete = async () => {
     setIsDeleting(true);
     try {
       const response = await fetch(`/api/posts/${post._id}`, {
         method: 'DELETE',
       });
-
       if (response.ok) {
         onDelete(post._id);
         setIsDeleteConfirmOpen(false);
@@ -98,7 +84,6 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
       setIsDeleting(false);
     }
   };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {
       hour: '2-digit',
@@ -108,7 +93,6 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
       day: 'numeric',
     });
   };
-
   return (
     <>
       <Link
@@ -135,7 +119,6 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
               </svg>
             </div>
           )}
-          {/* 18+ NSFW overlay */}
           {isNSFW && !nsfwRevealed && (
             <div
               className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-red-950/60 dark:bg-black/60 backdrop-blur-sm cursor-pointer transition-all duration-300"
@@ -154,8 +137,6 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
-
-        {/* Content (Bottom) */}
         <div className="p-5 md:p-6 flex flex-col flex-grow text-left">
           <h3 className="text-lg font-bold text-red-950 dark:text-red-50 mb-3 group-hover/card:text-red-600 dark:group-hover/card:text-red-400 transition-colors line-clamp-2 leading-tight">
             {post.title}
@@ -183,12 +164,10 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
               {post.description || 'Chưa gắn tag'}
             </p>
           )}
-
           <div className="flex items-center gap-2 mb-6 text-red-600 dark:text-red-400 font-semibold bg-red-50/50 dark:bg-red-900/10 w-fit px-3 py-1.5 rounded-none border border-red-100 dark:border-red-900/30">
             <User className="w-4 h-4" />
             <span className="text-sm">{post.author}</span>
           </div>
-
           <div className="flex flex-wrap items-center justify-between gap-y-3 text-[12px] sm:text-[13px] pt-4 border-t border-red-50 dark:border-red-900/20 mt-auto">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-red-400/80 dark:text-red-500/60 font-medium">
               <span className="flex items-center gap-1.5 whitespace-nowrap">
@@ -218,7 +197,6 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
           </div>
         </div>
       </Link>
-
       <EditPostForm
         post={post}
         open={isEditOpen}
@@ -254,16 +232,12 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
         </div>,
         document.body
       )}
-
-      {/* Custom 18+ Confirmation Dialog */}
       {showNsfwConfirm && typeof document !== 'undefined' && createPortal(
         <div
           className="fixed inset-0 z-[10000] bg-[#050505]/95 backdrop-blur-sm flex flex-col items-center justify-center text-white px-6 text-center"
           onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); }}
         >
-          {/* Subtle red glow */}
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/10 filter blur-[100px] rounded-full pointer-events-none" />
-
           <div
             className="relative z-10 flex flex-col items-center max-w-[400px] w-full bg-[#0a0202] border border-red-900/30 p-8 rounded-2xl shadow-2xl"
             onClick={(e) => e.stopPropagation()}
@@ -271,18 +245,14 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
             <div className="w-14 h-14 bg-[#1a0505] rounded-[16px] flex items-center justify-center mb-6 border border-red-900/40">
               <ShieldAlert className="w-7 h-7 text-red-500" />
             </div>
-
             <h3 className="text-2xl font-bold mb-4 text-white">Cảnh báo !</h3>
-
             <div className="inline-flex items-center gap-2 bg-[#1a0505] text-red-500 text-[10px] uppercase font-bold px-3 py-1 rounded-full mb-6 border border-red-900/30">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
               Nội dung 18+
             </div>
-
             <p className="text-slate-400 mb-8 text-sm leading-relaxed">
               Đây là nội dung nhạy cảm dành cho người trên 18 tuổi. Mở hình ảnh này?
             </p>
-
             <div className="flex gap-3 w-full">
               <button
                 onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); setNsfwRevealed(true); }}

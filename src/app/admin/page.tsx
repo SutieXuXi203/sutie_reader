@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
@@ -12,7 +11,6 @@ import { EditPostForm } from '@/components/EditPostForm';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { Input } from '@/components/ui/input';
 import { getOptimizedImageUrl } from '@/lib/utils';
-
 interface Post {
     _id: string;
     title: string;
@@ -23,7 +21,6 @@ interface Post {
     author: string;
     createdAt: string;
 }
-
 interface AdminUser {
     _id: string;
     email: string;
@@ -32,7 +29,6 @@ interface AdminUser {
     avatar?: string;
     createdAt: string;
 }
-
 export default function AdminDashboard() {
     const { user, isAdmin, isLoading: isAuthLoading } = useAuth();
     const router = useRouter();
@@ -53,31 +49,24 @@ export default function AdminDashboard() {
         | null
     >(null);
     const [isDeletingTarget, setIsDeletingTarget] = useState(false);
-
-    // Tag management state
     const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
     const [editingTag, setEditingTag] = useState<{ oldName: string, newName: string } | null>(null);
     const [isUpdatingTag, setIsUpdatingTag] = useState(false);
     const [newTagName, setNewTagName] = useState('');
     const [isCreatingTag, setIsCreatingTag] = useState(false);
-
-    // Toast notification state
     const [toastMessage, setToastMessage] = useState<string | null>(null);
-
     useEffect(() => {
         if (toastMessage) {
             const timer = setTimeout(() => setToastMessage(null), 4000);
             return () => clearTimeout(timer);
         }
     }, [toastMessage]);
-
     useEffect(() => {
         if (!user) return;
         const start = Date.now();
         const timer = setInterval(() => setSessionSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
         return () => clearInterval(timer);
     }, [user?.email]);
-
     const formatSessionTime = (sec: number) => {
         const h = Math.floor(sec / 3600);
         const m = Math.floor((sec % 3600) / 60);
@@ -85,7 +74,6 @@ export default function AdminDashboard() {
         if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
         return `${m}:${s.toString().padStart(2, '0')}`;
     };
-
     useEffect(() => {
         if (!isAuthLoading) {
             if (!user || user.role !== 'admin') {
@@ -97,7 +85,6 @@ export default function AdminDashboard() {
             }
         }
     }, [user, isAdmin, isAuthLoading]);
-
     const fetchTags = async () => {
         try {
             const res = await fetch('/api/tags');
@@ -109,7 +96,6 @@ export default function AdminDashboard() {
             console.error('Error fetching tags:', error);
         }
     };
-
     const fetchPosts = async () => {
         setIsLoading(true);
         try {
@@ -124,7 +110,6 @@ export default function AdminDashboard() {
             setIsLoading(false);
         }
     };
-
     const fetchUsers = async () => {
         setIsUsersLoading(true);
         try {
@@ -139,7 +124,6 @@ export default function AdminDashboard() {
             setIsUsersLoading(false);
         }
     };
-
     const handleDelete = (post: Post) => {
         setDeleteTarget({
             type: 'post',
@@ -147,30 +131,25 @@ export default function AdminDashboard() {
             title: post.title,
         });
     };
-
     const handleDeleteUser = (targetUser: AdminUser) => {
         if (targetUser.email === user?.email) {
             setToastMessage('Bạn không thể xóa tài khoản của chính mình.');
             return;
         }
-
         setDeleteTarget({
             type: 'user',
             id: targetUser._id,
             email: targetUser.email,
         });
     };
-
     const handleConfirmDelete = async () => {
         if (!deleteTarget) return;
-
         setIsDeletingTarget(true);
         try {
             if (deleteTarget.type === 'post') {
                 const res = await fetch(`/api/posts/${deleteTarget.id}`, {
                     method: 'DELETE',
                 });
-
                 if (res.ok) {
                     setPosts((prev) => prev.filter((p) => p._id !== deleteTarget.id));
                     setDeleteTarget(null);
@@ -181,7 +160,6 @@ export default function AdminDashboard() {
                 const res = await fetch(`/api/admin/users/${deleteTarget.id}`, {
                     method: 'DELETE',
                 });
-
                 if (res.ok) {
                     setUsersList((prev) => prev.filter((u) => u._id !== deleteTarget.id));
                     setDeleteTarget(null);
@@ -193,10 +171,9 @@ export default function AdminDashboard() {
                 const res = await fetch(`/api/tags?tag=${encodeURIComponent(deleteTarget.id)}`, {
                     method: 'DELETE',
                 });
-
                 if (res.ok) {
-                    await fetchPosts(); // Refresh posts to reflect removed tag
-                    await fetchTags(); // Refresh standalone tags
+                    await fetchPosts();
+                    await fetchTags();
                     setDeleteTarget(null);
                 } else {
                     const data = await res.json();
@@ -210,14 +187,12 @@ export default function AdminDashboard() {
             setIsDeletingTarget(false);
         }
     };
-
     const handleUpdateTag = async () => {
         if (!editingTag || !editingTag.newName.trim()) return;
         if (editingTag.oldName === editingTag.newName.trim()) {
             setEditingTag(null);
             return;
         }
-
         setIsUpdatingTag(true);
         try {
             const res = await fetch('/api/tags', {
@@ -228,7 +203,6 @@ export default function AdminDashboard() {
                     newTag: editingTag.newName.trim()
                 })
             });
-
             if (res.ok) {
                 await fetchPosts();
                 await fetchTags();
@@ -244,12 +218,10 @@ export default function AdminDashboard() {
             setIsUpdatingTag(false);
         }
     }
-
     const handleCreateTag = async (e: React.FormEvent) => {
         e.preventDefault();
         const tagValue = newTagName.trim();
         if (!tagValue) return;
-
         setIsCreatingTag(true);
         try {
             const res = await fetch('/api/tags', {
@@ -257,7 +229,6 @@ export default function AdminDashboard() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name: tagValue })
             });
-
             if (res.ok) {
                 setNewTagName('');
                 await fetchTags();
@@ -272,15 +243,12 @@ export default function AdminDashboard() {
             setIsCreatingTag(false);
         }
     };
-
     const availablePostTags = useMemo(() => {
         const postTags = posts.flatMap((post) => (post.tags || []).map((tag) => tag.trim().toLowerCase()).filter(Boolean));
         const standaloneNames = standaloneTags.map(t => t.name.trim().toLowerCase()).filter(Boolean);
-
         return Array.from(new Set([...postTags, ...standaloneNames]))
             .sort((a, b) => a.localeCompare(b, 'vi'));
     }, [posts, standaloneTags]);
-
     const tagCounts = useMemo(() => {
         const counts: Record<string, number> = {};
         posts.forEach(post => {
@@ -293,18 +261,15 @@ export default function AdminDashboard() {
         });
         return counts;
     }, [posts]);
-
     const filteredPosts = posts.filter(post =>
         post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
         post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
         (post.tags || []).some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
     );
-
     const filteredUsers = usersList.filter(u =>
         u.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
         u.email?.toLowerCase().includes(searchQuery.toLowerCase())
     );
-
     if (isAuthLoading || !user || user.role !== 'admin') {
         return (
             <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0e0505]">
@@ -312,10 +277,8 @@ export default function AdminDashboard() {
             </div>
         );
     }
-
     return (
         <div className="min-h-screen bg-red-50/30 dark:bg-[#0e0505] flex font-sans selection:bg-red-200 dark:selection:bg-red-900/50">
-            {/* Sidebar */}
             <aside className="w-56 bg-white dark:bg-[#1a0808] hidden lg:flex flex-col border-r border-red-100 dark:border-red-900/30 z-20">
                 <div className="p-6">
                     <h2 className="font-semibold text-lg text-neutral-900 dark:text-neutral-100">Quản trị</h2>
@@ -350,7 +313,6 @@ export default function AdminDashboard() {
                         <span>Người dùng</span>
                     </button>
                 </nav>
-                {/* Tài khoản đang hoạt động */}
                 <div className="p-4 border-t border-red-100 dark:border-red-900/30">
                     <p className="text-xs font-medium text-neutral-500 dark:text-neutral-400 mb-2">Tài khoản đang hoạt động</p>
                     <div className="flex items-center gap-3 p-3 rounded-[8px] bg-red-50/50 dark:bg-red-900/10">
@@ -369,10 +331,7 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </aside>
-
-            {/* Main Content */}
             <main className="flex-1 overflow-auto bg-red-50/30 dark:bg-[#0e0505]">
-                {/* Header */}
                 <header className="h-20 bg-white dark:bg-[#1a0808] border-b border-red-100 dark:border-red-900/30 px-6 sm:px-10 flex items-center justify-between sticky top-0 z-10">
                     <div className="flex items-center gap-6">
                         <div className="lg:hidden">
@@ -404,9 +363,7 @@ export default function AdminDashboard() {
                         )}
                     </div>
                 </header>
-
                 <div className="p-6 sm:p-10 space-y-6 max-w-6xl mx-auto">
-                    {/* Stats */}
                     {activeTab !== 'tags' && (
                         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {(activeTab === 'posts' ? [
@@ -432,8 +389,6 @@ export default function AdminDashboard() {
                             ))}
                         </div>
                     )}
-
-                    {/* Tags List */}
                     {activeTab === 'posts' && availablePostTags.length > 0 && (
                         <div className="bg-white dark:bg-[#1a0808] p-5 rounded-[8px] border border-red-100 dark:border-red-900/30">
                             <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-3 flex items-center gap-2">
@@ -455,8 +410,6 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     )}
-
-                    {/* Table Area */}
                     <div className="bg-white dark:bg-[#1a0808] rounded-[8px] border border-red-100 dark:border-red-900/30 overflow-hidden">
                         <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-red-100 dark:border-red-900/30">
                             <div className="relative w-full sm:w-[400px]">
@@ -468,7 +421,6 @@ export default function AdminDashboard() {
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
-
                             {activeTab === 'tags' && (
                                 <form onSubmit={handleCreateTag} className="flex gap-2 w-full sm:w-auto">
                                     <Input
@@ -485,7 +437,6 @@ export default function AdminDashboard() {
                                 </form>
                             )}
                         </div>
-
                         <div className="overflow-x-auto">
                             {activeTab === 'posts' ? (
                                 <table className="w-full text-left">
@@ -743,8 +694,6 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </main >
-
-            {/* Forms */}
             < CreatePostForm
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
@@ -780,8 +729,6 @@ export default function AdminDashboard() {
                 }
                 confirmLabel={isDeletingTarget ? 'Đang xóa...' : 'Xóa'}
             />
-
-            {/* Toast Notification */}
             {toastMessage && (
                 <div className="fixed top-6 right-6 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
                     <div className="flex items-center gap-3 px-5 py-4 rounded-[8px] bg-white dark:bg-[#1a0808] border border-red-200 dark:border-red-800/50 shadow-2xl shadow-red-500/10 max-w-sm">

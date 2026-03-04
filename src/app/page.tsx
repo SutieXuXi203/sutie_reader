@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
@@ -10,11 +9,9 @@ import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getOptimizedImageUrl } from '@/lib/utils';
-
 const CreatePostForm = dynamic(() => import('@/components/CreatePostForm').then(m => ({ default: m.CreatePostForm })), { ssr: false });
 const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
 const ProfileDialog = dynamic(() => import('@/components/ProfileDialog').then(m => ({ default: m.ProfileDialog })), { ssr: false });
-
 interface Post {
   _id: string;
   title: string;
@@ -26,7 +23,6 @@ interface Post {
   createdAt: string;
   updatedAt: string;
 }
-
 interface BookmarkItem {
   _id: string;
   postId: string;
@@ -41,7 +37,6 @@ interface BookmarkItem {
     tags?: string[];
   };
 }
-
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,19 +49,15 @@ export default function Home() {
   const [activeSection, setActiveSection] = useState('home');
   const [scrollProgress, setScrollProgress] = useState(0);
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
-
   useEffect(() => {
     const handleScroll = () => {
       const scrollY = window.scrollY;
       const half = window.innerHeight / 2;
       const postsEl = document.getElementById('posts');
       const contactEl = document.getElementById('contact');
-
-      // Update scroll progress
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       const progress = docHeight > 0 ? Math.min(scrollY / docHeight, 1) : 0;
       setScrollProgress(progress);
-
       if (contactEl && scrollY >= (contactEl as HTMLElement).offsetTop - half) {
         setActiveSection('contact');
       } else if (postsEl && scrollY >= (postsEl as HTMLElement).offsetTop - half) {
@@ -75,12 +66,10 @@ export default function Home() {
         setActiveSection('home');
       }
     };
-
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
-
   useEffect(() => {
     const els = document.querySelectorAll('.reveal');
     const observer = new IntersectionObserver(
@@ -97,9 +86,7 @@ export default function Home() {
     els.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
   }, [posts, user, isLoading, isAuthLoading, bookmarks]);
-
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
-
   const fetchTags = async () => {
     try {
       const response = await fetch('/api/tags');
@@ -110,7 +97,6 @@ export default function Home() {
       console.error('Lỗi khi tải tags:', error);
     }
   };
-
   const fetchPosts = async () => {
     try {
       setIsLoading(true);
@@ -125,7 +111,6 @@ export default function Home() {
       setIsLoading(false);
     }
   };
-
   const fetchBookmarks = useCallback(async () => {
     try {
       const res = await fetch('/api/bookmarks');
@@ -137,7 +122,6 @@ export default function Home() {
       console.error('Lỗi khi tải bookmarks:', error);
     }
   }, []);
-
   const removeBookmark = useCallback(async (postId: string) => {
     try {
       await fetch(`/api/bookmarks/${postId}`, { method: 'DELETE' });
@@ -146,12 +130,10 @@ export default function Home() {
       console.error('Lỗi khi xóa bookmark:', error);
     }
   }, []);
-
   useEffect(() => {
     fetchPosts();
     fetchTags();
   }, []);
-
   useEffect(() => {
     if (user) {
       fetchBookmarks();
@@ -159,38 +141,31 @@ export default function Home() {
       setBookmarks([]);
     }
   }, [user, fetchBookmarks]);
-
   const availableTags = useMemo(() => {
     const postTags = posts.flatMap((post) => post.tags || []);
     const standaloneNames = standaloneTags.map(t => t.name);
     return Array.from(new Set([...postTags, ...standaloneNames])).filter(Boolean);
   }, [posts, standaloneTags]);
-
   const handlePostDeleted = useCallback((postId: string) => {
     setPosts((prev) => prev.filter((post) => post._id !== postId));
   }, []);
-
   const [isSending, setIsSending] = useState(false);
   const [contactError, setContactError] = useState<string | null>(null);
-
   const handleContactSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSending(true);
     setContactError(null);
     setContactSent(false);
-
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string || user?.name || '';
     const email = formData.get('email') as string || user?.email || '';
     const message = formData.get('message') as string;
-
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name, email, message }),
       });
-
       if (response.ok) {
         setContactSent(true);
         (e.target as HTMLFormElement).reset();
@@ -206,17 +181,10 @@ export default function Home() {
       setIsSending(false);
     }
   }, [user]);
-
   return (
     <div className="min-h-screen bg-white dark:bg-[#0e0505] transition-colors relative selection:bg-red-200 selection:text-red-900 dark:selection:bg-red-900/50 dark:selection:text-red-100">
-
-      {/* Subtle grid pattern background */}
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.red.200)_1px,transparent_1px)] dark:bg-[radial-gradient(theme(colors.red.900)_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.25] dark:opacity-[0.07] z-0 mix-blend-multiply dark:mix-blend-screen" />
-
-      {/* ── SIDEBAR / BOTTOM NAVBAR ── */}
       <nav className="fixed md:top-0 md:left-0 bottom-0 left-0 right-0 z-50 md:w-16 md:h-screen w-full flex md:flex-col flex-row items-center justify-around md:justify-start md:py-8 py-3 px-4 md:px-0 bg-white/90 md:bg-transparent dark:bg-[#1a0808]/90 md:dark:bg-transparent backdrop-blur-md border-t border-red-100 dark:border-red-900/30 md:border-t-0 transition-all duration-300 shadow-[0_-4px_20px_-10px_rgba(220,38,38,0.15)] md:shadow-none">
-
-        {/* Dot navigation - absolutely centered on desktop */}
         <div className="hidden md:flex md:flex-col md:items-center md:gap-8 md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
           {[
             { id: 'home', label: 'Trang chủ' },
@@ -235,12 +203,10 @@ export default function Home() {
               className="group relative flex items-center cursor-pointer"
               title={section.label}
             >
-              {/* Dot */}
               <div className={`w-1.5 h-1.5 rounded-full border-[1.5px] transition-all duration-300 ${activeSection === section.id
                 ? 'bg-red-500 border-red-500 scale-150 shadow-[0_0_6px_rgba(239,68,68,0.5)]'
                 : 'bg-transparent border-red-300/50 dark:border-red-700/50 hover:border-red-400 dark:hover:border-red-500 hover:scale-125'
                 }`} />
-              {/* Label tooltip - appears to the right */}
               <span className={`absolute left-full ml-3 text-xs font-semibold whitespace-nowrap px-2.5 py-1 rounded-md transition-all duration-300 ${activeSection === section.id
                 ? 'opacity-100 translate-x-0 text-red-500 dark:text-red-400'
                 : 'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 text-neutral-500 dark:text-neutral-400'
@@ -249,11 +215,8 @@ export default function Home() {
               </span>
             </button>
           ))}
-          {/* Connecting line */}
           <div className="absolute top-0 bottom-0 left-[2px] w-px bg-red-200/30 dark:bg-red-800/20 -z-10" />
         </div>
-
-        {/* Mobile nav links */}
         <div className="flex md:hidden flex-row items-center justify-center gap-6 flex-1">
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             title="Trang chủ"
@@ -281,8 +244,6 @@ export default function Home() {
             </Link>
           )}
         </div>
-
-        {/* Bottom actions */}
         <div className="flex flex-row md:flex-col items-center gap-4 md:gap-6 md:mt-auto">
           {user ? (
             <>
@@ -298,8 +259,6 @@ export default function Home() {
                     </div>
                   )}
                 </button>
-
-                {/* Profile dropdown */}
                 <div className="absolute left-1/2 md:left-full -translate-x-1/2 md:translate-x-0 md:ml-4 bottom-[calc(100%+8px)] md:bottom-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 bg-white dark:bg-[#1a0808] border border-red-100 dark:border-red-900/30 rounded-none shadow-2xl shadow-red-500/10 p-4 min-w-[240px] z-50 transform translate-y-[10px] md:translate-y-0 md:translate-x-[-10px] group-hover:translate-y-0 md:group-hover:translate-x-0">
                   <div className="px-3 py-2 border-b border-red-50 dark:border-red-900/20 mb-2">
                     <p className="text-sm font-black text-neutral-900 dark:text-neutral-100 truncate tracking-tight">{user.name}</p>
@@ -340,40 +299,31 @@ export default function Home() {
               <LogIn className="w-5 h-5 md:w-6 md:h-6" />
             </button>
           )}
-
           <div className="hidden md:block w-8 h-px bg-red-100 dark:bg-white/20" />
           <ThemeToggle />
         </div>
       </nav>
-
-      {/* ── HERO SECTION ── */}
       <section data-section="home" className="relative min-h-screen flex items-center justify-center px-6 md:px-12 md:pl-24 pt-16 pb-24 md:pt-0 md:pb-0 overflow-hidden snap-start">
-        {/* Background gradient blobs */}
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
           <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-red-200/40 dark:bg-red-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] opacity-60 animate-blob" />
           <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-rose-200/40 dark:bg-rose-900/20 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[100px] opacity-60 animate-blob animation-delay-2000" />
           <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-red-300/30 dark:bg-red-950/30 rounded-full mix-blend-multiply dark:mix-blend-screen filter blur-[80px] opacity-40 animate-blob animation-delay-4000" />
         </div>
-
         <div className="relative z-10 max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-12 items-center text-center lg:text-left mt-8 md:mt-0">
-          {/* ── LEFT SIDE: TEXT CONTENT ── */}
           <div className="flex flex-col items-center lg:items-start order-2 lg:order-1">
             <div className="hidden lg:inline-flex hero-animate items-center gap-2 bg-red-50 dark:bg-white/5 text-red-600 dark:text-red-200 text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-none mb-6 md:mb-8 border border-red-200 dark:border-white/20 w-fit">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-none animate-pulse" />
               Góc dịch thuật của Sutie
             </div>
-
             <h1 className="hero-animate hero-delay-1 text-4xl sm:text-5xl md:text-6xl font-bold text-neutral-900 dark:text-neutral-50 mb-4 md:mb-6 leading-tight tracking-tight">
               Kho lưu trữ<br className="block sm:hidden" />{' '}
               <span className="text-gradient-red">
                 của Sutie
               </span>
             </h1>
-
             <p className="hero-animate hero-delay-2 text-base md:text-lg lg:text-xl text-neutral-600 dark:text-neutral-300 mb-8 md:mb-12 font-medium leading-relaxed max-w-lg">
               Nơi mình chia sẻ niềm đam mê ngôn ngữ qua từng trang sách và những câu chuyện được chuyển ngữ với tất cả tâm huyết.
             </p>
-
             <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
               {user ? (
                 isAdmin && (
@@ -407,8 +357,6 @@ export default function Home() {
               </Button>
             </div>
           </div>
-
-          {/* ── RIGHT SIDE: DRAGON IMAGE ── */}
           <div className="hero-animate hero-delay-2 flex flex-col items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2 gap-12 lg:gap-0">
             <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-red-50 dark:bg-white/5 text-red-600 dark:text-red-200 text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-none border border-red-200 dark:border-white/20 w-fit">
               <span className="w-1.5 h-1.5 bg-red-500 rounded-none animate-pulse" />
@@ -422,7 +370,6 @@ export default function Home() {
                 priority
                 className="object-cover drop-shadow-2xl"
               />
-              {/* Tooltip */}
               <div className="absolute inset-0 flex items-end justify-center pb-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
                 <div className="bg-black/75 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-none max-w-[90%] text-center shadow-xl">
                   Hình ảnh là sản phẩm của AI và không có tác giả
@@ -431,19 +378,13 @@ export default function Home() {
             </div>
           </div>
         </div>
-
-        {/* Scroll indicator */}
         <div className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 text-red-400">
           <span className="text-xs">Cuộn xuống</span>
           <div className="w-px h-8 bg-gradient-to-b from-red-400 to-transparent" />
         </div>
       </section>
-
-      {/* ── POSTS SECTION ── */}
       <section id="posts" data-section="posts" className="min-h-screen flex items-start pt-24 pb-20 md:pt-40 md:pb-32 px-6 md:px-12 md:pl-24 bg-red-50/50 dark:bg-red-950/10 snap-start">
         <div className="max-w-7xl mx-auto w-full text-center sm:text-left">
-
-          {/* ── CONTINUE READING SECTION ── */}
           {user && bookmarks.length > 0 && (
             <div className="reveal mb-12 md:mb-16">
               <div className="flex items-center justify-between mb-6">
@@ -457,7 +398,6 @@ export default function Home() {
                   const progress = bm.totalPages > 1 ? ((bm.currentPage) / (bm.totalPages - 1)) * 100 : 100;
                   return (
                     <div key={bm._id} className="group relative flex-shrink-0 w-[260px] md:w-[300px] bg-white dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-[8px] overflow-hidden hover:border-red-300 dark:hover:border-red-700 transition-all shadow-sm hover:shadow-lg hover:shadow-red-500/10">
-                      {/* Remove button */}
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeBookmark(bm.postId); }}
                         className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/50 backdrop-blur-sm text-white/70 hover:text-white hover:bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
@@ -465,9 +405,7 @@ export default function Home() {
                       >
                         <X className="w-3 h-3" />
                       </button>
-
                       <Link href={`/posts/${bm.postId}`} className="block">
-                        {/* Thumbnail */}
                         <div className="relative h-36 md:h-40 bg-red-50 dark:bg-red-900/10 overflow-hidden">
                           {bm.post.images[0] && (
                             <Image
@@ -478,20 +416,15 @@ export default function Home() {
                               unoptimized
                             />
                           )}
-                          {/* Gradient overlay */}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
-                          {/* Page indicator */}
                           <div className="absolute bottom-2 left-3 flex items-center gap-1.5 text-white text-xs font-bold">
                             <BookOpen className="w-3 h-3" />
                             Trang {bm.currentPage + 1}/{bm.totalPages}
                           </div>
                         </div>
-
-                        {/* Info */}
                         <div className="p-3 md:p-4">
                           <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 line-clamp-1 mb-1">{bm.post.title}</h4>
                           <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-3">{bm.post.author}</p>
-                          {/* Progress bar */}
                           <div className="h-1 bg-red-100 dark:bg-red-900/30 rounded-full overflow-hidden">
                             <div
                               className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all duration-300"
@@ -512,8 +445,6 @@ export default function Home() {
               </div>
             </div>
           )}
-
-          {/* Section header */}
           <div className="reveal flex flex-col sm:flex-row items-center sm:items-end justify-between mb-10 md:mb-12 gap-4 sm:gap-0">
             <div>
               <p className="text-xs md:text-sm font-medium text-red-500 dark:text-red-400 mb-2 uppercase tracking-widest">Khám phá</p>
@@ -541,8 +472,6 @@ export default function Home() {
               </Link>
             </div>
           </div>
-
-          {/* Conditionally render content */}
           {isLoading || isAuthLoading ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
@@ -590,12 +519,9 @@ export default function Home() {
           )}
         </div>
       </section>
-
-      {/* ── CONTACT SECTION ── */}
       <section id="contact" data-section="contact" className="min-h-screen flex items-center py-20 pb-32 md:py-32 px-6 md:px-12 md:pl-24 snap-start">
         <div className="max-w-5xl mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-start">
-            {/* Left: info */}
             <div className="reveal text-center md:text-left">
               <p className="text-xs md:text-sm font-medium text-red-500 dark:text-red-400 mb-2 uppercase tracking-widest">Liên hệ</p>
               <h2 className="text-3xl md:text-4xl font-bold text-neutral-900 dark:text-neutral-50 mb-4 md:mb-6">Kết nối với tôi</h2>
@@ -626,8 +552,6 @@ export default function Home() {
                 </a>
               </div>
             </div>
-
-            {/* Right: form */}
             <div className="reveal reveal-delay-2 bg-red-50/60 dark:bg-red-900/10 rounded-[8px] p-6 md:p-8 border border-red-100 dark:border-red-900/30">
               {contactSent ? (
                 <div className="text-center py-8">
@@ -697,11 +621,9 @@ export default function Home() {
                       className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm resize-none"
                     />
                   </div>
-
                   {contactError && (
                     <p className="text-red-500 text-sm font-medium">{contactError}</p>
                   )}
-
                   <Button type="submit" disabled={isSending} className="w-full rounded-[8px] gradient-red text-white hover:opacity-90 border-0 shadow-lg shadow-red-500/20 disabled:opacity-50">
                     {isSending ? 'Đang gửi...' : 'Gửi tin nhắn'}
                   </Button>
@@ -711,8 +633,6 @@ export default function Home() {
           </div>
         </div>
       </section>
-
-      {/* ── FOOTER ── */}
       <footer className="border-t border-red-100 dark:border-red-900/30 py-10 pb-24 md:pb-12 px-6 md:px-12 md:pl-24 snap-start bg-gradient-to-r from-white via-red-50/30 to-white dark:from-[#0e0505] dark:via-red-950/20 dark:to-[#0e0505]">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div className="flex items-center gap-2 text-red-500 dark:text-red-400">
@@ -726,20 +646,16 @@ export default function Home() {
           </div>
         </div>
       </footer>
-
-      {/* Dialogs */}
       <AuthDialog
         open={isAuthDialogOpen}
         onOpenChange={setIsAuthDialogOpen}
       />
-
       <CreatePostForm
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onPostCreated={fetchPosts}
         availableTags={availableTags}
       />
-
       {user && (
         <ProfileDialog
           open={isProfileDialogOpen}

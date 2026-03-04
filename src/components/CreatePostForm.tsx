@@ -1,5 +1,4 @@
 'use client';
-
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -9,14 +8,12 @@ import { Upload, X } from 'lucide-react';
 import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
 import { TagPicker } from '@/components/TagPicker';
-
 interface CreatePostFormProps {
   onPostCreated: () => void;
   open: boolean;
   onOpenChange: (open: boolean) => void;
   availableTags?: string[];
 }
-
 export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTags = [] }: CreatePostFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [title, setTitle] = useState('');
@@ -26,11 +23,9 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
   const [error, setError] = useState('');
-
   const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files || []);
     const newFiles = [...imageFiles, ...files];
-
     setImageFiles(newFiles);
     setError('');
     files.forEach((file) => {
@@ -39,14 +34,11 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
       reader.readAsDataURL(file);
     });
   };
-
   const removeImage = (index: number) => {
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
   };
-
   const uploadImages = async (files: File[], uploadTitle: string): Promise<string[]> => {
-    // Nén ảnh trước khi upload
     const compressedFiles = await Promise.all(
       files.map(async (file) => {
         const options = {
@@ -58,11 +50,10 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
           return await imageCompression(file, options);
         } catch (error) {
           console.error('Lỗi khi nén ảnh:', error);
-          return file; // Nén lỗi thì upload ảnh gốc
+          return file;
         }
       })
     );
-
     const formData = new FormData();
     formData.append('title', uploadTitle);
     compressedFiles.forEach((compressed, i) => formData.append('files', compressed, files[i].name));
@@ -74,22 +65,16 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
     const { urls } = await res.json();
     return urls as string[];
   };
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
-
     if (!title || !content || imageFiles.length === 0) {
       setError('Vui lòng điền tiêu đề, nội dung và chọn ít nhất một hình ảnh');
       return;
     }
-
     setIsSubmitting(true);
     try {
-      // 1. Upload images to filesystem first
       const imageUrls = await uploadImages(imageFiles, title);
-
-      // 2. Create post with image paths (not base64)
       const response = await fetch('/api/posts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -101,12 +86,10 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
           images: imageUrls,
         }),
       });
-
       if (!response.ok) {
         const data = await response.json().catch(() => ({}));
         throw new Error(data?.details || data?.error || `Server error ${response.status}`);
       }
-
       setTitle('');
       setTags([]);
       setContent('');
@@ -123,27 +106,23 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
       setIsSubmitting(false);
     }
   };
-
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-[8px] border border-red-100 dark:border-red-900/30 shadow-2xl dark:shadow-red-900/20 no-scrollbar">
         <DialogHeader>
           <DialogTitle className="text-xl font-medium">Tạo bài viết mới</DialogTitle>
         </DialogHeader>
-
         <form onSubmit={handleSubmit} className="space-y-5">
           {error && (
             <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-2 rounded-none text-sm">
               {error}
             </div>
           )}
-
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tiêu đề</label>
             <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tiêu đề bài viết" maxLength={100} disabled={isSubmitting} className="rounded-none border-slate-200 dark:border-slate-700" />
             <p className="text-xs text-slate-400 mt-1">{title.length}/100</p>
           </div>
-
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tag (không bắt buộc)</label>
             <TagPicker
@@ -154,17 +133,14 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
               placeholder="Nhập tag rồi nhấn Enter"
             />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Nội dung</label>
             <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Nội dung bài viết" rows={4} disabled={isSubmitting} className="rounded-none border-slate-200 dark:border-slate-700" />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tên tác giả (không bắt buộc)</label>
             <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tên của bạn" disabled={isSubmitting} className="rounded-none border-slate-200 dark:border-slate-700" />
           </div>
-
           <div>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Hình ảnh</label>
             <div className="border border-slate-200 dark:border-slate-700 rounded-none p-6 text-center cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
@@ -176,7 +152,6 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
               </label>
             </div>
           </div>
-
           {imagePreviews.length > 0 && (
             <div>
               <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Đã chọn ({imagePreviews.length})</label>
@@ -196,7 +171,6 @@ export function CreatePostForm({ onPostCreated, open, onOpenChange, availableTag
               </div>
             </div>
           )}
-
           <div className="flex gap-2 justify-end pt-2">
             <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-[8px]" size="sm">
               Hủy

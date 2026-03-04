@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document } from 'mongoose';
-
 export interface IPost extends Document {
   title: string;
   description: string;
@@ -10,7 +9,6 @@ export interface IPost extends Document {
   createdAt: Date;
   updatedAt: Date;
 }
-
 const PostSchema = new Schema<IPost>(
   {
     title: {
@@ -42,9 +40,7 @@ const PostSchema = new Schema<IPost>(
   },
   { timestamps: true }
 );
-// Xóa cache model cũ để tránh lỗi validation do Next.js HMR
 if (mongoose.models.Post) {
   delete mongoose.models.Post;
 }
-
 export const Post = mongoose.model<IPost>('Post', PostSchema);

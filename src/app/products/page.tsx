@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Lock, Search } from 'lucide-react';
@@ -8,7 +7,6 @@ import { PostCard } from '@/components/PostCard';
 import { useAuth } from '@/providers/AuthContext';
 import { AuthDialog } from '@/components/AuthDialog';
 import { Input } from '@/components/ui/input';
-
 interface Post {
     _id: string;
     title: string;
@@ -20,14 +18,12 @@ interface Post {
     createdAt: string;
     updatedAt: string;
 }
-
 export default function ProductsPage() {
     const [posts, setPosts] = useState<Post[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const { user, isLoading: isAuthLoading } = useAuth();
-
     const fetchPosts = async () => {
         try {
             setIsLoading(true);
@@ -42,11 +38,9 @@ export default function ProductsPage() {
             setIsLoading(false);
         }
     };
-
     useEffect(() => {
         fetchPosts();
     }, []);
-
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
         const tagFromUrl = params.get('tag');
@@ -54,16 +48,13 @@ export default function ProductsPage() {
             setSearchTerm(tagFromUrl);
         }
     }, []);
-
     const handlePostDeleted = (postId: string) => {
         setPosts((prev) => prev.filter((post) => post._id !== postId));
     };
-
     const normalizedSearch = searchTerm.trim().toLowerCase();
     const filteredPosts = normalizedSearch
         ? posts.filter((post) => [post.title, post.description || '', post.author, ...(post.tags || [])].some((value) => value.toLowerCase().includes(normalizedSearch)))
         : posts;
-
     return (
         <div className="min-h-screen bg-white dark:bg-[#0e0505] transition-colors pt-12 pb-20 md:py-20 px-8 lg:pl-32 lg:px-12">
             <div className="max-w-7xl mx-auto">
@@ -83,7 +74,6 @@ export default function ProductsPage() {
                             Khám phá tất cả các bài viết và câu chuyện.
                         </p>
                     </div>
-
                     {user && (
                         <div className="w-full md:w-[280px] shrink-0">
                             <label
@@ -106,7 +96,6 @@ export default function ProductsPage() {
                         </div>
                     )}
                 </div>
-
                 {isLoading || isAuthLoading ? (
                     <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
                         {[1, 2, 3, 4, 5, 6].map((i) => (
@@ -155,7 +144,6 @@ export default function ProductsPage() {
                     </div>
                 )}
             </div>
-
             <AuthDialog
                 open={isAuthDialogOpen}
                 onOpenChange={setIsAuthDialogOpen}

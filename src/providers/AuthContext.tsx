@@ -1,7 +1,5 @@
 'use client';
-
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
-
 interface User {
     id: string;
     email: string;
@@ -9,7 +7,6 @@ interface User {
     avatar?: string;
     role: 'user' | 'admin';
 }
-
 interface AuthContextType {
     user: User | null;
     isLoading: boolean;
@@ -18,13 +15,10 @@ interface AuthContextType {
     checkAuth: () => Promise<void>;
     isAdmin: boolean;
 }
-
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-
 export function AuthProvider({ children }: { children: ReactNode }) {
     const [user, setUser] = useState<User | null>(null);
     const [isLoading, setIsLoading] = useState(true);
-
     const checkAuth = useCallback(async () => {
         try {
             const res = await fetch('/api/auth/me');
@@ -41,15 +35,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setIsLoading(false);
         }
     }, []);
-
     useEffect(() => {
         checkAuth();
     }, [checkAuth]);
-
     const login = useCallback((userData: User) => {
         setUser(userData);
     }, []);
-
     const logout = useCallback(async () => {
         try {
             await fetch('/api/auth/logout', { method: 'POST' });
@@ -58,14 +49,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             console.error('Logout failed', error);
         }
     }, []);
-
     return (
         <AuthContext.Provider value={{ user, isLoading, login, logout, checkAuth, isAdmin: user?.role === 'admin' }}>
             {children}
         </AuthContext.Provider>
     );
 }
-
 export function useAuth() {
     const context = useContext(AuthContext);
     if (context === undefined) {

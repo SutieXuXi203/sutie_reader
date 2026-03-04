@@ -1,9 +1,7 @@
 'use client';
-
 import { useMemo, useState, useRef, useEffect, type KeyboardEventHandler } from 'react';
 import { X } from 'lucide-react';
 import { Input } from '@/components/ui/input';
-
 interface TagPickerProps {
   selectedTags: string[];
   onChange: (tags: string[]) => void;
@@ -12,9 +10,7 @@ interface TagPickerProps {
   placeholder?: string;
   maxTags?: number;
 }
-
 const normalizeTag = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase();
-
 export function TagPicker({
   selectedTags,
   onChange,
@@ -26,7 +22,6 @@ export function TagPicker({
   const [draft, setDraft] = useState('');
   const [isFocused, setIsFocused] = useState(false);
   const containerRef = useRef<HTMLDivElement>(null);
-
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (containerRef.current && !containerRef.current.contains(event.target as Node)) {
@@ -38,12 +33,10 @@ export function TagPicker({
       document.removeEventListener('mousedown', handleClickOutside);
     };
   }, []);
-
   const selectedLookup = useMemo(
     () => new Set(selectedTags.map((tag) => normalizeTag(tag).toLowerCase())),
     [selectedTags]
   );
-
   const visibleSuggestions = useMemo(() => {
     const normalizedDraft = normalizeTag(draft).toLowerCase();
     return availableTags
@@ -53,43 +46,33 @@ export function TagPicker({
       .filter((tag) => !selectedLookup.has(tag.toLowerCase()))
       .filter((tag) => (normalizedDraft ? tag.toLowerCase().includes(normalizedDraft) : true));
   }, [availableTags, draft, selectedLookup]);
-
   const addTag = (rawValue: string) => {
     const tag = normalizeTag(rawValue);
     if (!tag || disabled || selectedTags.length >= maxTags || tag.length > 30) return;
-
     if (selectedLookup.has(tag.toLowerCase())) {
       setDraft('');
       return;
     }
-
-    // Only allow adding tags that are in availableTags
     const isAvailable = availableTags.some(t => normalizeTag(t).toLowerCase() === tag.toLowerCase());
     if (!isAvailable) return;
-
     onChange([...selectedTags, tag]);
     setDraft('');
   };
-
   const removeTag = (tagToRemove: string) => {
     if (disabled) return;
     onChange(selectedTags.filter((tag) => tag !== tagToRemove));
   };
-
   const onKeyDown: KeyboardEventHandler<HTMLInputElement> = (e) => {
     if (e.key === 'Enter') {
       e.preventDefault();
-      // If there's an exact match in visible suggestions, select it
       const exactMatch = visibleSuggestions.find(t => t.toLowerCase() === draft.toLowerCase());
       if (exactMatch) {
         addTag(exactMatch);
       } else if (visibleSuggestions.length > 0) {
-        // Optionally, select the first suggestion on Enter
         addTag(visibleSuggestions[0]);
       }
     }
   };
-
   return (
     <div className="space-y-3" ref={containerRef}>
       <div className="relative">
@@ -102,7 +85,6 @@ export function TagPicker({
           placeholder={placeholder}
           className="rounded-none border-slate-200 dark:border-slate-700"
         />
-
         {isFocused && (
           <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-[#140808] border border-t-0 border-slate-200 dark:border-slate-700 rounded-none p-3 shadow-lg max-h-[200px] overflow-y-auto">
             <p className="text-xs text-red-400/70 dark:text-red-400/60 mb-2">Những tag có sẵn</p>
@@ -128,7 +110,6 @@ export function TagPicker({
           </div>
         )}
       </div>
-
       {selectedTags.length > 0 && (
         <div className="flex flex-wrap gap-2">
           {selectedTags.map((tag) => (
@@ -150,7 +131,6 @@ export function TagPicker({
           ))}
         </div>
       )}
-
       <p className="text-xs text-slate-400">
         Bạn có thể chọn tối đa {maxTags} tag có sẵn từ danh sách.
       </p>

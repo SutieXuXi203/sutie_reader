@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import { Providers } from "@/providers/ThemeProvider";
 import { DevToolsProtection } from "@/components/DevToolsProtection";
 import "./globals.css";
-
 export const metadata: Metadata = {
   title: "Sutie Xù Xì | Kho lưu trữ bản dịch thuật",
   description: "Nơi lưu giữ những bản dịch thuật tâm huyết của Sutie Xù Xì.",
@@ -11,7 +10,6 @@ export const metadata: Metadata = {
     apple: "/icon_meta.png",
   },
 };
-
 export default function RootLayout({
   children,
 }: Readonly<{
@@ -24,7 +22,6 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Providers>
-          {/* <DevToolsProtection /> */}
           {children}
         </Providers>
       </body>

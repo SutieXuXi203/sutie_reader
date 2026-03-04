@@ -1,13 +1,11 @@
 import nodemailer from 'nodemailer';
-
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
         user: process.env.EMAIL_USER || 'sutiexuxi.supp.0410@gmail.com',
-        pass: process.env.EMAIL_PASS, // Mật khẩu ứng dụng (App Password)
+        pass: process.env.EMAIL_PASS,
     },
 });
-
 export const sendVerificationEmail = async (email: string, code: string) => {
     try {
         const mailOptions = {
@@ -25,7 +23,6 @@ export const sendVerificationEmail = async (email: string, code: string) => {
         </div>
       `,
         };
-
         await transporter.sendMail(mailOptions);
         console.log(`Email xác thực đã được gửi đến ${email}`);
     } catch (error) {

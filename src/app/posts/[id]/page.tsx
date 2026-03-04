@@ -1,5 +1,4 @@
 'use client';
-
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, BookOpen, ArrowLeft, Loader2, ShieldAlert, Bookmark, BookmarkCheck } from 'lucide-react';
 import Image from 'next/image';
@@ -8,7 +7,6 @@ import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthContext';
 import { Lock } from 'lucide-react';
 import { getOptimizedImageUrl } from '@/lib/utils';
-
 interface Post {
     _id: string;
     title: string;
@@ -19,7 +17,6 @@ interface Post {
     author: string;
     createdAt: string;
 }
-
 export default function PostDetailPage() {
     const params = useParams();
     const router = useRouter();
@@ -36,14 +33,11 @@ export default function PostDetailPage() {
     const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
     const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const initialScrollDone = useRef(false);
-
     const resetUiTimer = useCallback(() => {
         setShowUI(true);
         if (uiTimer.current) clearTimeout(uiTimer.current);
         uiTimer.current = setTimeout(() => setShowUI(false), 3000);
     }, []);
-
-    // Fetch post
     useEffect(() => {
         const fetchPost = async () => {
             try {
@@ -62,16 +56,12 @@ export default function PostDetailPage() {
                 setIsLoading(false);
             }
         };
-
         if (params.id) {
             fetchPost();
         }
     }, [params.id, router]);
-
-    // Fetch bookmark and restore scroll position
     useEffect(() => {
         if (!post || !user) return;
-
         const fetchBookmark = async () => {
             try {
                 const res = await fetch(`/api/bookmarks/${post._id}`);
@@ -79,7 +69,6 @@ export default function PostDetailPage() {
                     const data = await res.json();
                     if (data && data.currentPage > 0) {
                         setHasBookmark(true);
-                        // Scroll to saved page after images start loading
                         if (!initialScrollDone.current) {
                             const savedPage = data.currentPage;
                             setTimeout(() => {
@@ -96,24 +85,32 @@ export default function PostDetailPage() {
             } catch (error) {
                 console.error('Error fetching bookmark:', error);
             } finally {
-                // Always mark as done so auto-save can start
                 initialScrollDone.current = true;
             }
         };
-
         fetchBookmark();
     }, [post, user]);
-
-    // Auto-save bookmark when currentPage changes (debounced)
+    const removeBookmark = useCallback(async () => {
+        if (!post) return;
+        try {
+            await fetch(`/api/bookmarks/${post._id}`, { method: 'DELETE' });
+            setHasBookmark(false);
+        } catch (error) {
+            console.error('Error removing bookmark:', error);
+        }
+    }, [post]);
     useEffect(() => {
         if (!post || !user) return;
-        // Wait until initial bookmark check is done
         if (!initialScrollDone.current) return;
-        // Don't save when still on first page of a fresh read
         if (currentPage === 0 && !hasBookmark) return;
-
         if (saveTimer.current) clearTimeout(saveTimer.current);
         saveTimer.current = setTimeout(async () => {
+            if (currentPage === post.images.length - 1) {
+                if (hasBookmark) {
+                    removeBookmark();
+                }
+                return;
+            }
             try {
                 await fetch('/api/bookmarks', {
                     method: 'POST',
@@ -129,37 +126,20 @@ export default function PostDetailPage() {
                 console.error('Error saving bookmark:', error);
             }
         }, 1500);
-
         return () => {
             if (saveTimer.current) clearTimeout(saveTimer.current);
         };
-    }, [currentPage, post, user, hasBookmark]);
-
-    // Remove bookmark handler
-    const removeBookmark = useCallback(async () => {
-        if (!post) return;
-        try {
-            await fetch(`/api/bookmarks/${post._id}`, { method: 'DELETE' });
-            setHasBookmark(false);
-        } catch (error) {
-            console.error('Error removing bookmark:', error);
-        }
-    }, [post]);
-
+    }, [currentPage, post, user, hasBookmark, removeBookmark]);
     useEffect(() => {
         uiTimer.current = setTimeout(() => setShowUI(false), 3000);
         return () => { if (uiTimer.current) clearTimeout(uiTimer.current); };
     }, []);
-
-    // Track which image is in view via scroll position
     useEffect(() => {
         if (!post) return;
-
         const handleScroll = () => {
             const viewportCenter = window.scrollY + window.innerHeight * 0.35;
             let closestIdx = 0;
             let closestDist = Infinity;
-
             imageRefs.current.forEach((ref, idx) => {
                 if (!ref) return;
                 const rect = ref.getBoundingClientRect();
@@ -170,17 +150,12 @@ export default function PostDetailPage() {
                     closestIdx = idx;
                 }
             });
-
             setCurrentPage(closestIdx);
         };
-
         window.addEventListener('scroll', handleScroll, { passive: true });
-        // Initial check
         handleScroll();
-
         return () => window.removeEventListener('scroll', handleScroll);
     }, [post]);
-
     if (isLoading || isAuthLoading) {
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
@@ -189,7 +164,6 @@ export default function PostDetailPage() {
             </div>
         );
     }
-
     if (!user) {
         return (
             <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white px-6 text-center">
@@ -209,39 +183,24 @@ export default function PostDetailPage() {
             </div>
         );
     }
-
     if (!post) return null;
-
     const isNSFW = (post.tags || []).some(tag => tag.toLowerCase().includes('18+'));
-
-    // 18+ Content Warning Gate
     if (isNSFW && !nsfwAccepted) {
         return (
             <div className="fixed inset-0 bg-[#050505] flex flex-col items-center justify-center text-white px-6 text-center z-[9999]" onMouseMove={resetUiTimer} onClick={resetUiTimer}>
-                {/* Subtle red glow behind the center */}
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/10 filter blur-[100px] rounded-full pointer-events-none" />
-
                 <div className="relative z-10 flex flex-col items-center max-w-[500px]">
-                    {/* Icon Container */}
                     <div className="w-16 h-16 bg-[#1a0505] rounded-[16px] flex items-center justify-center mb-8 border border-red-900/30">
                         <ShieldAlert className="w-8 h-8 text-red-500" />
                     </div>
-
-                    {/* Title */}
                     <h1 className="text-3xl sm:text-4xl font-extrabold mb-5 text-white tracking-tight">Cảnh báo nội dung</h1>
-
-                    {/* Tag Pill */}
                     <div className="inline-flex items-center gap-2 bg-[#1a0505] text-red-500 text-[11px] font-bold px-4 py-1.5 rounded-full mb-8 border border-red-900/30">
                         <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
                         Nội dung 18+
                     </div>
-
-                    {/* Description Text */}
                     <p className="text-slate-400 max-w-sm mb-12 leading-relaxed text-xs sm:text-sm">
                         Bài viết này chứa nội dung dành cho người trên 18 tuổi. Bằng việc tiếp tục, bạn xác nhận rằng bạn đã đủ 18 tuổi.
                     </p>
-
-                    {/* Buttons */}
                     <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center justify-center">
                         <button
                             onClick={(e) => { e.stopPropagation(); setNsfwAccepted(true); }}
@@ -261,14 +220,10 @@ export default function PostDetailPage() {
             </div>
         );
     }
-
     const total = post.images.length;
-
     return (
         <div className="min-h-screen bg-black flex flex-col relative" onMouseMove={resetUiTimer} onClick={resetUiTimer}>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900/20 to-transparent pointer-events-none" />
-
-            {/* ── RESUME TOAST ── */}
             {resumeToast && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] animate-fade-in">
                     <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md text-white text-sm font-medium px-5 py-2.5 rounded-[8px] border border-white/10 shadow-xl">
@@ -277,8 +232,6 @@ export default function PostDetailPage() {
                     </div>
                 </div>
             )}
-
-            {/* ── TOP BAR ── */}
             <div
                 className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-3 md:px-6 md:py-4
           bg-black/60 backdrop-blur-md border-b border-white/10 transition-opacity duration-500
@@ -296,9 +249,7 @@ export default function PostDetailPage() {
                         </div>
                     </div>
                 </div>
-
                 <div className="flex items-center gap-2 md:gap-4">
-                    {/* Bookmark toggle button */}
                     <button
                         onClick={async () => {
                             if (hasBookmark) {
@@ -332,7 +283,6 @@ export default function PostDetailPage() {
                             <Bookmark className="w-4 h-4 md:w-5 md:h-5" />
                         )}
                     </button>
-
                     <span className="text-white text-xs md:text-sm font-bold bg-white/10 px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-white/10">
                         {currentPage + 1} / {total}
                     </span>
@@ -344,8 +294,6 @@ export default function PostDetailPage() {
                     </Link>
                 </div>
             </div>
-
-            {/* ── CONTENT CONTAINER ── */}
             <main className="w-full flex-1 flex flex-col items-center pt-14 md:pt-24 pb-16 md:pb-20">
                 <div className="flex flex-col items-center w-full gap-0">
                     {post.images.map((img, idx) => (
@@ -365,8 +313,6 @@ export default function PostDetailPage() {
                             />
                         </div>
                     ))}
-
-                    {/* End of chapter */}
                     <div className="flex flex-col items-center gap-4 py-20 text-center w-full max-w-md px-6 z-10">
                         <div className="w-16 h-1 bg-white/20 rounded-none mb-2" />
                         <h2 className="text-white text-xl font-bold">Cảm ơn đã theo dõi!</h2>
@@ -390,8 +336,6 @@ export default function PostDetailPage() {
                     </div>
                 </div>
             </main>
-
-            {/* ── PROGRESS BAR (bottom) ── */}
             <div
                 className={`fixed bottom-0 left-0 right-0 z-50 transition-opacity duration-500 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >

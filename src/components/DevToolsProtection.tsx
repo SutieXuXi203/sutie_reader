@@ -2,12 +2,6 @@
 
 import { useEffect } from 'react';
 
-/**
- * Răn đe mở DevTools (có thể bị bypass).
- * - Chặn chuột phải (context menu)
- * - Chặn phím tắt: F12, Ctrl+Shift+I/J/C, Ctrl+U
- * - debugger định kỳ khi DevTools mở (pause execution)
- */
 export function DevToolsProtection() {
     useEffect(() => {
         const handleContextMenu = (e: MouseEvent) => e.preventDefault();
@@ -22,7 +16,7 @@ export function DevToolsProtection() {
         };
 
         const debuggerInterval = setInterval(() => {
-            // eslint-disable-next-line no-debugger
+
             debugger;
         }, 1500);
 

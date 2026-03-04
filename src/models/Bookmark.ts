@@ -1,5 +1,4 @@
 import mongoose, { Schema, Document } from 'mongoose';
-
 export interface IBookmark extends Document {
     userId: string;
     postId: mongoose.Types.ObjectId;
@@ -8,7 +7,6 @@ export interface IBookmark extends Document {
     createdAt: Date;
     updatedAt: Date;
 }
-
 const BookmarkSchema = new Schema<IBookmark>(
     {
         userId: {
@@ -34,13 +32,8 @@ const BookmarkSchema = new Schema<IBookmark>(
     },
     { timestamps: true }
 );
-
-// Unique compound index: one bookmark per user per post
 BookmarkSchema.index({ userId: 1, postId: 1 }, { unique: true });
-
-// Clear HMR cache
 if (mongoose.models.Bookmark) {
     delete mongoose.models.Bookmark;
 }
-
 export const Bookmark = mongoose.model<IBookmark>('Bookmark', BookmarkSchema);
