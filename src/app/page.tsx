@@ -3,12 +3,13 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, FileText } from 'lucide-react';
+import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, FileText, BookmarkCheck, ChevronRight, X } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
+import { getOptimizedImageUrl } from '@/lib/utils';
 
 const CreatePostForm = dynamic(() => import('@/components/CreatePostForm').then(m => ({ default: m.CreatePostForm })), { ssr: false });
 const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
@@ -26,6 +27,21 @@ interface Post {
   updatedAt: string;
 }
 
+interface BookmarkItem {
+  _id: string;
+  postId: string;
+  currentPage: number;
+  totalPages: number;
+  updatedAt: string;
+  post: {
+    _id: string;
+    title: string;
+    images: string[];
+    author: string;
+    tags?: string[];
+  };
+}
+
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -37,6 +53,7 @@ export default function Home() {
   const [contactSent, setContactSent] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
   const [scrollProgress, setScrollProgress] = useState(0);
+  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -79,7 +96,7 @@ export default function Home() {
     );
     els.forEach((el) => observer.observe(el));
     return () => observer.disconnect();
-  }, [posts, user, isLoading, isAuthLoading]);
+  }, [posts, user, isLoading, isAuthLoading, bookmarks]);
 
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
 
@@ -109,10 +126,39 @@ export default function Home() {
     }
   };
 
+  const fetchBookmarks = useCallback(async () => {
+    try {
+      const res = await fetch('/api/bookmarks');
+      if (res.ok) {
+        const data = await res.json();
+        setBookmarks(data);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải bookmarks:', error);
+    }
+  }, []);
+
+  const removeBookmark = useCallback(async (postId: string) => {
+    try {
+      await fetch(`/api/bookmarks/${postId}`, { method: 'DELETE' });
+      setBookmarks((prev) => prev.filter((b) => b.postId !== postId));
+    } catch (error) {
+      console.error('Lỗi khi xóa bookmark:', error);
+    }
+  }, []);
+
   useEffect(() => {
     fetchPosts();
     fetchTags();
   }, []);
+
+  useEffect(() => {
+    if (user) {
+      fetchBookmarks();
+    } else {
+      setBookmarks([]);
+    }
+  }, [user, fetchBookmarks]);
 
   const availableTags = useMemo(() => {
     const postTags = posts.flatMap((post) => post.tags || []);
@@ -163,13 +209,6 @@ export default function Home() {
 
   return (
     <div className="min-h-screen bg-white dark:bg-[#0e0505] transition-colors relative selection:bg-red-200 selection:text-red-900 dark:selection:bg-red-900/50 dark:selection:text-red-100">
-      {/* ── SCROLL PROGRESS BAR ── */}
-      <div className="fixed top-0 left-0 right-0 z-[60] h-[3px] bg-transparent">
-        <div
-          className="h-full bg-gradient-to-r from-red-500 via-red-400 to-rose-500 shadow-[0_0_10px_rgba(239,68,68,0.5)] transition-[width] duration-150 ease-out"
-          style={{ width: `${scrollProgress * 100}%` }}
-        />
-      </div>
 
       {/* Subtle grid pattern background */}
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.red.200)_1px,transparent_1px)] dark:bg-[radial-gradient(theme(colors.red.900)_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.25] dark:opacity-[0.07] z-0 mix-blend-multiply dark:mix-blend-screen" />
@@ -403,6 +442,77 @@ export default function Home() {
       {/* ── POSTS SECTION ── */}
       <section id="posts" data-section="posts" className="min-h-screen flex items-start pt-24 pb-20 md:pt-40 md:pb-32 px-6 md:px-12 md:pl-24 bg-red-50/50 dark:bg-red-950/10 snap-start">
         <div className="max-w-7xl mx-auto w-full text-center sm:text-left">
+
+          {/* ── CONTINUE READING SECTION ── */}
+          {user && bookmarks.length > 0 && (
+            <div className="reveal mb-12 md:mb-16">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <BookmarkCheck className="w-5 h-5 text-red-500" />
+                  <h3 className="text-lg md:text-xl font-bold text-neutral-900 dark:text-neutral-50">Đang đọc dở</h3>
+                </div>
+              </div>
+              <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-2 px-2">
+                {bookmarks.map((bm) => {
+                  const progress = bm.totalPages > 1 ? ((bm.currentPage) / (bm.totalPages - 1)) * 100 : 100;
+                  return (
+                    <div key={bm._id} className="group relative flex-shrink-0 w-[260px] md:w-[300px] bg-white dark:bg-red-950/20 border border-red-100 dark:border-red-900/30 rounded-[8px] overflow-hidden hover:border-red-300 dark:hover:border-red-700 transition-all shadow-sm hover:shadow-lg hover:shadow-red-500/10">
+                      {/* Remove button */}
+                      <button
+                        onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeBookmark(bm.postId); }}
+                        className="absolute top-2 right-2 z-10 w-6 h-6 rounded-full bg-black/50 backdrop-blur-sm text-white/70 hover:text-white hover:bg-red-500/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer"
+                        title="Xóa đánh dấu"
+                      >
+                        <X className="w-3 h-3" />
+                      </button>
+
+                      <Link href={`/posts/${bm.postId}`} className="block">
+                        {/* Thumbnail */}
+                        <div className="relative h-36 md:h-40 bg-red-50 dark:bg-red-900/10 overflow-hidden">
+                          {bm.post.images[0] && (
+                            <Image
+                              src={getOptimizedImageUrl(bm.post.images[0])}
+                              alt={bm.post.title}
+                              fill
+                              className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                              unoptimized
+                            />
+                          )}
+                          {/* Gradient overlay */}
+                          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                          {/* Page indicator */}
+                          <div className="absolute bottom-2 left-3 flex items-center gap-1.5 text-white text-xs font-bold">
+                            <BookOpen className="w-3 h-3" />
+                            Trang {bm.currentPage + 1}/{bm.totalPages}
+                          </div>
+                        </div>
+
+                        {/* Info */}
+                        <div className="p-3 md:p-4">
+                          <h4 className="text-sm font-bold text-neutral-900 dark:text-neutral-100 line-clamp-1 mb-1">{bm.post.title}</h4>
+                          <p className="text-[11px] text-neutral-500 dark:text-neutral-400 mb-3">{bm.post.author}</p>
+                          {/* Progress bar */}
+                          <div className="h-1 bg-red-100 dark:bg-red-900/30 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-gradient-to-r from-red-500 to-red-400 rounded-full transition-all duration-300"
+                              style={{ width: `${Math.min(progress, 100)}%` }}
+                            />
+                          </div>
+                          <div className="flex items-center justify-between mt-2">
+                            <span className="text-[10px] text-neutral-400 dark:text-neutral-500">{Math.round(progress)}% hoàn thành</span>
+                            <span className="text-[10px] text-red-500 dark:text-red-400 font-medium flex items-center gap-0.5 group-hover:gap-1 transition-all">
+                              Đọc tiếp <ChevronRight className="w-3 h-3" />
+                            </span>
+                          </div>
+                        </div>
+                      </Link>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          )}
+
           {/* Section header */}
           <div className="reveal flex flex-col sm:flex-row items-center sm:items-end justify-between mb-10 md:mb-12 gap-4 sm:gap-0">
             <div>

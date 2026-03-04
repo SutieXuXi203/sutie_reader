@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, BookOpen, ArrowLeft, Loader2, ShieldAlert } from 'lucide-react';
+import { X, BookOpen, ArrowLeft, Loader2, ShieldAlert, Bookmark, BookmarkCheck } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
@@ -29,9 +29,13 @@ export default function PostDetailPage() {
     const [showUI, setShowUI] = useState(true);
     const [currentPage, setCurrentPage] = useState(0);
     const [nsfwAccepted, setNsfwAccepted] = useState(false);
+    const [hasBookmark, setHasBookmark] = useState(false);
+    const [resumeToast, setResumeToast] = useState<string | null>(null);
     const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
+    const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+    const initialScrollDone = useRef(false);
 
     const resetUiTimer = useCallback(() => {
         setShowUI(true);
@@ -39,6 +43,7 @@ export default function PostDetailPage() {
         uiTimer.current = setTimeout(() => setShowUI(false), 3000);
     }, []);
 
+    // Fetch post
     useEffect(() => {
         const fetchPost = async () => {
             try {
@@ -63,31 +68,117 @@ export default function PostDetailPage() {
         }
     }, [params.id, router]);
 
+    // Fetch bookmark and restore scroll position
+    useEffect(() => {
+        if (!post || !user) return;
+
+        const fetchBookmark = async () => {
+            try {
+                const res = await fetch(`/api/bookmarks/${post._id}`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data && data.currentPage > 0) {
+                        setHasBookmark(true);
+                        // Scroll to saved page after images start loading
+                        if (!initialScrollDone.current) {
+                            const savedPage = data.currentPage;
+                            setTimeout(() => {
+                                const targetRef = imageRefs.current[savedPage];
+                                if (targetRef) {
+                                    targetRef.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                                    setResumeToast(`Tiếp tục từ trang ${savedPage + 1}`);
+                                    setTimeout(() => setResumeToast(null), 3000);
+                                }
+                            }, 800);
+                        }
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching bookmark:', error);
+            } finally {
+                // Always mark as done so auto-save can start
+                initialScrollDone.current = true;
+            }
+        };
+
+        fetchBookmark();
+    }, [post, user]);
+
+    // Auto-save bookmark when currentPage changes (debounced)
+    useEffect(() => {
+        if (!post || !user) return;
+        // Wait until initial bookmark check is done
+        if (!initialScrollDone.current) return;
+        // Don't save when still on first page of a fresh read
+        if (currentPage === 0 && !hasBookmark) return;
+
+        if (saveTimer.current) clearTimeout(saveTimer.current);
+        saveTimer.current = setTimeout(async () => {
+            try {
+                await fetch('/api/bookmarks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        postId: post._id,
+                        currentPage,
+                        totalPages: post.images.length,
+                    }),
+                });
+                setHasBookmark(true);
+            } catch (error) {
+                console.error('Error saving bookmark:', error);
+            }
+        }, 1500);
+
+        return () => {
+            if (saveTimer.current) clearTimeout(saveTimer.current);
+        };
+    }, [currentPage, post, user, hasBookmark]);
+
+    // Remove bookmark handler
+    const removeBookmark = useCallback(async () => {
+        if (!post) return;
+        try {
+            await fetch(`/api/bookmarks/${post._id}`, { method: 'DELETE' });
+            setHasBookmark(false);
+        } catch (error) {
+            console.error('Error removing bookmark:', error);
+        }
+    }, [post]);
+
     useEffect(() => {
         uiTimer.current = setTimeout(() => setShowUI(false), 3000);
         return () => { if (uiTimer.current) clearTimeout(uiTimer.current); };
     }, []);
 
-    // Track which image is in view
+    // Track which image is in view via scroll position
     useEffect(() => {
         if (!post) return;
-        const container = document.documentElement; // Root scroll for page
 
-        const observer = new IntersectionObserver(
-            (entries) => {
-                entries.forEach((entry) => {
-                    if (entry.isIntersecting) {
-                        const idx = imageRefs.current.findIndex((r) => r === entry.target);
-                        if (idx !== -1) setCurrentPage(idx);
-                    }
-                });
-            },
-            { threshold: 0.4 }
-        );
+        const handleScroll = () => {
+            const viewportCenter = window.scrollY + window.innerHeight * 0.35;
+            let closestIdx = 0;
+            let closestDist = Infinity;
 
-        const currentRefs = imageRefs.current;
-        currentRefs.forEach((ref) => { if (ref) observer.observe(ref); });
-        return () => observer.disconnect();
+            imageRefs.current.forEach((ref, idx) => {
+                if (!ref) return;
+                const rect = ref.getBoundingClientRect();
+                const absTop = rect.top + window.scrollY;
+                const dist = Math.abs(absTop - viewportCenter);
+                if (dist < closestDist) {
+                    closestDist = dist;
+                    closestIdx = idx;
+                }
+            });
+
+            setCurrentPage(closestIdx);
+        };
+
+        window.addEventListener('scroll', handleScroll, { passive: true });
+        // Initial check
+        handleScroll();
+
+        return () => window.removeEventListener('scroll', handleScroll);
     }, [post]);
 
     if (isLoading || isAuthLoading) {
@@ -177,6 +268,16 @@ export default function PostDetailPage() {
         <div className="min-h-screen bg-black flex flex-col relative" onMouseMove={resetUiTimer} onClick={resetUiTimer}>
             <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900/20 to-transparent pointer-events-none" />
 
+            {/* ── RESUME TOAST ── */}
+            {resumeToast && (
+                <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] animate-fade-in">
+                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md text-white text-sm font-medium px-5 py-2.5 rounded-[8px] border border-white/10 shadow-xl">
+                        <BookmarkCheck className="w-4 h-4 text-red-400" />
+                        {resumeToast}
+                    </div>
+                </div>
+            )}
+
             {/* ── TOP BAR ── */}
             <div
                 className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-3 md:px-6 md:py-4
@@ -197,6 +298,41 @@ export default function PostDetailPage() {
                 </div>
 
                 <div className="flex items-center gap-2 md:gap-4">
+                    {/* Bookmark toggle button */}
+                    <button
+                        onClick={async () => {
+                            if (hasBookmark) {
+                                removeBookmark();
+                            } else if (post) {
+                                try {
+                                    await fetch('/api/bookmarks', {
+                                        method: 'POST',
+                                        headers: { 'Content-Type': 'application/json' },
+                                        body: JSON.stringify({
+                                            postId: post._id,
+                                            currentPage,
+                                            totalPages: post.images.length,
+                                        }),
+                                    });
+                                    setHasBookmark(true);
+                                } catch (error) {
+                                    console.error('Error saving bookmark:', error);
+                                }
+                            }
+                        }}
+                        title={hasBookmark ? 'Xóa đánh dấu' : 'Lưu vị trí đọc'}
+                        className={`p-1.5 md:p-2 rounded-[8px] transition-all cursor-pointer ${hasBookmark
+                            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
+                            : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                            }`}
+                    >
+                        {hasBookmark ? (
+                            <BookmarkCheck className="w-4 h-4 md:w-5 md:h-5" />
+                        ) : (
+                            <Bookmark className="w-4 h-4 md:w-5 md:h-5" />
+                        )}
+                    </button>
+
                     <span className="text-white text-xs md:text-sm font-bold bg-white/10 px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-white/10">
                         {currentPage + 1} / {total}
                     </span>
@@ -234,8 +370,16 @@ export default function PostDetailPage() {
                     <div className="flex flex-col items-center gap-4 py-20 text-center w-full max-w-md px-6 z-10">
                         <div className="w-16 h-1 bg-white/20 rounded-none mb-2" />
                         <h2 className="text-white text-xl font-bold">Cảm ơn đã theo dõi!</h2>
-                        <p className="text-slate-500 text-sm">Bạn đã đọc hết "{post.title}".</p>
+                        <p className="text-slate-500 text-sm">Bạn đã đọc hết &quot;{post.title}&quot;.</p>
                         <div className="flex gap-4 mt-4">
+                            {hasBookmark && (
+                                <button
+                                    onClick={removeBookmark}
+                                    className="px-6 py-3 rounded-[8px] bg-white/10 text-white hover:bg-white/20 text-sm font-bold transition-transform active:scale-95 border border-white/10"
+                                >
+                                    Xóa đánh dấu
+                                </button>
+                            )}
                             <Link
                                 href="/#posts"
                                 className="px-8 py-3 rounded-[8px] bg-white text-black hover:bg-slate-200 text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-white/5"
