@@ -272,7 +272,7 @@ export default function AdminDashboard() {
     );
     if (isAuthLoading || !user || user.role !== 'admin') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-white dark:bg-[#0e0505]">
+            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
                 <Loader2 className="w-8 h-8 animate-spin text-red-500" />
             </div>
         );

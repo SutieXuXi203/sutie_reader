@@ -65,7 +65,7 @@ export default function ProductsPage() {
         [normalizedSearch, posts]
     );
     return (
-        <div className="min-h-screen bg-white dark:bg-[#0e0505] transition-colors pt-12 pb-20 md:py-20 px-8 lg:pl-32 lg:px-12">
+        <div className="min-h-screen bg-background text-foreground transition-colors pt-12 pb-20 md:py-20 px-8 lg:pl-32 lg:px-12">
             <div className="max-w-7xl mx-auto">
                 <div className="mb-12 flex flex-col md:flex-row md:items-end justify-between gap-6">
                     <div className="max-w-2xl">

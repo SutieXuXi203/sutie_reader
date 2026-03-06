@@ -222,7 +222,7 @@ export default function Home() {
     }
   }, [user]);
   return (
-    <div className="min-h-screen bg-white dark:bg-[#0e0505] transition-colors relative selection:bg-red-200 selection:text-red-900 dark:selection:bg-red-900/50 dark:selection:text-red-100">
+    <div className="min-h-screen bg-background text-foreground transition-colors relative selection:bg-red-200 selection:text-red-900 dark:selection:bg-red-900/50 dark:selection:text-red-100">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.red.200)_1px,transparent_1px)] dark:bg-[radial-gradient(theme(colors.red.900)_1px,transparent_1px)] [background-size:24px_24px] opacity-[0.25] dark:opacity-[0.07] z-0 mix-blend-multiply dark:mix-blend-screen" />
       <nav className="fixed md:top-0 md:left-0 bottom-0 left-0 right-0 z-50 md:w-16 md:h-screen w-full flex md:flex-col flex-row items-center justify-around md:justify-start md:py-8 py-3 px-4 md:px-0 bg-white/90 md:bg-transparent dark:bg-[#1a0808]/90 md:dark:bg-transparent backdrop-blur-md border-t border-red-100 dark:border-red-900/30 md:border-t-0 transition-all duration-300 shadow-[0_-4px_20px_-10px_rgba(220,38,38,0.15)] md:shadow-none">
         <div className="hidden md:flex md:flex-col md:items-center md:gap-8 md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2">

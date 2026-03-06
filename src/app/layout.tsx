@@ -18,7 +18,7 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body
-        className="font-sans antialiased bg-white dark:bg-[#0e0505] text-red-950 dark:text-red-50"
+        className="font-sans antialiased bg-background text-foreground"
         suppressHydrationWarning
       >
         <Providers>
