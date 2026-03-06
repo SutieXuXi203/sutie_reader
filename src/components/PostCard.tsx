@@ -1,14 +1,15 @@
 'use client';
 import { Trash2, Pencil, CalendarDays, User, ShieldAlert, Eye } from 'lucide-react';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState, useMemo, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
-import { EditPostForm } from '@/components/EditPostForm';
-import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
 import { getOptimizedImageUrl } from '@/lib/utils';
+const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
+const DeleteConfirmDialog = dynamic(() => import('@/components/DeleteConfirmDialog').then(m => ({ default: m.DeleteConfirmDialog })), { ssr: false });
 interface Post {
   _id: string;
   title: string;
@@ -26,7 +27,7 @@ interface PostCardProps {
   onUpdate: () => void;
   availableTags?: string[];
 }
-export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostCardProps) {
+export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -84,7 +85,7 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
       setIsDeleting(false);
     }
   };
-  const formatDate = (dateString: string) => {
+  const formatDate = useCallback((dateString: string) => {
     return new Date(dateString).toLocaleDateString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
@@ -92,7 +93,7 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
       month: 'short',
       day: 'numeric',
     });
-  };
+  }, []);
   return (
     <>
       <Link
@@ -273,4 +274,4 @@ export function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostC
       )}
     </>
   );
-}
+});

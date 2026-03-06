@@ -1,12 +1,14 @@
-'use client';
-import { useState, useEffect } from 'react';
+﻿'use client';
+import { useState, useEffect, useDeferredValue, useMemo } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, BookOpen, Lock, Search } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostCard } from '@/components/PostCard';
 import { useAuth } from '@/providers/AuthContext';
-import { AuthDialog } from '@/components/AuthDialog';
+import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
+import { normalizeSearchText } from '@/lib/utils';
+const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
 interface Post {
     _id: string;
     title: string;
@@ -21,6 +23,7 @@ interface Post {
 export default function ProductsPage() {
     const [posts, setPosts] = useState<Post[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [isSearchComposing, setIsSearchComposing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const { user, isLoading: isAuthLoading } = useAuth();
@@ -51,10 +54,16 @@ export default function ProductsPage() {
     const handlePostDeleted = (postId: string) => {
         setPosts((prev) => prev.filter((post) => post._id !== postId));
     };
-    const normalizedSearch = searchTerm.trim().toLowerCase();
-    const filteredPosts = normalizedSearch
-        ? posts.filter((post) => [post.title, post.description || '', post.author, ...(post.tags || [])].some((value) => value.toLowerCase().includes(normalizedSearch)))
-        : posts;
+    const deferredSearchTerm = useDeferredValue(searchTerm);
+    const normalizedSearch = normalizeSearchText(isSearchComposing ? '' : deferredSearchTerm);
+    const filteredPosts = useMemo(() => normalizedSearch
+        ? posts.filter((post) =>
+            [post.title, post.description || '', post.author, ...(post.tags || [])]
+                .some((value) => normalizeSearchText(value).includes(normalizedSearch))
+        )
+        : posts,
+        [normalizedSearch, posts]
+    );
     return (
         <div className="min-h-screen bg-white dark:bg-[#0e0505] transition-colors pt-12 pb-20 md:py-20 px-8 lg:pl-32 lg:px-12">
             <div className="max-w-7xl mx-auto">
@@ -70,9 +79,6 @@ export default function ProductsPage() {
                             <BookOpen className="w-10 h-10 text-red-500" />
                             Tất Cả Bài Viết
                         </h1>
-                        <p className="text-neutral-600 dark:text-neutral-400 mt-4 text-lg">
-                            Khám phá tất cả các bài viết và câu chuyện.
-                        </p>
                     </div>
                     {user && (
                         <div className="w-full md:w-[280px] shrink-0">
@@ -89,6 +95,12 @@ export default function ProductsPage() {
                                     type="text"
                                     value={searchTerm}
                                     onChange={(e) => setSearchTerm(e.target.value)}
+                                    onCompositionStart={() => setIsSearchComposing(true)}
+                                    onCompositionEnd={() => setIsSearchComposing(false)}
+                                    spellCheck={false}
+                                    autoCorrect="off"
+                                    autoCapitalize="none"
+                                    autoComplete="off"
                                     placeholder="Tìm theo tiêu đề, mô tả..."
                                     className="h-9 rounded-[8px] pl-9 pr-3 text-sm border-red-200/70 dark:border-red-900/60 bg-white/90 dark:bg-[#160808]/80 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 focus-visible:border-red-400 dark:focus-visible:border-red-500 focus-visible:ring-red-400/20 dark:focus-visible:ring-red-500/20"
                                 />

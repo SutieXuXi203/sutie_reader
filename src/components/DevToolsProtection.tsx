@@ -15,18 +15,12 @@ export function DevToolsProtection() {
             if (blocked) e.preventDefault();
         };
 
-        const debuggerInterval = setInterval(() => {
-
-            debugger;
-        }, 1500);
-
         document.addEventListener('contextmenu', handleContextMenu);
         document.addEventListener('keydown', handleKeyDown);
 
         return () => {
             document.removeEventListener('contextmenu', handleContextMenu);
             document.removeEventListener('keydown', handleKeyDown);
-            clearInterval(debuggerInterval);
         };
     }, []);
 

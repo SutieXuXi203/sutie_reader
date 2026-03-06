@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, FileText, BookmarkCheck, ChevronRight, X } from 'lucide-react';
@@ -49,29 +49,36 @@ export default function Home() {
   const [activeSection, setActiveSection] = useState('home');
   const [scrollProgress, setScrollProgress] = useState(0);
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
+  const rafRef = useRef<number>(0);
   useEffect(() => {
     const handleScroll = () => {
-      const scrollY = window.scrollY;
-      const half = window.innerHeight / 2;
-      const postsEl = document.getElementById('posts');
-      const contactEl = document.getElementById('contact');
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = docHeight > 0 ? Math.min(scrollY / docHeight, 1) : 0;
-      setScrollProgress(progress);
-      if (contactEl && scrollY >= (contactEl as HTMLElement).offsetTop - half) {
-        setActiveSection('contact');
-      } else if (postsEl && scrollY >= (postsEl as HTMLElement).offsetTop - half) {
-        setActiveSection('posts');
-      } else {
-        setActiveSection('home');
-      }
+      if (rafRef.current) return;
+      rafRef.current = requestAnimationFrame(() => {
+        const scrollY = window.scrollY;
+        const half = window.innerHeight / 2;
+        const postsEl = document.getElementById('posts');
+        const contactEl = document.getElementById('contact');
+        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+        const progress = docHeight > 0 ? Math.min(scrollY / docHeight, 1) : 0;
+        setScrollProgress(progress);
+        if (contactEl && scrollY >= (contactEl as HTMLElement).offsetTop - half) {
+          setActiveSection('contact');
+        } else if (postsEl && scrollY >= (postsEl as HTMLElement).offsetTop - half) {
+          setActiveSection('posts');
+        } else {
+          setActiveSection('home');
+        }
+        rafRef.current = 0;
+      });
     };
     handleScroll();
     window.addEventListener('scroll', handleScroll, { passive: true });
-    return () => window.removeEventListener('scroll', handleScroll);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+    };
   }, []);
   useEffect(() => {
-    const els = document.querySelectorAll('.reveal');
     const observer = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {
@@ -83,9 +90,17 @@ export default function Home() {
       },
       { threshold: 0.12 }
     );
-    els.forEach((el) => observer.observe(el));
-    return () => observer.disconnect();
-  }, [posts, user, isLoading, isAuthLoading, bookmarks]);
+    const observeAll = () => {
+      document.querySelectorAll('.reveal:not(.reveal-visible)').forEach((el) => observer.observe(el));
+    };
+    observeAll();
+    const mutationObserver = new MutationObserver(() => observeAll());
+    mutationObserver.observe(document.body, { childList: true, subtree: true });
+    return () => {
+      observer.disconnect();
+      mutationObserver.disconnect();
+    };
+  }, []);
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
   const fetchTags = async () => {
     try {
@@ -146,6 +161,12 @@ export default function Home() {
     const standaloneNames = standaloneTags.map(t => t.name);
     return Array.from(new Set([...postTags, ...standaloneNames])).filter(Boolean);
   }, [posts, standaloneTags]);
+  const sortedRecentPosts = useMemo(() =>
+    [...posts]
+      .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+      .slice(0, 6),
+    [posts]
+  );
   const handlePostDeleted = useCallback((postId: string) => {
     setPosts((prev) => prev.filter((post) => post._id !== postId));
   }, []);
@@ -504,17 +525,14 @@ export default function Home() {
             </div>
           ) : (
             <div className="reveal hero-delay-2 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
-              {[...posts]
-                .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
-                .slice(0, 6)
-                .map((post) => (
-                  <PostCard
-                    key={post._id}
-                    post={post}
-                    onDelete={handlePostDeleted}
-                    onUpdate={fetchPosts}
-                  />
-                ))}
+              {sortedRecentPosts.map((post) => (
+                <PostCard
+                  key={post._id}
+                  post={post}
+                  onDelete={handlePostDeleted}
+                  onUpdate={fetchPosts}
+                />
+              ))}
             </div>
           )}
         </div>
