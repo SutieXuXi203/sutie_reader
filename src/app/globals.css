@@ -105,40 +105,42 @@
 
 :root {
   --radius: 0.625rem;
-  --background: #F2DB8F;
-  /* Light Yellow */
-  --foreground: #651609;
+  --background: #651609;
   /* Dark Red */
-  --card: #F2DB8F;
-  --card-foreground: #651609;
-  --popover: #F2DB8F;
-  --popover-foreground: #651609;
+  --foreground: #F2DB8F;
+  /* Light Yellow */
+  --card: #5A1207;
+  /* Slightly darker red for depth */
+  --card-foreground: #F2DB8F;
+  --popover: #5A1207;
+  --popover-foreground: #F2DB8F;
   --primary: #E59E22;
   /* Orange */
   --primary-foreground: #651609;
-  --secondary: #E3CC85;
-  /* Slightly darker yellow */
-  --secondary-foreground: #651609;
-  --muted: #E3CC85;
-  --muted-foreground: #651609;
+  /* Dark text on orange */
+  --secondary: #8A2B1A;
+  /* Lighter red for secondary elements */
+  --secondary-foreground: #F2DB8F;
+  --muted: #8A2B1A;
+  --muted-foreground: #F2DB8F;
   --accent: #E59E22;
   --accent-foreground: #651609;
-  --destructive: #651609;
-  --border: #E3CC85;
-  --input: #E3CC85;
+  --destructive: #F2DB8F;
+  --border: #8A2B1A;
+  --input: #8A2B1A;
   --ring: #E59E22;
-  --chart-1: #651609;
-  --chart-2: #E59E22;
-  --chart-3: #F2DB8F;
-  --chart-4: #8A2B1A;
+  --chart-1: #E59E22;
+  --chart-2: #F2DB8F;
+  --chart-3: #8A2B1A;
+  --chart-4: #5A1207;
   --chart-5: #C87C17;
-  --sidebar: #F2DB8F;
-  --sidebar-foreground: #651609;
+  --sidebar: #5A1207;
+  --sidebar-foreground: #F2DB8F;
   --sidebar-primary: #E59E22;
   --sidebar-primary-foreground: #651609;
-  --sidebar-accent: #E3CC85;
-  --sidebar-accent-foreground: #651609;
-  --sidebar-border: #E3CC85;
+  --sidebar-accent: #8A2B1A;
+  --sidebar-accent-foreground: #F2DB8F;
+  --sidebar-border: #8A2B1A;
   --sidebar-ring: #E59E22;
 }
 
