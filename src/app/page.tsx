@@ -49,33 +49,52 @@ export default function Home() {
   const [activeSection, setActiveSection] = useState('home');
   const [scrollProgress, setScrollProgress] = useState(0);
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
-  const rafRef = useRef<number>(0);
   useEffect(() => {
-    const handleScroll = () => {
-      if (rafRef.current) return;
-      rafRef.current = requestAnimationFrame(() => {
-        const scrollY = window.scrollY;
-        const half = window.innerHeight / 2;
-        const postsEl = document.getElementById('posts');
-        const contactEl = document.getElementById('contact');
-        const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-        const progress = docHeight > 0 ? Math.min(scrollY / docHeight, 1) : 0;
-        setScrollProgress(progress);
-        if (contactEl && scrollY >= (contactEl as HTMLElement).offsetTop - half) {
-          setActiveSection('contact');
-        } else if (postsEl && scrollY >= (postsEl as HTMLElement).offsetTop - half) {
-          setActiveSection('posts');
-        } else {
-          setActiveSection('home');
+    const sections = ['home', 'posts', 'contact'];
+
+    // Create an intersection observer for the sections
+    const observer = new IntersectionObserver(
+      (entries) => {
+        // Find the overlapping entry with the largest intersection ratio
+        let maxRatio = 0;
+        let activeId = '';
+
+        entries.forEach((entry) => {
+          if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
+            maxRatio = entry.intersectionRatio;
+            activeId = entry.target.id || entry.target.getAttribute('data-section') || '';
+          }
+        });
+
+        if (activeId) {
+          setActiveSection(activeId);
         }
-        rafRef.current = 0;
-      });
+      },
+      {
+        root: null,
+        rootMargin: '-20% 0px -40% 0px', // Triggers when the section reaches the upper-middle part of the screen
+        threshold: [0, 0.25, 0.5, 0.75, 1] // Multiple thresholds for accurate tracking
+      }
+    );
+
+    // Observe each section
+    sections.forEach((id) => {
+      const el = document.getElementById(id) || document.querySelector(`[data-section="${id}"]`);
+      if (el) observer.observe(el);
+    });
+
+    // Also keep a lightweight scroll listener just for the scroll progress bar if needed
+    const handleScrollProgress = () => {
+      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
+      const progress = docHeight > 0 ? Math.min(window.scrollY / docHeight, 1) : 0;
+      setScrollProgress(progress);
     };
-    handleScroll();
-    window.addEventListener('scroll', handleScroll, { passive: true });
+
+    window.addEventListener('scroll', handleScrollProgress, { passive: true });
+
     return () => {
-      window.removeEventListener('scroll', handleScroll);
-      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      observer.disconnect();
+      window.removeEventListener('scroll', handleScrollProgress);
     };
   }, []);
   useEffect(() => {
