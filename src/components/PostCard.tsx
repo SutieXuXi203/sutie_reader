@@ -165,7 +165,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               {post.description || 'Chưa gắn tag'}
             </p>
           )}
-          <div className="flex items-center gap-2 mb-6 text-foreground/80 font-semibold bg-secondary w-fit px-3 py-1.5 rounded-[8px] border border-border">
+          <div className="flex items-center gap-2 mb-6 text-foreground/80 font-semibold w-fit">
             <User className="w-4 h-4" />
             <span className="text-sm">{post.author}</span>
           </div>
