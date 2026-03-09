@@ -260,13 +260,13 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               <div className="flex gap-3 w-full">
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); setNsfwRevealed(true); }}
-                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-[8px] hover:bg-primary/90 transition-colors shadow-[0_4px_14px_var(--color-primary)] text-sm"
+                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-[8px] hover:bg-primary/90 transition-colors shadow-[0_4px_14px_var(--color-primary)] text-sm cursor-pointer"
                 >
                   Hiển thị
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); }}
-                  className="flex-1 py-3 bg-card text-foreground font-bold rounded-[8px] hover:bg-secondary transition-colors border border-border text-sm shadow-sm"
+                  className="flex-1 py-3 bg-card text-foreground font-bold rounded-[8px] hover:bg-secondary transition-colors border border-border text-sm shadow-sm cursor-pointer"
                 >
                   Hủy
                 </button>
