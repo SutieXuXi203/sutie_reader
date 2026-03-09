@@ -257,7 +257,7 @@ export default function Home() {
                   document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth' });
                 }
               }}
-              className="group relative flex items-center cursor-pointer"
+              className="group relative flex items-center justify-center cursor-pointer w-4 h-4"
               title={section.label}
             >
               <div className={`w-1.5 h-1.5 rounded-full border-[1.5px] transition-all duration-300 ${activeSection === section.id
@@ -272,7 +272,7 @@ export default function Home() {
               </span>
             </button>
           ))}
-          <div className="absolute top-0 bottom-0 left-[2px] w-px bg-border -z-10" />
+          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1px] bg-border -z-10" />
         </div>
         <div className="flex md:hidden flex-row items-center justify-center gap-6 flex-1">
           <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
