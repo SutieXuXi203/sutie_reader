@@ -127,12 +127,12 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     </DialogDescription>
                 </DialogHeader>
                 {error && (
-                    <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-none text-sm font-medium border border-red-100 dark:border-red-900/30">
+                    <div className="bg-secondary text-primary p-3 rounded-[8px] text-sm font-medium border border-border">
                         {error}
                     </div>
                 )}
                 {success && (
-                    <div className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-none text-sm font-medium border border-green-100 dark:border-green-900/30">
+                    <div className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-[8px] text-sm font-medium border border-green-100 dark:border-green-900/30">
                         {success}
                     </div>
                 )}
@@ -188,7 +188,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                             return (
                                                 <div
                                                     key={level}
-                                                    className={`flex-1 rounded-none transition-colors duration-300 ${bgColor}`}
+                                                    className={`flex-1 rounded-[8px] transition-colors duration-300 ${bgColor}`}
                                                 />
                                             );
                                         })}
@@ -255,7 +255,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                             }
                                         }}
                                         id={`otp-${index}`}
-                                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl font-bold bg-white dark:bg-[#1a0808] border-2 border-red-200 dark:border-red-800/50 rounded-none focus:outline-none focus:border-red-500 dark:focus:border-red-400 transition-colors shadow-sm text-neutral-900 dark:text-neutral-100"
+                                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl font-bold bg-white dark:bg-[#1a0808] border-2 border-border/50 rounded-[8px] focus:outline-none focus:border-primary dark:focus:border-red-400 transition-colors shadow-sm text-neutral-900 dark:text-neutral-100"
                                         required={index === 0}
                                     />
                                 ))}
@@ -269,7 +269,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     type="checkbox"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 rounded-none border-red-300 dark:border-red-700 text-red-600 focus:ring-red-500 accent-red-600 dark:accent-red-400"
+                                    className="w-4 h-4 rounded-[8px] border-red-300 dark:border-red-700 text-red-600 focus:ring-primary accent-red-600 dark:accent-red-400"
                                 />
                                 <span className="text-xs text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300 transition-colors">Ghi nhớ đăng nhập</span>
                             </label>
@@ -303,7 +303,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     {mode === 'login' && (
                         <p>
                             Chưa có tài khoản?{' '}
-                            <button onClick={() => setMode('register')} className="text-red-600 dark:text-red-400 font-semibold hover:underline decoration-2">
+                            <button onClick={() => setMode('register')} className="text-primary font-semibold hover:underline decoration-2">
                                 Đăng ký ngay
                             </button>
                         </p>
@@ -311,7 +311,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     {(mode === 'register' || mode === 'forgot-password' || mode === 'verify') && (
                         <p>
                             Đã có tài khoản?{' '}
-                            <button type="button" onClick={() => setMode('login')} className="text-red-600 dark:text-red-400 font-semibold hover:underline decoration-2">
+                            <button type="button" onClick={() => setMode('login')} className="text-primary font-semibold hover:underline decoration-2">
                                 Đăng nhập
                             </button>
                         </p>
@@ -321,3 +321,4 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         </Dialog >
     );
 }
+

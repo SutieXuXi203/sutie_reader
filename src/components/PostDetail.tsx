@@ -75,7 +75,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
           ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-8 h-8 gradient-red rounded-none flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-900/50">
+                    <div className="w-8 h-8 gradient-red rounded-[8px] flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-900/50">
                         <BookOpen className="w-4 h-4 text-white" />
                     </div>
                     <div className="min-w-0">
@@ -84,7 +84,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                     </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
-                    <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-none">
+                    <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-[8px]">
                         <span className="text-red-300 text-xs font-bold tracking-wider">
                             {currentPage + 1}
                         </span>
@@ -93,7 +93,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                     </div>
                     <button
                         onClick={() => onOpenChange(false)}
-                        className="w-8 h-8 rounded-none bg-white/10 hover:bg-red-600 text-white transition-all flex items-center justify-center hover:shadow-lg hover:shadow-red-900/30"
+                        className="w-8 h-8 rounded-[8px] bg-white/10 hover:bg-red-600 text-white transition-all flex items-center justify-center hover:shadow-lg hover:shadow-red-900/30"
                     >
                         <X className="w-4 h-4" />
                     </button>
@@ -123,14 +123,14 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                     ))}
                     <div className="flex flex-col items-center gap-4 py-16 text-center">
                         <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
-                        <div className="w-8 h-8 gradient-red rounded-none flex items-center justify-center shadow-lg shadow-red-900/40">
+                        <div className="w-8 h-8 gradient-red rounded-[8px] flex items-center justify-center shadow-lg shadow-red-900/40">
                             <BookOpen className="w-4 h-4 text-white" />
                         </div>
                         <p className="text-red-300/60 text-sm font-medium tracking-widest uppercase">Hết chương</p>
                         <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="mt-2 px-8 py-2.5 rounded-none gradient-red text-white text-sm font-bold transition-all hover:opacity-90 shadow-xl shadow-red-900/40 active:scale-95 cursor-pointer"
+                            className="mt-2 px-8 py-2.5 rounded-[8px] gradient-red text-white text-sm font-bold transition-all hover:opacity-90 shadow-xl shadow-red-900/40 active:scale-95 cursor-pointer"
                         >
                             Đóng
                         </button>

@@ -35,10 +35,10 @@ export function DeleteConfirmDialog({
         overlayClassName="backdrop-blur-none bg-red-950/35 dark:bg-black/65"
       >
         <DialogHeader className="space-y-3">
-          <div className="w-11 h-11 rounded-none bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 flex items-center justify-center border border-red-200/70 dark:border-red-800/50">
+          <div className="w-11 h-11 rounded-[8px] bg-red-100 dark:bg-red-900/30 text-primary flex items-center justify-center border border-red-200/70 dark:border-red-800/50">
             <AlertTriangle className="w-5 h-5" />
           </div>
-          <DialogTitle className="text-xl font-medium text-red-950 dark:text-red-50">
+          <DialogTitle className="text-xl font-medium text-foreground">
             {title}
           </DialogTitle>
           <DialogDescription className="text-sm leading-relaxed text-red-900/70 dark:text-red-200/80">
@@ -69,3 +69,4 @@ export function DeleteConfirmDialog({
     </Dialog>
   );
 }
+

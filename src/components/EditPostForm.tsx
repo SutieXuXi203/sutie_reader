@@ -136,14 +136,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-5">
                     {error && (
-                        <div className="bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-400 px-4 py-2 rounded-none text-sm">
+                        <div className="bg-secondary border border-border text-red-700 dark:text-red-400 px-4 py-2 rounded-[8px] text-sm">
                             {error}
                         </div>
                     )}
                     <div>
                         <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tiêu đề</label>
                         <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tiêu đề" maxLength={100} disabled={isSubmitting} className="rounded-[8px]" />
-                        <p className="text-xs text-slate-400 mt-1">{title.length}/100</p>
+                        <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p>
                     </div>
                     <div>
                         <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tag (không bắt buộc)</label>
@@ -184,7 +184,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                         <div className="border border-slate-200 dark:border-slate-700 rounded-[8px] p-6 text-center hover:bg-slate-50 dark:hover:bg-slate-900 transition-colors">
                             <input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isSubmitting} className="hidden" id="edit-image-input" />
                             <label htmlFor="edit-image-input" className="cursor-pointer block">
-                                <Upload className="h-6 w-6 mx-auto mb-2 text-slate-400" />
+                                <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
                                 <p className="text-sm text-slate-700 dark:text-slate-300">Click để tải ảnh lên</p>
                                 <p className="text-xs text-slate-500 mt-1">PNG, JPG, GIF tối đa 50MB</p>
                             </label>
@@ -217,3 +217,4 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         </Dialog>
     );
 }
+

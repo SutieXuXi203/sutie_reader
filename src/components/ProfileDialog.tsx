@@ -143,13 +143,13 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                 </DialogHeader>
 
                 {error && (
-                    <div className="bg-red-50 dark:bg-red-900/20 text-red-600 dark:text-red-400 p-3 rounded-none text-sm font-medium border border-red-100 dark:border-red-900/30">
+                    <div className="bg-secondary text-primary p-3 rounded-[8px] text-sm font-medium border border-border">
                         {error}
                     </div>
                 )}
 
                 {success && (
-                    <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-none text-sm font-medium border border-green-100 dark:border-green-900/30">
+                    <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-[8px] text-sm font-medium border border-green-100 dark:border-green-900/30">
                         <CheckCircle2 className="w-5 h-5" />
                         {success}
                     </div>
@@ -179,7 +179,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                                 step={0.1}
                                 aria-labelledby="Zoom"
                                 onChange={(e) => setZoom(Number(e.target.value))}
-                                className="w-full h-2 bg-muted rounded-lg appearance-none cursor-pointer accent-primary"
+                                className="w-full h-2 bg-muted rounded-[8px] appearance-none cursor-pointer accent-primary"
                             />
                         </div>
                         <div className="flex justify-end gap-2 mt-2">
@@ -256,7 +256,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                         <Button
                             type="submit"
                             disabled={isLoading || isUploading}
-                            className="rounded-none w-full shadow-lg h-12 text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90"
+                            className="rounded-[8px] w-full shadow-lg h-12 text-base font-bold bg-primary text-primary-foreground hover:bg-primary/90"
                         >
                             {isLoading ? (
                                 <div className="flex items-center gap-2">
@@ -273,3 +273,4 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
         </Dialog>
     );
 }
+

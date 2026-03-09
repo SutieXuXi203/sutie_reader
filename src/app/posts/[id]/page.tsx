@@ -166,17 +166,17 @@ export default function PostDetailPage() {
     }
     if (!user) {
         return (
-            <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white px-6 text-center">
-                <div className="w-20 h-20 bg-white/5 rounded-none flex items-center justify-center mb-8 border border-white/10">
-                    <Lock className="w-10 h-10 text-slate-400" />
+            <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground px-6 text-center">
+                <div className="w-20 h-20 bg-card rounded-[8px] flex items-center justify-center mb-8 border border-border shadow-lg">
+                    <Lock className="w-10 h-10 text-muted-foreground" />
                 </div>
                 <h1 className="text-3xl font-bold mb-4">Quyền truy cập bị giới hạn</h1>
-                <p className="text-slate-400 max-w-md mb-10 leading-relaxed">
+                <p className="text-muted-foreground max-w-md mb-10 leading-relaxed">
                     Trang này chỉ dành cho thành viên đã đăng ký. Vui lòng quay lại trang chủ và đăng nhập để tiếp tục xem nội dung này.
                 </p>
                 <Link
                     href="/#posts"
-                    className="px-10 py-4 rounded-[8px] bg-white text-black font-bold hover:bg-slate-200 transition-all active:scale-95 shadow-xl shadow-white/5"
+                    className="px-10 py-4 rounded-[8px] bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all active:scale-95 shadow-xl shadow-primary/20"
                 >
                     Về trang chủ đăng nhập
                 </Link>
@@ -187,31 +187,31 @@ export default function PostDetailPage() {
     const isNSFW = (post.tags || []).some(tag => tag.toLowerCase().includes('18+'));
     if (isNSFW && !nsfwAccepted) {
         return (
-            <div className="fixed inset-0 bg-[#050505] flex flex-col items-center justify-center text-white px-6 text-center z-[9999]" onMouseMove={resetUiTimer} onClick={resetUiTimer}>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/10 filter blur-[100px] rounded-full pointer-events-none" />
+            <div className="fixed inset-0 bg-background/95 backdrop-blur-md flex flex-col items-center justify-center text-foreground px-6 text-center z-[9999]" onMouseMove={resetUiTimer} onClick={resetUiTimer}>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-destructive/10 filter blur-[100px] rounded-full pointer-events-none" />
                 <div className="relative z-10 flex flex-col items-center max-w-[500px]">
-                    <div className="w-16 h-16 bg-[#1a0505] rounded-[16px] flex items-center justify-center mb-8 border border-red-900/30">
-                        <ShieldAlert className="w-8 h-8 text-red-500" />
+                    <div className="w-16 h-16 bg-card rounded-[8px] flex items-center justify-center mb-8 border border-border shadow-lg">
+                        <ShieldAlert className="w-8 h-8 text-destructive" />
                     </div>
-                    <h1 className="text-3xl sm:text-4xl font-extrabold mb-5 text-white tracking-tight">Cảnh báo nội dung</h1>
-                    <div className="inline-flex items-center gap-2 bg-[#1a0505] text-red-500 text-[11px] font-bold px-4 py-1.5 rounded-full mb-8 border border-red-900/30">
-                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+                    <h1 className="text-3xl sm:text-4xl font-extrabold mb-5 text-foreground tracking-tight">Cảnh báo nội dung</h1>
+                    <div className="inline-flex items-center gap-2 bg-destructive/10 text-destructive text-[11px] font-bold px-4 py-1.5 rounded-full mb-8 border border-destructive/30">
+                        <span className="w-1.5 h-1.5 bg-destructive rounded-full" />
                         Nội dung 18+
                     </div>
-                    <p className="text-slate-400 max-w-sm mb-12 leading-relaxed text-xs sm:text-sm">
+                    <p className="text-muted-foreground max-w-sm mb-12 leading-relaxed text-xs sm:text-sm">
                         Bài viết này chứa nội dung dành cho người trên 18 tuổi. Bằng việc tiếp tục, bạn xác nhận rằng bạn đã đủ 18 tuổi.
                     </p>
                     <div className="flex flex-col sm:flex-row gap-4 w-full sm:w-auto items-center justify-center">
                         <button
                             onClick={(e) => { e.stopPropagation(); setNsfwAccepted(true); }}
-                            className="w-full sm:w-[200px] py-3.5 rounded-[8px] bg-[#ff0000] text-white font-bold transition-all hover:bg-red-600 active:scale-95 shadow-[0_0_20px_rgba(255,0,0,0.3)] text-sm cursor-pointer border border-transparent"
+                            className="w-full sm:w-[200px] py-3.5 rounded-[8px] bg-destructive text-destructive-foreground font-bold transition-all hover:bg-destructive/90 active:scale-95 shadow-[0_0_20px_rgba(239,68,68,0.3)] text-sm cursor-pointer"
                         >
                             Tôi đã đủ 18 tuổi, tiếp tục
                         </button>
                         <Link
                             href="/#posts"
                             onClick={(e) => e.stopPropagation()}
-                            className="w-full sm:w-[120px] py-3.5 rounded-[8px] bg-[#1a1a1a] hover:bg-[#2a2a2a] text-[#a0a0a0] hover:text-white font-bold transition-all active:scale-95 text-sm text-center border border-white/5 cursor-pointer"
+                            className="w-full sm:w-[120px] py-3.5 rounded-[8px] bg-secondary hover:bg-muted text-foreground font-bold transition-all active:scale-95 text-sm text-center border border-border cursor-pointer"
                         >
                             Quay lại
                         </Link>
@@ -222,30 +222,30 @@ export default function PostDetailPage() {
     }
     const total = post.images.length;
     return (
-        <div className="min-h-screen bg-black flex flex-col relative" onMouseMove={resetUiTimer} onClick={resetUiTimer}>
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-slate-900/20 to-transparent pointer-events-none" />
+        <div className="min-h-screen bg-background flex flex-col relative" onMouseMove={resetUiTimer} onClick={resetUiTimer}>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 to-transparent pointer-events-none" />
             {resumeToast && (
                 <div className="fixed top-20 left-1/2 -translate-x-1/2 z-[60] animate-fade-in">
-                    <div className="flex items-center gap-2 bg-white/10 backdrop-blur-md text-white text-sm font-medium px-5 py-2.5 rounded-[8px] border border-white/10 shadow-xl">
-                        <BookmarkCheck className="w-4 h-4 text-red-400" />
+                    <div className="flex items-center gap-2 bg-card/60 backdrop-blur-md text-foreground text-sm font-medium px-5 py-2.5 rounded-[8px] border border-border shadow-xl">
+                        <BookmarkCheck className="w-4 h-4 text-primary" />
                         {resumeToast}
                     </div>
                 </div>
             )}
             <div
                 className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-3 md:px-6 md:py-4
-          bg-black/60 backdrop-blur-md border-b border-white/10 transition-opacity duration-500
+          bg-card/60 backdrop-blur-md border-b border-border transition-opacity duration-500
           ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
                 <div className="flex items-center gap-2 md:gap-4">
-                    <Link href="/#posts" className="p-1.5 md:p-2 rounded-[8px] bg-white/10 hover:bg-white/20 text-white transition-colors">
+                    <Link href="/#posts" className="p-1.5 md:p-2 rounded-[8px] bg-secondary hover:bg-muted text-foreground transition-colors">
                         <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
                     </Link>
                     <div className="flex items-center gap-2 md:gap-3">
-                        <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-slate-400 flex-shrink-0" />
+                        <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground flex-shrink-0" />
                         <div className="min-w-0">
-                            <h1 className="text-white font-bold text-sm md:text-base leading-tight line-clamp-1">{post.title}</h1>
-                            <p className="text-slate-400 text-[10px] md:text-xs">{post.author}</p>
+                            <h1 className="text-foreground font-bold text-sm md:text-base leading-tight line-clamp-1">{post.title}</h1>
+                            <p className="text-muted-foreground text-[10px] md:text-xs">{post.author}</p>
                         </div>
                     </div>
                 </div>
@@ -273,8 +273,8 @@ export default function PostDetailPage() {
                         }}
                         title={hasBookmark ? 'Xóa đánh dấu' : 'Lưu vị trí đọc'}
                         className={`p-1.5 md:p-2 rounded-[8px] transition-all cursor-pointer ${hasBookmark
-                            ? 'bg-red-500/20 text-red-400 hover:bg-red-500/30'
-                            : 'bg-white/10 text-white/60 hover:bg-white/20 hover:text-white'
+                            ? 'bg-primary/20 text-primary hover:bg-primary/30'
+                            : 'bg-secondary text-foreground/60 hover:bg-muted hover:text-foreground'
                             }`}
                     >
                         {hasBookmark ? (
@@ -283,12 +283,12 @@ export default function PostDetailPage() {
                             <Bookmark className="w-4 h-4 md:w-5 md:h-5" />
                         )}
                     </button>
-                    <span className="text-white text-xs md:text-sm font-bold bg-white/10 px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-white/10">
+                    <span className="text-foreground text-xs md:text-sm font-bold bg-secondary px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-border">
                         {currentPage + 1} / {total}
                     </span>
                     <Link
                         href="/#posts"
-                        className="p-1.5 md:p-2 rounded-[8px] bg-white/10 hover:bg-red-500/80 text-white transition-colors"
+                        className="p-1.5 md:p-2 rounded-[8px] bg-secondary hover:bg-destructive/80 text-foreground hover:text-white transition-colors"
                     >
                         <X className="w-4 h-4 md:w-5 md:h-5" />
                     </Link>
@@ -314,21 +314,21 @@ export default function PostDetailPage() {
                         </div>
                     ))}
                     <div className="flex flex-col items-center gap-4 py-20 text-center w-full max-w-md px-6 z-10">
-                        <div className="w-16 h-1 bg-white/20 rounded-none mb-2" />
-                        <h2 className="text-white text-xl font-bold">Cảm ơn đã theo dõi!</h2>
-                        <p className="text-slate-500 text-sm">Bạn đã đọc hết &quot;{post.title}&quot;.</p>
+                        <div className="w-16 h-1 bg-border rounded-full mb-2" />
+                        <h2 className="text-foreground text-xl font-bold">Cảm ơn đã theo dõi!</h2>
+                        <p className="text-muted-foreground text-sm">Bạn đã đọc hết &quot;{post.title}&quot;.</p>
                         <div className="flex gap-4 mt-4">
                             {hasBookmark && (
                                 <button
                                     onClick={removeBookmark}
-                                    className="px-6 py-3 rounded-[8px] bg-white/10 text-white hover:bg-white/20 text-sm font-bold transition-transform active:scale-95 border border-white/10"
+                                    className="px-6 py-3 rounded-[8px] bg-secondary text-foreground hover:bg-muted text-sm font-bold transition-transform active:scale-95 border border-border"
                                 >
                                     Xóa đánh dấu
                                 </button>
                             )}
                             <Link
                                 href="/#posts"
-                                className="px-8 py-3 rounded-[8px] bg-white text-black hover:bg-slate-200 text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-white/5"
+                                className="px-8 py-3 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-primary/20 border border-primary/20"
                             >
                                 Quay lại trang chủ
                             </Link>
