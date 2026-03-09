@@ -122,16 +122,16 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           )}
           {isNSFW && !nsfwRevealed && (
             <div
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-red-950/60 dark:bg-black/60 backdrop-blur-sm cursor-pointer transition-all duration-300"
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 dark:bg-black/80 backdrop-blur-md cursor-pointer transition-all duration-300"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
                 setShowNsfwConfirm(true);
               }}
             >
-              <ShieldAlert className="w-8 h-8 text-red-300 mb-2 drop-shadow-lg" />
-              <span className="text-white font-bold text-sm tracking-wider drop-shadow-md">18+</span>
-              <span className="text-red-200/90 text-sm mt-2 flex items-center gap-2 font-semibold">
+              <ShieldAlert className="w-8 h-8 text-primary mb-2 drop-shadow-lg" />
+              <span className="text-foreground dark:text-white font-bold text-sm tracking-wider drop-shadow-md">18+</span>
+              <span className="text-muted-foreground text-sm mt-2 flex items-center gap-2 font-semibold">
                 <Eye className="w-5 h-5" /> Nhấn để hiển thị
               </span>
             </div>
@@ -216,8 +216,8 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       />
       {
         canHoverPreview && showPreview && (!isNSFW || nsfwRevealed) && post.images.length > 0 && typeof document !== 'undefined' && createPortal(
-          <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-red-950/5 dark:bg-black/10">
-            <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-[8px] overflow-hidden shadow-[0_32px_64px_-16px_rgba(153,27,27,0.3)] dark:shadow-[0_32px_64px_-16px_rgba(0,0,0,0.6)] border border-red-200/30 dark:border-red-900/40 bg-card">
+          <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-background/50 dark:bg-black/60">
+            <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-[8px] overflow-hidden shadow-2xl border border-border bg-card">
               <Image
                 src={getOptimizedImageUrl(post.images[0])}
                 alt="Preview"
@@ -225,10 +225,10 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                 sizes="420px"
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-red-950/60 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-6">
                 <h4 className="text-white font-bold text-lg drop-shadow-md line-clamp-1">{post.title}</h4>
-                <p className="text-red-200/80 text-xs drop-shadow-sm mt-1">Xem chi tiết bài viết</p>
+                <p className="text-white/80 text-xs drop-shadow-sm mt-1">Xem chi tiết bài viết</p>
               </div>
             </div>
           </div>,
@@ -238,35 +238,35 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       {
         showNsfwConfirm && typeof document !== 'undefined' && createPortal(
           <div
-            className="fixed inset-0 z-[10000] bg-[#050505]/95 backdrop-blur-sm flex flex-col items-center justify-center text-white px-6 text-center"
+            className="fixed inset-0 z-[10000] bg-background/90 dark:bg-black/90 backdrop-blur-md flex flex-col items-center justify-center px-6 text-center"
             onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); }}
           >
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-red-900/10 filter blur-[100px] rounded-full pointer-events-none" />
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/20 filter blur-[100px] rounded-full pointer-events-none" />
             <div
-              className="relative z-10 flex flex-col items-center max-w-[400px] w-full bg-[#0a0202] border border-red-900/30 p-8 rounded-[8px] shadow-2xl"
+              className="relative z-10 flex flex-col items-center max-w-[400px] w-full bg-card border border-border p-8 rounded-[12px] shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-14 h-14 bg-[#1a0505] rounded-[16px] flex items-center justify-center mb-6 border border-red-900/40">
+              <div className="w-14 h-14 bg-secondary rounded-[12px] flex items-center justify-center mb-6 border border-border/50">
                 <ShieldAlert className="w-7 h-7 text-primary" />
               </div>
-              <h3 className="text-2xl font-bold mb-4 text-white">Cảnh báo !</h3>
-              <div className="inline-flex items-center gap-2 bg-[#1a0505] text-primary text-[10px] uppercase font-bold px-3 py-1 rounded-full mb-6 border border-red-900/30">
-                <span className="w-1.5 h-1.5 bg-red-500 rounded-full" />
+              <h3 className="text-2xl font-bold mb-4 text-foreground">Cảnh báo !</h3>
+              <div className="inline-flex items-center gap-2 bg-secondary text-primary text-[10px] uppercase font-bold px-3 py-1 rounded-full mb-6 border border-border/50">
+                <span className="w-1.5 h-1.5 bg-destructive rounded-full" />
                 Nội dung 18+
               </div>
               <p className="text-muted-foreground mb-8 text-sm leading-relaxed">
-                Đây là nội dung nhạy cảm dành cho người trên 18 tuổi. Mở hình ảnh này?
+                Đây là nội dung nhạy cảm dành cho người trên 18 tuổi. Khám phá nội dung này?
               </p>
               <div className="flex gap-3 w-full">
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); setNsfwRevealed(true); }}
-                  className="flex-1 py-3 bg-[#ff0000] text-white font-bold rounded-[8px] hover:bg-red-600 transition-colors shadow-[0_0_15px_rgba(255,0,0,0.2)] text-sm"
+                  className="flex-1 py-3 bg-primary text-primary-foreground font-bold rounded-[8px] hover:bg-primary/90 transition-colors shadow-[0_4px_14px_var(--color-primary)] text-sm"
                 >
                   Hiển thị
                 </button>
                 <button
                   onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); }}
-                  className="flex-1 py-3 bg-[#1a1a1a] text-[#a0a0a0] font-bold rounded-[8px] hover:bg-[#2a2a2a] hover:text-white transition-colors border border-white/5 text-sm"
+                  className="flex-1 py-3 bg-card text-foreground font-bold rounded-[8px] hover:bg-secondary transition-colors border border-border text-sm shadow-sm"
                 >
                   Hủy
                 </button>
