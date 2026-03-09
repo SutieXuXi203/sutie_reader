@@ -52,10 +52,8 @@ export default function Home() {
   useEffect(() => {
     const sections = ['home', 'posts', 'contact'];
 
-    // Create an intersection observer for the sections
     const observer = new IntersectionObserver(
       (entries) => {
-        // Find the overlapping entry with the largest intersection ratio
         let maxRatio = 0;
         let activeId = '';
 
@@ -72,18 +70,16 @@ export default function Home() {
       },
       {
         root: null,
-        rootMargin: '-20% 0px -40% 0px', // Triggers when the section reaches the upper-middle part of the screen
-        threshold: [0, 0.25, 0.5, 0.75, 1] // Multiple thresholds for accurate tracking
+        rootMargin: '-20% 0px -40% 0px',
+        threshold: [0, 0.25, 0.5, 0.75, 1]
       }
     );
 
-    // Observe each section
     sections.forEach((id) => {
       const el = document.getElementById(id) || document.querySelector(`[data-section="${id}"]`);
       if (el) observer.observe(el);
     });
 
-    // Also keep a lightweight scroll listener just for the scroll progress bar if needed
     const handleScrollProgress = () => {
       const docHeight = document.documentElement.scrollHeight - window.innerHeight;
       const progress = docHeight > 0 ? Math.min(window.scrollY / docHeight, 1) : 0;
@@ -92,7 +88,6 @@ export default function Home() {
 
     window.addEventListener('scroll', handleScrollProgress, { passive: true });
 
-    // Intersection Observer for scroll reveal animations
     const revealObserver = new IntersectionObserver(
       (entries) => {
         entries.forEach((entry) => {

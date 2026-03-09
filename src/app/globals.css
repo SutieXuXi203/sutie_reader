@@ -46,43 +46,43 @@
 :root {
   --radius: 0.5rem;
 
-  /* Creamy Light Yellow Background to match the #F2DB8F highlight tone */
+  
   --background: #FDFBF3;
-  /* Dark Red #651609 foreground text for strong readability */
+  
   --foreground: #651609;
 
-  /* Glassmorphism approach for Cards and Popovers in Light Mode */
+  
   --card: rgba(255, 255, 255, 0.6);
   --card-foreground: #651609;
   --popover: rgba(253, 251, 243, 0.85);
   --popover-foreground: #651609;
 
-  /* Vibrant Orange #E59E22 for Primary elements */
+  
   --primary: #E59E22;
-  /* Text on orange buttons */
+  
   --primary-foreground: #FDFBF3;
 
-  /* Less pronounced elements / Secondary cards */
+  
   --secondary: rgba(229, 158, 34, 0.1);
-  /* Very light orange wash */
+  
   --secondary-foreground: #651609;
 
-  /* Muted backgrounds and text */
+  
   --muted: rgba(101, 22, 9, 0.08);
-  /* 8% dark red */
+  
   --muted-foreground: rgba(101, 22, 9, 0.65);
-  /* 65% dark red text */
+  
 
-  /* Hover states */
+  
   --accent: rgba(229, 158, 34, 0.15);
   --accent-foreground: #651609;
 
-  /* Danger/destructive */
+  
   --destructive: #EF4444;
 
-  /* Borders and Rings */
+  
   --border: rgba(101, 22, 9, 0.12);
-  /* Subtle dark red border */
+  
   --input: rgba(101, 22, 9, 0.15);
   --ring: #E59E22;
 
@@ -97,7 +97,7 @@
 }
 
 .dark {
-  /* Same theme for both to enforce the exact design palette */
+  
   --background: #410E06;
   --foreground: #F2DB8F;
   --card: rgba(10, 2, 1, 0.25);
