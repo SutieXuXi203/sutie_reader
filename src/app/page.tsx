@@ -242,7 +242,7 @@ export default function Home() {
     <div className="min-h-screen bg-background text-foreground transition-colors relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.primary)_1px,transparent_1px)] opacity-[0.1] z-0 mix-blend-screen" />
       <nav className="fixed md:top-0 md:left-0 bottom-0 left-0 right-0 z-50 md:w-16 md:h-screen w-full flex md:flex-col flex-row items-center justify-around md:justify-start md:py-8 py-3 px-4 md:px-0 bg-transparent transition-all duration-300">
-        <div className="hidden md:flex md:flex-col md:items-center md:gap-8 md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
+        <div className="hidden md:flex md:flex-col md:items-center md:gap-16 md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
           {[
             { id: 'home', label: 'Trang chủ' },
             { id: 'posts', label: 'Bài viết' },
