@@ -363,12 +363,13 @@ export default function AdminDashboard() {
         );
     }
     return (
-        <div className="min-h-screen bg-background flex font-sans selection:bg-primary/20">
-            <aside className="w-56 bg-card/50 backdrop-blur-md hidden lg:flex flex-col border-r border-border z-20">
+        <div className="min-h-screen [scrollbar-gutter:stable] bg-background font-sans selection:bg-primary/20">
+            <div className="mx-auto flex w-full max-w-[1600px] gap-4 px-4 py-4">
+            <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto rounded-[10px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
                 <div className="p-6">
                     <h2 className="font-semibold text-lg text-foreground">Quản trị</h2>
                 </div>
-                <nav className="flex-1 px-3 space-y-0.5">
+                <nav className="px-3 pb-3 space-y-0.5">
                     <Link
                         href="/"
                         className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-foreground/90 hover:bg-secondary hover:text-primary transition-colors cursor-pointer"
@@ -398,7 +399,7 @@ export default function AdminDashboard() {
                         <span>Người dùng</span>
                     </button>
                 </nav>
-                <div className="p-4 border-t border-border">
+                <div className="p-4 border-t border-border/70">
                     <p className="text-xs font-medium text-muted-foreground mb-2">Tài khoản đang hoạt động</p>
                     <div className="flex items-center gap-3 p-3 rounded-[8px] bg-secondary/70 dark:bg-primary/10">
                         <div className="relative w-10 h-10 rounded-[8px] overflow-hidden bg-secondary shrink-0">
@@ -416,8 +417,8 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </aside>
-            <main className="flex-1 overflow-auto bg-background">
-                <header className="h-20 bg-card/50 backdrop-blur-md border-b border-border px-6 sm:px-10 flex items-center justify-between sticky top-0 z-10">
+            <main className="flex-1 min-w-0 min-h-[calc(100vh-2rem)] rounded-[10px] border border-border/70 bg-card/35 shadow-sm">
+                <header className="h-20 bg-card/55 backdrop-blur-md border-b border-border/70 px-6 sm:px-8 lg:px-10 flex items-center justify-between sticky top-0 z-10 rounded-t-[10px]">
                     <div className="flex items-center gap-6">
                         <div className="lg:hidden">
                             <Link href="/" className="text-base font-medium text-neutral-800 dark:text-neutral-200">Quản trị</Link>
@@ -448,9 +449,9 @@ export default function AdminDashboard() {
                         )}
                     </div>
                 </header>
-                <div className="p-6 sm:p-10 space-y-6 max-w-6xl mx-auto">
+                <div className="p-6 sm:p-8 lg:p-10 space-y-6">
                     {activeTab !== 'tags' && (
-                        <div className={`grid grid-cols-1 ${activeTab === 'users' ? 'md:grid-cols-4' : 'md:grid-cols-3'} gap-4`}>
+                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                             {(activeTab === 'posts' ? [
                                 { label: 'Tổng bài viết', value: posts.length },
                                 { label: 'Tác giả', value: '1' },
@@ -459,7 +460,6 @@ export default function AdminDashboard() {
                                 { label: 'Tổng người dùng', value: usersList.length },
                                 { label: 'Quản trị viên', value: usersList.filter(u => u.role === 'admin').length },
                                 { label: 'Người dùng', value: usersList.filter(u => u.role !== 'admin').length },
-                                { label: 'Đã xóa tự động', value: deletedAccounts.length }
                             ]).map((stat, i) => (
                                 <div key={i} className="bg-card/50 backdrop-blur-md p-5 rounded-[8px] border border-border shadow-md">
                                     <p className="text-xs font-medium text-muted-foreground mb-2">{stat.label}</p>
@@ -496,8 +496,10 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     )}
-                    <div className="bg-card/50 backdrop-blur-md rounded-[8px] border border-border overflow-hidden">
-                        <div className="p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border">
+                    <div className={activeTab === 'users' ? 'space-y-4' : 'bg-card/50 backdrop-blur-md rounded-[8px] border border-border overflow-hidden'}>
+                        <div className={activeTab === 'users'
+                            ? 'p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rounded-[8px] border border-border bg-card/50 backdrop-blur-md'
+                            : 'p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border'}>
                             <div className="relative w-full sm:w-[400px]">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/70 dark:text-neutral-300" />
                                 <Input
@@ -523,8 +525,9 @@ export default function AdminDashboard() {
                                 </form>
                             )}
                         </div>
-                        <div className="overflow-x-auto">
+                        <div className="w-full">
                             {activeTab === 'posts' ? (
+                                <div className="min-h-[560px] lg:min-h-[680px] overflow-x-auto">
                                 <table className="w-full text-center">
                                     <thead>
                                         <tr className="text-xs font-medium text-muted-foreground border-b border-border">
@@ -610,8 +613,9 @@ export default function AdminDashboard() {
                                         ))}
                                     </tbody>
                                 </table>
+                                </div>
                             ) : activeTab === 'users' ? (
-                                <div className="space-y-5 py-4">
+                                <div className="w-full min-h-[560px] lg:min-h-[680px] space-y-4 pb-4">
                                     <div className="rounded-[8px] border border-border/60 bg-card/30 shadow-sm overflow-hidden">
                                         <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
                                             <p className="text-sm font-semibold text-foreground">Tài khoản hiện tại</p>
@@ -641,7 +645,7 @@ export default function AdminDashboard() {
                                                     ) : filteredUsers.length === 0 ? (
                                                         <tr>
                                                             <td colSpan={7} className="px-5 py-12 text-center text-neutral-500">
-                                                                <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                                                                <Users className="w-10 h-10 mx-auto mb-3 text-foreground/55" />
                                                                 <p className="text-sm">{searchQuery ? 'Không tìm thấy' : 'Chưa có người dùng'}</p>
                                                             </td>
                                                         </tr>
@@ -790,15 +794,15 @@ export default function AdminDashboard() {
                                                 <tbody className="divide-y divide-border">
                                                     {isDeletedAccountsLoading ? (
                                                         <tr>
-                                                            <td colSpan={6} className="px-5 py-12 text-center text-neutral-500">
+                                                            <td colSpan={6} className="px-5 py-12 text-center text-foreground/80">
                                                                 <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
                                                                 <p className="text-sm">Đang tải...</p>
                                                             </td>
                                                         </tr>
                                                     ) : filteredDeletedAccounts.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={6} className="px-5 py-12 text-center text-neutral-500">
-                                                                <Users className="w-10 h-10 mx-auto mb-3 opacity-40" />
+                                                            <td colSpan={6} className="px-5 py-12 text-center text-foreground/80">
+                                                                <Users className="w-10 h-10 mx-auto mb-3 text-foreground/55" />
                                                                 <p className="text-sm">{searchQuery ? 'Không tìm thấy' : 'Chưa có tài khoản bị xóa tự động'}</p>
                                                             </td>
                                                         </tr>
@@ -865,6 +869,7 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             ) : activeTab === 'tags' ? (
+                                <div className="min-h-[560px] lg:min-h-[680px] overflow-x-auto">
                                 <table className="w-full text-center">
                                     <thead>
                                         <tr className="text-xs font-medium text-muted-foreground border-b border-border">
@@ -944,11 +949,13 @@ export default function AdminDashboard() {
                                             ))}
                                     </tbody>
                                 </table>
+                                </div>
                             ) : null}
                         </div>
                     </div>
                 </div>
             </main >
+            </div>
             < CreatePostForm
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
@@ -987,3 +994,5 @@ export default function AdminDashboard() {
         </div >
     );
 }
+
+
