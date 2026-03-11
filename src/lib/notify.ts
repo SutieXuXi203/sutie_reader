@@ -17,8 +17,8 @@ const palette: Record<ToastVariant, Pick<GooeyToastOptions, 'fillColor' | 'borde
     borderColor: 'color-mix(in oklab, var(--primary) 34%, transparent)',
   },
   success: {
-    fillColor: '#FFF6E7',
-    borderColor: 'color-mix(in oklab, var(--primary) 34%, transparent)',
+    fillColor: '#ecfdf3',
+    borderColor: '#86efac',
   },
   info: {
     fillColor: '#FFF6E7',

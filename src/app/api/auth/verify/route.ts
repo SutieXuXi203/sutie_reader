@@ -15,11 +15,19 @@ export async function POST(request: NextRequest) {
         if (user.isVerified) {
             return NextResponse.json({ error: 'Tài khoản đã được xác thực trước đó' }, { status: 400 });
         }
+        if (user.verificationExpiresAt && user.verificationExpiresAt.getTime() <= Date.now()) {
+            await User.deleteOne({ _id: user._id });
+            return NextResponse.json(
+                { error: 'Mã xác thực đã hết hạn sau 24 giờ. Tài khoản đã bị xóa, vui lòng đăng ký lại.' },
+                { status: 410 }
+            );
+        }
         if (user.verificationCode !== code) {
             return NextResponse.json({ error: 'Mã xác thực không chính xác' }, { status: 400 });
         }
         user.isVerified = true;
         user.verificationCode = undefined;
+        user.verificationExpiresAt = undefined;
         await user.save();
         return NextResponse.json({
             message: 'Xác thực thành công. Bạn có thể đăng nhập.',

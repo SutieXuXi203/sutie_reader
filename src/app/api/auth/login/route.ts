@@ -25,11 +25,13 @@ export async function POST(request: NextRequest) {
                     email,
                     password: hashedPassword,
                     name: 'Administrator',
-                    role: 'admin'
+                    role: 'admin',
+                    isVerified: true,
                 });
                 await user.save();
-            } else if (user.role !== 'admin') {
+            } else if (user.role !== 'admin' || !user.isVerified) {
                 user.role = 'admin';
+                user.isVerified = true;
                 await user.save();
             }
         } else {
@@ -37,7 +39,14 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
             }
             isMatch = await bcrypt.compare(password, user.password);
-            if (isMatch && !user.isVerified) {
+            if (isMatch && user.role !== 'admin' && !user.isVerified) {
+                if (user.verificationExpiresAt && user.verificationExpiresAt.getTime() <= Date.now()) {
+                    await User.deleteOne({ _id: user._id });
+                    return NextResponse.json(
+                        { error: 'Tài khoản chưa xác thực đã hết hạn sau 24 giờ và đã bị xóa. Vui lòng đăng ký lại.' },
+                        { status: 410 }
+                    );
+                }
                 return NextResponse.json({ error: 'Tài khoản chưa được xác thực. Vui lòng kiểm tra email.' }, { status: 403 });
             }
         }
@@ -59,7 +68,13 @@ export async function POST(request: NextRequest) {
                 role: user.role,
             },
         });
-        const cookieOptions: any = {
+        const cookieOptions: {
+            httpOnly: true;
+            secure: boolean;
+            sameSite: 'lax';
+            path: '/';
+            maxAge?: number;
+        } = {
             httpOnly: true,
             secure: process.env.NODE_ENV === 'production',
             sameSite: 'lax',

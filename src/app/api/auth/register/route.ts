@@ -22,10 +22,13 @@ export async function POST(request: NextRequest) {
         }
         const hashedPassword = await bcrypt.hash(password, 12);
         const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
+        const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
         if (user) {
             user.password = hashedPassword;
             user.name = name;
+            user.isVerified = false;
             user.verificationCode = verificationCode;
+            user.verificationExpiresAt = verificationExpiresAt;
             if (avatar) user.avatar = avatar;
             await user.save();
         } else {
@@ -36,6 +39,7 @@ export async function POST(request: NextRequest) {
                 avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
                 isVerified: false,
                 verificationCode,
+                verificationExpiresAt,
             });
         }
         try {

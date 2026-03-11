@@ -7,6 +7,7 @@ export interface IUser extends Document {
     role: 'user' | 'admin';
     isVerified: boolean;
     verificationCode?: string;
+    verificationExpiresAt?: Date;
     createdAt: Date;
     updatedAt: Date;
 }
@@ -46,9 +47,38 @@ const UserSchema = new Schema<IUser>(
         verificationCode: {
             type: String,
         },
+        verificationExpiresAt: {
+            type: Date,
+        },
     },
     {
         timestamps: true,
     }
 );
+
+UserSchema.pre('save', function (this: IUser, next) {
+    if (this.isVerified) {
+        this.verificationExpiresAt = undefined;
+        return next();
+    }
+
+    if (!this.verificationExpiresAt) {
+        this.verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+    }
+
+    next();
+});
+
+UserSchema.index(
+    { verificationExpiresAt: 1 },
+    {
+        name: 'unverified_user_ttl_24h',
+        expireAfterSeconds: 0,
+        partialFilterExpression: {
+            isVerified: false,
+            verificationExpiresAt: { $exists: true },
+        },
+    }
+);
+
 export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

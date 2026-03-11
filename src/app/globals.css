@@ -453,6 +453,31 @@ body {
   border: 1px solid color-mix(in oklab, var(--primary) 25%, transparent) !important;
 }
 
+.app-toast--success .gooey-contentCompact,
+.app-toast--success .gooey-contentExpanded {
+  background: #ecfdf3 !important;
+  color: #166534 !important;
+  border: 1px solid #86efac !important;
+  box-shadow: 0 6px 16px rgba(22, 101, 52, 0.14) !important;
+}
+
+.app-toast--success .gooey-header,
+.app-toast--success .gooey-iconWrapper,
+.app-toast--success .gooey-title,
+.app-toast--success .app-toast-title,
+.app-toast--success .gooey-titleSuccess {
+  color: #166534 !important;
+}
+
+.app-toast--success .gooey-description,
+.app-toast--success .gooey-timestamp {
+  color: #15803d !important;
+}
+
+.app-toast--success .gooey-progressSuccess {
+  background: #16a34a !important;
+}
+
 /* Force exact center for top-center toaster */
 [data-sonner-toaster][data-x-position='center'] {
   left: 0 !important;
