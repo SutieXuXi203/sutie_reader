@@ -1,8 +1,9 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/providers/ThemeProvider";
-import { DevToolsProtection } from "@/components/DevToolsProtection";
+import { GooeyToastProvider } from "@/components/GooeyToastProvider";
 import "./globals.css";
+import "goey-toast/styles.css";
 
 const inter = Inter({
   subsets: ["latin", "vietnamese"],
@@ -30,6 +31,7 @@ export default function RootLayout({
       >
         <Providers>
           {children}
+          <GooeyToastProvider />
         </Providers>
       </body>
     </html>

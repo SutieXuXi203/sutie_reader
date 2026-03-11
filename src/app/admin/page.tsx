@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User, Tag, AlertTriangle, X } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User, Tag } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { CreatePostForm } from '@/components/CreatePostForm';
@@ -11,6 +11,7 @@ import { EditPostForm } from '@/components/EditPostForm';
 import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
 import { Input } from '@/components/ui/input';
 import { getOptimizedImageUrl } from '@/lib/utils';
+import { notify } from '@/lib/notify';
 interface Post {
     _id: string;
     title: string;
@@ -30,7 +31,7 @@ interface AdminUser {
     createdAt: string;
 }
 export default function AdminDashboard() {
-    const { user, isAdmin, isLoading: isAuthLoading } = useAuth();
+    const { user, isLoading: isAuthLoading } = useAuth();
     const router = useRouter();
     const [activeTab, setActiveTab] = useState<'posts' | 'users' | 'tags'>('posts');
     const [posts, setPosts] = useState<Post[]>([]);
@@ -54,19 +55,12 @@ export default function AdminDashboard() {
     const [isUpdatingTag, setIsUpdatingTag] = useState(false);
     const [newTagName, setNewTagName] = useState('');
     const [isCreatingTag, setIsCreatingTag] = useState(false);
-    const [toastMessage, setToastMessage] = useState<string | null>(null);
-    useEffect(() => {
-        if (toastMessage) {
-            const timer = setTimeout(() => setToastMessage(null), 4000);
-            return () => clearTimeout(timer);
-        }
-    }, [toastMessage]);
     useEffect(() => {
         if (!user) return;
         const start = Date.now();
         const timer = setInterval(() => setSessionSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
         return () => clearInterval(timer);
-    }, [user?.email]);
+    }, [user]);
     const formatSessionTime = (sec: number) => {
         const h = Math.floor(sec / 3600);
         const m = Math.floor((sec % 3600) / 60);
@@ -84,7 +78,7 @@ export default function AdminDashboard() {
                 fetchTags();
             }
         }
-    }, [user, isAdmin, isAuthLoading]);
+    }, [user, isAuthLoading, router]);
     const fetchTags = async () => {
         try {
             const res = await fetch('/api/tags');
@@ -133,7 +127,7 @@ export default function AdminDashboard() {
     };
     const handleDeleteUser = (targetUser: AdminUser) => {
         if (targetUser.email === user?.email) {
-            setToastMessage('Bạn không thể xóa tài khoản của chính mình.');
+            notify.warning('Bạn không thể xóa tài khoản của chính mình.');
             return;
         }
         setDeleteTarget({
@@ -152,9 +146,10 @@ export default function AdminDashboard() {
                 });
                 if (res.ok) {
                     setPosts((prev) => prev.filter((p) => p._id !== deleteTarget.id));
+                    notify.success('Đã xóa bài viết');
                     setDeleteTarget(null);
                 } else {
-                    setToastMessage('Xóa thất bại');
+                    notify.error('Xóa thất bại');
                 }
             } else if (deleteTarget.type === 'user') {
                 const res = await fetch(`/api/admin/users/${deleteTarget.id}`, {
@@ -162,10 +157,11 @@ export default function AdminDashboard() {
                 });
                 if (res.ok) {
                     setUsersList((prev) => prev.filter((u) => u._id !== deleteTarget.id));
+                    notify.success('Đã xóa người dùng');
                     setDeleteTarget(null);
                 } else {
                     const data = await res.json();
-                    setToastMessage(data.error || 'Xóa thất bại');
+                    notify.error(data.error || 'Xóa thất bại');
                 }
             } else if (deleteTarget.type === 'tag') {
                 const res = await fetch(`/api/tags?tag=${encodeURIComponent(deleteTarget.id)}`, {
@@ -174,15 +170,16 @@ export default function AdminDashboard() {
                 if (res.ok) {
                     await fetchPosts();
                     await fetchTags();
+                    notify.success(`Đã xóa tag #${deleteTarget.name}`);
                     setDeleteTarget(null);
                 } else {
                     const data = await res.json();
-                    setToastMessage(data.error || 'Xóa tag thất bại');
+                    notify.error(data.error || 'Xóa tag thất bại');
                 }
             }
         } catch (error) {
             console.error('Error deleting target:', error);
-            setToastMessage('Đã xảy ra lỗi mạng');
+            notify.error('Đã xảy ra lỗi mạng');
         } finally {
             setIsDeletingTarget(false);
         }
@@ -209,11 +206,11 @@ export default function AdminDashboard() {
                 setEditingTag(null);
             } else {
                 const data = await res.json();
-                setToastMessage(data.error || 'Cập nhật tag thất bại');
+                notify.error(data.error || 'Cập nhật tag thất bại');
             }
         } catch (error) {
             console.error('Lỗi khi sửa tag:', error);
-            setToastMessage('Đã xảy ra lỗi mạng');
+            notify.error('Đã xảy ra lỗi mạng');
         } finally {
             setIsUpdatingTag(false);
         }
@@ -234,11 +231,11 @@ export default function AdminDashboard() {
                 await fetchTags();
             } else {
                 const data = await res.json();
-                setToastMessage(data.error || 'Tạo tag thất bại');
+                notify.error(data.error || 'Tạo tag thất bại');
             }
         } catch (error) {
             console.error('Lỗi khi tạo tag:', error);
-            setToastMessage('Đã xảy ra lỗi mạng');
+            notify.error('Đã xảy ra lỗi mạng');
         } finally {
             setIsCreatingTag(false);
         }
@@ -315,7 +312,7 @@ export default function AdminDashboard() {
                 </nav>
                 <div className="p-4 border-t border-border">
                     <p className="text-xs font-medium text-muted-foreground mb-2">Tài khoản đang hoạt động</p>
-                    <div className="flex items-center gap-3 p-3 rounded-[8px] bg-red-50/50 dark:bg-red-900/10">
+                    <div className="flex items-center gap-3 p-3 rounded-[8px] bg-secondary/70 dark:bg-primary/10">
                         <div className="relative w-10 h-10 rounded-[8px] overflow-hidden bg-secondary shrink-0">
                             {user.avatar ? (
                                 <Image src={getOptimizedImageUrl(user.avatar)} alt={user.name || 'Avatar'} fill className="object-cover" unoptimized />
@@ -401,7 +398,7 @@ export default function AdminDashboard() {
                                         key={tag}
                                         type="button"
                                         onClick={() => setSearchQuery(tag)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium bg-card text-primary border border-border hover:border-red-400 dark:hover:border-red-600 hover:text-primary transition-colors cursor-pointer"
+                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium bg-card text-primary border border-border hover:border-primary/60 dark:hover:border-primary/75 hover:text-primary transition-colors cursor-pointer"
                                         title={`Lọc bài viết theo thẻ: ${tag}`}
                                     >
                                         #{tag}
@@ -416,7 +413,7 @@ export default function AdminDashboard() {
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground/80" />
                                 <Input
                                     placeholder={activeTab === 'posts' ? "Tìm bài viết, tác giả, tag..." : activeTab === 'users' ? "Tìm tên, email..." : "Tìm thẻ tag..."}
-                                    className="pl-10 h-10 bg-background border border-border rounded-[8px] focus-visible:ring-1 focus-visible:ring-red-400 text-sm text-foreground placeholder:text-muted-foreground/80 dark:placeholder:text-neutral-500"
+                                    className="pl-10 h-10 bg-background border border-border rounded-[8px] focus-visible:ring-1 focus-visible:ring-primary text-sm text-foreground placeholder:text-muted-foreground/80 dark:placeholder:text-neutral-500"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
@@ -464,7 +461,7 @@ export default function AdminDashboard() {
                                                 </td>
                                             </tr>
                                         ) : filteredPosts.map((post) => (
-                                            <tr key={post._id} className="group hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors">
+                                            <tr key={post._id} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
                                                 <td className="px-5 py-4">
                                                     <div className="flex items-center gap-4">
                                                         <div className="relative w-12 h-12 rounded-[8px] overflow-hidden bg-card shrink-0">
@@ -552,7 +549,7 @@ export default function AdminDashboard() {
                                                 </td>
                                             </tr>
                                         ) : filteredUsers.map((u) => (
-                                            <tr key={u._id} className="group hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors">
+                                            <tr key={u._id} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
                                                 <td className="px-5 py-4">
                                                     <div className="flex items-center gap-3">
                                                         <div className="relative shrink-0">
@@ -564,9 +561,9 @@ export default function AdminDashboard() {
                                                                 )}
                                                             </div>
                                                             {u.email === user?.email ? (
-                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-[#1a0808]" title="Tài khoản đang đăng nhập" />
+                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-background" title="Tài khoản đang đăng nhập" />
                                                             ) : (
-                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neutral-300 dark:bg-neutral-600 ring-2 ring-white dark:ring-[#1a0808]" title="Không hoạt động" />
+                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neutral-300 dark:bg-neutral-600 ring-2 ring-white dark:ring-background" title="Không hoạt động" />
                                                             )}
                                                         </div>
                                                         <p className="text-sm font-medium text-foreground truncate max-w-[150px]">{u.name || 'Ẩn danh'}</p>
@@ -622,7 +619,7 @@ export default function AdminDashboard() {
                                         {availablePostTags
                                             .filter(tag => tag.includes(searchQuery.toLowerCase()))
                                             .map((tag) => (
-                                                <tr key={tag} className="group hover:bg-red-50/50 dark:hover:bg-red-900/10 transition-colors">
+                                                <tr key={tag} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
                                                     <td className="px-5 py-4">
                                                         {editingTag?.oldName === tag ? (
                                                             <div className="flex items-center gap-2">
@@ -729,22 +726,6 @@ export default function AdminDashboard() {
                 }
                 confirmLabel={isDeletingTarget ? 'Đang xóa...' : 'Xóa'}
             />
-            {toastMessage && (
-                <div className="fixed top-6 right-6 z-[100] animate-in slide-in-from-top-2 fade-in duration-300">
-                    <div className="flex items-center gap-3 px-5 py-4 rounded-[8px] bg-card/50 backdrop-blur-md border border-border shadow-2xl shadow-red-500/10 max-w-sm">
-                        <div className="shrink-0 w-9 h-9 rounded-full bg-secondary flex items-center justify-center">
-                            <AlertTriangle className="w-5 h-5 text-primary" />
-                        </div>
-                        <p className="text-sm font-medium text-neutral-800 dark:text-neutral-200 flex-1">{toastMessage}</p>
-                        <button
-                            onClick={() => setToastMessage(null)}
-                            className="shrink-0 p-1 text-muted-foreground/80 hover:text-neutral-600 dark:hover:text-neutral-300 transition-colors rounded-[4px] hover:bg-neutral-100 dark:hover:bg-red-900/20 cursor-pointer"
-                        >
-                            <X className="w-4 h-4" />
-                        </button>
-                    </div>
-                </div>
-            )}
         </div >
     );
 }

@@ -89,7 +89,9 @@ export default function ProductsPage() {
                                 Tìm bài viết
                             </label>
                             <div className="relative group">
-                                <Search className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none group-focus-within:text-primary transition-colors" />
+                                <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/90 transition-colors group-focus-within:text-primary">
+                                    <Search className="w-4 h-4" />
+                                </span>
                                 <Input
                                     id="post-search"
                                     type="text"
@@ -102,7 +104,7 @@ export default function ProductsPage() {
                                     autoCapitalize="none"
                                     autoComplete="off"
                                     placeholder="Tìm theo tiêu đề, mô tả..."
-                                    className="h-9 rounded-[8px] pl-9 pr-3 text-sm border-border bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all"
+                                    className="h-9 rounded-[8px] pl-10 pr-3 text-sm border-border bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all"
                                 />
                             </div>
                         </div>

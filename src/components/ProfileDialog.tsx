@@ -4,12 +4,12 @@ import { useState, useRef, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { User, Loader2, ImagePlus, CheckCircle2 } from 'lucide-react';
+import { User, Loader2, ImagePlus } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
-import Image from 'next/image';
 import Cropper, { Area } from 'react-easy-crop';
 import 'react-easy-crop/react-easy-crop.css';
 import { getCroppedImg } from '@/lib/cropImage';
+import { notify } from '@/lib/notify';
 
 interface ProfileDialogProps {
     open: boolean;
@@ -19,8 +19,6 @@ interface ProfileDialogProps {
 export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     const { user, login } = useAuth();
     const [isLoading, setIsLoading] = useState(false);
-    const [error, setError] = useState('');
-    const [success, setSuccess] = useState('');
     const [name, setName] = useState('');
     const [avatarUrl, setAvatarUrl] = useState('');
     const fileInputRef = useRef<HTMLInputElement>(null);
@@ -35,8 +33,6 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
         if (user && open) {
             setName(user.name || '');
             setAvatarUrl(user.avatar || '');
-            setError('');
-            setSuccess('');
             setImageSrc(null);
             setZoom(1);
         }
@@ -47,12 +43,11 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
         if (!file) return;
 
         if (file.size > 5 * 1024 * 1024) {
-            setError('Kích thước ảnh không được vượt quá 5MB');
+            notify.error('Kích thước ảnh không được vượt quá 5MB');
             return;
         }
 
         setIsUploading(true);
-        setError('');
 
         const reader = new FileReader();
         reader.onloadend = () => {
@@ -74,8 +69,8 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
             const croppedImage = await getCroppedImg(imageSrc, croppedAreaPixels);
             setAvatarUrl(croppedImage);
             setImageSrc(null);
-        } catch (e: any) {
-            setError('Không thể cắt ảnh');
+        } catch (e: unknown) {
+            notify.error('Không thể cắt ảnh');
             console.error(e);
         } finally {
             setIsUploading(false);
@@ -92,8 +87,6 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsLoading(true);
-        setError('');
-        setSuccess('');
 
         try {
             const res = await fetch('/api/auth/me', {
@@ -108,7 +101,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                 throw new Error(data.error || 'Cập nhật không thành công');
             }
 
-            setSuccess('Cập nhật thông tin thành công!');
+            notify.success('Cập nhật thông tin thành công!');
 
             if (user) {
                 login({ ...user, name: data.user.name, avatar: data.user.avatar });
@@ -118,8 +111,9 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                 onOpenChange(false);
             }, 1500);
 
-        } catch (err: any) {
-            setError(err.message);
+        } catch (err: unknown) {
+            const message = err instanceof Error ? err.message : 'Cập nhật không thành công';
+            notify.error(message);
         } finally {
             setIsLoading(false);
         }
@@ -141,19 +135,6 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                         Cập nhật thông tin cá nhân và ảnh đại diện
                     </DialogDescription>
                 </DialogHeader>
-
-                {error && (
-                    <div className="bg-secondary text-primary p-3 rounded-[8px] text-sm font-medium border border-border">
-                        {error}
-                    </div>
-                )}
-
-                {success && (
-                    <div className="flex items-center gap-2 bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-[8px] text-sm font-medium border border-green-100 dark:border-green-900/30">
-                        <CheckCircle2 className="w-5 h-5" />
-                        {success}
-                    </div>
-                )}
 
                 {imageSrc ? (
                     <div className="flex flex-col gap-4 mt-4 h-[400px]">
@@ -273,4 +254,3 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
         </Dialog>
     );
 }
-

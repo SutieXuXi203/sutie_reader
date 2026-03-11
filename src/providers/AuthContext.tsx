@@ -1,5 +1,6 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import { notify } from '@/lib/notify';
 interface User {
     id: string;
     email: string;
@@ -43,10 +44,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }, []);
     const logout = useCallback(async () => {
         try {
-            await fetch('/api/auth/logout', { method: 'POST' });
-            setUser(null);
+            const res = await fetch('/api/auth/logout', { method: 'POST' });
+            if (res.ok) {
+                setUser(null);
+                notify.success('Đăng xuất thành công');
+            } else {
+                notify.error('Đăng xuất không thành công');
+            }
         } catch (error) {
             console.error('Logout failed', error);
+            notify.error('Đã xảy ra lỗi khi đăng xuất');
         }
     }, []);
     return (

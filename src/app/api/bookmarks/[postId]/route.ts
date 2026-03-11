@@ -2,6 +2,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
+
+type BookmarkLean = {
+    chapterIndex?: number;
+} & Record<string, unknown>;
+
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ postId: string }> }
@@ -20,7 +25,11 @@ export async function GET(
         if (!bookmark) {
             return NextResponse.json(null);
         }
-        return NextResponse.json(bookmark);
+        const bookmarkData = bookmark as unknown as BookmarkLean;
+        return NextResponse.json({
+            ...bookmarkData,
+            chapterIndex: typeof bookmarkData.chapterIndex === 'number' ? bookmarkData.chapterIndex : 0,
+        });
     } catch (error) {
         console.error('Error fetching bookmark:', error);
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });

@@ -1,14 +1,15 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, FileText, BookmarkCheck, ChevronRight, X, Newspaper } from 'lucide-react';
+import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, BookmarkCheck, ChevronRight, X, Newspaper } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
 import { getOptimizedImageUrl } from '@/lib/utils';
+import { notify } from '@/lib/notify';
 const CreatePostForm = dynamic(() => import('@/components/CreatePostForm').then(m => ({ default: m.CreatePostForm })), { ssr: false });
 const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
 const ProfileDialog = dynamic(() => import('@/components/ProfileDialog').then(m => ({ default: m.ProfileDialog })), { ssr: false });
@@ -19,6 +20,13 @@ interface Post {
   tags?: string[];
   content: string;
   images: string[];
+  chapters?: Array<{
+    title: string;
+    chapterNumber: number;
+    content: string;
+    images: string[];
+  }>;
+  chapterCount?: number;
   author: string;
   createdAt: string;
   updatedAt: string;
@@ -26,6 +34,7 @@ interface Post {
 interface BookmarkItem {
   _id: string;
   postId: string;
+  chapterIndex?: number;
   currentPage: number;
   totalPages: number;
   updatedAt: string;
@@ -37,21 +46,18 @@ interface BookmarkItem {
     tags?: string[];
   };
 }
+const SECTION_IDS = ['home', 'posts', 'contact'] as const;
+
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
   const { user, logout, isLoading: isAuthLoading, isAdmin } = useAuth();
-  const [contactSent, setContactSent] = useState(false);
   const [activeSection, setActiveSection] = useState('home');
-  const [scrollProgress, setScrollProgress] = useState(0);
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   useEffect(() => {
-    const sections = ['home', 'posts', 'contact'];
-
     const observer = new IntersectionObserver(
       (entries) => {
         let maxRatio = 0;
@@ -75,43 +81,13 @@ export default function Home() {
       }
     );
 
-    sections.forEach((id) => {
+    SECTION_IDS.forEach((id) => {
       const el = document.getElementById(id) || document.querySelector(`[data-section="${id}"]`);
       if (el) observer.observe(el);
     });
 
-    const handleScrollProgress = () => {
-      const docHeight = document.documentElement.scrollHeight - window.innerHeight;
-      const progress = docHeight > 0 ? Math.min(window.scrollY / docHeight, 1) : 0;
-      setScrollProgress(progress);
-    };
-
-    window.addEventListener('scroll', handleScrollProgress, { passive: true });
-
-    const revealObserver = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('reveal-visible');
-          } else {
-            entry.target.classList.remove('reveal-visible');
-          }
-        });
-      },
-      {
-        root: null,
-        rootMargin: '0px 0px -100px 0px',
-        threshold: 0
-      }
-    );
-
-    const revealElements = document.querySelectorAll('.reveal');
-    revealElements.forEach((el) => revealObserver.observe(el));
-
     return () => {
       observer.disconnect();
-      revealObserver.disconnect();
-      window.removeEventListener('scroll', handleScrollProgress);
     };
   }, []);
   useEffect(() => {
@@ -130,15 +106,12 @@ export default function Home() {
       document.querySelectorAll('.reveal:not(.reveal-visible)').forEach((el) => observer.observe(el));
     };
     observeAll();
-    const mutationObserver = new MutationObserver(() => observeAll());
-    mutationObserver.observe(document.body, { childList: true, subtree: true });
     return () => {
       observer.disconnect();
-      mutationObserver.disconnect();
     };
-  }, []);
+  }, [posts.length, bookmarks.length, user]);
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
-  const fetchTags = async () => {
+  const fetchTags = useCallback(async () => {
     try {
       const response = await fetch('/api/tags');
       if (response.ok) {
@@ -147,8 +120,8 @@ export default function Home() {
     } catch (error) {
       console.error('Lỗi khi tải tags:', error);
     }
-  };
-  const fetchPosts = async () => {
+  }, []);
+  const fetchPosts = useCallback(async () => {
     try {
       setIsLoading(true);
       const response = await fetch('/api/posts');
@@ -161,7 +134,7 @@ export default function Home() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, []);
   const fetchBookmarks = useCallback(async () => {
     try {
       const res = await fetch('/api/bookmarks');
@@ -184,7 +157,7 @@ export default function Home() {
   useEffect(() => {
     fetchPosts();
     fetchTags();
-  }, []);
+  }, [fetchPosts, fetchTags]);
   useEffect(() => {
     if (user) {
       fetchBookmarks();
@@ -207,12 +180,9 @@ export default function Home() {
     setPosts((prev) => prev.filter((post) => post._id !== postId));
   }, []);
   const [isSending, setIsSending] = useState(false);
-  const [contactError, setContactError] = useState<string | null>(null);
   const handleContactSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     setIsSending(true);
-    setContactError(null);
-    setContactSent(false);
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string || user?.name || '';
     const email = formData.get('email') as string || user?.email || '';
@@ -224,16 +194,15 @@ export default function Home() {
         body: JSON.stringify({ name, email, message }),
       });
       if (response.ok) {
-        setContactSent(true);
         (e.target as HTMLFormElement).reset();
-        setTimeout(() => setContactSent(false), 5000);
+        notify.success('Đã gửi tin nhắn', 'Cảm ơn bạn, tôi sẽ phản hồi sớm nhất có thể.');
       } else {
         const errorData = await response.json();
-        setContactError(errorData.error || 'Có lỗi xảy ra, vui lòng thử lại.');
+        notify.error(errorData.error || 'Có lỗi xảy ra, vui lòng thử lại.');
       }
     } catch (error) {
       console.error('Lỗi khi gửi liên hệ:', error);
-      setContactError('Có lỗi xảy ra, vui lòng thử lại.');
+      notify.error('Có lỗi xảy ra, vui lòng thử lại.');
     } finally {
       setIsSending(false);
     }
@@ -306,13 +275,13 @@ export default function Home() {
             <>
               <div className="group relative">
                 <button
-                  className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-red-100 dark:border-white/25 hover:border-red-500 dark:hover:border-red-300 transition-all shadow-md shadow-red-500/10"
+                  className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-border dark:border-white/25 hover:border-primary dark:hover:border-primary-foreground/75 transition-all shadow-md shadow-primary/10"
                 >
                   {user.avatar ? (
                     <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
                   ) : (
-                    <div className="w-full h-full bg-red-50 dark:bg-red-900/20 flex items-center justify-center">
-                      <UserIcon className="w-6 h-6 text-red-400" />
+                    <div className="w-full h-full bg-secondary dark:bg-primary/20 flex items-center justify-center">
+                      <UserIcon className="w-6 h-6 text-primary/75" />
                     </div>
                   )}
                 </button>
@@ -323,7 +292,7 @@ export default function Home() {
                   </div>
                   <button
                     onClick={() => setIsProfileDialogOpen(true)}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-[8px] text-sm font-bold text-foreground hover:bg-muted transition-all mb-1"
+                    className="w-full flex items-center gap-3 px-3 py-3 rounded-[8px] text-sm font-bold text-foreground hover:bg-muted transition-all mb-1 cursor-pointer"
                   >
                     <UserIcon className="w-5 h-5" />
                     <span>Hồ sơ cá nhân</span>
@@ -372,12 +341,9 @@ export default function Home() {
               <span className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_8px_var(--color-primary)]" />
               Góc dịch thuật của Sutie
             </div>
-            <h1 className="hero-animate hero-delay-1 text-4xl sm:text-5xl md:text-6xl font-bold text-foreground mb-4 md:mb-6 leading-tight tracking-tight drop-shadow-md">
-              Kho lưu trữ<br className="block sm:hidden" />{' '}
-              <span
-                className="text-white drop-shadow-md"
-                style={{ WebkitTextStroke: '1px var(--primary)' }}
-              >
+            <h1 className="hero-animate hero-delay-1 mb-4 md:mb-6 text-[clamp(1.95rem,4.2vw,3.4rem)] font-bold leading-[1.14] tracking-[-0.01em] text-[#8C2F39] dark:text-[#FFF6E7]">
+              Kho lưu trữ{' '}
+              <span className="text-[#8C2F39] dark:text-[#FFF6E7]">
                 của Sutie
               </span>
             </h1>
@@ -390,7 +356,7 @@ export default function Home() {
                   <Button
                     onClick={() => setIsCreateDialogOpen(true)}
                     size="lg"
-                    className="rounded-[8px] px-6 md:px-8 py-3 text-sm md:text-base font-bold bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/20 shadow-[0_0_20px_rgba(229,158,34,0.2)] hover:shadow-[0_0_30px_rgba(229,158,34,0.4)] transition-all w-full sm:w-fit"
+                    className="rounded-[8px] px-6 md:px-8 py-3 text-sm md:text-base font-bold bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/20 transition-all w-full sm:w-fit"
                   >
                     <Plus className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                     Tạo bài viết
@@ -400,7 +366,7 @@ export default function Home() {
                 <Button
                   onClick={() => setIsAuthDialogOpen(true)}
                   size="lg"
-                  className="rounded-[8px] px-6 md:px-8 py-3 text-sm md:text-base font-bold bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/20 shadow-[0_0_20px_rgba(229,158,34,0.2)] hover:shadow-[0_0_30px_rgba(229,158,34,0.4)] transition-all w-full sm:w-fit"
+                  className="rounded-[8px] px-6 md:px-8 py-3 text-sm md:text-base font-bold bg-primary hover:bg-primary/90 text-primary-foreground border border-primary/20 transition-all w-full sm:w-fit"
                 >
                   <LogIn className="w-4 h-4 md:w-5 md:h-5 mr-2" />
                   Bắt đầu ngay
@@ -418,8 +384,8 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-animate hero-delay-2 flex flex-col items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2 gap-12 lg:gap-0">
-            <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-red-50 dark:bg-white/5 text-red-600 dark:text-red-200 text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-[8px] border border-red-200 dark:border-white/20 w-fit">
-              <span className="w-1.5 h-1.5 bg-red-500 rounded-[8px] animate-pulse" />
+            <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-secondary dark:bg-white/5 text-primary dark:text-primary-foreground text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-[8px] border border-border dark:border-white/20 w-fit">
+              <span className="w-1.5 h-1.5 bg-primary rounded-[8px] animate-pulse" />
               Góc dịch thuật của Sutie
             </div>
             <div className="group relative w-[280px] sm:w-[350px] md:w-full max-w-[500px] aspect-square rounded-[8px] overflow-hidden cursor-pointer animate-float">
@@ -438,12 +404,12 @@ export default function Home() {
             </div>
           </div>
         </div>
-        <div className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 text-red-400">
+        <div className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 text-primary/75">
           <span className="text-xs">Cuộn xuống</span>
-          <div className="w-px h-8 bg-gradient-to-b from-red-400 to-transparent" />
+          <div className="w-px h-8 bg-gradient-to-b from-primary/70 to-transparent" />
         </div>
       </section>
-      <section id="posts" data-section="posts" className="min-h-screen flex items-start pt-24 pb-20 md:pt-40 md:pb-32 px-6 md:px-12 md:pl-24 bg-background snap-start">
+      <section id="posts" data-section="posts" className="min-h-screen flex items-start pt-24 pb-20 md:pt-40 md:pb-32 px-6 md:px-12 md:pl-24 bg-secondary/50 snap-start">
         <div className="max-w-7xl mx-auto w-full text-center sm:text-left">
           {user && bookmarks.length > 0 && (
             <div className="reveal mb-12 md:mb-16">
@@ -466,7 +432,7 @@ export default function Home() {
                         <X className="w-3 h-3" />
                       </button>
                       <Link href={`/posts/${bm.postId}`} className="block">
-                        <div className="relative h-36 md:h-40 bg-red-50 dark:bg-red-900/10 overflow-hidden">
+                        <div className="relative h-36 md:h-40 bg-secondary dark:bg-primary/10 overflow-hidden">
                           {bm.post.images[0] && (
                             <Image
                               src={getOptimizedImageUrl(bm.post.images[0])}
@@ -479,7 +445,7 @@ export default function Home() {
                           <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
                           <div className="absolute bottom-2 left-3 flex items-center gap-1.5 text-white text-xs font-bold">
                             <BookOpen className="w-3 h-3" />
-                            Trang {bm.currentPage + 1}/{bm.totalPages}
+                            Chương {(bm.chapterIndex ?? 0) + 1} · Trang {bm.currentPage + 1}/{bm.totalPages}
                           </div>
                         </div>
                         <div className="p-3 md:p-4">
@@ -515,7 +481,7 @@ export default function Home() {
                 <Button
                   onClick={() => setIsCreateDialogOpen(true)}
                   size="sm"
-                  className="rounded-[8px] flex items-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 border-0 shadow-lg shadow-primary/20 w-full sm:w-auto"
+                  className="rounded-[8px] flex items-center gap-1.5 bg-primary text-primary-foreground hover:bg-primary/90 border border-border w-full sm:w-auto"
                 >
                   <Plus className="w-4 h-4" />
                   Tạo bài viết
@@ -525,7 +491,7 @@ export default function Home() {
                 <Button
                   variant="outline"
                   size="sm"
-                  className="rounded-[8px] flex w-full justify-center sm:w-auto items-center gap-1.5 border-border bg-card text-foreground hover:bg-secondary transition-colors cursor-pointer shadow-sm"
+                  className="rounded-[8px] flex w-full justify-center sm:w-auto items-center gap-1.5 border-border bg-card text-foreground hover:bg-secondary transition-colors cursor-pointer"
                 >
                   Xem Tất Cả
                 </Button>
@@ -550,7 +516,7 @@ export default function Home() {
               </p>
               <Button
                 onClick={() => setIsAuthDialogOpen(true)}
-                className="relative z-10 rounded-[8px] px-8 py-5 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/20 text-base font-bold"
+                className="relative z-10 rounded-[8px] px-8 py-5 bg-primary text-primary-foreground hover:bg-primary/90 text-base font-bold border border-border"
               >
                 Đăng nhập ngay
               </Button>
@@ -576,7 +542,7 @@ export default function Home() {
           )}
         </div>
       </section>
-      <section id="contact" data-section="contact" className="min-h-screen flex items-center py-20 pb-32 md:py-32 px-6 md:px-12 md:pl-24 snap-start">
+      <section id="contact" data-section="contact" className="min-h-screen flex items-center py-20 pb-32 md:py-32 px-6 md:px-12 md:pl-24 bg-background snap-start">
         <div className="max-w-5xl mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-start">
             <div className="reveal text-center md:text-left">
@@ -610,82 +576,67 @@ export default function Home() {
               </div>
             </div>
             <div className="reveal reveal-delay-2 bg-card/60 backdrop-blur-md rounded-[8px] p-6 md:p-8 border border-border shadow-lg">
-              {contactSent ? (
-                <div className="text-center py-8">
-                  <div className="w-14 h-14 bg-secondary rounded-[8px] flex items-center justify-center mx-auto mb-4 border border-border">
-                    <svg className="w-6 h-6 text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
-                  </div>
-                  <p className="font-bold text-foreground mb-1 text-lg">Đã gửi!</p>
-                  <p className="text-sm text-muted-foreground">Cảm ơn bạn, tôi sẽ phản hồi sớm nhất có thể.</p>
-                </div>
-              ) : (
-                <form onSubmit={handleContactSubmit} className="space-y-5">
-                  <div>
-                    <label className="block text-sm font-bold text-foreground mb-1.5">Tên</label>
-                    {user ? (
-                      <input
-                        key="user-name"
-                        type="text"
-                        name="name"
-                        value={user.name || ''}
-                        readOnly
-                        className="w-full px-4 py-3 rounded-[8px] border border-border bg-secondary text-muted-foreground text-sm cursor-not-allowed transition-all"
-                      />
-                    ) : (
-                      <input
-                        key="guest-name"
-                        required
-                        type="text"
-                        name="name"
-                        defaultValue=""
-                        placeholder="Tên của bạn"
-                        className="w-full px-4 py-3 rounded-[8px] border border-border bg-card/50 text-foreground placeholder:text-muted-foreground/70 text-sm focus:outline-none focus:border-primary transition-all backdrop-blur-sm shadow-sm"
-                      />
-                    )}
-                  </div>
-                  <div className="reveal-delay-1">
-                    <label className="block text-sm font-bold text-foreground mb-1.5">Email</label>
-                    {user ? (
-                      <input
-                        key="user-email"
-                        type="email"
-                        name="email"
-                        value={user.email || ''}
-                        readOnly
-                        className="w-full px-4 py-3 rounded-[8px] border border-border bg-secondary text-muted-foreground text-sm cursor-not-allowed transition-all"
-                      />
-                    ) : (
-                      <input
-                        key="guest-email"
-                        required
-                        type="email"
-                        name="email"
-                        defaultValue=""
-                        placeholder="email@example.com"
-                        className="w-full px-4 py-3 rounded-[8px] border border-border bg-card/50 text-foreground placeholder:text-muted-foreground/70 text-sm focus:outline-none focus:border-primary transition-all backdrop-blur-sm shadow-sm"
-                      />
-                    )}
-                  </div>
-                  <div className="reveal-delay-2">
-                    <label className="block text-sm font-medium text-neutral-800 dark:text-neutral-200 mb-1.5">Tin nhắn</label>
-                    <textarea
-                      required
-                      name="message"
-                      rows={4}
-                      placeholder="Nội dung tin nhắn..."
-                      className="w-full px-4 py-3 rounded-[8px] border border-red-200 dark:border-red-800/40 bg-white/60 dark:bg-red-950/20 text-neutral-900 dark:text-neutral-100 placeholder:text-neutral-400 dark:placeholder:text-neutral-500 text-sm focus:outline-none transition-all backdrop-blur-sm shadow-sm resize-none"
+              <form onSubmit={handleContactSubmit} className="space-y-5">
+                <div>
+                  <label className="block text-sm font-bold text-foreground mb-1.5">Tên</label>
+                  {user ? (
+                    <input
+                      key="user-name"
+                      type="text"
+                      name="name"
+                      value={user.name || ''}
+                      readOnly
+                      className="w-full px-4 py-3 rounded-[8px] border border-border bg-secondary text-muted-foreground text-sm cursor-not-allowed transition-all"
                     />
-                  </div>
-                  {contactError && (
-                    <p className="text-red-500 text-sm font-medium">{contactError}</p>
+                  ) : (
+                    <input
+                      key="guest-name"
+                      required
+                      type="text"
+                      name="name"
+                      defaultValue=""
+                      placeholder="Tên của bạn"
+                      className="w-full px-4 py-3 rounded-[8px] border border-border bg-card/50 text-foreground placeholder:text-muted-foreground/70 text-sm focus:outline-none focus:border-primary transition-all backdrop-blur-sm shadow-sm"
+                    />
                   )}
-                  <Button type="submit" disabled={isSending} className="w-full rounded-[8px] gradient-red text-white hover:opacity-90 border-0 shadow-lg shadow-red-500/20 disabled:opacity-50">
-                    {isSending ? 'Đang gửi...' : 'Gửi tin nhắn'}
-                  </Button>
-                </form>
-              )}
+                </div>
+                <div className="reveal-delay-1">
+                  <label className="block text-sm font-bold text-foreground mb-1.5">Email</label>
+                  {user ? (
+                    <input
+                      key="user-email"
+                      type="email"
+                      name="email"
+                      value={user.email || ''}
+                      readOnly
+                      className="w-full px-4 py-3 rounded-[8px] border border-border bg-secondary text-muted-foreground text-sm cursor-not-allowed transition-all"
+                    />
+                  ) : (
+                    <input
+                      key="guest-email"
+                      required
+                      type="email"
+                      name="email"
+                      defaultValue=""
+                      placeholder="email@example.com"
+                      className="w-full px-4 py-3 rounded-[8px] border border-border bg-card/50 text-foreground placeholder:text-muted-foreground/70 text-sm focus:outline-none focus:border-primary transition-all backdrop-blur-sm shadow-sm"
+                    />
+                  )}
+                </div>
+                <div className="reveal-delay-2">
+                  <label className="block text-sm font-bold text-foreground mb-1.5">Tin nhắn</label>
+                  <textarea
+                    required
+                    name="message"
+                    rows={4}
+                    placeholder="Nội dung tin nhắn..."
+                    className="w-full px-4 py-3 rounded-[8px] border border-border bg-card/50 text-foreground placeholder:text-muted-foreground/70 text-sm focus:outline-none focus:border-primary transition-all backdrop-blur-sm shadow-sm resize-none"
+                  />
+                </div>
+                <Button type="submit" disabled={isSending} className="w-full rounded-[8px] gradient-red text-white hover:opacity-90 border border-border disabled:opacity-50">
+                  {isSending ? 'Đang gửi...' : 'Gửi tin nhắn'}
+                </Button>
+              </form>
             </div>
           </div>
         </div>

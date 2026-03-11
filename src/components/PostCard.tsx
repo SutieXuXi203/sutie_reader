@@ -1,6 +1,6 @@
 'use client';
 import { Trash2, Pencil, CalendarDays, User, ShieldAlert, Eye } from 'lucide-react';
-import React, { useEffect, useState, useMemo, useCallback } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -8,6 +8,7 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
 import { getOptimizedImageUrl } from '@/lib/utils';
+import { notify } from '@/lib/notify';
 const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
 const DeleteConfirmDialog = dynamic(() => import('@/components/DeleteConfirmDialog').then(m => ({ default: m.DeleteConfirmDialog })), { ssr: false });
 interface Post {
@@ -75,12 +76,13 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       if (response.ok) {
         onDelete(post._id);
         setIsDeleteConfirmOpen(false);
+        notify.success('Đã xóa bài viết');
       } else {
-        alert('Xóa bài viết không thành công');
+        notify.error('Xóa bài viết không thành công');
       }
     } catch (error) {
       console.error('Lỗi khi xóa bài viết:', error);
-      alert('Lỗi khi xóa bài viết');
+      notify.error('Lỗi khi xóa bài viết');
     } finally {
       setIsDeleting(false);
     }
@@ -94,14 +96,15 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       day: 'numeric',
     });
   }, []);
+  const formattedCreatedAt = formatDate(post.createdAt);
   return (
     <>
       <Link
         href={`/posts/${post._id}`}
-        className="group/card flex flex-col h-full bg-card/60 backdrop-blur-md border border-border rounded-[8px] overflow-hidden hover:shadow-[0_8px_30px_rgba(229,158,34,0.15)] hover:-translate-y-1 transition-all duration-500 cursor-pointer relative"
+        className="group/card flex flex-col h-full bg-card/60 backdrop-blur-md border border-border rounded-[8px] overflow-hidden hover:shadow-[0_8px_30px_rgba(140,47,57,0.18)] hover:-translate-y-1 transition-all duration-500 cursor-pointer relative"
       >
         <div
-          className="relative w-full aspect-[16/9] bg-card/20 overflow-hidden border-b border-red-50 dark:border-red-950/50"
+          className="relative w-full aspect-[16/9] bg-card/20 overflow-hidden border-b border-border dark:border-primary/20"
           onMouseEnter={() => { if (canHoverPreview && (!isNSFW || nsfwRevealed)) setShowPreview(true); }}
           onMouseLeave={() => setShowPreview(false)}
         >
@@ -111,10 +114,10 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               alt={post.title}
               fill
               sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              className={`object-cover transition-transform duration-700 group-hover/card:scale-105 ${isNSFW && !nsfwRevealed ? 'blur-xl scale-110' : ''}`}
+              className={`object-cover transition-transform duration-700 group-hover/card:scale-105 ${isNSFW && !nsfwRevealed ? 'blur-xl scale-110 brightness-90 saturate-75' : ''}`}
             />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-red-300 dark:text-red-900/50">
+            <div className="w-full h-full flex items-center justify-center text-primary-foreground/80 dark:text-primary/40">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
@@ -122,7 +125,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           )}
           {isNSFW && !nsfwRevealed && (
             <div
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 dark:bg-black/80 backdrop-blur-md cursor-pointer transition-all duration-300"
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/88 dark:bg-background/82 backdrop-blur-md cursor-pointer transition-all duration-300"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -136,7 +139,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               </span>
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/20 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
         <div className="p-5 md:p-6 flex flex-col flex-grow text-left">
           <h3 className="text-lg font-bold text-foreground mb-3 group-hover/card:text-primary transition-colors line-clamp-2 leading-tight">
@@ -173,7 +176,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground font-medium">
               <span className="flex items-center gap-1.5 whitespace-nowrap">
                 <CalendarDays className="w-3.5 h-3.5" />
-                {formatDate(post.createdAt)}
+                {formattedCreatedAt}
               </span>
             </div>
             {isAdmin && (
@@ -198,25 +201,29 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           </div>
         </div>
       </Link >
-      <EditPostForm
-        post={post}
-        open={isEditOpen}
-        onOpenChange={setIsEditOpen}
-        onPostUpdated={() => { setIsEditOpen(false); onUpdate(); }}
-        availableTags={availableTags}
-      />
-      <DeleteConfirmDialog
-        open={isDeleteConfirmOpen}
-        onOpenChange={setIsDeleteConfirmOpen}
-        onConfirm={handleDelete}
-        isLoading={isDeleting}
-        title="Xóa bài viết?"
-        description={`Bạn có chắc chắn muốn xóa "${post.title}"? Hành động này không thể hoàn tác.`}
-        confirmLabel={isDeleting ? 'Đang xóa...' : 'Xóa'}
-      />
+      {isAdmin && (
+        <>
+          <EditPostForm
+            post={post}
+            open={isEditOpen}
+            onOpenChange={setIsEditOpen}
+            onPostUpdated={() => { setIsEditOpen(false); onUpdate(); }}
+            availableTags={availableTags}
+          />
+          <DeleteConfirmDialog
+            open={isDeleteConfirmOpen}
+            onOpenChange={setIsDeleteConfirmOpen}
+            onConfirm={handleDelete}
+            isLoading={isDeleting}
+            title="Xóa bài viết?"
+            description={`Bạn có chắc chắn muốn xóa "${post.title}"? Hành động này không thể hoàn tác.`}
+            confirmLabel={isDeleting ? 'Đang xóa...' : 'Xóa'}
+          />
+        </>
+      )}
       {
         canHoverPreview && showPreview && (!isNSFW || nsfwRevealed) && post.images.length > 0 && typeof document !== 'undefined' && createPortal(
-          <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-background/50 dark:bg-black/60">
+          <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-background/70 dark:bg-background/65">
             <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-[8px] overflow-hidden shadow-2xl border border-border bg-card">
               <Image
                 src={getOptimizedImageUrl(post.images[0])}
@@ -225,7 +232,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                 sizes="420px"
                 className="object-cover"
               />
-              <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+              <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/25 to-transparent" />
               <div className="absolute bottom-0 left-0 right-0 p-6">
                 <h4 className="text-white font-bold text-lg drop-shadow-md line-clamp-1">{post.title}</h4>
                 <p className="text-white/80 text-xs drop-shadow-sm mt-1">Xem chi tiết bài viết</p>
@@ -238,7 +245,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       {
         showNsfwConfirm && typeof document !== 'undefined' && createPortal(
           <div
-            className="fixed inset-0 z-[10000] bg-background/90 dark:bg-black/90 backdrop-blur-md flex flex-col items-center justify-center px-6 text-center"
+            className="fixed inset-0 z-[10000] bg-background/92 dark:bg-background/92 backdrop-blur-md flex flex-col items-center justify-center px-6 text-center"
             onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); }}
           >
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/20 filter blur-[100px] rounded-full pointer-events-none" />
@@ -250,7 +257,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                 <ShieldAlert className="w-7 h-7 text-primary" />
               </div>
               <h3 className="text-2xl font-bold mb-4 text-foreground">Cảnh báo !</h3>
-              <div className="inline-flex items-center gap-2 bg-secondary text-primary text-[10px] uppercase font-bold px-3 py-1 rounded-full mb-6 border border-border/50">
+              <div className="inline-flex items-center gap-2 bg-secondary text-primary text-[10px] uppercase font-bold px-3 py-1 rounded-[8px] mb-6 border border-border/50">
                 <span className="w-1.5 h-1.5 bg-destructive rounded-full" />
                 Nội dung 18+
               </div>
@@ -279,4 +286,3 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
     </>
   );
 });
-

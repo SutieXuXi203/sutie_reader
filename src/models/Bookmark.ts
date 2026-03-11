@@ -2,6 +2,7 @@ import mongoose, { Schema, Document } from 'mongoose';
 export interface IBookmark extends Document {
     userId: string;
     postId: mongoose.Types.ObjectId;
+    chapterIndex: number;
     currentPage: number;
     totalPages: number;
     createdAt: Date;
@@ -18,6 +19,11 @@ const BookmarkSchema = new Schema<IBookmark>(
             type: Schema.Types.ObjectId,
             ref: 'Post',
             required: true,
+        },
+        chapterIndex: {
+            type: Number,
+            required: true,
+            default: 0,
         },
         currentPage: {
             type: Number,

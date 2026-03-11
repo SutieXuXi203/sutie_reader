@@ -83,11 +83,11 @@ export function TagPicker({
           onFocus={() => setIsFocused(true)}
           disabled={disabled || selectedTags.length >= maxTags}
           placeholder={placeholder}
-          className="rounded-[8px] border-slate-200 dark:border-slate-700"
+          className={`border-input transition-none ${isFocused ? 'rounded-t-[8px] rounded-b-none focus-visible:ring-0 shadow-none' : 'rounded-[8px]'}`}
         />
         {isFocused && (
-          <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-[#140808] border border-t-0 border-slate-200 dark:border-slate-700 rounded-[8px] p-3 shadow-lg max-h-[200px] overflow-y-auto">
-            <p className="text-xs text-red-400/70 dark:text-red-400/60 mb-2">Những tag có sẵn</p>
+          <div className="absolute top-full left-0 right-0 z-50 bg-white dark:bg-background border border-t-0 border-input rounded-b-[8px] p-3 shadow-lg max-h-[200px] overflow-y-auto">
+            <p className="text-xs text-primary/70 dark:text-primary/60 mb-2">Những tag có sẵn</p>
             <div className="flex flex-wrap gap-2">
               {visibleSuggestions.length > 0 ? visibleSuggestions.map((tag) => (
                 <button
@@ -99,12 +99,12 @@ export function TagPicker({
                     setIsFocused(true);
                   }}
                   disabled={disabled}
-                  className="rounded-[8px] border border-border bg-secondary px-2.5 py-1 text-xs text-foreground hover:border-red-300 dark:hover:border-red-700 hover:bg-red-100/70 dark:hover:bg-red-900/30 transition-colors cursor-pointer disabled:opacity-50"
+                  className="rounded-[8px] border border-border bg-secondary px-2.5 py-1 text-xs text-foreground hover:border-border dark:hover:border-primary/70 hover:bg-secondary/70 dark:hover:bg-primary/25 transition-colors cursor-pointer disabled:opacity-50"
                 >
                   #{tag.toLowerCase()}
                 </button>
               )) : (
-                <p className="text-xs text-muted-foreground dark:text-slate-500">Không có tag nào</p>
+                <p className="text-xs text-muted-foreground">Không có tag nào</p>
               )}
             </div>
           </div>
@@ -115,7 +115,7 @@ export function TagPicker({
           {selectedTags.map((tag) => (
             <span
               key={tag}
-              className="inline-flex items-center gap-1.5 rounded-[8px] border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/60 px-2.5 py-1 text-xs text-slate-700 dark:text-slate-200"
+              className="inline-flex items-center gap-1.5 rounded-[8px] border border-input bg-secondary/50 dark:bg-secondary/60 px-2.5 py-1 text-xs text-foreground"
             >
               <span>#{tag.toLowerCase()}</span>
               <button

@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
-import { X, BookOpen, ChevronLeft, ChevronRight } from 'lucide-react';
+import { X, BookOpen } from 'lucide-react';
 import Image from 'next/image';
 import { getOptimizedImageUrl } from '@/lib/utils';
 interface Post {
@@ -75,17 +75,17 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
           ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
             >
                 <div className="flex items-center gap-3 min-w-0 flex-1">
-                    <div className="w-8 h-8 gradient-red rounded-[8px] flex items-center justify-center flex-shrink-0 shadow-lg shadow-red-900/50">
+                    <div className="w-8 h-8 gradient-red rounded-[8px] flex items-center justify-center flex-shrink-0 shadow-lg shadow-primary/35">
                         <BookOpen className="w-4 h-4 text-white" />
                     </div>
                     <div className="min-w-0">
                         <p className="text-white font-bold text-sm leading-tight line-clamp-1 tracking-tight">{post.title}</p>
-                        <p className="text-red-300/70 text-xs font-medium">{post.author}</p>
+                        <p className="text-primary-foreground/75 text-xs font-medium">{post.author}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">
                     <div className="flex items-center gap-1.5 bg-white/10 px-3 py-1.5 rounded-[8px]">
-                        <span className="text-red-300 text-xs font-bold tracking-wider">
+                        <span className="text-primary-foreground/80 text-xs font-bold tracking-wider">
                             {currentPage + 1}
                         </span>
                         <span className="text-white/30 text-xs">/</span>
@@ -93,7 +93,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                     </div>
                     <button
                         onClick={() => onOpenChange(false)}
-                        className="w-8 h-8 rounded-[8px] bg-white/10 hover:bg-red-600 text-white transition-all flex items-center justify-center hover:shadow-lg hover:shadow-red-900/30"
+                        className="w-8 h-8 rounded-[8px] bg-white/10 hover:bg-primary/90 text-white transition-all flex items-center justify-center hover:shadow-lg hover:shadow-primary/25"
                     >
                         <X className="w-4 h-4" />
                     </button>
@@ -122,15 +122,15 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                         </div>
                     ))}
                     <div className="flex flex-col items-center gap-4 py-16 text-center">
-                        <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
-                        <div className="w-8 h-8 gradient-red rounded-[8px] flex items-center justify-center shadow-lg shadow-red-900/40">
+                        <div className="w-16 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
+                        <div className="w-8 h-8 gradient-red rounded-[8px] flex items-center justify-center shadow-lg shadow-primary/30">
                             <BookOpen className="w-4 h-4 text-white" />
                         </div>
-                        <p className="text-red-300/60 text-sm font-medium tracking-widest uppercase">Hết chương</p>
-                        <div className="w-16 h-px bg-gradient-to-r from-transparent via-red-500/60 to-transparent" />
+                        <p className="text-primary-foreground/70 text-sm font-medium tracking-widest uppercase">Hết chương</p>
+                        <div className="w-16 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
                         <button
                             onClick={() => onOpenChange(false)}
-                            className="mt-2 px-8 py-2.5 rounded-[8px] gradient-red text-white text-sm font-bold transition-all hover:opacity-90 shadow-xl shadow-red-900/40 active:scale-95 cursor-pointer"
+                            className="mt-2 px-8 py-2.5 rounded-[8px] gradient-red text-white text-sm font-bold transition-all hover:opacity-90 shadow-xl shadow-primary/30 active:scale-95 cursor-pointer"
                         >
                             Đóng
                         </button>
@@ -147,7 +147,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                 </div>
                 <div className="h-1 bg-white/10">
                     <div
-                        className="h-full bg-gradient-to-r from-red-700 to-red-400 transition-all duration-300 shadow-sm shadow-red-500/50"
+                        className="h-full bg-gradient-to-r from-primary to-primary/70 transition-all duration-300 shadow-sm shadow-primary/40"
                         style={{ width: `${progress}%` }}
                     />
                 </div>

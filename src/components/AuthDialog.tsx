@@ -59,13 +59,13 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 payload = { email, password, rememberMe };
             } else if (mode === 'register') {
                 if (password !== confirmPassword) {
-                    setError('Mật khẩu xác nhận không khớp.');
+                    setError('M?t kh?u x�c nh?n kh�ng kh?p.');
                     setIsLoading(false);
                     return;
                 }
                 const strength = getPasswordStrength(password);
                 if (strength < 2) {
-                    setError('Mật khẩu quá yếu. Vui lòng bao gồm chữ hoa, chữ thường và số.');
+                    setError('M?t kh?u qu� y?u. Vui l�ng bao g?m ch? hoa, ch? th??ng v� s?.');
                     setIsLoading(false);
                     return;
                 }
@@ -75,7 +75,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 url = '/api/auth/verify';
                 payload = { email, code: verificationCode };
             } else if (mode === 'forgot-password') {
-                setSuccess('Hướng dẫn khôi phục mật khẩu đã được gửi đến email của bạn.');
+                setSuccess('H??ng d?n kh�i ph?c m?t kh?u ?� ???c g?i ??n email c?a b?n.');
                 setIsLoading(false);
                 return;
             }
@@ -86,21 +86,21 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             });
             const data = await res.json();
             if (!res.ok) {
-                throw new Error(data.error || 'Đã có lỗi xảy ra');
+                throw new Error(data.error || '?� c� l?i x?y ra');
             }
             if (mode === 'login') {
                 login(data.user);
                 onOpenChange(false);
             } else if (mode === 'register') {
                 if (data.requireVerification) {
-                    setSuccess('Vui lòng kiểm tra email của bạn để lấy mã xác thực.');
+                    setSuccess('Vui l�ng ki?m tra email c?a b?n ?? l?y m� x�c th?c.');
                     setMode('verify');
                 } else {
-                    setSuccess('Đăng ký thành công! Vui lòng đăng nhập.');
+                    setSuccess('??ng k� th�nh c�ng! Vui l�ng ??ng nh?p.');
                     setMode('login');
                 }
             } else if (mode === 'verify') {
-                setSuccess('Xác thực thành công! Vui lòng đăng nhập.');
+                setSuccess('X�c th?c th�nh c�ng! Vui l�ng ??ng nh?p.');
                 setMode('login');
             }
         } catch (err: any) {
@@ -114,16 +114,16 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             <DialogContent className="sm:max-w-md bg-white dark:bg-[#1a0808] border-red-200 dark:border-red-900/30">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold text-center text-neutral-900 dark:text-neutral-100 mb-2">
-                        {mode === 'login' && 'Chào mừng trở lại'}
-                        {mode === 'register' && 'Tạo tài khoản mới'}
-                        {mode === 'forgot-password' && 'Khôi phục mật khẩu'}
-                        {mode === 'verify' && 'Xác thực tài khoản'}
+                        {mode === 'login' && 'Ch�o m?ng tr? l?i'}
+                        {mode === 'register' && 'T?o t�i kho?n m?i'}
+                        {mode === 'forgot-password' && 'Kh�i ph?c m?t kh?u'}
+                        {mode === 'verify' && 'X�c th?c t�i kho?n'}
                     </DialogTitle>
                     <DialogDescription className="text-center text-neutral-500 dark:text-neutral-400">
-                        {mode === 'login' && 'Đăng nhập để tiếp tục viết câu chuyện của bạn'}
-                        {mode === 'register' && 'Tham gia cộng đồng và chia sẻ ý tưởng của bạn'}
-                        {mode === 'forgot-password' && 'Nhập email để nhận liên kết đặt lại mật khẩu'}
-                        {mode === 'verify' && 'Nhập mã gồm 6 chữ số được gửi đến email của bạn'}
+                        {mode === 'login' && '??ng nh?p ?? ti?p t?c vi?t c�u chuy?n c?a b?n'}
+                        {mode === 'register' && 'Tham gia c?ng ??ng v� chia s? � t??ng c?a b?n'}
+                        {mode === 'forgot-password' && 'Nh?p email ?? nh?n li�n k?t ??t l?i m?t kh?u'}
+                        {mode === 'verify' && 'Nh?p m� g?m 6 ch? s? ???c g?i ??n email c?a b?n'}
                     </DialogDescription>
                 </DialogHeader>
                 {error && (
@@ -141,7 +141,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         <div className="relative">
                             <User className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                             <Input
-                                placeholder="Họ và tên"
+                                placeholder="H? v� t�n"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
                                 className="pl-10"
@@ -153,7 +153,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         <Mail className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                         <Input
                             type="text"
-                            placeholder="Email hoặc tên đăng nhập"
+                            placeholder="Email ho?c t�n ??ng nh?p"
                             value={email}
                             onChange={(e) => setEmail(e.target.value)}
                             className="pl-10"
@@ -166,7 +166,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 <Lock className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                                 <Input
                                     type="password"
-                                    placeholder="Mật khẩu"
+                                    placeholder="M?t kh?u"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     className="pl-10"
@@ -194,11 +194,11 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                         })}
                                     </div>
                                     <div className="text-[11px] font-medium text-right text-neutral-500 dark:text-neutral-400">
-                                        {getPasswordStrength(password) === 0 && 'Rất yếu'}
-                                        {getPasswordStrength(password) === 1 && 'Yếu'}
-                                        {getPasswordStrength(password) === 2 && 'Trung bình'}
-                                        {getPasswordStrength(password) === 3 && 'Khá'}
-                                        {getPasswordStrength(password) === 4 && 'Mạnh'}
+                                        {getPasswordStrength(password) === 0 && 'R?t y?u'}
+                                        {getPasswordStrength(password) === 1 && 'Y?u'}
+                                        {getPasswordStrength(password) === 2 && 'Trung b�nh'}
+                                        {getPasswordStrength(password) === 3 && 'Kh�'}
+                                        {getPasswordStrength(password) === 4 && 'M?nh'}
                                     </div>
                                 </div>
                             )}
@@ -207,7 +207,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     <Lock className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                                     <Input
                                         type="password"
-                                        placeholder="Xác nhận mật khẩu"
+                                        placeholder="X�c nh?n m?t kh?u"
                                         value={confirmPassword}
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         className="pl-10"
@@ -219,7 +219,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     )}
                     {mode === 'verify' && (
                         <div className="flex flex-col gap-3 items-center w-full">
-                            <span className="text-sm text-neutral-500 font-medium">Nhập mã 6 chữ số</span>
+                            <span className="text-sm text-neutral-500 font-medium">Nh?p m� 6 ch? s?</span>
                             <div className="flex gap-2 sm:gap-3 justify-center w-full">
                                 {[...Array(6)].map((_, index) => (
                                     <input
@@ -271,14 +271,14 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     onChange={(e) => setRememberMe(e.target.checked)}
                                     className="w-4 h-4 rounded-[8px] border-red-300 dark:border-red-700 text-red-600 focus:ring-primary accent-red-600 dark:accent-red-400"
                                 />
-                                <span className="text-xs text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300 transition-colors">Ghi nhớ đăng nhập</span>
+                                <span className="text-xs text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300 transition-colors">Ghi nh? ??ng nh?p</span>
                             </label>
                             <button
                                 type="button"
                                 onClick={() => setMode('forgot-password')}
                                 className="text-xs text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                             >
-                                Quên mật khẩu?
+                                Qu�n m?t kh?u?
                             </button>
                         </div>
                     )}
@@ -291,10 +291,10 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                             <Loader2 className="w-5 h-5 animate-spin" />
                         ) : (
                             <>
-                                {mode === 'login' && 'Đăng nhập'}
-                                {mode === 'register' && 'Đăng ký'}
-                                {mode === 'forgot-password' && 'Gửi liên kết'}
-                                {mode === 'verify' && 'Xác thực'}
+                                {mode === 'login' && '??ng nh?p'}
+                                {mode === 'register' && '??ng k�'}
+                                {mode === 'forgot-password' && 'G?i li�n k?t'}
+                                {mode === 'verify' && 'X�c th?c'}
                             </>
                         )}
                     </Button>
@@ -302,17 +302,17 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 <div className="mt-6 text-center text-sm text-neutral-500">
                     {mode === 'login' && (
                         <p>
-                            Chưa có tài khoản?{' '}
+                            Ch?a c� t�i kho?n?{' '}
                             <button onClick={() => setMode('register')} className="text-primary font-semibold hover:underline decoration-2">
-                                Đăng ký ngay
+                                ??ng k� ngay
                             </button>
                         </p>
                     )}
                     {(mode === 'register' || mode === 'forgot-password' || mode === 'verify') && (
                         <p>
-                            Đã có tài khoản?{' '}
+                            ?� c� t�i kho?n?{' '}
                             <button type="button" onClick={() => setMode('login')} className="text-primary font-semibold hover:underline decoration-2">
-                                Đăng nhập
+                                ??ng nh?p
                             </button>
                         </p>
                     )}

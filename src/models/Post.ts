@@ -1,14 +1,51 @@
 import mongoose, { Schema, Document } from 'mongoose';
+
+export interface IPostChapter {
+  title: string;
+  chapterNumber: number;
+  content: string;
+  images: string[];
+  createdAt?: Date;
+  updatedAt?: Date;
+}
+
 export interface IPost extends Document {
   title: string;
   description: string;
   tags: string[];
   content: string;
   images: string[];
+  chapters: IPostChapter[];
   author: string;
   createdAt: Date;
   updatedAt: Date;
 }
+
+const ChapterSchema = new Schema<IPostChapter>(
+  {
+    title: {
+      type: String,
+      required: true,
+      maxlength: 120,
+    },
+    chapterNumber: {
+      type: Number,
+      required: true,
+      min: 1,
+    },
+    content: {
+      type: String,
+      required: true,
+      default: '',
+    },
+    images: {
+      type: [String],
+      default: [],
+    },
+  },
+  { timestamps: true }
+);
+
 const PostSchema = new Schema<IPost>(
   {
     title: {
@@ -27,11 +64,15 @@ const PostSchema = new Schema<IPost>(
     },
     content: {
       type: String,
-      required: true,
+      default: '',
     },
     images: {
       type: [String],
-      required: true,
+      default: [],
+    },
+    chapters: {
+      type: [ChapterSchema],
+      default: [],
     },
     author: {
       type: String,
@@ -40,7 +81,10 @@ const PostSchema = new Schema<IPost>(
   },
   { timestamps: true }
 );
+
 if (mongoose.models.Post) {
   delete mongoose.models.Post;
 }
+
 export const Post = mongoose.model<IPost>('Post', PostSchema);
+

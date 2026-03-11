@@ -2,20 +2,42 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
+
+type BookmarkLean = {
+    _id: unknown;
+    postId: { toString: () => string } | string;
+    chapterIndex?: number;
+    currentPage: number;
+    totalPages: number;
+    updatedAt: unknown;
+};
+
+type PostLean = {
+    _id: { toString: () => string } | string;
+    title?: string;
+    images?: string[];
+    author?: string;
+    tags?: string[];
+};
+
 export async function POST(request: NextRequest) {
     try {
         const user = await getAuthUser(request);
         if (!user) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
-        const { postId, currentPage, totalPages } = await request.json();
+        const { postId, chapterIndex = 0, currentPage, totalPages } = await request.json();
         if (!postId || currentPage === undefined || totalPages === undefined) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
         }
+        const normalizedChapterIndex =
+            typeof chapterIndex === 'number' && Number.isFinite(chapterIndex) && chapterIndex >= 0
+                ? Math.floor(chapterIndex)
+                : 0;
         await connectDB();
         const bookmark = await Bookmark.findOneAndUpdate(
             { userId: user.id, postId },
-            { currentPage, totalPages },
+            { chapterIndex: normalizedChapterIndex, currentPage, totalPages },
             { upsert: true, new: true, setDefaultsOnInsert: true }
         );
         return NextResponse.json(bookmark);
@@ -31,31 +53,32 @@ export async function GET(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         await connectDB();
-        const bookmarks = await Bookmark.find({ userId: user.id })
+        const bookmarks = (await Bookmark.find({ userId: user.id })
             .sort({ updatedAt: -1 })
-            .lean();
+            .lean()) as BookmarkLean[];
         const { Post } = await import('@/models/Post');
-        const postIds = bookmarks.map((b) => b.postId);
-        const posts = await Post.find({ _id: { $in: postIds } })
+        const postIds = bookmarks.map((b) => b.postId.toString());
+        const posts = (await Post.find({ _id: { $in: postIds } })
             .select('title images author tags')
-            .lean();
-        const postMap = new Map(posts.map((p: any) => [p._id.toString(), p]));
+            .lean()) as PostLean[];
+        const postMap = new Map(posts.map((p) => [p._id.toString(), p]));
         const result = bookmarks
-            .map((b: any) => {
+            .map((b) => {
                 const post = postMap.get(b.postId.toString());
                 if (!post) return null;
                 return {
                     _id: b._id,
                     postId: b.postId,
+                    chapterIndex: b.chapterIndex ?? 0,
                     currentPage: b.currentPage,
                     totalPages: b.totalPages,
                     updatedAt: b.updatedAt,
                     post: {
-                        _id: (post as any)._id,
-                        title: (post as any).title,
-                        images: (post as any).images,
-                        author: (post as any).author,
-                        tags: (post as any).tags,
+                        _id: post._id,
+                        title: post.title,
+                        images: post.images,
+                        author: post.author,
+                        tags: post.tags,
                     },
                 };
             })
