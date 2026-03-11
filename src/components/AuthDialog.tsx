@@ -37,6 +37,10 @@ interface AuthResponse {
     email?: string;
 }
 
+type ApiError = Error & {
+    status?: number;
+};
+
 interface AuthDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
@@ -118,7 +122,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             });
             const data: AuthResponse = await res.json();
             if (!res.ok) {
-                throw new Error(data.error || 'Đã có lỗi xảy ra');
+                const apiError = new Error(data.error || 'Đã có lỗi xảy ra') as ApiError;
+                apiError.status = res.status;
+                throw apiError;
             }
 
             if (mode === 'login') {
@@ -144,7 +150,19 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 setMode('login');
             }
         } catch (err: unknown) {
-            const message = getErrorMessage(err);
+            const apiError = err as ApiError;
+            const message = getErrorMessage(apiError);
+            if (apiError.status === 403) {
+                notify.warning(
+                    'Tài khoản chưa xác thực',
+                    'Vui lòng kiểm tra email và nhập mã xác thực trước khi đăng nhập.'
+                );
+            } else if (apiError.status === 410) {
+                notify.error(
+                    'Tài khoản đã bị xóa tự động',
+                    'Mã xác thực đã hết hạn sau 24 giờ. Vui lòng đăng ký lại.'
+                );
+            }
             setError(message);
         } finally {
             setIsLoading(false);
