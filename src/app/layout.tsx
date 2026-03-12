@@ -11,8 +11,8 @@ const inter = Inter({
 });
 
 export const metadata: Metadata = {
-  title: "Sutie Xù Xì | Kho lưu trữ bản dịch thuật",
-  description: "Nơi lưu giữ những bản dịch thuật tâm huyết của Sutie Xù Xì.",
+  title: "Sutie Xù Xì ",
+  description: "Nơi lưu giữ những bản dịch thuật của Sutie Xù Xì.",
   icons: {
     icon: "/icon_meta.png",
     apple: "/icon_meta.png",

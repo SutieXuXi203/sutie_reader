@@ -380,16 +380,15 @@ export default function Home() {
           <div className="flex flex-col items-center lg:items-start order-2 lg:order-1">
             <div className="hidden lg:inline-flex hero-animate items-center gap-2 bg-card/60 backdrop-blur-md text-foreground text-[10px] md:text-xs font-semibold px-4 py-2 rounded-none mb-6 md:mb-8 border border-border w-fit shadow-lg shadow-black/10">
               <span className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_8px_var(--color-primary)]" />
-              Góc dịch thuật của Sutie
+              Nơi lưu trữ bản dịch của Sutie
             </div>
             <h1 className="hero-animate hero-delay-1 mb-4 md:mb-6 text-[clamp(1.95rem,4.2vw,3.4rem)] font-bold leading-[1.14] tracking-[-0.01em] text-[#8C2F39] dark:text-[#FFF6E7]">
-              Kho lưu trữ{' '}
               <span className="text-[#8C2F39] dark:text-[#FFF6E7]">
-                của Sutie
+                Sutie Xù Xì
               </span>
             </h1>
             <p className="hero-animate hero-delay-2 text-base md:text-lg lg:text-xl text-muted-foreground mb-8 md:mb-12 font-medium leading-relaxed max-w-lg">
-              Nơi mình chia sẻ niềm đam mê ngôn ngữ qua từng trang sách và những câu chuyện được chuyển ngữ với tất cả tâm huyết.
+              Nơi mình dịch những truyện hay để bạn đọc và cùng chạm vào vẻ đẹp của ngôn ngữ.
             </p>
             <div className="hero-animate hero-delay-3 flex flex-col sm:flex-row gap-4 w-full sm:w-auto">
               {user ? (
@@ -427,7 +426,7 @@ export default function Home() {
           <div className="hero-animate hero-delay-2 flex flex-col items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2 gap-12 lg:gap-0">
             <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-card/75 backdrop-blur-md text-foreground text-xs font-bold px-3.5 py-1.5 rounded-none border border-border shadow-[0_8px_20px_rgba(0,0,0,0.12)] w-fit">
               <span className="w-1.5 h-1.5 bg-primary rounded-[8px] animate-pulse" />
-              Góc dịch thuật của Sutie
+              Nơi lưu trữ bản dịch của Sutie
             </div>
             <div className="group relative w-[280px] sm:w-[350px] md:w-full max-w-[500px] aspect-square rounded-[8px] overflow-hidden cursor-pointer animate-float">
               <Image
@@ -688,7 +687,7 @@ export default function Home() {
             <BookOpen className="w-4 h-4" />
             <span className="text-sm font-bold text-foreground">Sutie Archive</span>
           </div>
-          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Sutie Archive. Mọi quyền được bảo lưu.</p>
+          <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Sutie Archive.</p>
           <div className="flex gap-5 text-xs text-muted-foreground">
             <a href="#posts" className="hover:text-primary transition-colors">Bài viết</a>
             <a href="#contact" className="hover:text-primary transition-colors">Liên hệ</a>
