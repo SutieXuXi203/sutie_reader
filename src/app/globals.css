@@ -258,6 +258,16 @@ body {
   transition-delay: 0.40s;
 }
 
+.section-fullscreen {
+  min-height: 100svh;
+}
+
+@supports (min-height: 100dvh) {
+  .section-fullscreen {
+    min-height: 100dvh;
+  }
+}
+
 .gradient-red {
   background: linear-gradient(135deg, #8C2F39 0%, #742530 100%);
 }

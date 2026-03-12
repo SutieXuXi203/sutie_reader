@@ -362,7 +362,7 @@ export default function Home() {
           <ThemeToggle />
         </div>
       </nav>
-      <section data-section="home" className="relative min-h-screen flex items-center justify-center px-6 md:px-12 md:pl-24 pt-16 pb-24 md:pt-0 md:pb-0 overflow-hidden snap-start">
+      <section data-section="home" className="relative section-fullscreen flex items-center justify-center px-6 md:px-12 md:pl-24 pt-16 pb-24 md:pt-0 md:pb-0 overflow-hidden snap-start">
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
           <div className="absolute top-[4%] left-[-18%] md:-top-16 md:left-[4%] w-48 h-48 rounded-full border border-primary/20 bg-primary/10 opacity-42 animate-float-y-soft float-y-fast" />
           <div className="absolute top-[-10%] right-[-30%] md:-top-24 md:right-auto md:left-[2%] w-72 h-72 rounded-full bg-primary/20 blur-[140px] opacity-28 animate-float-y-soft float-y-slow" />
@@ -450,7 +450,7 @@ export default function Home() {
           <div className="w-px h-8 bg-gradient-to-b from-primary/70 to-transparent" />
         </div>
       </section>
-      <section id="posts" data-section="posts" className="min-h-screen flex items-start pt-24 pb-20 md:pt-40 md:pb-32 px-6 md:px-12 md:pl-24 bg-secondary/50 snap-start">
+      <section id="posts" data-section="posts" className="section-fullscreen flex items-start pt-20 pb-20 md:pt-28 md:pb-24 px-6 md:px-12 md:pl-24 bg-secondary/50 snap-start">
         <div className="max-w-7xl mx-auto w-full text-center sm:text-left">
           {user && bookmarks.length > 0 && (
             <div className="reveal mb-12 md:mb-16">
@@ -583,7 +583,7 @@ export default function Home() {
           )}
         </div>
       </section>
-      <section id="contact" data-section="contact" className="min-h-screen flex items-center py-20 pb-32 md:py-32 px-6 md:px-12 md:pl-24 bg-background snap-start">
+      <section id="contact" data-section="contact" className="section-fullscreen flex items-center py-16 pb-28 md:py-24 px-6 md:px-12 md:pl-24 bg-background snap-start">
         <div className="max-w-5xl mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-start">
             <div className="reveal text-center md:text-left">
