@@ -547,9 +547,11 @@ export default function AdminDashboard() {
                                             </tr>
                                         ) : filteredPosts.length === 0 ? (
                                             <tr>
-                                                <td colSpan={4} className="px-5 py-16 text-center text-neutral-500">
-                                                    <FileText className="w-10 h-10 mx-auto mb-3 opacity-30" />
-                                                    <p className="text-sm">{searchQuery ? 'Không tìm thấy' : 'Chưa có bài viết'}</p>
+                                                <td colSpan={4} className="px-5 py-16 text-center">
+                                                    <div className="mx-auto flex w-fit flex-col items-center px-6 py-5">
+                                                        <FileText className="w-10 h-10 mx-auto mb-3 text-primary/80" />
+                                                        <p className="text-sm font-medium text-foreground/90">{searchQuery ? 'Không tìm thấy' : 'Chưa có bài viết'}</p>
+                                                    </div>
                                                 </td>
                                             </tr>
                                         ) : filteredPosts.map((post) => (
