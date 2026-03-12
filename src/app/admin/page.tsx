@@ -363,7 +363,7 @@ export default function AdminDashboard() {
         );
     }
     return (
-        <div className="min-h-screen [scrollbar-gutter:stable] bg-background font-sans selection:bg-primary/20">
+        <div className="min-h-screen pb-24 lg:pb-0 [scrollbar-gutter:stable] bg-background font-sans selection:bg-primary/20">
             <div className="mx-auto flex w-full max-w-[1600px] gap-4 px-4 py-4">
             <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto rounded-[10px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
                 <div className="p-6">
@@ -958,6 +958,42 @@ export default function AdminDashboard() {
                 </div>
             </main >
             </div>
+            <nav className="lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1rem)] max-w-md rounded-[8px] bg-card/75 backdrop-blur-xl border border-border/70 shadow-[0_10px_30px_rgba(0,0,0,0.18)] px-2 py-1.5">
+                <div className="grid grid-cols-4 gap-1">
+                    <Link
+                        href="/"
+                        className="flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-foreground/80 hover:text-primary transition-colors"
+                        title="Trang chủ"
+                    >
+                        <Home className="w-4 h-4" />
+                        <span>Trang chủ</span>
+                    </Link>
+                    <button
+                        onClick={() => setActiveTab('posts')}
+                        className={`flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'posts' ? 'text-primary' : 'text-foreground/80 hover:text-primary'}`}
+                        title="Bài viết"
+                    >
+                        <FileText className="w-4 h-4" />
+                        <span>Bài viết</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('tags')}
+                        className={`flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'tags' ? 'text-primary' : 'text-foreground/80 hover:text-primary'}`}
+                        title="Tag"
+                    >
+                        <Tag className="w-4 h-4" />
+                        <span>Tag</span>
+                    </button>
+                    <button
+                        onClick={() => setActiveTab('users')}
+                        className={`flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'users' ? 'text-primary' : 'text-foreground/80 hover:text-primary'}`}
+                        title="Người dùng"
+                    >
+                        <Users className="w-4 h-4" />
+                        <span>Người dùng</span>
+                    </button>
+                </div>
+            </nav>
             < CreatePostForm
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}

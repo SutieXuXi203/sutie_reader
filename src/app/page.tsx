@@ -210,7 +210,7 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.primary)_1px,transparent_1px)] opacity-[0.1] z-0 mix-blend-screen" />
-      <nav className="fixed md:top-0 md:left-0 bottom-0 left-0 right-0 z-50 md:w-16 md:h-screen w-full flex md:flex-col flex-row items-center justify-around md:justify-start md:py-8 py-3 px-4 md:px-0 bg-transparent transition-all duration-300">
+      <nav className="fixed md:top-0 md:left-0 bottom-0 left-0 right-0 z-50 md:w-16 md:h-screen w-full flex md:flex-col flex-row items-center justify-around md:justify-start md:py-8 py-3 px-4 md:px-0 bg-card/70 backdrop-blur-xl border-t border-white/20 shadow-[0_-8px_20px_rgba(0,0,0,0.12)] md:bg-transparent md:backdrop-blur-none md:border-0 md:shadow-none transition-all duration-300">
         <div className="hidden md:flex md:flex-col md:items-center md:gap-16 md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
           {[
             { id: 'home', label: 'Trang chủ' },
@@ -337,7 +337,7 @@ export default function Home() {
         </div>
         <div className="relative z-10 max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-12 items-center text-center lg:text-left mt-8 md:mt-0">
           <div className="flex flex-col items-center lg:items-start order-2 lg:order-1">
-            <div className="hidden lg:inline-flex hero-animate items-center gap-2 bg-card/60 backdrop-blur-md text-foreground text-[10px] md:text-xs font-semibold px-4 py-2 rounded-full mb-6 md:mb-8 border border-border w-fit shadow-lg shadow-black/10">
+            <div className="hidden lg:inline-flex hero-animate items-center gap-2 bg-card/60 backdrop-blur-md text-foreground text-[10px] md:text-xs font-semibold px-4 py-2 rounded-none mb-6 md:mb-8 border border-border w-fit shadow-lg shadow-black/10">
               <span className="w-2 h-2 bg-primary rounded-full animate-pulse shadow-[0_0_8px_var(--color-primary)]" />
               Góc dịch thuật của Sutie
             </div>
@@ -384,8 +384,8 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-animate hero-delay-2 flex flex-col items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2 gap-12 lg:gap-0">
-            <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-secondary dark:bg-white/5 text-primary dark:text-primary-foreground text-[10px] md:text-xs font-medium px-3 py-1.5 rounded-[8px] border border-border dark:border-white/20 w-fit">
-              <span className="w-1.5 h-1.5 bg-primary rounded-[8px] animate-pulse" />
+            <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-white/8 backdrop-blur-md text-[#FFF6E7] text-xs font-bold px-3.5 py-1.5 rounded-none border border-white/30 shadow-[0_8px_20px_rgba(0,0,0,0.2)] w-fit">
+              <span className="w-1.5 h-1.5 bg-[#FFF6E7] rounded-[8px] animate-pulse" />
               Góc dịch thuật của Sutie
             </div>
             <div className="group relative w-[280px] sm:w-[350px] md:w-full max-w-[500px] aspect-square rounded-[8px] overflow-hidden cursor-pointer animate-float">
