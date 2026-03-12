@@ -308,6 +308,38 @@ body {
   animation-delay: 4s;
 }
 
+.animation-delay-1000 {
+  animation-delay: 1s;
+}
+
+.animation-delay-3000 {
+  animation-delay: 3s;
+}
+
+@keyframes float-y-soft {
+  0%,
+  100% {
+    transform: translateY(-16px);
+  }
+
+  50% {
+    transform: translateY(18px);
+  }
+}
+
+.animate-float-y-soft {
+  animation: float-y-soft var(--float-y-duration, 12s) ease-in-out infinite;
+  will-change: transform;
+}
+
+.float-y-slow {
+  --float-y-duration: 16s;
+}
+
+.float-y-fast {
+  --float-y-duration: 9s;
+}
+
 @keyframes float {
   0% {
     transform: translateY(0px);
@@ -516,6 +548,7 @@ body {
   }
 
   .animate-blob,
+  .animate-float-y-soft,
   .animate-float,
   .animate-pulse {
     animation: none !important;

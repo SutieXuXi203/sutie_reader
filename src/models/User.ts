@@ -56,17 +56,15 @@ const UserSchema = new Schema<IUser>(
     }
 );
 
-UserSchema.pre('save', function (this: IUser, next) {
+UserSchema.pre('save', function (this: IUser) {
     if (this.isVerified) {
         this.verificationExpiresAt = undefined;
-        return next();
+        return;
     }
 
     if (!this.verificationExpiresAt) {
         this.verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
     }
-
-    next();
 });
 
 UserSchema.index(

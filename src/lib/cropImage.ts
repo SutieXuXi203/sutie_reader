@@ -24,6 +24,7 @@ export async function getCroppedImg(
     rotation = 0,
     flip = { horizontal: false, vertical: false }
 ): Promise<string> {
+    const MAX_AVATAR_DIMENSION = 1024;
     const image = await createImage(imageSrc);
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
@@ -48,8 +49,14 @@ export async function getCroppedImg(
     if (!croppedCtx) {
         throw new Error('No 2d context');
     }
-    croppedCanvas.width = pixelCrop.width;
-    croppedCanvas.height = pixelCrop.height;
+    const largestSide = Math.max(pixelCrop.width, pixelCrop.height);
+    const resizeRatio = largestSide > MAX_AVATAR_DIMENSION
+        ? MAX_AVATAR_DIMENSION / largestSide
+        : 1;
+    const outputWidth = Math.max(1, Math.round(pixelCrop.width * resizeRatio));
+    const outputHeight = Math.max(1, Math.round(pixelCrop.height * resizeRatio));
+    croppedCanvas.width = outputWidth;
+    croppedCanvas.height = outputHeight;
     croppedCtx.drawImage(
         canvas,
         pixelCrop.x,
@@ -58,8 +65,8 @@ export async function getCroppedImg(
         pixelCrop.height,
         0,
         0,
-        pixelCrop.width,
-        pixelCrop.height
+        outputWidth,
+        outputHeight
     );
-    return croppedCanvas.toDataURL('image/jpeg', 0.8);
+    return croppedCanvas.toDataURL('image/jpeg', 0.78);
 }

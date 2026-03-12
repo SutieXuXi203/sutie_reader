@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, BookmarkCheck, ChevronRight, X, Newspaper } from 'lucide-react';
@@ -57,6 +57,9 @@ export default function Home() {
   const { user, logout, isLoading: isAuthLoading, isAdmin } = useAuth();
   const [activeSection, setActiveSection] = useState('home');
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
+  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
+  const profileButtonRef = useRef<HTMLButtonElement | null>(null);
+  const profileMenuRef = useRef<HTMLDivElement | null>(null);
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -165,6 +168,25 @@ export default function Home() {
       setBookmarks([]);
     }
   }, [user, fetchBookmarks]);
+  useEffect(() => {
+    if (!user) {
+      setIsProfileMenuOpen(false);
+    }
+  }, [user]);
+  useEffect(() => {
+    if (!isProfileMenuOpen) return;
+    const handlePointerDown = (event: PointerEvent) => {
+      const target = event.target as Node;
+      if (profileButtonRef.current?.contains(target) || profileMenuRef.current?.contains(target)) {
+        return;
+      }
+      setIsProfileMenuOpen(false);
+    };
+    document.addEventListener('pointerdown', handlePointerDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+    };
+  }, [isProfileMenuOpen]);
   const availableTags = useMemo(() => {
     const postTags = posts.flatMap((post) => post.tags || []);
     const standaloneNames = standaloneTags.map(t => t.name);
@@ -262,19 +284,20 @@ export default function Home() {
             <Mail className="w-6 h-6" />
             <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-primary transition-all duration-300 ${activeSection === 'contact' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
           </button>
-          {isAdmin && (
-            <Link href="/admin"
-              title="Dashboard"
-              className="flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-primary/70 hover:text-primary transition-all hover:scale-110 active:scale-95">
-              <LayoutDashboard className="w-6 h-6" />
-            </Link>
-          )}
         </div>
         <div className="flex flex-row md:flex-col items-center gap-4 md:gap-6 md:mt-auto">
           {user ? (
             <>
               <div className="group relative">
                 <button
+                  ref={profileButtonRef}
+                  onClick={() => {
+                    if (window.matchMedia('(max-width: 767px)').matches) {
+                      setIsProfileMenuOpen((prev) => !prev);
+                    }
+                  }}
+                  aria-expanded={isProfileMenuOpen}
+                  aria-haspopup="menu"
                   className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-border dark:border-white/25 hover:border-primary dark:hover:border-primary-foreground/75 transition-all shadow-md shadow-primary/10"
                 >
                   {user.avatar ? (
@@ -285,13 +308,19 @@ export default function Home() {
                     </div>
                   )}
                 </button>
-                <div className="absolute left-1/2 md:left-full -translate-x-1/2 md:translate-x-0 md:ml-4 bottom-[calc(100%+8px)] md:bottom-0 opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 bg-card border border-border backdrop-blur-md rounded-[8px] shadow-2xl p-2 min-w-[240px] z-50 transform translate-y-[10px] md:translate-y-0 md:translate-x-[-10px] group-hover:translate-y-0 md:group-hover:translate-x-0">
+                <div
+                  ref={profileMenuRef}
+                  className={`absolute right-0 md:right-auto md:left-full md:translate-x-0 md:ml-4 bottom-[calc(100%+8px)] md:bottom-0 bg-[#FFF6E7] dark:bg-[#6E2530] md:bg-card border border-border backdrop-blur-none md:backdrop-blur-md rounded-[8px] shadow-2xl p-2 min-w-[240px] z-50 transform transition-all duration-300 ${isProfileMenuOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-[10px]'} md:opacity-0 md:invisible md:translate-y-0 md:translate-x-[-10px] md:group-hover:opacity-100 md:group-hover:visible md:group-hover:translate-y-0 md:group-hover:translate-x-0`}
+                >
                   <div className="px-3 py-2 border-b border-border mb-2">
                     <p className="text-sm font-black text-foreground truncate tracking-tight">{user.name}</p>
                     <p className="text-[11px] text-muted-foreground truncate font-medium">{user.email}</p>
                   </div>
                   <button
-                    onClick={() => setIsProfileDialogOpen(true)}
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      setIsProfileDialogOpen(true);
+                    }}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-[8px] text-sm font-bold text-foreground hover:bg-muted transition-all mb-1 cursor-pointer"
                   >
                     <UserIcon className="w-5 h-5" />
@@ -300,6 +329,7 @@ export default function Home() {
                   {isAdmin && (
                     <Link
                       href="/admin"
+                      onClick={() => setIsProfileMenuOpen(false)}
                       className="w-full flex items-center gap-3 px-3 py-3 rounded-[8px] text-sm font-bold text-foreground hover:bg-muted transition-all mb-1"
                     >
                       <LayoutDashboard className="w-5 h-5" />
@@ -307,7 +337,10 @@ export default function Home() {
                     </Link>
                   )}
                   <button
-                    onClick={logout}
+                    onClick={() => {
+                      setIsProfileMenuOpen(false);
+                      logout();
+                    }}
                     className="w-full flex items-center gap-3 px-3 py-3 rounded-[8px] text-sm font-bold text-destructive hover:bg-destructive/10 transition-all mt-1 border-t border-border"
                   >
                     <LogOut className="w-5 h-5 text-destructive" />
@@ -330,10 +363,18 @@ export default function Home() {
         </div>
       </nav>
       <section data-section="home" className="relative min-h-screen flex items-center justify-center px-6 md:px-12 md:pl-24 pt-16 pb-24 md:pt-0 md:pb-0 overflow-hidden snap-start">
-        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0">
-          <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-primary/20 rounded-full mix-blend-screen filter blur-[100px] opacity-60 animate-blob" />
-          <div className="absolute top-1/3 right-1/4 w-80 h-80 bg-foreground/10 rounded-full mix-blend-screen filter blur-[100px] opacity-60 animate-blob animation-delay-2000" />
-          <div className="absolute bottom-1/4 left-1/3 w-72 h-72 bg-primary/30 rounded-full mix-blend-screen filter blur-[80px] opacity-40 animate-blob animation-delay-4000" />
+        <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
+          <div className="absolute top-[4%] left-[-18%] md:-top-16 md:left-[4%] w-48 h-48 rounded-full border border-primary/20 bg-primary/10 opacity-42 animate-float-y-soft float-y-fast" />
+          <div className="absolute top-[-10%] right-[-30%] md:-top-24 md:right-auto md:left-[2%] w-72 h-72 rounded-full bg-primary/20 blur-[140px] opacity-28 animate-float-y-soft float-y-slow" />
+
+          <div className="absolute top-[34%] right-[-20%] md:top-[14%] md:right-[8%] w-56 h-56 rounded-full border border-foreground/20 bg-foreground/10 opacity-38 animate-float-y-soft animation-delay-2000" />
+          <div className="absolute top-[28%] right-[-34%] md:top-[8%] md:right-[4%] w-80 h-80 rounded-full bg-foreground/16 blur-[145px] opacity-26 animate-float-y-soft float-y-slow animation-delay-3000" />
+
+          <div className="absolute bottom-[22%] left-[-10%] md:bottom-[10%] md:left-[20%] w-40 h-40 rounded-full border border-primary/18 bg-primary/10 opacity-35 animate-float-y-soft float-y-fast animation-delay-4000" />
+          <div className="absolute bottom-[16%] left-[-24%] md:bottom-[6%] md:left-[14%] w-64 h-64 rounded-full bg-primary/16 blur-[120px] opacity-30 animate-float-y-soft animation-delay-1000" />
+
+          <div className="absolute bottom-[8%] right-[6%] md:bottom-[18%] md:right-[26%] w-44 h-44 rounded-full border border-primary/18 bg-primary/10 opacity-32 animate-float-y-soft animation-delay-3000" />
+          <div className="absolute bottom-[0%] right-[-16%] md:bottom-[12%] md:right-[18%] w-60 h-60 rounded-full bg-primary/14 blur-[115px] opacity-25 animate-float-y-soft float-y-slow animation-delay-2000" />
         </div>
         <div className="relative z-10 max-w-7xl w-full grid grid-cols-1 lg:grid-cols-2 gap-12 md:gap-12 items-center text-center lg:text-left mt-8 md:mt-0">
           <div className="flex flex-col items-center lg:items-start order-2 lg:order-1">
@@ -384,8 +425,8 @@ export default function Home() {
             </div>
           </div>
           <div className="hero-animate hero-delay-2 flex flex-col items-center justify-center relative h-full min-h-[280px] md:min-h-96 w-full order-1 lg:order-2 gap-12 lg:gap-0">
-            <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-white/8 backdrop-blur-md text-[#FFF6E7] text-xs font-bold px-3.5 py-1.5 rounded-none border border-white/30 shadow-[0_8px_20px_rgba(0,0,0,0.2)] w-fit">
-              <span className="w-1.5 h-1.5 bg-[#FFF6E7] rounded-[8px] animate-pulse" />
+            <div className="lg:hidden hero-animate inline-flex items-center gap-2 bg-card/75 backdrop-blur-md text-foreground text-xs font-bold px-3.5 py-1.5 rounded-none border border-border shadow-[0_8px_20px_rgba(0,0,0,0.12)] w-fit">
+              <span className="w-1.5 h-1.5 bg-primary rounded-[8px] animate-pulse" />
               Góc dịch thuật của Sutie
             </div>
             <div className="group relative w-[280px] sm:w-[350px] md:w-full max-w-[500px] aspect-square rounded-[8px] overflow-hidden cursor-pointer animate-float">
