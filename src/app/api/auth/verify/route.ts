@@ -1,5 +1,5 @@
 import { connectDB } from '@/lib/db';
-import { archiveAndDeleteExpiredUnverifiedUser } from '@/lib/archiveDeletedAccount';
+import { handleExpiredUnverifiedUser } from '@/lib/unverifiedUserCleanup';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -21,8 +21,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Tài khoản đã được xác thực trước đó' }, { status: 400 });
     }
 
-    if (user.verificationExpiresAt && user.verificationExpiresAt.getTime() <= Date.now()) {
-      await archiveAndDeleteExpiredUnverifiedUser(user, 'verify');
+    const isExpiredAccountDeleted = await handleExpiredUnverifiedUser(user, 'verify');
+    if (isExpiredAccountDeleted.deleted) {
       return NextResponse.json(
         {
           error:

@@ -1,7 +1,7 @@
 import mongoose, { Document, Schema } from 'mongoose';
 
 export type AutoDeletionReason = 'unverified_expired_24h';
-export type AutoDeletionTrigger = 'login' | 'verify';
+export type AutoDeletionTrigger = 'login' | 'verify' | 'system';
 
 export interface IDeletedAccount extends Document {
   originalUserId?: string;
@@ -51,7 +51,7 @@ const DeletedAccountSchema = new Schema<IDeletedAccount>(
     },
     deletionTrigger: {
       type: String,
-      enum: ['login', 'verify'],
+      enum: ['login', 'verify', 'system'],
       required: true,
     },
     deletedAt: {

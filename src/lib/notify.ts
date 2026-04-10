@@ -13,24 +13,24 @@ type PromiseConfig<T> = {
 
 const palette: Record<ToastVariant, Pick<GooeyToastOptions, 'fillColor' | 'borderColor'>> = {
   default: {
-    fillColor: '#FFF6E7',
-    borderColor: 'color-mix(in oklab, var(--primary) 34%, transparent)',
+    fillColor: 'var(--card)',
+    borderColor: 'var(--border)',
   },
   success: {
-    fillColor: '#ecfdf3',
-    borderColor: '#86efac',
+    fillColor: 'var(--card)',
+    borderColor: 'var(--primary)',
   },
   info: {
-    fillColor: '#FFF6E7',
-    borderColor: 'color-mix(in oklab, var(--primary) 34%, transparent)',
+    fillColor: 'var(--card)',
+    borderColor: 'var(--primary)',
   },
   warning: {
-    fillColor: '#FFF6E7',
-    borderColor: 'color-mix(in oklab, var(--primary) 34%, transparent)',
+    fillColor: 'var(--card)',
+    borderColor: 'var(--primary)',
   },
   error: {
-    fillColor: '#FFF6E7',
-    borderColor: 'color-mix(in oklab, var(--primary) 34%, transparent)',
+    fillColor: 'var(--card)',
+    borderColor: 'var(--primary)',
   },
 };
 

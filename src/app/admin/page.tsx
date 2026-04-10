@@ -3,7 +3,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User, Tag } from 'lucide-react';
+import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User, Tag, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { CreatePostForm } from '@/components/CreatePostForm';
@@ -39,7 +39,7 @@ interface DeletedAccountRecord {
     role?: 'user' | 'admin';
     verificationExpiresAt?: string;
     deletionReason: 'unverified_expired_24h';
-    deletionTrigger: 'login' | 'verify';
+    deletionTrigger: 'login' | 'verify' | 'system';
     deletedAt: string;
 }
 
@@ -51,6 +51,7 @@ export default function AdminDashboard() {
     const [activeTab, setActiveTab] = useState<'posts' | 'users' | 'tags'>('posts');
     const [posts, setPosts] = useState<Post[]>([]);
     const [usersList, setUsersList] = useState<AdminUser[]>([]);
+    const [usersLoadError, setUsersLoadError] = useState<string | null>(null);
     const [deletedAccounts, setDeletedAccounts] = useState<DeletedAccountRecord[]>([]);
     const [isLoading, setIsLoading] = useState(true);
     const [isUsersLoading, setIsUsersLoading] = useState(false);
@@ -133,14 +134,29 @@ export default function AdminDashboard() {
     };
     const fetchUsers = async () => {
         setIsUsersLoading(true);
+        setUsersLoadError(null);
         try {
             const res = await fetch('/api/admin/users');
             if (res.ok) {
                 const data = await res.json();
                 setUsersList(data);
+                return;
             }
+
+            let errorMessage = 'Không thể tải danh sách người dùng.';
+            try {
+                const data = await res.json();
+                if (data?.error) {
+                    errorMessage = data.error;
+                }
+            } catch { }
+
+            setUsersLoadError(errorMessage);
+            notify.error(errorMessage);
         } catch (error) {
             console.error('Error fetching users:', error);
+            setUsersLoadError('Không thể tải danh sách người dùng do lỗi mạng.');
+            notify.error('Không thể tải danh sách người dùng do lỗi mạng.');
         } finally {
             setIsUsersLoading(false);
         }
@@ -319,7 +335,9 @@ export default function AdminDashboard() {
         const normalizedQuery = searchQuery.toLowerCase();
         const triggerLabel = account.deletionTrigger === 'verify'
             ? 'xac thuc xác thực'
-            : 'dang nhap đăng nhập';
+            : account.deletionTrigger === 'system'
+                ? 'he thong hệ thống'
+                : 'dang nhap đăng nhập';
         const reasonLabel = account.deletionReason === 'unverified_expired_24h'
             ? 'chua xac thuc qua han 24 gio chưa xác thực quá hạn 24 giờ'
             : account.deletionReason;
@@ -621,7 +639,23 @@ export default function AdminDashboard() {
                                     <div className="rounded-[8px] border border-border/60 bg-card/30 shadow-sm overflow-hidden">
                                         <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
                                             <p className="text-sm font-semibold text-foreground">Tài khoản hiện tại</p>
-                                            <span className="text-xs text-muted-foreground">{filteredUsers.length} tài khoản</span>
+                                            <div className="flex items-center gap-3">
+                                                <span className="text-xs text-muted-foreground">{filteredUsers.length} tài khoản</span>
+                                                <Button
+                                                    type="button"
+                                                    size="sm"
+                                                    variant="outline"
+                                                    onClick={() => { fetchUsers(); fetchDeletedAccounts(); }}
+                                                    disabled={isUsersLoading || isDeletedAccountsLoading}
+                                                    className="h-7 px-2.5 rounded-[8px] text-xs border-border text-muted-foreground hover:text-foreground"
+                                                    title="Làm mới danh sách"
+                                                >
+                                                    <span className="inline-flex items-center gap-1.5">
+                                                        <RefreshCw className={`w-3.5 h-3.5 ${(isUsersLoading || isDeletedAccountsLoading) ? 'animate-spin' : ''}`} />
+                                                        Làm mới
+                                                    </span>
+                                                </Button>
+                                            </div>
                                         </div>
                                         <div className="overflow-x-auto">
                                             <table className="w-full text-center">
@@ -646,9 +680,22 @@ export default function AdminDashboard() {
                                                         </tr>
                                                     ) : filteredUsers.length === 0 ? (
                                                         <tr>
-                                                            <td colSpan={7} className="px-5 py-12 text-center text-neutral-500">
-                                                                <Users className="w-10 h-10 mx-auto mb-3 text-foreground/55" />
-                                                                <p className="text-sm">{searchQuery ? 'Không tìm thấy' : 'Chưa có người dùng'}</p>
+                                                            <td colSpan={7} className="px-5 py-12 text-center">
+                                                                <div className="mx-auto max-w-sm rounded-[10px] border border-border/60 bg-card/70 px-6 py-7">
+                                                                    <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-secondary/80">
+                                                                        <Users className="w-6 h-6 text-foreground" />
+                                                                    </div>
+                                                                    <p className="text-sm font-semibold text-foreground">
+                                                                        {usersLoadError
+                                                                            ? 'Không tải được danh sách người dùng'
+                                                                            : (searchQuery ? 'Không tìm thấy người dùng' : 'Chưa có người dùng')}
+                                                                    </p>
+                                                                    {usersLoadError && (
+                                                                        <p className="mt-1 text-xs text-muted-foreground">
+                                                                            {usersLoadError}
+                                                                        </p>
+                                                                    )}
+                                                                </div>
                                                             </td>
                                                         </tr>
                                                     ) : paginatedUsers.map((u) => {
@@ -818,7 +865,11 @@ export default function AdminDashboard() {
                                                             </td>
                                                             <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
                                                                 <span className="inline-flex px-2.5 py-1 rounded-[8px] text-xs font-medium bg-neutral-100 dark:bg-neutral-800/50 text-muted-foreground">
-                                                                    {account.deletionTrigger === 'verify' ? 'Xác thực' : 'Đăng nhập'}
+                                                                    {account.deletionTrigger === 'verify'
+                                                                        ? 'Xác thực'
+                                                                        : account.deletionTrigger === 'system'
+                                                                            ? 'Hệ thống'
+                                                                            : 'Đăng nhập'}
                                                                 </span>
                                                             </td>
                                                             <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">

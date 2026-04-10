@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { Providers } from "@/providers/ThemeProvider";
+import { SmoothScrollProvider } from "@/providers/SmoothScrollProvider";
+import { SiteNav } from "@/components/SiteNav";
 import { GooeyToastProvider } from "@/components/GooeyToastProvider";
 import "./globals.css";
 import "goey-toast/styles.css";
@@ -30,8 +32,11 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Providers>
-          {children}
-          <GooeyToastProvider />
+          <SmoothScrollProvider>
+            <SiteNav />
+            {children}
+            <GooeyToastProvider />
+          </SmoothScrollProvider>
         </Providers>
       </body>
     </html>

@@ -1,5 +1,5 @@
 import { connectDB } from '@/lib/db';
-import { archiveAndDeleteExpiredUnverifiedUser } from '@/lib/archiveDeletedAccount';
+import { handleExpiredUnverifiedUser } from '@/lib/unverifiedUserCleanup';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
@@ -54,8 +54,9 @@ export async function POST(request: NextRequest) {
       isMatch = await bcrypt.compare(password, user.password);
 
       if (isMatch && user.role !== 'admin' && !user.isVerified) {
-        if (user.verificationExpiresAt && user.verificationExpiresAt.getTime() <= Date.now()) {
-          await archiveAndDeleteExpiredUnverifiedUser(user, 'login');
+        const isExpiredAccountDeleted = await handleExpiredUnverifiedUser(user, 'login');
+
+        if (isExpiredAccountDeleted.deleted) {
           return NextResponse.json(
             {
               error:

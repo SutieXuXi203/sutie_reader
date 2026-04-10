@@ -1,8 +1,7 @@
 'use client';
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { ThemeToggle } from '@/components/ThemeToggle';
-import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Home as HomeIcon, LogOut, User as UserIcon, LogIn, Lock, LayoutDashboard, BookmarkCheck, ChevronRight, X, Newspaper } from 'lucide-react';
+import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Lock, BookmarkCheck, ChevronRight, X, LogIn } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
@@ -12,7 +11,7 @@ import { getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 const CreatePostForm = dynamic(() => import('@/components/CreatePostForm').then(m => ({ default: m.CreatePostForm })), { ssr: false });
 const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
-const ProfileDialog = dynamic(() => import('@/components/ProfileDialog').then(m => ({ default: m.ProfileDialog })), { ssr: false });
+
 interface Post {
   _id: string;
   title: string;
@@ -46,53 +45,15 @@ interface BookmarkItem {
     tags?: string[];
   };
 }
-const SECTION_IDS = ['home', 'posts', 'contact'] as const;
 
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const [isProfileDialogOpen, setIsProfileDialogOpen] = useState(false);
-  const { user, logout, isLoading: isAuthLoading, isAdmin } = useAuth();
-  const [activeSection, setActiveSection] = useState('home');
+  const { user, isLoading: isAuthLoading, isAdmin } = useAuth();
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
-  const [isProfileMenuOpen, setIsProfileMenuOpen] = useState(false);
-  const profileButtonRef = useRef<HTMLButtonElement | null>(null);
-  const profileMenuRef = useRef<HTMLDivElement | null>(null);
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        let maxRatio = 0;
-        let activeId = '';
 
-        entries.forEach((entry) => {
-          if (entry.isIntersecting && entry.intersectionRatio > maxRatio) {
-            maxRatio = entry.intersectionRatio;
-            activeId = entry.target.id || entry.target.getAttribute('data-section') || '';
-          }
-        });
-
-        if (activeId) {
-          setActiveSection(activeId);
-        }
-      },
-      {
-        root: null,
-        rootMargin: '-20% 0px -40% 0px',
-        threshold: [0, 0.25, 0.5, 0.75, 1]
-      }
-    );
-
-    SECTION_IDS.forEach((id) => {
-      const el = document.getElementById(id) || document.querySelector(`[data-section="${id}"]`);
-      if (el) observer.observe(el);
-    });
-
-    return () => {
-      observer.disconnect();
-    };
-  }, []);
   useEffect(() => {
     const observer = new IntersectionObserver(
       (entries) => {
@@ -168,25 +129,8 @@ export default function Home() {
       setBookmarks([]);
     }
   }, [user, fetchBookmarks]);
-  useEffect(() => {
-    if (!user) {
-      setIsProfileMenuOpen(false);
-    }
-  }, [user]);
-  useEffect(() => {
-    if (!isProfileMenuOpen) return;
-    const handlePointerDown = (event: PointerEvent) => {
-      const target = event.target as Node;
-      if (profileButtonRef.current?.contains(target) || profileMenuRef.current?.contains(target)) {
-        return;
-      }
-      setIsProfileMenuOpen(false);
-    };
-    document.addEventListener('pointerdown', handlePointerDown);
-    return () => {
-      document.removeEventListener('pointerdown', handlePointerDown);
-    };
-  }, [isProfileMenuOpen]);
+
+
   const availableTags = useMemo(() => {
     const postTags = posts.flatMap((post) => post.tags || []);
     const standaloneNames = standaloneTags.map(t => t.name);
@@ -232,137 +176,9 @@ export default function Home() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.primary)_1px,transparent_1px)] opacity-[0.1] z-0 mix-blend-screen" />
-      <nav className="fixed md:top-0 md:left-0 bottom-0 left-0 right-0 z-50 md:w-16 md:h-screen w-full flex md:flex-col flex-row items-center justify-around md:justify-start md:py-8 py-3 px-4 md:px-0 bg-card/70 backdrop-blur-xl border-t border-white/20 shadow-[0_-8px_20px_rgba(0,0,0,0.12)] md:bg-transparent md:backdrop-blur-none md:border-0 md:shadow-none transition-all duration-300">
-        <div className="hidden md:flex md:flex-col md:items-center md:gap-16 md:absolute md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2">
-          {[
-            { id: 'home', label: 'Trang chủ' },
-            { id: 'posts', label: 'Bài viết' },
-            { id: 'contact', label: 'Liên hệ' },
-          ].map((section) => (
-            <button
-              key={section.id}
-              onClick={() => {
-                if (section.id === 'home') {
-                  window.scrollTo({ top: 0, behavior: 'smooth' });
-                } else {
-                  document.getElementById(section.id)?.scrollIntoView({ behavior: 'smooth' });
-                }
-              }}
-              className="group relative flex items-center justify-center cursor-pointer w-4 h-4"
-              title={section.label}
-            >
-              <div className={`w-1.5 h-1.5 rounded-full border-[1.5px] transition-all duration-300 ${activeSection === section.id
-                ? 'bg-primary border-primary scale-150 shadow-[0_0_6px_var(--color-primary)]'
-                : 'bg-transparent border-primary/50 hover:border-primary hover:scale-125'
-                }`} />
-              <span className={`absolute left-full ml-3 text-xs font-semibold whitespace-nowrap px-2.5 py-1 rounded-[8px] transition-all duration-300 ${activeSection === section.id
-                ? 'opacity-100 translate-x-0 text-primary'
-                : 'opacity-0 -translate-x-2 group-hover:opacity-100 group-hover:translate-x-0 text-muted-foreground'
-                }`}>
-                {section.label}
-              </span>
-            </button>
-          ))}
-          <div className="absolute top-0 bottom-0 left-1/2 -translate-x-1/2 w-[1px] bg-border -z-10" />
-        </div>
-        <div className="flex md:hidden flex-row items-center justify-center gap-6 flex-1">
-          <button onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            title="Trang chủ"
-            className="relative flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-primary/70 hover:text-primary transition-all hover:scale-110 active:scale-95 cursor-pointer">
-            <HomeIcon className="w-6 h-6" />
-            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-primary transition-all duration-300 ${activeSection === 'home' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
-          </button>
-          <a href="#posts"
-            title="Bài viết"
-            className="relative flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-primary/70 hover:text-primary transition-all hover:scale-110 active:scale-95 group">
-            <Newspaper className="w-6 h-6" />
-            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-primary transition-all duration-300 ${activeSection === 'posts' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
-          </a>
-          <button onClick={() => document.getElementById('contact')?.scrollIntoView({ behavior: 'smooth' })}
-            title="Liên hệ"
-            className="relative flex flex-col items-center gap-2 text-[10px] uppercase font-bold tracking-widest text-primary/70 hover:text-primary transition-all hover:scale-110 active:scale-95">
-            <Mail className="w-6 h-6" />
-            <span className={`absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-1 h-px rounded-full bg-primary transition-all duration-300 ${activeSection === 'contact' ? 'opacity-100 w-4' : 'opacity-0 w-0'}`} />
-          </button>
-        </div>
-        <div className="flex flex-row md:flex-col items-center gap-4 md:gap-6 md:mt-auto">
-          {user ? (
-            <>
-              <div className="group relative">
-                <button
-                  ref={profileButtonRef}
-                  onClick={() => {
-                    if (window.matchMedia('(max-width: 767px)').matches) {
-                      setIsProfileMenuOpen((prev) => !prev);
-                    }
-                  }}
-                  aria-expanded={isProfileMenuOpen}
-                  aria-haspopup="menu"
-                  className="w-10 h-10 md:w-12 md:h-12 rounded-full overflow-hidden border-2 border-border dark:border-white/25 hover:border-primary dark:hover:border-primary-foreground/75 transition-all shadow-md shadow-primary/10"
-                >
-                  {user.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                  ) : (
-                    <div className="w-full h-full bg-secondary dark:bg-primary/20 flex items-center justify-center">
-                      <UserIcon className="w-6 h-6 text-primary/75" />
-                    </div>
-                  )}
-                </button>
-                <div
-                  ref={profileMenuRef}
-                  className={`absolute right-0 md:right-auto md:left-full md:translate-x-0 md:ml-4 bottom-[calc(100%+8px)] md:bottom-0 bg-[#FFF6E7] dark:bg-[#6E2530] md:bg-card border border-border backdrop-blur-none md:backdrop-blur-md rounded-[8px] shadow-2xl p-2 min-w-[240px] z-50 transform transition-all duration-300 ${isProfileMenuOpen ? 'opacity-100 visible translate-y-0' : 'opacity-0 invisible translate-y-[10px]'} md:opacity-0 md:invisible md:translate-y-0 md:translate-x-[-10px] md:group-hover:opacity-100 md:group-hover:visible md:group-hover:translate-y-0 md:group-hover:translate-x-0`}
-                >
-                  <div className="px-3 py-2 border-b border-border mb-2">
-                    <p className="text-sm font-black text-foreground truncate tracking-tight">{user.name}</p>
-                    <p className="text-[11px] text-muted-foreground truncate font-medium">{user.email}</p>
-                  </div>
-                  <button
-                    onClick={() => {
-                      setIsProfileMenuOpen(false);
-                      setIsProfileDialogOpen(true);
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-[8px] text-sm font-bold text-foreground hover:bg-muted transition-all mb-1 cursor-pointer"
-                  >
-                    <UserIcon className="w-5 h-5" />
-                    <span>Hồ sơ cá nhân</span>
-                  </button>
-                  {isAdmin && (
-                    <Link
-                      href="/admin"
-                      onClick={() => setIsProfileMenuOpen(false)}
-                      className="w-full flex items-center gap-3 px-3 py-3 rounded-[8px] text-sm font-bold text-foreground hover:bg-muted transition-all mb-1"
-                    >
-                      <LayoutDashboard className="w-5 h-5" />
-                      <span>Quản trị</span>
-                    </Link>
-                  )}
-                  <button
-                    onClick={() => {
-                      setIsProfileMenuOpen(false);
-                      logout();
-                    }}
-                    className="w-full flex items-center gap-3 px-3 py-3 rounded-[8px] text-sm font-bold text-destructive hover:bg-destructive/10 transition-all mt-1 border-t border-border"
-                  >
-                    <LogOut className="w-5 h-5 text-destructive" />
-                    <span>Đăng xuất</span>
-                  </button>
-                </div>
-              </div>
-            </>
-          ) : (
-            <button
-              onClick={() => setIsAuthDialogOpen(true)}
-              className="w-10 h-10 md:w-12 md:h-12 rounded-full border-2 border-dashed border-primary/50 flex items-center justify-center text-primary/80 hover:text-primary hover:border-primary transition-all active:scale-95"
-              title="Đăng nhập"
-            >
-              <LogIn className="w-5 h-5 md:w-6 md:h-6" />
-            </button>
-          )}
-          <div className="hidden md:block w-8 h-px bg-border group-hover:opacity-100" />
-          <ThemeToggle />
-        </div>
-      </nav>
-      <section data-section="home" className="relative section-fullscreen flex items-center justify-center px-6 md:px-12 md:pl-24 pt-16 pb-24 md:pt-0 md:pb-0 overflow-hidden snap-start">
+
+
+      <section data-section="home" className="relative section-fullscreen flex items-center justify-center px-6 md:px-12 md:pl-24 pt-16 pb-24 md:pt-0 md:pb-0 overflow-hidden">
         <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
           <div className="absolute top-[4%] left-[-18%] md:-top-16 md:left-[4%] w-48 h-48 rounded-full border border-primary/20 bg-primary/10 opacity-42 animate-float-y-soft float-y-fast" />
           <div className="absolute top-[-10%] right-[-30%] md:-top-24 md:right-auto md:left-[2%] w-72 h-72 rounded-full bg-primary/20 blur-[140px] opacity-28 animate-float-y-soft float-y-slow" />
@@ -428,20 +244,27 @@ export default function Home() {
               <span className="w-1.5 h-1.5 bg-primary rounded-[8px] animate-pulse" />
               Nơi lưu trữ bản dịch của Sutie
             </div>
-            <div className="group relative w-[280px] sm:w-[350px] md:w-full max-w-[500px] aspect-square rounded-[8px] overflow-hidden cursor-pointer animate-float">
-              <Image
-                src="/dragon.png"
-                alt="Sutie's Dragon Avatar"
-                fill
-                priority
-                className="object-cover drop-shadow-2xl"
-              />
-              <div className="absolute inset-0 flex items-end justify-center pb-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                <div className="bg-black/75 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-[8px] max-w-[90%] text-center shadow-xl">
-                  Hình ảnh là sản phẩm của AI và không có tác giả
+            <div className="relative w-[280px] sm:w-[350px] md:w-full max-w-[500px]">
+              <div className="pointer-events-none absolute -inset-10 -z-10" aria-hidden="true">
+                <div className="absolute top-[-6%] right-[-8%] w-28 h-28 rounded-full bg-primary/22 blur-[34px] opacity-55" />
+                <div className="absolute bottom-[8%] left-[-12%] w-36 h-36 rounded-full bg-foreground/20 blur-[46px] opacity-45" />
+                <div className="absolute top-[44%] left-[70%] w-24 h-24 rounded-full border border-primary/25 bg-primary/12 blur-[3px] opacity-50" />
+              </div>
+              <div className="group relative aspect-square rounded-[8px] overflow-hidden cursor-pointer">
+                <Image
+                  src="/dragon.png"
+                  alt="Sutie's Dragon Avatar"
+                  fill
+                  priority
+                  className="object-cover drop-shadow-2xl"
+                />
+                <div className="absolute inset-0 flex items-end justify-center pb-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                  <div className="bg-black/75 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-[8px] max-w-[90%] text-center shadow-xl">
+                    Hình ảnh là sản phẩm của AI và không có tác giả
                 </div>
               </div>
-            </div>
+          </div>
+        </div>
           </div>
         </div>
         <div className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 text-primary/75">
@@ -449,7 +272,7 @@ export default function Home() {
           <div className="w-px h-8 bg-gradient-to-b from-primary/70 to-transparent" />
         </div>
       </section>
-      <section id="posts" data-section="posts" className="section-fullscreen flex items-start pt-20 pb-20 md:pt-28 md:pb-24 px-6 md:px-12 md:pl-24 bg-secondary/50 snap-start">
+      <section id="posts" data-section="posts" className="section-fullscreen flex items-start pt-20 pb-20 md:pt-28 md:pb-24 px-6 md:px-12 md:pl-24 bg-secondary/50">
         <div className="max-w-7xl mx-auto w-full text-center sm:text-left">
           {user && bookmarks.length > 0 && (
             <div className="reveal mb-12 md:mb-16">
@@ -582,7 +405,7 @@ export default function Home() {
           )}
         </div>
       </section>
-      <section id="contact" data-section="contact" className="section-fullscreen flex items-center py-16 pb-28 md:py-24 px-6 md:px-12 md:pl-24 bg-background snap-start">
+      <section id="contact" data-section="contact" className="section-fullscreen flex items-center py-16 pb-28 md:py-24 px-6 md:px-12 md:pl-24 bg-background">
         <div className="max-w-5xl mx-auto w-full">
           <div className="grid md:grid-cols-2 gap-12 md:gap-16 items-start">
             <div className="reveal text-center md:text-left">
@@ -681,7 +504,7 @@ export default function Home() {
           </div>
         </div>
       </section>
-      <footer className="reveal py-10 pb-24 md:pb-12 px-6 md:px-12 md:pl-24 snap-start bg-secondary/50 backdrop-blur-sm">
+      <footer className="reveal py-10 pb-24 md:pb-12 px-6 md:px-12 md:pl-24 bg-secondary/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto flex flex-col md:flex-row items-center justify-between gap-6 text-center md:text-left">
           <div className="flex items-center gap-2 text-primary">
             <BookOpen className="w-4 h-4" />
@@ -694,22 +517,13 @@ export default function Home() {
           </div>
         </div>
       </footer>
-      <AuthDialog
-        open={isAuthDialogOpen}
-        onOpenChange={setIsAuthDialogOpen}
-      />
+      <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
       <CreatePostForm
         open={isCreateDialogOpen}
         onOpenChange={setIsCreateDialogOpen}
         onPostCreated={fetchPosts}
         availableTags={availableTags}
       />
-      {user && (
-        <ProfileDialog
-          open={isProfileDialogOpen}
-          onOpenChange={setIsProfileDialogOpen}
-        />
-      )}
     </div>
   );
 }
