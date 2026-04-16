@@ -171,7 +171,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
     return (
         <Dialog open={open} onOpenChange={(val) => { onOpenChange(val); if (!val) resetState(); }}>
-            <DialogContent className="sm:max-w-md bg-white dark:bg-[#1a0808] border-red-200 dark:border-red-900/30">
+            <DialogContent className="sm:max-w-md bg-white dark:bg-[#8c2f39] border-red-200 dark:border-red-900/30">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold text-center text-neutral-900 dark:text-neutral-100 mb-2">
                         {mode === 'login' && 'Chào mừng trở lại'}
@@ -179,8 +179,8 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         {mode === 'forgot-password' && 'Khôi phục mật khẩu'}
                         {mode === 'verify' && 'Xác thực tài khoản'}
                     </DialogTitle>
-                    <DialogDescription className="text-center text-neutral-500 dark:text-neutral-400">
-                        {mode === 'login' && 'Đăng nhập để tiếp tục viết câu chuyện của bạn'}
+                    <DialogDescription className="text-center text-neutral-500 dark:text-neutral-100">
+                        {mode === 'login' && 'Đăng nhập để tiếp tục trải nghiệm của bạn'}
                         {mode === 'register' && 'Tham gia cộng đồng và chia sẻ ý tưởng của bạn'}
                         {mode === 'forgot-password' && 'Nhập email để nhận liên kết đặt lại mật khẩu'}
                         {mode === 'verify' && 'Nhập mã gồm 6 chữ số được gửi đến email của bạn'}
@@ -338,16 +338,16 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     type="checkbox"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 rounded-[8px] border-red-300 dark:border-red-700 text-red-600 focus:ring-primary accent-red-600 dark:accent-red-400"
+                                    className="w-4 h-4 rounded-[8px] border-red-300 dark:border-red-700 text-red-600 focus:ring-primary accent-red-600 dark:accent-red-400 hover:cursor-pointer"
                                 />
-                                <span className="text-xs text-neutral-500 group-hover:text-neutral-700 dark:group-hover:text-neutral-300 transition-colors">
+                                <span className="text-xs text-neutral-600 dark:text-neutral-300 group-hover:text-neutral-800 dark:group-hover:text-neutral-100 transition-colors">
                                     Ghi nhớ đăng nhập
                                 </span>
                             </label>
                             <button
                                 type="button"
                                 onClick={() => setMode('forgot-password')}
-                                className="text-xs text-neutral-500 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                className="text-xs text-neutral-600 dark:text-neutral-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
                             >
                                 Quên mật khẩu?
                             </button>
@@ -372,7 +372,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     </Button>
                 </form>
 
-                <div className="mt-6 text-center text-sm text-neutral-500">
+                <div className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-300">
                     {mode === 'login' && (
                         <p>
                             Chưa có tài khoản?{' '}
