@@ -73,7 +73,7 @@ export default function Home() {
     return () => {
       observer.disconnect();
     };
-  }, [posts.length, bookmarks.length, user]);
+  }, [posts.length, bookmarks.length, user, isLoading, isAuthLoading]);
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
   const fetchTags = useCallback(async () => {
     try {
@@ -375,7 +375,7 @@ export default function Home() {
               </div>
               <h3 className="relative z-10 text-xl font-bold text-foreground mb-2">Nội dung đã bị khóa</h3>
               <p className="relative z-10 text-muted-foreground max-w-sm mb-8 leading-relaxed">
-                Bạn cần đăng nhập hoặc tạo tài khoản mới để có thể xem được danh sách các bài viết và câu chuyện.
+                Bạn cần đăng nhập hoặc tạo tài khoản mới để có thể xem được danh sách tất cả các bài viết.
               </p>
               <Button
                 onClick={() => setIsAuthDialogOpen(true)}
