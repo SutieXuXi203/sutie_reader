@@ -45,6 +45,21 @@
 
 :root {
   --radius: 0.5rem;
+  /* Black Myth: Wukong semantic tokens */
+  --wukong-font-family-primary: CrimsonPro, Garamond, "Times New Roman",
+    "PingFang SC", "Source Han Sans SC", "Noto Sans CJK SC",
+    "Helvetica Neue", "WenQuanYi Micro Hei", "Microsoft YaHei", Arial,
+    sans-serif, BlinkMacSystemFont;
+  --wukong-font-size-base: 20px;
+  --wukong-font-size-sm: 16px;
+  --wukong-font-weight-base: 400;
+  --wukong-color-surface-base: #000000;
+  --wukong-color-surface-muted: #b5b4b2;
+  --wukong-color-text-tertiary: #dfdad3;
+  --wukong-color-text-secondary: #686868;
+  --wukong-color-text-inverse: #0e6f61;
+  --wukong-space-1: 11px;
+  --wukong-space-2: 15px;
 
   --background: #FFF6E7;
   --foreground: #8C2F39;

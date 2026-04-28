@@ -1,7 +1,7 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { Button } from '@/components/ui/button';
-import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Lock, BookmarkCheck, ChevronRight, X, LogIn } from 'lucide-react';
+import { Plus, BookOpen, Mail, Github, Facebook, ArrowDown, Lock, BookmarkCheck, ChevronRight, X, LogIn, Eye, EyeOff } from 'lucide-react';
 import { PostCard } from '@/components/PostCard';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
@@ -46,6 +46,8 @@ interface BookmarkItem {
   };
 }
 
+const HERO_IMAGE_VISIBILITY_STORAGE_KEY = 'sutie:hero-image-visible';
+
 export default function Home() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -53,6 +55,26 @@ export default function Home() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const { user, isLoading: isAuthLoading, isAdmin } = useAuth();
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
+  const [isHeroImageVisible, setIsHeroImageVisible] = useState(true);
+  const [isHeroVisibilityLoaded, setIsHeroVisibilityLoaded] = useState(false);
+
+  useEffect(() => {
+    const savedValue = window.localStorage.getItem(HERO_IMAGE_VISIBILITY_STORAGE_KEY);
+    if (savedValue === 'true') {
+      setIsHeroImageVisible(true);
+    } else if (savedValue === 'false') {
+      setIsHeroImageVisible(false);
+    }
+    setIsHeroVisibilityLoaded(true);
+  }, []);
+
+  useEffect(() => {
+    if (!isHeroVisibilityLoaded) return;
+    window.localStorage.setItem(
+      HERO_IMAGE_VISIBILITY_STORAGE_KEY,
+      String(isHeroImageVisible)
+    );
+  }, [isHeroImageVisible, isHeroVisibilityLoaded]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -245,26 +267,56 @@ export default function Home() {
               Nơi lưu trữ bản dịch của Sutie
             </div>
             <div className="relative w-[280px] sm:w-[350px] md:w-full max-w-[500px]">
+              <div className="mb-3 flex justify-end">
+                <Button
+                  type="button"
+                  size="sm"
+                  variant="outline"
+                  onClick={() => setIsHeroImageVisible((prev) => !prev)}
+                  className="rounded-[8px] bg-card/70 backdrop-blur-sm"
+                  aria-label={isHeroImageVisible ? 'Ẩn hình ảnh hero' : 'Hiện hình ảnh hero'}
+                >
+                  {isHeroImageVisible ? (
+                    <>
+                      <EyeOff className="w-4 h-4 mr-1.5" />
+                      Tắt ảnh
+                    </>
+                  ) : (
+                    <>
+                      <Eye className="w-4 h-4 mr-1.5" />
+                      Bật ảnh
+                    </>
+                  )}
+                </Button>
+              </div>
               <div className="pointer-events-none absolute -inset-10 -z-10" aria-hidden="true">
                 <div className="absolute top-[-6%] right-[-8%] w-28 h-28 rounded-full bg-primary/22 blur-[34px] opacity-55" />
                 <div className="absolute bottom-[8%] left-[-12%] w-36 h-36 rounded-full bg-foreground/20 blur-[46px] opacity-45" />
                 <div className="absolute top-[44%] left-[70%] w-24 h-24 rounded-full border border-primary/25 bg-primary/12 blur-[3px] opacity-50" />
               </div>
-              <div className="group relative aspect-square rounded-[8px] overflow-hidden cursor-pointer">
-                <Image
-                  src="/dragon.png"
-                  alt="Sutie's Dragon Avatar"
-                  fill
-                  priority
-                  className="object-cover drop-shadow-2xl"
-                />
-                <div className="absolute inset-0 flex items-end justify-center pb-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
-                  <div className="bg-black/75 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-[8px] max-w-[90%] text-center shadow-xl">
-                    Hình ảnh là sản phẩm của AI và không có tác giả
+              {isHeroImageVisible ? (
+                <div className="group relative aspect-square rounded-[8px] overflow-hidden cursor-pointer">
+                  <Image
+                    src="/dragon.png"
+                    alt="Sutie's Dragon Avatar"
+                    fill
+                    priority
+                    className="object-cover drop-shadow-2xl"
+                  />
+                  <div className="absolute inset-0 flex items-end justify-center pb-6 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none">
+                    <div className="bg-black/75 backdrop-blur-sm text-white text-sm font-medium px-4 py-2 rounded-[8px] max-w-[90%] text-center shadow-xl">
+                      Hình ảnh là sản phẩm của AI và không có tác giả
+                    </div>
+                  </div>
                 </div>
-              </div>
-          </div>
-        </div>
+              ) : (
+                <div className="relative aspect-square rounded-[8px] border border-dashed border-border bg-card/40 flex items-center justify-center px-6">
+                  <p className="text-sm text-muted-foreground text-center">
+                    Ảnh đang được tắt. Bấm nút Bật ảnh để hiển thị lại.
+                  </p>
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <div className="hidden lg:flex absolute bottom-8 left-1/2 -translate-x-1/2 flex-col items-center gap-2 text-primary/75">
