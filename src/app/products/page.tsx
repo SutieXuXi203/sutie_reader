@@ -42,13 +42,7 @@ export default function ProductsPage() {
         }
     }, [isAuthLoading, isAdmin, router]);
 
-    if (isAuthLoading || !isAdmin) {
-        return (
-            <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-            </div>
-        );
-    }
+
     
     const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
 
@@ -112,6 +106,14 @@ export default function ProductsPage() {
         const standaloneNames = standaloneTags.map(t => t.name);
         return Array.from(new Set([...postTags, ...standaloneNames])).filter(Boolean);
     }, [posts, standaloneTags]);
+
+    if (isAuthLoading || !isAdmin) {
+        return (
+            <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
 
     return (
         <div className="min-h-screen bg-background text-foreground transition-colors pt-20 pb-0 flex flex-col justify-between">
