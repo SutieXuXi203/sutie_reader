@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Inter } from "next/font/google";
+import localFont from "next/font/local";
 import { Providers } from "@/providers/ThemeProvider";
 import { SmoothScrollProvider } from "@/providers/SmoothScrollProvider";
 import { SiteNav } from "@/components/SiteNav";
@@ -7,9 +7,25 @@ import { GooeyToastProvider } from "@/components/GooeyToastProvider";
 import "./globals.css";
 import "goey-toast/styles.css";
 
-const inter = Inter({
-  subsets: ["latin", "vietnamese"],
-  display: "swap",
+const sfPro = localFont({
+  src: [
+    {
+      path: "../../public/fonts/SFPRODISPLAYREGULAR.otf",
+      weight: "400",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/SFPRODISPLAYMEDIUM.otf",
+      weight: "500",
+      style: "normal",
+    },
+    {
+      path: "../../public/fonts/SFPRODISPLAYBOLD.otf",
+      weight: "700",
+      style: "normal",
+    },
+  ],
+  variable: "--font-sf-pro",
 });
 
 export const metadata: Metadata = {
@@ -28,7 +44,7 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning>
       <body
-        className={`${inter.className} antialiased bg-background text-foreground`}
+        className={`${sfPro.variable} font-sans antialiased bg-background text-foreground`}
         suppressHydrationWarning
       >
         <Providers>

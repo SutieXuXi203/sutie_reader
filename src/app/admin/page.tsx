@@ -381,9 +381,9 @@ export default function AdminDashboard() {
         );
     }
     return (
-        <div className="min-h-screen pb-24 lg:pb-0 [scrollbar-gutter:stable] bg-background font-sans selection:bg-primary/20">
+        <div className="min-h-screen pt-20 pb-24 lg:pb-0 [scrollbar-gutter:stable] bg-background font-sans selection:bg-primary/20">
             <div className="mx-auto flex w-full max-w-[1600px] gap-4 px-4 py-4">
-            <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-4 lg:max-h-[calc(100vh-2rem)] lg:overflow-y-auto rounded-[10px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
+            <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto rounded-[10px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
                 <div className="p-6">
                     <h2 className="font-semibold text-lg text-foreground">Quản trị</h2>
                 </div>

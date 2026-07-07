@@ -171,9 +171,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
     return (
         <Dialog open={open} onOpenChange={(val) => { onOpenChange(val); if (!val) resetState(); }}>
-            <DialogContent className="sm:max-w-md bg-white dark:bg-[#8c2f39] border-red-200 dark:border-red-900/30">
+            <DialogContent className="sm:max-w-md bg-card border-border">
                 <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-center text-[#8c2f39] dark:text-neutral-100 mb-2">
+                    <DialogTitle className="text-2xl font-bold text-center text-foreground mb-2">
                         {mode === 'login' && 'Chào mừng trở lại'}
                         {mode === 'register' && 'Tạo tài khoản mới'}
                         {mode === 'forgot-password' && 'Khôi phục mật khẩu'}
@@ -323,7 +323,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                             }
                                         }}
                                         id={`otp-${index}`}
-                                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl font-bold bg-white dark:bg-[#1a0808] border-2 border-border/50 rounded-[8px] focus:outline-none focus:border-primary dark:focus:border-red-400 transition-colors shadow-sm text-neutral-900 dark:text-neutral-100"
+                                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl font-bold bg-white dark:bg-secondary border-2 border-border/50 rounded-[8px] focus:outline-none focus:border-primary dark:focus:border-primary transition-colors shadow-sm text-foreground"
                                         required={index === 0}
                                     />
                                 ))}
