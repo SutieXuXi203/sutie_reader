@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import {
-  X,
   BookOpen,
   ArrowLeft,
   Loader2,
@@ -104,7 +103,7 @@ export default function PostDetailPage() {
   const resetUiTimer = useCallback(() => {
     setShowUI(true);
     if (uiTimer.current) clearTimeout(uiTimer.current);
-    uiTimer.current = setTimeout(() => setShowUI(false), 3000);
+    uiTimer.current = setTimeout(() => setShowUI(false), 2000);
   }, []);
 
   const removeBookmark = useCallback(async () => {
@@ -260,7 +259,7 @@ export default function PostDetailPage() {
   }, [currentPage, activeChapterIndex, post, user, hasBookmark, removeBookmark]);
 
   useEffect(() => {
-    uiTimer.current = setTimeout(() => setShowUI(false), 3000);
+    uiTimer.current = setTimeout(() => setShowUI(false), 2000);
     return () => {
       if (uiTimer.current) clearTimeout(uiTimer.current);
     };
@@ -276,6 +275,7 @@ export default function PostDetailPage() {
     }
 
     const handleScroll = () => {
+      resetUiTimer();
       const viewportCenter = window.scrollY + window.innerHeight * 0.35;
       let closestIdx = 0;
       let closestDist = Infinity;
@@ -295,7 +295,7 @@ export default function PostDetailPage() {
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
     return () => window.removeEventListener('scroll', handleScroll);
-  }, [post, activeChapterIndex]);
+  }, [post, activeChapterIndex, resetUiTimer]);
 
   if (isLoading || isAuthLoading) {
     return (
@@ -452,12 +452,6 @@ export default function PostDetailPage() {
           <span className="text-foreground text-xs md:text-sm font-bold bg-secondary px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-border">
             Chương {activeChapterIndex + 1}/{chapters.length} - Trang {total === 0 ? 0 : currentPage + 1}/{safeTotal}
           </span>
-          <Link
-            href="/#posts"
-            className="p-1.5 md:p-2 rounded-[8px] bg-secondary hover:bg-destructive/80 text-foreground hover:text-white transition-colors"
-          >
-            <X className="w-4 h-4 md:w-5 md:h-5" />
-          </Link>
         </div>
       </div>
 
