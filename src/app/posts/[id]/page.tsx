@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import {
   BookOpen,
   ArrowLeft,
@@ -388,74 +389,76 @@ export default function PostDetailPage() {
     >
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 to-transparent pointer-events-none" />
 
-      <div
-        className={`fixed top-0 left-0 right-0 z-50 flex items-center justify-between px-3 py-3 md:px-6 md:py-4
-          bg-card/60 backdrop-blur-md border-b border-border transition-opacity duration-500
-          ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
-      >
-        <div className="flex items-center gap-2 md:gap-4">
-          <Link
-            href="/#posts"
-            className="p-1.5 md:p-2 rounded-[8px] bg-secondary hover:bg-muted text-foreground transition-colors"
-          >
-            <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
-          </Link>
-          <div className="flex items-center gap-2 md:gap-3">
-            <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground flex-shrink-0" />
-            <div className="min-w-0">
-              <h1 className="text-foreground font-bold text-sm md:text-base leading-tight line-clamp-1">
-                {post.title}
-              </h1>
-              <p className="text-muted-foreground text-[10px] md:text-xs line-clamp-1">
-                {activeChapter?.title || `Chuong ${activeChapterIndex + 1}`} - {post.author}
-              </p>
+      {createPortal(
+        <div
+          style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 99999 }}
+          className="flex items-center justify-between gap-2 px-3 py-3 md:px-6 md:py-4 bg-card/60 backdrop-blur-md border-b border-border shadow-sm"
+        >
+          <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-4">
+            <Link
+              href="/#posts"
+              className="p-1.5 md:p-2 rounded-[8px] bg-secondary hover:bg-muted text-foreground transition-colors"
+            >
+              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+            </Link>
+            <div className="flex min-w-0 items-center gap-2 md:gap-3">
+              <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground flex-shrink-0" />
+              <div className="min-w-0">
+                <h1 className="text-foreground font-bold text-sm md:text-base leading-tight line-clamp-1">
+                  {post.title}
+                </h1>
+                <p className="text-muted-foreground text-[10px] md:text-xs line-clamp-1">
+                  {activeChapter?.title || `Chuong ${activeChapterIndex + 1}`} - {post.author}
+                </p>
+              </div>
             </div>
           </div>
-        </div>
 
-        <div className="flex items-center gap-2 md:gap-4">
-          <button
-            onClick={async () => {
-              if (hasBookmark) {
-                removeBookmark();
-                return;
-              }
-              if (!post || !activeChapter || chapterImages.length === 0) return;
-              try {
-                await fetch('/api/bookmarks', {
-                  method: 'POST',
-                  headers: { 'Content-Type': 'application/json' },
-                  body: JSON.stringify({
-                    postId: post._id,
-                    chapterIndex: activeChapterIndex,
-                    currentPage,
-                    totalPages: chapterImages.length,
-                  }),
-                });
-                setHasBookmark(true);
-              } catch (error) {
-                console.error('Error saving bookmark:', error);
-              }
-            }}
-            title={hasBookmark ? 'Xóa đánh dấu' : 'Lưu vị trí đọc'}
-            className={`p-1.5 md:p-2 rounded-[8px] transition-all cursor-pointer ${hasBookmark
-                ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                : 'bg-secondary text-foreground/60 hover:bg-muted hover:text-foreground'
-              }`}
-          >
-            {hasBookmark ? (
-              <BookmarkCheck className="w-4 h-4 md:w-5 md:h-5" />
-            ) : (
-              <Bookmark className="w-4 h-4 md:w-5 md:h-5" />
-            )}
-          </button>
-          <span className="text-foreground text-xs md:text-sm font-bold bg-secondary px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-border">
-            Chương {activeChapterIndex + 1}/{chapters.length} - Trang {total === 0 ? 0 : currentPage + 1}/{safeTotal}
-          </span>
-        </div>
-      </div>
+          <div className="flex shrink-0 items-center gap-2 md:gap-4">
+            <button
+              onClick={async () => {
+                if (hasBookmark) {
+                  removeBookmark();
+                  return;
+                }
+                if (!post || !activeChapter || chapterImages.length === 0) return;
+                try {
+                  await fetch('/api/bookmarks', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                      postId: post._id,
+                      chapterIndex: activeChapterIndex,
+                      currentPage,
+                      totalPages: chapterImages.length,
+                    }),
+                  });
+                  setHasBookmark(true);
+                } catch (error) {
+                  console.error('Error saving bookmark:', error);
+                }
+              }}
+              title={hasBookmark ? 'Xóa đánh dấu' : 'Lưu vị trí đọc'}
+              className={`p-1.5 md:p-2 rounded-[8px] transition-all cursor-pointer ${hasBookmark
+                  ? 'bg-primary/20 text-primary hover:bg-primary/30'
+                  : 'bg-secondary text-foreground/60 hover:bg-muted hover:text-foreground'
+                }`}
+            >
+              {hasBookmark ? (
+                <BookmarkCheck className="w-4 h-4 md:w-5 md:h-5" />
+              ) : (
+                <Bookmark className="w-4 h-4 md:w-5 md:h-5" />
+              )}
+            </button>
+            <span className="text-foreground text-xs md:text-sm font-bold bg-secondary px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-border">
+              Chương {activeChapterIndex + 1}/{chapters.length} - Trang {total === 0 ? 0 : currentPage + 1}/{safeTotal}
+            </span>
+          </div>
+        </div>,
+        document.body
+      )}
 
-      <main className="w-full flex-1 flex flex-col items-center pt-14 md:pt-24 pb-16 md:pb-20">
+      <main className="w-full flex-1 flex flex-col items-center pt-14 md:pt-20 pb-16 md:pb-20">
         <div className="flex flex-col items-center w-full gap-0">
           {chapterImages.length > 0 ? (
             chapterImages.map((img, idx) => (
@@ -464,7 +467,7 @@ export default function PostDetailPage() {
                 ref={(el) => {
                   imageRefs.current[idx] = el;
                 }}
-                className="w-full max-w-5xl relative"
+                className="w-full max-w-5xl relative scroll-mt-16 md:scroll-mt-24"
               >
                 <Image
                   src={getOptimizedImageUrl(img)}
@@ -571,4 +574,3 @@ export default function PostDetailPage() {
     </div>
   );
 }
-

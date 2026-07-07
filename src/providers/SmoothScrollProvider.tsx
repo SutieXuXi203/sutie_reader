@@ -8,9 +8,30 @@ import Snap from 'lenis/snap';
 export function SmoothScrollProvider({ children }: { children: React.ReactNode }) {
   const lenisRef = useRef<Lenis | null>(null);
   const snapRef = useRef<Snap | null>(null);
+  const rafIdRef = useRef<number | null>(null);
   const pathname = usePathname();
 
   useEffect(() => {
+    // Stop any running rAF loop first
+    if (rafIdRef.current !== null) {
+      cancelAnimationFrame(rafIdRef.current);
+      rafIdRef.current = null;
+    }
+
+    // Destroy previous Lenis instance
+    if (lenisRef.current) {
+      lenisRef.current.destroy();
+      lenisRef.current = null;
+    }
+
+    // Clean up any residual Lenis styles/classes on <html>
+    const html = document.documentElement;
+    html.className = html.className.replace(/lenis(-\w+)?/g, '').trim();
+    html.style.removeProperty('overflow');
+
+    // Disable Lenis on reading pages so sticky/fixed header works correctly
+    if (pathname.startsWith('/posts/')) return;
+
     const lenis = new Lenis({
       duration: 1.2,
       easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
@@ -22,10 +43,10 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
 
     function raf(time: number) {
       lenis.raf(time);
-      requestAnimationFrame(raf);
+      rafIdRef.current = requestAnimationFrame(raf);
     }
 
-    requestAnimationFrame(raf);
+    rafIdRef.current = requestAnimationFrame(raf);
 
     // Sync Lenis with anchor clicks that use scrollIntoView
     const handleClick = (e: MouseEvent) => {
@@ -47,9 +68,16 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
 
     return () => {
       document.removeEventListener('click', handleClick);
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
       lenis.destroy();
+      lenisRef.current = null;
+      // Clean up residual styles
+      html.style.removeProperty('overflow');
     };
-  }, []);
+  }, [pathname]);
 
   // Setup snap only on home page
   useEffect(() => {
