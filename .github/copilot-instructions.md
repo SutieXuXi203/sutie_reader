@@ -1,4 +1,4 @@
-# Sutie Archive - Project Setup Complete
+# Lubu - Project Setup Complete
 
 This is a fully functional blog application for sharing story images using Next.js, MongoDB, Tailwind CSS, and shadcn/ui with dark mode support.
 
