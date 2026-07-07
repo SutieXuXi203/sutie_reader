@@ -26,10 +26,9 @@ export function proxy(request: NextRequest) {
 
     const response = NextResponse.redirect(url);
 
-    // Lưu cookie xác thực trong 30 ngày
+    // Lưu cookie xác thực dưới dạng Session Cookie (hết hạn khi đóng trình duyệt)
     response.cookies.set(ACCESS_COOKIE_NAME, SECRET_TOKEN, {
       path: '/',
-      maxAge: 60 * 60 * 24 * 30, // 30 ngày
       httpOnly: true,
       secure: true,
       sameSite: 'lax',
