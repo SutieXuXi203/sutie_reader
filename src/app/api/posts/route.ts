@@ -141,8 +141,43 @@ const serializePost = (postDoc: unknown) => {
 export async function GET() {
   try {
     await connectDB();
-    const posts = await Post.find().sort({ createdAt: -1 }).lean();
-    return NextResponse.json(posts.map((post) => serializePost(post)));
+    const posts = await Post.aggregate([
+      { $sort: { createdAt: -1 } },
+      {
+        $project: {
+          title: 1,
+          description: 1,
+          tags: 1,
+          author: 1,
+          createdAt: 1,
+          updatedAt: 1,
+          firstChapter: { $arrayElemAt: ['$chapters', 0] },
+          chapterCount: { $size: { $ifNull: ['$chapters', []] } },
+          content: 1,
+          images: 1,
+        },
+      },
+    ]);
+
+    const serialized = posts.map((post) => {
+      const previewContent = post.firstChapter?.content || post.content || '';
+      const previewImages = post.firstChapter?.images || post.images || [];
+
+      return {
+        _id: post._id.toString(),
+        title: post.title,
+        description: post.description || '',
+        tags: post.tags || [],
+        author: post.author || 'Ẩn danh',
+        createdAt: post.createdAt,
+        updatedAt: post.updatedAt,
+        chapterCount: post.chapterCount,
+        content: previewContent,
+        images: previewImages,
+      };
+    });
+
+    return NextResponse.json(serialized);
   } catch (error) {
     console.error('Lỗi khi tải bài viết:', error);
     return NextResponse.json({ error: 'Tải bài viết không thành công' }, { status: 500 });

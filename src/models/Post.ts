@@ -82,6 +82,9 @@ const PostSchema = new Schema<IPost>(
   { timestamps: true }
 );
 
+PostSchema.index({ createdAt: -1 });
+PostSchema.index({ tags: 1 });
+
 if (mongoose.models.Post) {
   delete mongoose.models.Post;
 }
