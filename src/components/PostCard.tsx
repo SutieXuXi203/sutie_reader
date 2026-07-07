@@ -65,7 +65,8 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   const handleTagClick = (e: React.MouseEvent, tag: string) => {
     e.preventDefault();
     e.stopPropagation();
-    router.push(`/products?tag=${encodeURIComponent(tag.toLowerCase())}`);
+    const targetPath = typeof window !== 'undefined' && window.location.pathname === '/products' ? '/products' : '/';
+    router.push(`${targetPath}?tag=${encodeURIComponent(tag.toLowerCase())}`);
   };
   const handleDelete = async () => {
     setIsDeleting(true);

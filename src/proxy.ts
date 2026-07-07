@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
-export function middleware(request: NextRequest) {
+export function proxy(request: NextRequest) {
   const { pathname, searchParams } = request.nextUrl;
 
   // 1. Bỏ qua các đường dẫn tĩnh, favicon, api hoặc tệp tài nguyên
@@ -207,10 +207,7 @@ export function middleware(request: NextRequest) {
           </div>
           <div class="badge">403 Restricted</div>
           <h1>Truy cập bị giới hạn</h1>
-          <p>Trang web này đang được cài đặt ở chế độ riêng tư. Bạn cần truy cập bằng liên kết có chứa token hợp lệ để mở khoá.</p>
-          <div class="footer">
-            Sutie Reader &bull; Protected Deployment
-          </div>
+          <p>Trang web này đã bị khóa.</p>
         </div>
       </div>
     </body>

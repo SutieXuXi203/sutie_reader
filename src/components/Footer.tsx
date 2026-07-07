@@ -15,8 +15,8 @@ export function Footer() {
           © {new Date().getFullYear()} Lubu. All rights reserved.
         </p>
         <div className="flex gap-6 text-xs text-muted-foreground justify-center sm:justify-end">
-          <Link href="/products" className="hover:text-primary transition-colors font-semibold">
-            Bài viết
+          <Link href="/" className="hover:text-primary transition-colors font-semibold">
+            Trang chủ
           </Link>
           <Link href="/contact" className="hover:text-primary transition-colors font-semibold">
             Liên hệ

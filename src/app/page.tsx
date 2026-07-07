@@ -1,15 +1,18 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useDeferredValue, useMemo, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { 
-  BookOpen, Github, Facebook, 
-  BookmarkCheck, ChevronRight, X
+  BookOpen, BookmarkCheck, ChevronRight, X, Search, Lock
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getOptimizedImageUrl } from '@/lib/utils';
+import { getOptimizedImageUrl, normalizeSearchText } from '@/lib/utils';
 import { Footer } from '@/components/Footer';
+import { PostCard } from '@/components/PostCard';
+import { Input } from '@/components/ui/input';
+import { useSearchParams } from 'next/navigation';
+
 const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
 
 interface Post {
@@ -30,6 +33,7 @@ interface Post {
   createdAt: string;
   updatedAt: string;
 }
+
 interface BookmarkItem {
   _id: string;
   postId: string;
@@ -46,32 +50,17 @@ interface BookmarkItem {
   };
 }
 
-
-export default function Home() {
+function HomeContent() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const { user, isLoading: isAuthLoading } = useAuth();
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
+  const [posts, setPosts] = useState<Post[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [isSearchComposing, setIsSearchComposing] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      (entries) => {
-        entries.forEach((entry) => {
-          if (entry.isIntersecting) {
-            entry.target.classList.add('reveal-visible');
-            observer.unobserve(entry.target);
-          }
-        });
-      },
-      { threshold: 0.12 }
-    );
-    const observeAll = () => {
-      document.querySelectorAll('.reveal:not(.reveal-visible)').forEach((el) => observer.observe(el));
-    };
-    observeAll();
-    return () => {
-      observer.disconnect();
-    };
-  }, [bookmarks.length, user, isAuthLoading]);
+  const searchParams = useSearchParams();
+  const tagParam = searchParams.get('tag');
 
   const fetchBookmarks = useCallback(async () => {
     try {
@@ -94,15 +83,79 @@ export default function Home() {
     }
   }, []);
 
+  const fetchPosts = useCallback(async () => {
+    try {
+      setIsLoading(true);
+      const response = await fetch('/api/posts');
+      if (response.ok) {
+        const data = await response.json();
+        setPosts(data);
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải bài viết:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       fetchBookmarks();
+      fetchPosts();
     } else {
       setBookmarks([]);
+      setPosts([]);
     }
-  }, [user, fetchBookmarks]);
+  }, [user, fetchBookmarks, fetchPosts]);
 
+  useEffect(() => {
+    setSearchTerm(tagParam || '');
+  }, [tagParam]);
 
+  useEffect(() => {
+    const observer = new IntersectionObserver(
+      (entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            entry.target.classList.add('reveal-visible');
+            observer.unobserve(entry.target);
+          }
+        });
+      },
+      { threshold: 0.12 }
+    );
+    const observeAll = () => {
+      document.querySelectorAll('.reveal:not(.reveal-visible)').forEach((el) => observer.observe(el));
+    };
+    observeAll();
+    return () => {
+      observer.disconnect();
+    };
+  }, [bookmarks.length, posts.length, user, isAuthLoading]);
+
+  const deferredSearchTerm = useDeferredValue(searchTerm);
+  const normalizedSearch = normalizeSearchText(isSearchComposing ? '' : deferredSearchTerm);
+  
+  const filteredPosts = useMemo(() => normalizedSearch
+    ? posts.filter((post) =>
+        [post.title, post.description || '', post.author, ...(post.tags || [])]
+          .some((value) => normalizeSearchText(value).includes(normalizedSearch))
+      )
+    : posts,
+    [normalizedSearch, posts]
+  );
+
+  const handlePostDeleted = useCallback((postId: string) => {
+    setPosts((prev) => prev.filter((post) => post._id !== postId));
+  }, []);
+
+  if (isAuthLoading) {
+    return (
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20 pt-20 pb-0 flex flex-col justify-between">
@@ -117,9 +170,7 @@ export default function Home() {
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1">
         
-
-
-        {/* Dashboard Content Stretched to Match Hero Banner */}
+        {/* Dashboard Content */}
         <div id="main-content" className="space-y-8">
           
           {/* Bookmarks ("Đang đọc dở") */}
@@ -184,6 +235,87 @@ export default function Home() {
               </div>
             </div>
           )}
+
+          {/* Stories List Section */}
+          {user && (
+            <div className="reveal border border-border rounded-[16px] bg-card/40 p-5 md:p-6 shadow-sm">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4 border-b border-border/50 pb-4">
+                <div>
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
+                  <h2 className="text-base sm:text-lg font-extrabold text-foreground font-sans">Danh sách truyện</h2>
+                </div>
+                
+                {/* Search Bar */}
+                <div className="w-full sm:w-[240px] shrink-0">
+                  <div className="relative group">
+                    <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/90 transition-colors group-focus-within:text-primary">
+                      <Search className="w-4 h-4" />
+                    </span>
+                    <Input
+                      id="home-post-search"
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onCompositionStart={() => setIsSearchComposing(true)}
+                      onCompositionEnd={() => setIsSearchComposing(false)}
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      autoComplete="off"
+                      placeholder="Tìm theo tiêu đề, mô tả..."
+                      className="h-8 rounded-[8px] pl-10 pr-3 text-xs border-border bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {isLoading ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                  {[1, 2, 3, 4, 5, 6].map((i) => (
+                    <div key={i} className="bg-card border border-border rounded-[8px] h-72 animate-pulse shadow-sm" />
+                  ))}
+                </div>
+              ) : filteredPosts.length === 0 ? (
+                <div className="text-center py-20 px-6 bg-card/30 backdrop-blur-sm border border-border rounded-[8px]">
+                  <p className="text-muted-foreground text-sm">
+                    Không tìm thấy truyện phù hợp với từ khóa này.
+                  </p>
+                </div>
+              ) : (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                  {filteredPosts.map((post) => (
+                    <PostCard
+                      key={post._id}
+                      post={post}
+                      onDelete={handlePostDeleted}
+                      onUpdate={fetchPosts}
+                    />
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Locked State for Guest Users */}
+          {!user && (
+            <div className="reveal flex flex-col items-center justify-center py-20 px-6 bg-card/50 backdrop-blur-md border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
+              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
+              <div className="relative z-10 w-16 h-16 bg-background rounded-[8px] flex items-center justify-center mb-6 border border-border group-hover:scale-110 transition-transform duration-500 shadow-md">
+                <Lock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors" />
+              </div>
+              <h3 className="relative z-10 text-xl font-bold text-foreground mb-2">Nội dung đã bị khóa</h3>
+              <p className="relative z-10 text-muted-foreground max-w-sm mb-8">
+                Bạn cần đăng nhập hoặc tạo tài khoản mới để có thể xem được danh sách tất cả các bài viết.
+              </p>
+              <button
+                onClick={() => setIsAuthDialogOpen(true)}
+                className="relative z-10 rounded-[8px] px-8 py-3 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/20 text-base font-bold transition-all cursor-pointer border-0 outline-none active:scale-95"
+              >
+                Đăng nhập ngay
+              </button>
+            </div>
+          )}
+
         </div>
       </div>
 
@@ -191,5 +323,17 @@ export default function Home() {
 
       <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
     </div>
+  );
+}
+
+export default function Home() {
+  return (
+    <Suspense fallback={
+      <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
+    }>
+      <HomeContent />
+    </Suspense>
   );
 }

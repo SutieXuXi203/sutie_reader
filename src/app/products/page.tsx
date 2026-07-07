@@ -1,6 +1,7 @@
 'use client';
 import { useState, useEffect, useDeferredValue, useMemo } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { BookOpen, Search, Lock, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostCard } from '@/components/PostCard';
@@ -33,6 +34,21 @@ export default function ProductsPage() {
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const { user, isLoading: isAuthLoading, isAdmin } = useAuth();
+    const router = useRouter();
+
+    useEffect(() => {
+        if (!isAuthLoading && !isAdmin) {
+            router.replace('/');
+        }
+    }, [isAuthLoading, isAdmin, router]);
+
+    if (isAuthLoading || !isAdmin) {
+        return (
+            <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+        );
+    }
     
     const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
 
