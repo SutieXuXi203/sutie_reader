@@ -15,6 +15,7 @@ import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
 import { TagPicker } from '@/components/TagPicker';
 import { notify } from '@/lib/notify';
+import { UploadProgressWidget, UploadProgressState } from '@/components/UploadProgressWidget';
 
 interface CreatePostFormProps {
   onPostCreated: () => void;
@@ -47,6 +48,14 @@ export function CreatePostForm({
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
+  const [progressState, setProgressState] = useState<UploadProgressState>({
+    isVisible: false,
+    title: '',
+    completed: 0,
+    total: 0,
+    status: 'uploading',
+  });
+
   const draftPostIdRef = useRef<string | null>(null);
   const createdChapterCountRef = useRef(0);
 
@@ -64,7 +73,6 @@ export function CreatePostForm({
 
   const resetAll = () => {
     setStep('story');
-    setIsSubmitting(false);
     setCreatedPostId(null);
     setCreatedPostTitle('');
     setCreatedChapterCount(0);
@@ -124,13 +132,16 @@ export function CreatePostForm({
 
   const uploadImages = async (
     files: File[],
-    uploadTitle: string
+    uploadTitle: string,
+    onProgress?: (completed: number, total: number) => void
   ): Promise<string[]> => {
     if (!files.length) return [];
 
     const sortedFiles = [...files].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
     );
+
+    onProgress?.(0, sortedFiles.length);
 
     const compressedFiles = await Promise.all(
       sortedFiles.map(async (file) => {
@@ -171,6 +182,8 @@ export function CreatePostForm({
 
       const { urls } = await res.json();
       allUrls.push(...(urls as string[]));
+
+      onProgress?.(allUrls.length, sortedFiles.length);
     }
 
     return allUrls;
@@ -230,18 +243,50 @@ export function CreatePostForm({
       return;
     }
 
-    setIsSubmitting(true);
+    const currentPostId = createdPostId;
+    const currentTitle = chapterTitle.trim() || `Chương ${createdChapterCountRef.current + 1}`;
+    const currentContent = chapterContent.trim();
+    const currentFiles = [...imageFiles];
+    const uploadTitle = createdPostTitle || title || 'untitled';
+    const chapterNumber = createdChapterCountRef.current + 1;
+
+    // Đóng popup chính ngay lập tức để người dùng không bị khóa giao diện!
+    if (!keepAdding) {
+      onOpenChange(false);
+      resetAll();
+    } else {
+      resetChapterFields();
+      setChapterTitle(`Chương ${chapterNumber + 1}`);
+    }
+
+    // Hiển thị Widget tiến trình ở dưới góc phải
+    setProgressState({
+      isVisible: true,
+      title: `${currentTitle} (${currentFiles.length} ảnh)`,
+      completed: 0,
+      total: currentFiles.length,
+      status: 'uploading',
+    });
+
     try {
-      const uploadTitle = createdPostTitle || title || 'untitled';
-      const imageUrls = await uploadImages(imageFiles, uploadTitle);
-      const chapterNumber = createdChapterCountRef.current + 1;
-      const response = await fetch(`/api/posts/${createdPostId}/chapters`, {
+      const imageUrls = await uploadImages(currentFiles, uploadTitle, (completed, total) => {
+        setProgressState((prev) => ({
+          ...prev,
+          completed,
+          total,
+          status: 'uploading',
+        }));
+      });
+
+      setProgressState((prev) => ({ ...prev, status: 'saving' }));
+
+      const response = await fetch(`/api/posts/${currentPostId}/chapters`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          title: chapterTitle.trim() || `Chương ${chapterNumber}`,
+          title: currentTitle,
           chapterNumber,
-          content: chapterContent.trim(),
+          content: currentContent,
           images: imageUrls,
         }),
       });
@@ -255,25 +300,33 @@ export function CreatePostForm({
       createdChapterCountRef.current = nextChapterCount;
       setCreatedChapterCount(nextChapterCount);
 
-      if (keepAdding) {
-        resetChapterFields();
-        setChapterTitle(`Chương ${nextChapterCount + 1}`);
-      } else {
-        onPostCreated();
-        resetAll();
-        onOpenChange(false);
-      }
+      setProgressState((prev) => ({
+        ...prev,
+        status: 'success',
+        completed: currentFiles.length,
+      }));
+
+      onPostCreated();
+
+      setTimeout(() => {
+        setProgressState((prev) => ({ ...prev, isVisible: false }));
+      }, 4000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       notify.error('Lưu chương không thành công', message);
       console.error('Lỗi khi lưu chương:', err);
-    } finally {
-      setIsSubmitting(false);
+
+      setProgressState((prev) => ({
+        ...prev,
+        status: 'error',
+        errorMessage: message,
+      }));
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+    <>
+      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5">
         <DialogHeader>
           <DialogTitle className="text-xl font-medium">
@@ -484,6 +537,12 @@ export function CreatePostForm({
         )}
       </DialogContent>
     </Dialog>
+
+    <UploadProgressWidget
+      state={progressState}
+      onClose={() => setProgressState((prev) => ({ ...prev, isVisible: false }))}
+    />
+    </>
   );
 }
 
