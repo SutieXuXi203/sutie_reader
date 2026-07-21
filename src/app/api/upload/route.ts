@@ -36,7 +36,7 @@ export async function POST(request: NextRequest) {
         const res = await fetch(`${workerUrl}/upload`, {
             method: 'POST',
             headers: {
-                Authorization: `Bearer ${uploadSecret}`,
+                Authorization: `Bearer ${uploadSecret.trim()}`,
             },
             body: workerFormData,
         });

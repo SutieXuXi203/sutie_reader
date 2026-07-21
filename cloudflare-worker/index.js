@@ -157,13 +157,21 @@ export default {
     if (request.method === 'POST' && url.pathname === '/upload') {
       console.log('[CF WORKER] 📥 Nhận request POST /upload');
 
-      const authHeader = request.headers.get('Authorization');
-      if (authHeader !== `Bearer ${env.UPLOAD_SECRET}`) {
-        console.warn('[CF WORKER] ⛔ Từ chối truy cập: Mã xác thực UPLOAD_SECRET không hợp lệ.');
-        return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-          status: 401,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+      const authHeader = (request.headers.get('Authorization') || '').trim();
+      const expectedSecret = (env.UPLOAD_SECRET || '').trim();
+
+      if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
+        console.warn(`[CF WORKER] ⛔ Từ chối 401. Token gửi sang: "${authHeader}", Mật khẩu yêu cầu: "Bearer ${expectedSecret}"`);
+        return new Response(
+          JSON.stringify({
+            error: 'Unauthorized',
+            details: `Mã xác thực không hợp lệ. Vui lòng kiểm tra lại CLOUDFLARE_UPLOAD_SECRET trên Vercel và UPLOAD_SECRET trên Cloudflare Worker.`,
+          }),
+          {
+            status: 401,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          }
+        );
       }
 
       try {
