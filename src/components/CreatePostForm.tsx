@@ -244,7 +244,7 @@ export function CreatePostForm({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-[8px] border border-border shadow-2xl dark:shadow-primary/20 no-scrollbar">
+      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-[8px] border border-border shadow-2xl dark:shadow-primary/20">
         <DialogHeader>
           <DialogTitle className="text-xl font-medium">
             {step === 'story' ? 'Tạo truyện mới' : 'Thêm chương cho truyện'}
@@ -299,7 +299,7 @@ export function CreatePostForm({
               />
             </div>
 
-            <div className="flex gap-2 justify-end pt-2">
+            <div className="sticky bottom-0 bg-popover/95 backdrop-blur-xs pt-3 pb-1 border-t border-border/40 z-10 flex gap-2 justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -387,32 +387,34 @@ export function CreatePostForm({
                 <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
                   Đã chọn ({imagePreviews.length})
                 </label>
-                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                  {imagePreviews.map((preview, index) => (
-                    <div
-                      key={index}
-                      className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24"
-                    >
-                      <Image
-                        src={preview}
-                        alt={`Xem trước ${index}`}
-                        fill
-                        className="object-cover"
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeImage(index)}
-                        className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-[8px] opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer"
+                <div className="max-h-60 overflow-y-auto rounded-lg border border-border/50 p-2 bg-muted/20">
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                    {imagePreviews.map((preview, index) => (
+                      <div
+                        key={index}
+                        className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24"
                       >
-                        <X className="h-3 w-3" />
-                      </button>
-                    </div>
-                  ))}
+                        <Image
+                          src={preview}
+                          alt={`Xem trước ${index}`}
+                          fill
+                          className="object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-[8px] opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
             )}
 
-            <div className="flex flex-wrap gap-2 justify-end pt-2">
+            <div className="sticky bottom-0 bg-popover/95 backdrop-blur-xs pt-3 pb-1 border-t border-border/40 z-10 flex flex-wrap gap-2 justify-end">
               <Button
                 type="button"
                 variant="outline"

@@ -124,7 +124,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-[8px] border border-border shadow-2xl dark:shadow-primary/20 no-scrollbar"
+                className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-[8px] border border-border shadow-2xl dark:shadow-primary/20"
             >
                 <DialogHeader>
                     <DialogTitle className="text-xl font-medium">Chỉnh sửa bài viết</DialogTitle>
@@ -156,16 +156,18 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     {keptImages.length > 0 && (
                         <div>
                             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh hiện tại ({keptImages.length})</label>
-                            <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                                {keptImages.map((src, idx) => (
-                                    <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
-                                        <Image src={getOptimizedImageUrl(src)} alt={`Ảnh ${idx + 1}`} fill className="object-cover" unoptimized />
-                                        <button type="button" onClick={() => removeKept(idx)}
-                                            className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                ))}
+                            <div className="max-h-60 overflow-y-auto rounded-lg border border-border/50 p-2 bg-muted/20">
+                                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                    {keptImages.map((src, idx) => (
+                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
+                                            <Image src={getOptimizedImageUrl(src)} alt={`Ảnh ${idx + 1}`} fill className="object-cover" unoptimized />
+                                            <button type="button" onClick={() => removeKept(idx)}
+                                                className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -183,20 +185,22 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     {newImagePreviews.length > 0 && (
                         <div>
                             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh mới ({newImagePreviews.length})</label>
-                            <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                                {newImagePreviews.map((preview, idx) => (
-                                    <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
-                                        <Image src={preview} alt={`Preview ${idx}`} fill className="object-cover" />
-                                        <button type="button" onClick={() => removeNew(idx)}
-                                            className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                            <X className="h-3 w-3" />
-                                        </button>
-                                    </div>
-                                ))}
+                            <div className="max-h-60 overflow-y-auto rounded-lg border border-border/50 p-2 bg-muted/20">
+                                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                    {newImagePreviews.map((preview, idx) => (
+                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
+                                            <Image src={preview} alt={`Preview ${idx}`} fill className="object-cover" />
+                                            <button type="button" onClick={() => removeNew(idx)}
+                                                className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
                             </div>
                         </div>
                     )}
-                    <div className="flex gap-2 justify-end pt-2">
+                    <div className="sticky bottom-0 bg-popover/95 backdrop-blur-xs pt-3 pb-1 border-t border-border/40 z-10 flex gap-2 justify-end">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-[8px]" size="sm">Hủy</Button>
                         <Button type="submit" disabled={isSubmitting} className="rounded-[8px]" size="sm">
                             {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
