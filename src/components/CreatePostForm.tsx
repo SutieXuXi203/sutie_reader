@@ -93,16 +93,30 @@ export function CreatePostForm({
     onOpenChange(nextOpen);
   };
 
-  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(e.target.files || []);
-    if (!files.length) return;
-    setImageFiles((prev) => [...prev, ...files]);
-    files.forEach((file) => {
-      const reader = new FileReader();
-      reader.onloadend = () =>
-        setImagePreviews((prev) => [...prev, reader.result as string]);
-      reader.readAsDataURL(file);
+  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const selectedFiles = Array.from(e.target.files || []);
+    if (!selectedFiles.length) return;
+
+    e.target.value = '';
+
+    // Gộp ảnh cũ + mới và sắp xếp theo số tự nhiên trong tên file (0 -> 1 -> ... -> 10)
+    const allFiles = [...imageFiles, ...selectedFiles].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
+
+    setImageFiles(allFiles);
+
+    // Đọc preview theo đúng thứ tự file đã được sắp xếp
+    const previewPromises = allFiles.map((file) => {
+      return new Promise<string>((resolve) => {
+        const reader = new FileReader();
+        reader.onloadend = () => resolve(reader.result as string);
+        reader.readAsDataURL(file);
+      });
     });
+
+    const sortedPreviews = await Promise.all(previewPromises);
+    setImagePreviews(sortedPreviews);
   };
 
   const removeImage = (index: number) => {
@@ -115,8 +129,14 @@ export function CreatePostForm({
     uploadTitle: string
   ): Promise<string[]> => {
     if (!files.length) return [];
+
+    // Sắp xếp lại lần nữa để đảm bảo thứ tự trước khi tải lên
+    const sortedFiles = [...files].sort((a, b) =>
+      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+    );
+
     const compressedFiles = await Promise.all(
-      files.map(async (file) => {
+      sortedFiles.map(async (file) => {
         const options = {
           maxSizeMB: 1,
           maxWidthOrHeight: 1920,
@@ -136,7 +156,7 @@ export function CreatePostForm({
 
     for (let i = 0; i < compressedFiles.length; i += BATCH_SIZE) {
       const batch = compressedFiles.slice(i, i + BATCH_SIZE);
-      const originalBatchFiles = files.slice(i, i + BATCH_SIZE);
+      const originalBatchFiles = sortedFiles.slice(i, i + BATCH_SIZE);
 
       const formData = new FormData();
       formData.append('title', uploadTitle);
@@ -405,20 +425,25 @@ export function CreatePostForm({
                     {imagePreviews.map((preview, index) => (
                       <div
                         key={index}
-                        className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24"
+                        className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all"
                       >
+                        <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
+                          #{index + 1}
+                        </span>
                         <Image
                           src={preview}
-                          alt={`Xem trước ${index}`}
+                          alt={`Xem trước ${index + 1}`}
                           fill
-                          className="object-cover"
+                          className="object-cover transition-transform duration-300 group-hover:scale-105"
                         />
                         <button
                           type="button"
                           onClick={() => removeImage(index)}
-                          className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-[8px] opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer"
+                          title="Xóa ảnh này"
+                          aria-label="Xóa ảnh"
+                          className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center"
                         >
-                          <X className="h-3 w-3" />
+                          <X className="h-3.5 w-3.5 stroke-[2.5]" />
                         </button>
                       </div>
                     ))}

@@ -122,11 +122,18 @@ async function getDriveService() {
   return google.drive({ version: 'v3', auth: oAuth2Client });
 }
 
+function getDriveFolderId(): string | null {
+  const rawId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+  if (!rawId) return null;
+  const match = rawId.match(/(?:folders\/|id=)([a-zA-Z0-9_-]+)/);
+  return match ? match[1] : rawId.trim();
+}
+
 async function deleteDriveFolder(postTitle: string) {
   try {
     const drive = await getDriveService();
     if (!drive) return;
-    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const folderId = getDriveFolderId();
     if (!folderId) return;
     const searchRes = await drive.files.list({
       q: `mimeType='application/vnd.google-apps.folder' and name='${postTitle.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,
@@ -157,7 +164,7 @@ async function renameDriveFolder(oldTitle: string, newTitle: string) {
   try {
     const drive = await getDriveService();
     if (!drive) return;
-    const folderId = process.env.GOOGLE_DRIVE_FOLDER_ID;
+    const folderId = getDriveFolderId();
     if (!folderId) return;
     const searchRes = await drive.files.list({
       q: `mimeType='application/vnd.google-apps.folder' and name='${oldTitle.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,

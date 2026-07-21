@@ -44,14 +44,28 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         setNewImageFiles([]);
         setNewImagePreviews([]);
     }, [post, open]);
-    const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-        const files = Array.from(e.target.files || []);
-        setNewImageFiles((prev) => [...prev, ...files]);
-        files.forEach((file) => {
-            const reader = new FileReader();
-            reader.onloadend = () => setNewImagePreviews((prev) => [...prev, reader.result as string]);
-            reader.readAsDataURL(file);
+    const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const selectedFiles = Array.from(e.target.files || []);
+        if (!selectedFiles.length) return;
+
+        e.target.value = '';
+
+        const allNewFiles = [...newImageFiles, ...selectedFiles].sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
+        setNewImageFiles(allNewFiles);
+
+        const previewPromises = allNewFiles.map((file) => {
+            return new Promise<string>((resolve) => {
+                const reader = new FileReader();
+                reader.onloadend = () => resolve(reader.result as string);
+                reader.readAsDataURL(file);
+            });
         });
+
+        const sortedPreviews = await Promise.all(previewPromises);
+        setNewImagePreviews(sortedPreviews);
     };
     const removeKept = (idx: number) =>
         setKeptImages((prev) => prev.filter((_, i) => i !== idx));
@@ -61,8 +75,13 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     };
     const uploadNewImages = async (files: File[], uploadTitle: string): Promise<string[]> => {
         if (!files.length) return [];
+
+        const sortedFiles = [...files].sort((a, b) =>
+            a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+        );
+
         const compressedFiles = await Promise.all(
-            files.map(async (file) => {
+            sortedFiles.map(async (file) => {
                 const options = {
                     maxSizeMB: 1,
                     maxWidthOrHeight: 1920,
@@ -82,7 +101,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
         for (let i = 0; i < compressedFiles.length; i += BATCH_SIZE) {
             const batch = compressedFiles.slice(i, i + BATCH_SIZE);
-            const originalBatchFiles = files.slice(i, i + BATCH_SIZE);
+            const originalBatchFiles = sortedFiles.slice(i, i + BATCH_SIZE);
 
             const formData = new FormData();
             formData.append('title', uploadTitle);
@@ -172,11 +191,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                             <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
                                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                                     {keptImages.map((src, idx) => (
-                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
-                                            <Image src={getOptimizedImageUrl(src)} alt={`Ảnh ${idx + 1}`} fill className="object-cover" unoptimized />
-                                            <button type="button" onClick={() => removeKept(idx)}
-                                                className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                <X className="h-3 w-3" />
+                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all">
+                                            <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
+                                                #{idx + 1}
+                                            </span>
+                                            <Image src={getOptimizedImageUrl(src)} alt={`Ảnh ${idx + 1}`} fill className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized />
+                                            <button type="button" onClick={() => removeKept(idx)} title="Xóa ảnh" aria-label="Xóa ảnh"
+                                                className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center">
+                                                <X className="h-3.5 w-3.5 stroke-[2.5]" />
                                             </button>
                                         </div>
                                     ))}
@@ -201,11 +223,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                             <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
                                 <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                                     {newImagePreviews.map((preview, idx) => (
-                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
-                                            <Image src={preview} alt={`Preview ${idx}`} fill className="object-cover" />
-                                            <button type="button" onClick={() => removeNew(idx)}
-                                                className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                <X className="h-3 w-3" />
+                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all">
+                                            <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
+                                                #{idx + 1}
+                                            </span>
+                                            <Image src={preview} alt={`Preview ${idx + 1}`} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                                            <button type="button" onClick={() => removeNew(idx)} title="Xóa ảnh" aria-label="Xóa ảnh"
+                                                className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center">
+                                                <X className="h-3.5 w-3.5 stroke-[2.5]" />
                                             </button>
                                         </div>
                                     ))}
