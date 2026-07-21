@@ -226,6 +226,32 @@ body::-webkit-scrollbar-thumb,
     -ms-overflow-style: none;
     scrollbar-width: none;
   }
+
+  .custom-scrollbar {
+    scrollbar-width: thin !important;
+    scrollbar-color: rgba(155, 155, 155, 0.4) transparent !important;
+    -ms-overflow-style: auto !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar {
+    display: block !important;
+    width: 6px !important;
+    height: 6px !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-track {
+    background: transparent !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb {
+    display: block !important;
+    background: rgba(155, 155, 155, 0.4) !important;
+    border-radius: 9999px !important;
+  }
+
+  .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: rgba(155, 155, 155, 0.7) !important;
+  }
 }
 
 @keyframes popup-preview {
