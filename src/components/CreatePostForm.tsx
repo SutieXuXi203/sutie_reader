@@ -114,6 +114,7 @@ export function CreatePostForm({
     files: File[],
     uploadTitle: string
   ): Promise<string[]> => {
+    if (!files.length) return [];
     const compressedFiles = await Promise.all(
       files.map(async (file) => {
         const options = {
@@ -130,20 +131,32 @@ export function CreatePostForm({
       })
     );
 
-    const formData = new FormData();
-    formData.append('title', uploadTitle);
-    compressedFiles.forEach((compressed, i) =>
-      formData.append('files', compressed, files[i].name)
-    );
+    const BATCH_SIZE = 2;
+    const allUrls: string[] = [];
 
-    const res = await fetch('/api/upload', { method: 'POST', body: formData });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      throw new Error(data?.details || data?.error || 'Upload thất bại');
+    for (let i = 0; i < compressedFiles.length; i += BATCH_SIZE) {
+      const batch = compressedFiles.slice(i, i + BATCH_SIZE);
+      const originalBatchFiles = files.slice(i, i + BATCH_SIZE);
+
+      const formData = new FormData();
+      formData.append('title', uploadTitle);
+      batch.forEach((compressed, idx) =>
+        formData.append('files', compressed, originalBatchFiles[idx].name)
+      );
+
+      const res = await fetch('/api/upload', { method: 'POST', body: formData });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(
+          data?.details || data?.error || `Upload thất bại ở nhóm ảnh ${Math.floor(i / BATCH_SIZE) + 1}`
+        );
+      }
+
+      const { urls } = await res.json();
+      allUrls.push(...(urls as string[]));
     }
 
-    const { urls } = await res.json();
-    return urls as string[];
+    return allUrls;
   };
 
   const handleCreateStory = async (e: React.FormEvent) => {
@@ -387,7 +400,7 @@ export function CreatePostForm({
                 <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
                   Đã chọn ({imagePreviews.length})
                 </label>
-                <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
+                <div className="max-h-[30vh] overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
                   <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                     {imagePreviews.map((preview, index) => (
                       <div

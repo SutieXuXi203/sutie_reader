@@ -76,16 +76,29 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 }
             })
         );
-        const formData = new FormData();
-        formData.append('title', uploadTitle);
-        compressedFiles.forEach((compressed, i) => formData.append('files', compressed, files[i].name));
-        const res = await fetch('/api/upload', { method: 'POST', body: formData });
-        if (!res.ok) {
-            const data = await res.json().catch(() => ({}));
-            throw new Error(data?.details || data?.error || 'Upload thất bại');
+
+        const BATCH_SIZE = 2;
+        const allUrls: string[] = [];
+
+        for (let i = 0; i < compressedFiles.length; i += BATCH_SIZE) {
+            const batch = compressedFiles.slice(i, i + BATCH_SIZE);
+            const originalBatchFiles = files.slice(i, i + BATCH_SIZE);
+
+            const formData = new FormData();
+            formData.append('title', uploadTitle);
+            batch.forEach((compressed, idx) => formData.append('files', compressed, originalBatchFiles[idx].name));
+
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            if (!res.ok) {
+                const data = await res.json().catch(() => ({}));
+                throw new Error(data?.details || data?.error || `Upload thất bại ở nhóm ảnh ${Math.floor(i / BATCH_SIZE) + 1}`);
+            }
+
+            const { urls } = await res.json();
+            allUrls.push(...(urls as string[]));
         }
-        const { urls } = await res.json();
-        return urls as string[];
+
+        return allUrls;
     };
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();

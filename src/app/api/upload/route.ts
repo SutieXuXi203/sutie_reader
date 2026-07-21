@@ -31,6 +31,8 @@ export async function POST(request: NextRequest) {
             q: `mimeType='application/vnd.google-apps.folder' and name='${title.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,
             fields: 'files(id, name)',
             spaces: 'drive',
+            supportsAllDrives: true,
+            includeItemsFromAllDrives: true,
         });
         if (searchRes.data.files && searchRes.data.files.length > 0) {
             targetFolderId = searchRes.data.files[0].id!;
@@ -43,6 +45,7 @@ export async function POST(request: NextRequest) {
             const folder = await drive.files.create({
                 requestBody: folderMetadata,
                 fields: 'id',
+                supportsAllDrives: true,
             });
             targetFolderId = folder.data.id!;
             try {
@@ -52,6 +55,7 @@ export async function POST(request: NextRequest) {
                         role: 'reader',
                         type: 'anyone',
                     },
+                    supportsAllDrives: true,
                 });
             } catch (err) {
                 console.warn(`Không thể set quyền public cho folder mới ${targetFolderId}:`, err);
@@ -76,6 +80,7 @@ export async function POST(request: NextRequest) {
                 requestBody: fileMetadata,
                 media: media,
                 fields: 'id, webViewLink, webContentLink',
+                supportsAllDrives: true,
             });
             const fileId = response.data.id;
             if (fileId) {
@@ -86,6 +91,7 @@ export async function POST(request: NextRequest) {
                             role: 'reader',
                             type: 'anyone',
                         },
+                        supportsAllDrives: true,
                     });
                 } catch (permError) {
                     console.warn(`Không thể set quyền public cho file ${fileId} (có thể do lỗi Quota policy):`, permError);
