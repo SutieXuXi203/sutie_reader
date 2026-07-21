@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Providers } from "@/providers/ThemeProvider";
 import { SmoothScrollProvider } from "@/providers/SmoothScrollProvider";
+import { UploadProgressProvider } from "@/providers/UploadProgressProvider";
 import { SiteNav } from "@/components/SiteNav";
 import { GooeyToastProvider } from "@/components/GooeyToastProvider";
 import "./globals.css";
@@ -52,11 +53,13 @@ export default function RootLayout({
         suppressHydrationWarning
       >
         <Providers>
-          <SmoothScrollProvider>
-            <SiteNav />
-            {children}
-            <GooeyToastProvider />
-          </SmoothScrollProvider>
+          <UploadProgressProvider>
+            <SmoothScrollProvider>
+              <SiteNav />
+              {children}
+              <GooeyToastProvider />
+            </SmoothScrollProvider>
+          </UploadProgressProvider>
         </Providers>
       </body>
     </html>

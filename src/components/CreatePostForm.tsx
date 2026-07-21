@@ -15,7 +15,7 @@ import Image from 'next/image';
 import imageCompression from 'browser-image-compression';
 import { TagPicker } from '@/components/TagPicker';
 import { notify } from '@/lib/notify';
-import { UploadProgressWidget, UploadProgressState } from '@/components/UploadProgressWidget';
+import { useUploadProgress } from '@/providers/UploadProgressProvider';
 
 interface CreatePostFormProps {
   onPostCreated: () => void;
@@ -32,6 +32,7 @@ export function CreatePostForm({
   onOpenChange,
   availableTags = [],
 }: CreatePostFormProps) {
+  const { showProgress, updateProgress } = useUploadProgress();
   const [step, setStep] = useState<CreateStep>('story');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -47,14 +48,6 @@ export function CreatePostForm({
   const [chapterContent, setChapterContent] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
-
-  const [progressState, setProgressState] = useState<UploadProgressState>({
-    isVisible: false,
-    title: '',
-    completed: 0,
-    total: 0,
-    status: 'uploading',
-  });
 
   const draftPostIdRef = useRef<string | null>(null);
   const createdChapterCountRef = useRef(0);
@@ -259,26 +252,15 @@ export function CreatePostForm({
       setChapterTitle(`Chương ${chapterNumber + 1}`);
     }
 
-    // Hiển thị Widget tiến trình ở dưới góc phải
-    setProgressState({
-      isVisible: true,
-      title: `${currentTitle} (${currentFiles.length} ảnh)`,
-      completed: 0,
-      total: currentFiles.length,
-      status: 'uploading',
-    });
+    // Hiển thị Widget tiến trình toàn cục ở dưới góc phải
+    showProgress(`${currentTitle} (${currentFiles.length} ảnh)`, currentFiles.length);
 
     try {
       const imageUrls = await uploadImages(currentFiles, uploadTitle, (completed, total) => {
-        setProgressState((prev) => ({
-          ...prev,
-          completed,
-          total,
-          status: 'uploading',
-        }));
+        updateProgress(completed, total, 'uploading');
       });
 
-      setProgressState((prev) => ({ ...prev, status: 'saving' }));
+      updateProgress(currentFiles.length, currentFiles.length, 'saving');
 
       const response = await fetch(`/api/posts/${currentPostId}/chapters`, {
         method: 'POST',
@@ -300,33 +282,24 @@ export function CreatePostForm({
       createdChapterCountRef.current = nextChapterCount;
       setCreatedChapterCount(nextChapterCount);
 
-      setProgressState((prev) => ({
-        ...prev,
-        status: 'success',
-        completed: currentFiles.length,
-      }));
+      updateProgress(currentFiles.length, currentFiles.length, 'success');
 
       onPostCreated();
 
       setTimeout(() => {
-        setProgressState((prev) => ({ ...prev, isVisible: false }));
+        // Tự động đóng Widget sau 4 giây
       }, 4000);
     } catch (err) {
       const message = err instanceof Error ? err.message : 'Unknown error';
       notify.error('Lưu chương không thành công', message);
       console.error('Lỗi khi lưu chương:', err);
 
-      setProgressState((prev) => ({
-        ...prev,
-        status: 'error',
-        errorMessage: message,
-      }));
+      updateProgress(0, currentFiles.length, 'error', message);
     }
   };
 
   return (
-    <>
-      <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5">
         <DialogHeader>
           <DialogTitle className="text-xl font-medium">
@@ -537,12 +510,6 @@ export function CreatePostForm({
         )}
       </DialogContent>
     </Dialog>
-
-    <UploadProgressWidget
-      state={progressState}
-      onClose={() => setProgressState((prev) => ({ ...prev, isVisible: false }))}
-    />
-    </>
   );
 }
 

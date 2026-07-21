@@ -10,7 +10,7 @@ import imageCompression from 'browser-image-compression';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { TagPicker } from '@/components/TagPicker';
 import { notify } from '@/lib/notify';
-import { UploadProgressWidget, UploadProgressState } from '@/components/UploadProgressWidget';
+import { useUploadProgress } from '@/providers/UploadProgressProvider';
 
 interface Post {
     _id: string;
@@ -31,6 +31,7 @@ interface EditPostFormProps {
 }
 
 export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availableTags = [] }: EditPostFormProps) {
+    const { showProgress, updateProgress } = useUploadProgress();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState(post.title);
     const [tags, setTags] = useState<string[]>(post.tags || []);
@@ -40,14 +41,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     const [keptImages, setKeptImages] = useState<string[]>(post.images);
     const [newImageFiles, setNewImageFiles] = useState<File[]>([]);
     const [newImagePreviews, setNewImagePreviews] = useState<string[]>([]);
-
-    const [progressState, setProgressState] = useState<UploadProgressState>({
-        isVisible: false,
-        title: '',
-        completed: 0,
-        total: 0,
-        status: 'uploading',
-    });
 
     useEffect(() => {
         setTitle(post.title);
@@ -168,27 +161,16 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         onOpenChange(false);
 
         if (currentNewFiles.length > 0) {
-            setProgressState({
-                isVisible: true,
-                title: `Đang cập nhật "${currentTitle}"`,
-                completed: 0,
-                total: currentNewFiles.length,
-                status: 'uploading',
-            });
+            showProgress(`Đang cập nhật "${currentTitle}"`, currentNewFiles.length);
         }
 
         try {
             const newUrls = await uploadNewImages(currentNewFiles, currentTitle, (completed, total) => {
-                setProgressState((prev) => ({
-                    ...prev,
-                    completed,
-                    total,
-                    status: 'uploading',
-                }));
+                updateProgress(completed, total, 'uploading');
             });
 
             if (currentNewFiles.length > 0) {
-                setProgressState((prev) => ({ ...prev, status: 'saving' }));
+                updateProgress(currentNewFiles.length, currentNewFiles.length, 'saving');
             }
 
             const allImages = [...currentKept, ...newUrls];
@@ -210,13 +192,9 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             }
 
             if (currentNewFiles.length > 0) {
-                setProgressState((prev) => ({
-                    ...prev,
-                    status: 'success',
-                    completed: currentNewFiles.length,
-                }));
+                updateProgress(currentNewFiles.length, currentNewFiles.length, 'success');
                 setTimeout(() => {
-                    setProgressState((prev) => ({ ...prev, isVisible: false }));
+                    // Tự đóng sau 4s
                 }, 4000);
             } else {
                 notify.success('Cập nhật bài viết thành công');
@@ -229,114 +207,103 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             console.error('Lỗi khi cập nhật bài viết:', err);
 
             if (currentNewFiles.length > 0) {
-                setProgressState((prev) => ({
-                    ...prev,
-                    status: 'error',
-                    errorMessage: message,
-                }));
+                updateProgress(0, currentNewFiles.length, 'error', message);
             }
         }
     };
     return (
-        <>
-            <Dialog open={open} onOpenChange={onOpenChange}>
-                <DialogContent
-                    className="max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5"
-                >
-                    <DialogHeader>
-                        <DialogTitle className="text-xl font-medium">Chỉnh sửa bài viết</DialogTitle>
-                    </DialogHeader>
-                    <form onSubmit={handleSubmit} className="space-y-5">
+        <Dialog open={open} onOpenChange={onOpenChange}>
+            <DialogContent
+                className="max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5"
+            >
+                <DialogHeader>
+                    <DialogTitle className="text-xl font-medium">Chỉnh sửa bài viết</DialogTitle>
+                </DialogHeader>
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tiêu đề</label>
+                        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tiêu đề" maxLength={100} disabled={isSubmitting} className="rounded-[8px]" />
+                        <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p>
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tag (không bắt buộc)</label>
+                        <TagPicker
+                            selectedTags={tags}
+                            onChange={setTags}
+                            availableTags={availableTags}
+                            disabled={isSubmitting}
+                            placeholder="Nhập tag rồi nhấn Enter"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Nội dung</label>
+                        <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Nội dung bài viết" rows={4} disabled={isSubmitting} className="rounded-[8px]" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tác giả (tuỳ chọn)</label>
+                        <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tên của bạn" disabled={isSubmitting} className="rounded-[8px]" />
+                    </div>
+                    {keptImages.length > 0 && (
                         <div>
-                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tiêu đề</label>
-                            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tiêu đề" maxLength={100} disabled={isSubmitting} className="rounded-[8px]" />
-                            <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tag (không bắt buộc)</label>
-                            <TagPicker
-                                selectedTags={tags}
-                                onChange={setTags}
-                                availableTags={availableTags}
-                                disabled={isSubmitting}
-                                placeholder="Nhập tag rồi nhấn Enter"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Nội dung</label>
-                            <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Nội dung bài viết" rows={4} disabled={isSubmitting} className="rounded-[8px]" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tác giả (tuỳ chọn)</label>
-                            <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tên của bạn" disabled={isSubmitting} className="rounded-[8px]" />
-                        </div>
-                        {keptImages.length > 0 && (
-                            <div>
-                                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh hiện tại ({keptImages.length})</label>
-                                <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
-                                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                                        {keptImages.map((src, idx) => (
-                                            <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all">
-                                                <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
-                                                    #{idx + 1}
-                                                </span>
-                                                <Image src={getOptimizedImageUrl(src)} alt={`Ảnh ${idx + 1}`} fill className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized />
-                                                <button type="button" onClick={() => removeKept(idx)} title="Xóa ảnh" aria-label="Xóa ảnh"
-                                                    className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center">
-                                                    <X className="h-3.5 w-3.5 stroke-[2.5]" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
+                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh hiện tại ({keptImages.length})</label>
+                            <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
+                                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                    {keptImages.map((src, idx) => (
+                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all">
+                                            <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
+                                                #{idx + 1}
+                                            </span>
+                                            <Image src={getOptimizedImageUrl(src)} alt={`Ảnh ${idx + 1}`} fill className="object-cover transition-transform duration-300 group-hover:scale-105" unoptimized />
+                                            <button type="button" onClick={() => removeKept(idx)} title="Xóa ảnh" aria-label="Xóa ảnh"
+                                                className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center">
+                                                <X className="h-3.5 w-3.5 stroke-[2.5]" />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        )}
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Thêm ảnh mới</label>
-                            <div className="border border-input rounded-[8px] p-6 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors">
-                                <input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isSubmitting} className="hidden" id="edit-image-input" />
-                                <label htmlFor="edit-image-input" className="cursor-pointer block">
-                                    <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                                    <p className="text-sm text-foreground/80">Click để tải ảnh lên</p>
-                                    <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF tối đa 50MB</p>
-                                </label>
-                            </div>
                         </div>
-                        {newImagePreviews.length > 0 && (
-                            <div>
-                                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh mới ({newImagePreviews.length})</label>
-                                <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
-                                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                                        {newImagePreviews.map((preview, idx) => (
-                                            <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all">
-                                                <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
-                                                    #{idx + 1}
-                                                </span>
-                                                <Image src={preview} alt={`Preview ${idx + 1}`} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
-                                                <button type="button" onClick={() => removeNew(idx)} title="Xóa ảnh" aria-label="Xóa ảnh"
-                                                    className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center">
-                                                    <X className="h-3.5 w-3.5 stroke-[2.5]" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
+                    )}
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Thêm ảnh mới</label>
+                        <div className="border border-input rounded-[8px] p-6 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors">
+                            <input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isSubmitting} className="hidden" id="edit-image-input" />
+                            <label htmlFor="edit-image-input" className="cursor-pointer block">
+                                <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                                <p className="text-sm text-foreground/80">Click để tải ảnh lên</p>
+                                <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF tối đa 50MB</p>
+                            </label>
+                        </div>
+                    </div>
+                    {newImagePreviews.length > 0 && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh mới ({newImagePreviews.length})</label>
+                            <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
+                                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                    {newImagePreviews.map((preview, idx) => (
+                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all">
+                                            <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
+                                                #{idx + 1}
+                                            </span>
+                                            <Image src={preview} alt={`Preview ${idx + 1}`} fill className="object-cover transition-transform duration-300 group-hover:scale-105" />
+                                            <button type="button" onClick={() => removeNew(idx)} title="Xóa ảnh" aria-label="Xóa ảnh"
+                                                className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center">
+                                                <X className="h-3.5 w-3.5 stroke-[2.5]" />
+                                            </button>
+                                        </div>
+                                    ))}
                                 </div>
                             </div>
-                        )}
-                        <div className="pt-3 border-t border-border/40 flex gap-2 justify-end">
-                            <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-[8px]" size="sm">Hủy</Button>
-                            <Button type="submit" disabled={isSubmitting} className="rounded-[8px]" size="sm">
-                                {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
-                            </Button>
                         </div>
-                    </form>
-                </DialogContent>
-            </Dialog>
-
-            <UploadProgressWidget
-                state={progressState}
-                onClose={() => setProgressState((prev) => ({ ...prev, isVisible: false }))}
-            />
-        </>
+                    )}
+                    <div className="pt-3 border-t border-border/40 flex gap-2 justify-end">
+                        <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-[8px]" size="sm">Hủy</Button>
+                        <Button type="submit" disabled={isSubmitting} className="rounded-[8px]" size="sm">
+                            {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+                        </Button>
+                    </div>
+                </form>
+            </DialogContent>
+        </Dialog>
     );
 }
