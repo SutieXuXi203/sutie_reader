@@ -129,63 +129,100 @@ function getDriveFolderId(): string | null {
   return match ? match[1] : rawId.trim();
 }
 
-async function deleteDriveFolder(postTitle: string) {
+function escapeDriveQueryValue(value: string): string {
+  return value.replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+async function findDriveFolder(
+  drive: NonNullable<Awaited<ReturnType<typeof getDriveService>>>,
+  parentFolderId: string,
+  postId: string,
+  title: string
+): Promise<string | null> {
+  if (postId) {
+    const byPostId = await drive.files.list({
+      q: [
+        "mimeType='application/vnd.google-apps.folder'",
+        `'${escapeDriveQueryValue(parentFolderId)}' in parents`,
+        `appProperties has { key='sutiePostId' and value='${escapeDriveQueryValue(postId)}' }`,
+        'trashed=false',
+      ].join(' and '),
+      fields: 'files(id, name)',
+      spaces: 'drive',
+      pageSize: 1,
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
+    });
+
+    const foundByPostId = byPostId.data.files?.[0]?.id;
+    if (foundByPostId) return foundByPostId;
+  }
+
+  const byTitle = await drive.files.list({
+    q: [
+      "mimeType='application/vnd.google-apps.folder'",
+      `name='${escapeDriveQueryValue(title)}'`,
+      `'${escapeDriveQueryValue(parentFolderId)}' in parents`,
+      'trashed=false',
+    ].join(' and '),
+    fields: 'files(id, name)',
+    spaces: 'drive',
+    pageSize: 1,
+    supportsAllDrives: true,
+    includeItemsFromAllDrives: true,
+  });
+
+  return byTitle.data.files?.[0]?.id || null;
+}
+
+async function deleteDriveFolder(postId: string, postTitle: string) {
   try {
     const drive = await getDriveService();
     if (!drive) return;
     const folderId = getDriveFolderId();
     if (!folderId) return;
-    const searchRes = await drive.files.list({
-      q: `mimeType='application/vnd.google-apps.folder' and name='${postTitle.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,
-      fields: 'files(id, name)',
-      spaces: 'drive',
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-    });
-    if (searchRes.data.files && searchRes.data.files.length > 0) {
-      const targetFolderId = searchRes.data.files[0].id!;
+
+    const targetFolderId = await findDriveFolder(drive, folderId, postId, postTitle);
+    if (targetFolderId) {
       await drive.files.delete({
         fileId: targetFolderId,
         supportsAllDrives: true,
       });
-      console.log(`Đã xóa folder Drive "${postTitle}" (${targetFolderId})`);
+      console.log(`Deleted Drive folder for post ${postId || postTitle} (${targetFolderId})`);
     }
   } catch (err: unknown) {
     const errorObj = err as { code?: number; status?: number };
     if (errorObj?.code === 404 || errorObj?.status === 404) {
-      console.log(`Folder Drive cho bài "${postTitle}" không tồn tại hoặc đã bị xóa trước đó.`);
+      console.log(`Drive folder for post ${postId || postTitle} was already deleted.`);
     } else {
-      console.warn(`Không thể xóa folder Drive cho bài "${postTitle}":`, err);
+      console.warn(`Could not delete Drive folder for post ${postId || postTitle}:`, err);
     }
   }
 }
 
-async function renameDriveFolder(oldTitle: string, newTitle: string) {
+async function renameDriveFolder(postId: string, oldTitle: string, newTitle: string) {
   try {
     const drive = await getDriveService();
     if (!drive) return;
     const folderId = getDriveFolderId();
     if (!folderId) return;
-    const searchRes = await drive.files.list({
-      q: `mimeType='application/vnd.google-apps.folder' and name='${oldTitle.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,
-      fields: 'files(id, name)',
-      spaces: 'drive',
-      supportsAllDrives: true,
-      includeItemsFromAllDrives: true,
-    });
-    if (searchRes.data.files && searchRes.data.files.length > 0) {
-      const targetFolderId = searchRes.data.files[0].id!;
+
+    const targetFolderId = await findDriveFolder(drive, folderId, postId, oldTitle);
+    if (targetFolderId) {
       await drive.files.update({
         fileId: targetFolderId,
-        requestBody: { name: newTitle },
+        requestBody: {
+          name: newTitle,
+          ...(postId ? { appProperties: { sutiePostId: postId } } : {}),
+        },
         supportsAllDrives: true,
       });
-      console.log(`Đã đổi tên folder Drive từ "${oldTitle}" thành "${newTitle}" (${targetFolderId})`);
+      console.log(`Renamed Drive folder for post ${postId || oldTitle} (${targetFolderId})`);
     } else {
-      console.log(`Không tìm thấy folder Drive cũ "${oldTitle}" để đổi tên thành "${newTitle}"`);
+      console.log(`Could not find Drive folder for post ${postId || oldTitle}`);
     }
   } catch (err) {
-    console.warn(`Không thể đổi tên folder Drive từ "${oldTitle}" thành "${newTitle}":`, err);
+    console.warn(`Could not rename Drive folder for post ${postId || oldTitle}:`, err);
   }
 }
 
@@ -317,7 +354,7 @@ export async function PUT(
     }
 
     const updated = await Post.findByIdAndUpdate(id, updatePayload, {
-      new: true,
+      returnDocument: 'after',
       runValidators: true,
     });
 
@@ -328,7 +365,7 @@ export async function PUT(
     if (titleChanged) {
       console.log(`Bắt đầu đổi tên folder Drive từ "${existingPost.title}" sang "${title}"...`);
       try {
-        await renameDriveFolder(existingPost.title, title);
+        await renameDriveFolder(id, existingPost.title, title);
       } catch (err) {
         console.warn('Lỗi khi đổi tên folder Drive:', err);
       }
@@ -350,6 +387,10 @@ export async function DELETE(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!(await isAdmin(request))) {
+      return NextResponse.json({ error: 'Bạn không có quyền thực hiện hành động này' }, { status: 403 });
+    }
+
     await connectDB();
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
@@ -359,7 +400,7 @@ export async function DELETE(
     if (!deletedPost) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
-    deleteDriveFolder(deletedPost.title).catch((err) =>
+    deleteDriveFolder(id, deletedPost.title).catch((err) =>
       console.warn('Lỗi khi xóa folder Drive:', err)
     );
     return NextResponse.json({ message: 'Bài viết đã được xóa thành công' });
@@ -368,4 +409,3 @@ export async function DELETE(
     return NextResponse.json({ error: 'Xóa bài viết không thành công' }, { status: 500 });
   }
 }
-

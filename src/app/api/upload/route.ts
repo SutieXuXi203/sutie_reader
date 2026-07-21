@@ -1,13 +1,45 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAdmin } from '@/lib/auth';
+
+const MAX_FILES_PER_REQUEST = 10;
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
 export async function POST(request: NextRequest) {
     try {
+        if (!(await isAdmin(request))) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 403 });
+        }
+
         const formData = await request.formData();
-        const rawFiles = formData.getAll('files') as File[];
-        const title = (formData.get('title') as string) || 'Untitled';
+        const fileEntries = formData.getAll('files');
+        const rawFiles = fileEntries.filter((file): file is File => file instanceof File);
+        const rawTitle = formData.get('title');
+        const rawPostId = formData.get('postId');
+        const title = typeof rawTitle === 'string' && rawTitle.trim() ? rawTitle.trim() : 'Untitled';
+        const postId = typeof rawPostId === 'string' ? rawPostId.trim() : '';
 
         if (!rawFiles.length) {
             return NextResponse.json({ error: 'Không có file nào được gửi' }, { status: 400 });
+        }
+
+        if (rawFiles.length !== fileEntries.length) {
+            return NextResponse.json({ error: 'Payload file khong hop le' }, { status: 400 });
+        }
+
+        if (rawFiles.length > MAX_FILES_PER_REQUEST) {
+            return NextResponse.json({ error: `Chi duoc upload toi da ${MAX_FILES_PER_REQUEST} file moi lan` }, { status: 400 });
+        }
+
+        if (postId && !/^[a-f\d]{24}$/i.test(postId)) {
+            return NextResponse.json({ error: 'Post ID khong hop le' }, { status: 400 });
+        }
+
+        const invalidFile = rawFiles.find((file) => !file.type.startsWith('image/') || file.size > MAX_FILE_SIZE_BYTES);
+        if (invalidFile) {
+            return NextResponse.json(
+                { error: `File "${invalidFile.name}" khong phai anh hoac vuot qua 10MB` },
+                { status: 400 }
+            );
         }
 
         const files = rawFiles.sort((a, b) =>
@@ -31,6 +63,7 @@ export async function POST(request: NextRequest) {
 
         const workerFormData = new FormData();
         workerFormData.append('title', title);
+        if (postId) workerFormData.append('postId', postId);
         files.forEach((file) => workerFormData.append('files', file, file.name));
 
         const res = await fetch(`${workerUrl}/upload`, {

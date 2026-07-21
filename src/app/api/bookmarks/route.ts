@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
         const bookmark = await Bookmark.findOneAndUpdate(
             { userId: user.id, postId },
             { chapterIndex: normalizedChapterIndex, currentPage, totalPages },
-            { upsert: true, new: true, setDefaultsOnInsert: true }
+            { upsert: true, returnDocument: 'after', setDefaultsOnInsert: true }
         );
         return NextResponse.json(bookmark);
     } catch (error) {

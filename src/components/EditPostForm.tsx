@@ -87,6 +87,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     const uploadNewImages = async (
         files: File[],
         uploadTitle: string,
+        postId: string,
         onProgress?: (completed: number, total: number) => void
     ): Promise<string[]> => {
         if (!files.length) return [];
@@ -122,6 +123,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
             const formData = new FormData();
             formData.append('title', uploadTitle);
+            formData.append('postId', postId);
             batch.forEach((compressed, idx) => formData.append('files', compressed, originalBatchFiles[idx].name));
 
             const res = await fetch('/api/upload', { method: 'POST', body: formData });
@@ -157,6 +159,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         const currentKept = [...keptImages];
         const currentNewFiles = [...newImageFiles];
 
+        setIsSubmitting(true);
+
         // Đóng dialog chỉnh sửa ngay lập tức
         onOpenChange(false);
 
@@ -165,7 +169,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         }
 
         try {
-            const newUrls = await uploadNewImages(currentNewFiles, currentTitle, (completed, total) => {
+            const newUrls = await uploadNewImages(currentNewFiles, currentTitle, post._id, (completed, total) => {
                 updateProgress(completed, total, 'uploading');
             });
 
@@ -209,6 +213,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             if (currentNewFiles.length > 0) {
                 updateProgress(0, currentNewFiles.length, 'error', message);
             }
+        } finally {
+            setIsSubmitting(false);
         }
     };
     return (

@@ -1,9 +1,73 @@
+const DRIVE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
+const MAX_FILES_PER_REQUEST = 10;
+const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+
+function jsonResponse(payload, status, corsHeaders) {
+  return new Response(JSON.stringify(payload), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
+}
+
+function getErrorMessage(error) {
+  return error instanceof Error ? error.message : 'Unknown error';
+}
+
+function getErrorStatus(error) {
+  return error && typeof error === 'object' && typeof error.status === 'number' ? error.status : 500;
+}
+
+function httpError(message, status) {
+  const error = new Error(message);
+  error.status = status;
+  return error;
+}
+
+function escapeDriveQueryValue(value) {
+  return String(value).replace(/\\/g, '\\\\').replace(/'/g, "\\'");
+}
+
+function getRequiredEnv(env, key) {
+  const value = env[key];
+  if (!value || !String(value).trim()) {
+    throw new Error(`Missing required environment variable: ${key}`);
+  }
+  return String(value).trim();
+}
+
+function getRootFolderId(env) {
+  const rawFolderId = getRequiredEnv(env, 'GOOGLE_DRIVE_FOLDER_ID');
+  const matchFolder = rawFolderId.match(/(?:folders\/|id=)([a-zA-Z0-9_-]+)/);
+  return matchFolder ? matchFolder[1] : rawFolderId;
+}
+
+function isValidDriveFileId(fileId) {
+  return /^[a-zA-Z0-9_-]{10,}$/.test(fileId);
+}
+
+function isValidPostId(postId) {
+  return /^[a-f\d]{24}$/i.test(postId);
+}
+
+function sanitizeFileName(name) {
+  return (name || 'image.jpg').replace(/[\\/]/g, '_').slice(0, 180) || 'image.jpg';
+}
+
+async function readJson(res, context) {
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok) {
+    const message = data?.error?.message || data?.error_description || data?.error || `${context} failed`;
+    console.error(`[CF WORKER] ${context} failed with status ${res.status}:`, message);
+    throw httpError(message, res.status);
+  }
+  return data;
+}
+
 async function getAccessToken(env) {
-  console.log('[CF WORKER] 🔑 Đang xin Google Access Token từ OAuth2 Refresh Token...');
   const params = new URLSearchParams({
-    client_id: env.GOOGLE_CLIENT_ID,
-    client_secret: env.GOOGLE_CLIENT_SECRET,
-    refresh_token: env.GOOGLE_REFRESH_TOKEN,
+    client_id: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
+    client_secret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
+    refresh_token: getRequiredEnv(env, 'GOOGLE_REFRESH_TOKEN'),
     grant_type: 'refresh_token',
   });
 
@@ -13,77 +77,146 @@ async function getAccessToken(env) {
     body: params.toString(),
   });
 
-  const data = await res.json();
-  if (!res.ok) {
-    console.error('[CF WORKER] ❌ Lỗi lấy Access Token:', data);
-    throw new Error(data.error_description || 'Không thể lấy Google Access Token');
+  const data = await readJson(res, 'Google OAuth token request');
+  if (!data.access_token) {
+    throw new Error('Google OAuth response did not include an access token');
   }
-  console.log('[CF WORKER] ✅ Lấy Access Token thành công.');
   return data.access_token;
 }
 
-async function getOrCreateFolder(accessToken, parentFolderId, title) {
-  const cleanTitle = title.replace(/'/g, "\\'");
-  const q = `mimeType='application/vnd.google-apps.folder' and name='${cleanTitle}' and '${parentFolderId}' in parents and trashed=false`;
-  const searchUrl = `https://www.googleapis.com/drive/v3/files?q=${encodeURIComponent(q)}&supportsAllDrives=true&includeItemsFromAllDrives=true`;
-
-  console.log(`[CF WORKER] 📁 Tìm thư mục bài viết "${title}" trong folder cha ${parentFolderId}...`);
-  const searchRes = await fetch(searchUrl, {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  const searchData = await searchRes.json();
-
-  if (searchData.files && searchData.files.length > 0) {
-    const existingId = searchData.files[0].id;
-    console.log(`[CF WORKER] 📁 Đã tìm thấy thư mục cũ ID: ${existingId}`);
-    return existingId;
-  }
-
-  console.log(`[CF WORKER] 📁 Không tìm thấy thư mục cũ. Đang tạo thư mục mới "${title}"...`);
-  const createRes = await fetch('https://www.googleapis.com/drive/v3/files?supportsAllDrives=true', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({
-      name: title,
-      mimeType: 'application/vnd.google-apps.folder',
-      parents: [parentFolderId],
-    }),
-  });
-
-  const folderData = await createRes.json();
-  console.log(`[CF WORKER] 📁 Tạo thư mục mới THÀNH CÔNG, ID: ${folderData.id}`);
-  return folderData.id;
+async function driveFetch(accessToken, url, init = {}, context = 'Google Drive request') {
+  const headers = new Headers(init.headers || {});
+  headers.set('Authorization', `Bearer ${accessToken}`);
+  return fetch(url, { ...init, headers }).then((res) => readJson(res, context));
 }
 
-async function uploadFileToDrive(accessToken, folderId, file, index, total) {
-  console.log(`[CF WORKER] 📤 Uploading (${index + 1}/${total}): ${file.name} (${Math.round(file.size / 1024)} KB)...`);
-  const boundary = '-------314159265358979323846';
-  const delimiter = `\r\n--${boundary}\r\n`;
-  const close_delim = `\r\n--${boundary}--`;
+async function getFileMetadata(accessToken, fileId, fields) {
+  const url = new URL(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}`);
+  url.searchParams.set('fields', fields);
+  url.searchParams.set('supportsAllDrives', 'true');
+  return driveFetch(accessToken, url.toString(), {}, `Get Drive file metadata ${fileId}`);
+}
+
+async function findFolderByPostId(accessToken, parentFolderId, postId) {
+  const q = [
+    `mimeType='${DRIVE_FOLDER_MIME_TYPE}'`,
+    `'${escapeDriveQueryValue(parentFolderId)}' in parents`,
+    `appProperties has { key='sutiePostId' and value='${escapeDriveQueryValue(postId)}' }`,
+    'trashed=false',
+  ].join(' and ');
+
+  const url = new URL('https://www.googleapis.com/drive/v3/files');
+  url.searchParams.set('q', q);
+  url.searchParams.set('fields', 'files(id,name)');
+  url.searchParams.set('pageSize', '1');
+  url.searchParams.set('supportsAllDrives', 'true');
+  url.searchParams.set('includeItemsFromAllDrives', 'true');
+
+  const data = await driveFetch(accessToken, url.toString(), {}, 'Find Drive folder by postId');
+  return data.files?.[0] || null;
+}
+
+async function findFolderByTitle(accessToken, parentFolderId, title) {
+  const q = [
+    `mimeType='${DRIVE_FOLDER_MIME_TYPE}'`,
+    `name='${escapeDriveQueryValue(title)}'`,
+    `'${escapeDriveQueryValue(parentFolderId)}' in parents`,
+    'trashed=false',
+  ].join(' and ');
+
+  const url = new URL('https://www.googleapis.com/drive/v3/files');
+  url.searchParams.set('q', q);
+  url.searchParams.set('fields', 'files(id,name)');
+  url.searchParams.set('pageSize', '1');
+  url.searchParams.set('supportsAllDrives', 'true');
+  url.searchParams.set('includeItemsFromAllDrives', 'true');
+
+  const data = await driveFetch(accessToken, url.toString(), {}, 'Find Drive folder by title');
+  return data.files?.[0] || null;
+}
+
+async function setFolderPostId(accessToken, folderId, postId) {
+  await driveFetch(
+    accessToken,
+    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?supportsAllDrives=true`,
+    {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ appProperties: { sutiePostId: postId } }),
+    },
+    'Set Drive folder postId'
+  );
+}
+
+async function getOrCreateFolder(accessToken, parentFolderId, title, postId) {
+  const folderTitle = title.trim().slice(0, 100) || 'Untitled';
+
+  let folder = postId ? await findFolderByPostId(accessToken, parentFolderId, postId) : null;
+  if (!folder) {
+    folder = await findFolderByTitle(accessToken, parentFolderId, folderTitle);
+    if (folder && postId) {
+      await setFolderPostId(accessToken, folder.id, postId).catch((error) => {
+        console.warn('[CF WORKER] Could not tag legacy Drive folder with postId:', getErrorMessage(error));
+      });
+    }
+  }
+
+  if (folder?.id) {
+    console.log(`[CF WORKER] Using Drive folder ${folder.id} for post ${postId || folderTitle}`);
+    return folder.id;
+  }
 
   const metadata = {
-    name: file.name || 'image.jpg',
+    name: folderTitle,
+    mimeType: DRIVE_FOLDER_MIME_TYPE,
+    parents: [parentFolderId],
+    ...(postId ? { appProperties: { sutiePostId: postId } } : {}),
+  };
+
+  const data = await driveFetch(
+    accessToken,
+    'https://www.googleapis.com/drive/v3/files?supportsAllDrives=true&fields=id,name',
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(metadata),
+    },
+    'Create Drive folder'
+  );
+
+  if (!data.id) {
+    throw new Error('Google Drive did not return a folder id');
+  }
+
+  console.log(`[CF WORKER] Created Drive folder ${data.id} for post ${postId || folderTitle}`);
+  return data.id;
+}
+
+async function uploadFileToDrive(accessToken, folderId, postId, file, index, total) {
+  console.log(`[CF WORKER] Uploading image ${index + 1}/${total}: ${file.name} (${Math.round(file.size / 1024)} KB)`);
+
+  const boundary = '-------314159265358979323846';
+  const delimiter = `\r\n--${boundary}\r\n`;
+  const closeDelim = `\r\n--${boundary}--`;
+  const contentType = file.type || 'image/jpeg';
+  const metadata = {
+    name: sanitizeFileName(file.name),
     parents: [folderId],
+    ...(postId ? { appProperties: { sutiePostId: postId } } : {}),
   };
 
   const arrayBuffer = await file.arrayBuffer();
-  const metadataBlob = new Blob([JSON.stringify(metadata)], { type: 'application/json' });
-  const fileBlob = new Blob([arrayBuffer], { type: file.type || 'image/jpeg' });
-
   const multipartBody = new Blob([
     delimiter,
     'Content-Type: application/json; charset=UTF-8\r\n\r\n',
-    metadataBlob,
+    JSON.stringify(metadata),
     delimiter,
-    `Content-Type: ${file.type || 'image/jpeg'}\r\n\r\n`,
-    fileBlob,
-    close_delim,
+    `Content-Type: ${contentType}\r\n\r\n`,
+    arrayBuffer,
+    closeDelim,
   ]);
 
-  const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true', {
+  const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id', {
     method: 'POST',
     headers: {
       Authorization: `Bearer ${accessToken}`,
@@ -92,37 +225,101 @@ async function uploadFileToDrive(accessToken, folderId, file, index, total) {
     body: multipartBody,
   });
 
-  const fileData = await uploadRes.json();
+  const fileData = await readJson(uploadRes, `Upload Drive file ${file.name}`);
   if (!fileData.id) {
-    console.error(`[CF WORKER] ❌ Lỗi upload file ${file.name}:`, fileData);
-    throw new Error(fileData.error?.message || 'Upload Google Drive thất bại');
+    throw new Error('Google Drive did not return a file id');
   }
 
-  try {
-    await fetch(`https://www.googleapis.com/drive/v3/files/${fileData.id}/permissions?supportsAllDrives=true`, {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${accessToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-    });
-  } catch (permErr) {
-    console.warn(`[CF WORKER] ⚠️ Không thể cấp quyền public cho file ${fileData.id}:`, permErr);
+  const permissionRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileData.id}/permissions?supportsAllDrives=true`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${accessToken}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
+  });
+
+  if (!permissionRes.ok) {
+    console.warn(`[CF WORKER] Could not make Drive file public: ${fileData.id}`);
   }
 
-  console.log(`[CF WORKER] ✅ Upload xong (${index + 1}/${total}): ${file.name} -> Drive File ID: ${fileData.id}`);
+  console.log(`[CF WORKER] Uploaded image ${index + 1}/${total}: ${file.name} -> ${fileData.id}`);
   return fileData.id;
 }
 
-export default {
+async function fileIsInAllowedFolder(accessToken, rootFolderId, metadata) {
+  const parents = Array.isArray(metadata.parents) ? metadata.parents : [];
+  if (parents.includes(rootFolderId)) return true;
+
+  for (const parentId of parents) {
+    const parent = await getFileMetadata(accessToken, parentId, 'id,mimeType,parents,trashed').catch(() => null);
+    if (
+      parent &&
+      !parent.trashed &&
+      parent.mimeType === DRIVE_FOLDER_MIME_TYPE &&
+      Array.isArray(parent.parents) &&
+      parent.parents.includes(rootFolderId)
+    ) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+async function assertImageCanBeServed(accessToken, rootFolderId, fileId) {
+  const metadata = await getFileMetadata(accessToken, fileId, 'id,name,mimeType,parents,trashed');
+
+  if (metadata.trashed) {
+    throw httpError('Image not found', 404);
+  }
+
+  if (!metadata.mimeType || !metadata.mimeType.startsWith('image/')) {
+    throw httpError('Drive file is not an image', 415);
+  }
+
+  const allowed = await fileIsInAllowedFolder(accessToken, rootFolderId, metadata);
+  if (!allowed) {
+    throw httpError('Image is outside the allowed Drive folder', 403);
+  }
+
+  return metadata;
+}
+
+function validateUploadFiles(files) {
+  if (!files.length) {
+    throw httpError('No files provided', 400);
+  }
+
+  if (files.length > MAX_FILES_PER_REQUEST) {
+    throw httpError(`Too many files. Max ${MAX_FILES_PER_REQUEST} per request`, 400);
+  }
+
+  const invalidFile = files.find((file) => !file.type.startsWith('image/') || file.size > MAX_FILE_SIZE_BYTES);
+  if (invalidFile) {
+    throw httpError(`Invalid image file: ${invalidFile.name}`, 400);
+  }
+}
+
+function authMatches(authHeader, expectedSecret) {
+  const expected = `Bearer ${expectedSecret}`;
+  if (authHeader.length !== expected.length) return false;
+
+  let diff = 0;
+  for (let i = 0; i < expected.length; i++) {
+    diff |= authHeader.charCodeAt(i) ^ expected.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+const worker = {
   async fetch(request, env) {
     const url = new URL(request.url);
-
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
+      'X-Content-Type-Options': 'nosniff',
     };
 
     if (request.method === 'OPTIONS') {
@@ -130,95 +327,88 @@ export default {
     }
 
     if (request.method === 'GET' && url.pathname.startsWith('/image/')) {
-      const fileId = url.pathname.replace('/image/', '');
-      console.log(`[CF WORKER] 🖼️ Serving image request for file ID: ${fileId}`);
+      const fileId = url.pathname.slice('/image/'.length);
+      if (!isValidDriveFileId(fileId)) {
+        return new Response('Invalid image id', { status: 400, headers: corsHeaders });
+      }
+
       try {
         const accessToken = await getAccessToken(env);
-        const driveRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileId}?alt=media`, {
+        const rootFolderId = getRootFolderId(env);
+        const metadata = await assertImageCanBeServed(accessToken, rootFolderId, fileId);
+        const driveRes = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, {
           headers: { Authorization: `Bearer ${accessToken}` },
         });
 
         if (!driveRes.ok) {
-          console.warn(`[CF WORKER] ⚠️ Ảnh ID ${fileId} không tồn tại trên Drive.`);
-          return new Response('Không tìm thấy ảnh trên Drive', { status: 404, headers: corsHeaders });
+          throw httpError('Image not found', driveRes.status);
         }
 
         const headers = new Headers(corsHeaders);
-        headers.set('Content-Type', driveRes.headers.get('content-type') || 'image/jpeg');
+        headers.set('Content-Type', metadata.mimeType || driveRes.headers.get('content-type') || 'image/jpeg');
         headers.set('Cache-Control', 'public, max-age=31536000, immutable');
+        headers.set('Content-Disposition', `inline; filename="${encodeURIComponent(metadata.name || 'image')}"`);
 
         return new Response(driveRes.body, { status: 200, headers });
-      } catch (err) {
-        console.error(`[CF WORKER] ❌ Lỗi khi stream ảnh ID ${fileId}:`, err);
-        return new Response('Lỗi tải ảnh', { status: 500, headers: corsHeaders });
+      } catch (error) {
+        const status = getErrorStatus(error);
+        const message = status === 404 ? 'Image not found' : status === 403 ? 'Forbidden' : 'Error loading image';
+        console.error('[CF WORKER] Image request failed:', getErrorMessage(error));
+        return new Response(message, { status, headers: corsHeaders });
       }
     }
 
     if (request.method === 'POST' && url.pathname === '/upload') {
-      console.log('[CF WORKER] 📥 Nhận request POST /upload');
-
       const authHeader = (request.headers.get('Authorization') || '').trim();
       const expectedSecret = (env.UPLOAD_SECRET || '').trim();
 
-      if (!expectedSecret || authHeader !== `Bearer ${expectedSecret}`) {
-        console.warn(`[CF WORKER] ⛔ Từ chối 401. Token gửi sang: "${authHeader}", Mật khẩu yêu cầu: "Bearer ${expectedSecret}"`);
-        return new Response(
-          JSON.stringify({
-            error: 'Unauthorized',
-            details: `Mã xác thực không hợp lệ. Vui lòng kiểm tra lại CLOUDFLARE_UPLOAD_SECRET trên Vercel và UPLOAD_SECRET trên Cloudflare Worker.`,
-          }),
-          {
-            status: 401,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          }
-        );
+      if (!expectedSecret || !authMatches(authHeader, expectedSecret)) {
+        console.warn('[CF WORKER] Unauthorized upload request');
+        return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders);
       }
 
       try {
         const formData = await request.formData();
-        const files = formData.getAll('files');
-        const title = formData.get('title') || 'Untitled';
+        const entries = formData.getAll('files');
+        const files = entries.filter((entry) => entry instanceof File);
+        const rawTitle = formData.get('title');
+        const rawPostId = formData.get('postId');
+        const title = typeof rawTitle === 'string' && rawTitle.trim() ? rawTitle.trim() : 'Untitled';
+        const postId = typeof rawPostId === 'string' ? rawPostId.trim() : '';
 
-        if (!files || files.length === 0) {
-          console.warn('[CF WORKER] ⚠️ Không có file nào trong payload request.');
-          return new Response(JSON.stringify({ error: 'Không có file' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
+        if (files.length !== entries.length) {
+          return jsonResponse({ error: 'Invalid file payload' }, 400, corsHeaders);
         }
 
-        console.log(`[CF WORKER] 🚀 Bắt đầu xử lý ${files.length} ảnh cho bài viết "${title}"...`);
+        if (postId && !isValidPostId(postId)) {
+          return jsonResponse({ error: 'Invalid postId' }, 400, corsHeaders);
+        }
+
+        validateUploadFiles(files);
 
         const accessToken = await getAccessToken(env);
-        const rawFolderId = env.GOOGLE_DRIVE_FOLDER_ID || '';
-        const matchFolder = rawFolderId.match(/(?:folders\/|id=)([a-zA-Z0-9_-]+)/);
-        const parentFolderId = matchFolder ? matchFolder[1] : rawFolderId.trim();
-
-        const targetFolderId = await getOrCreateFolder(accessToken, parentFolderId, title);
+        const parentFolderId = getRootFolderId(env);
+        const targetFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
+        const imageBaseUrl = (env.PUBLIC_IMAGE_BASE_URL || url.origin).replace(/\/+$/, '');
 
         const uploadedUrls = [];
         for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          if (!(file instanceof File)) continue;
-          const fileId = await uploadFileToDrive(accessToken, targetFolderId, file, i, files.length);
-          uploadedUrls.push(`/api/image/${fileId}`);
+          const fileId = await uploadFileToDrive(accessToken, targetFolderId, postId, files[i], i, files.length);
+          uploadedUrls.push(`${imageBaseUrl}/image/${fileId}`);
         }
 
-        console.log(`[CF WORKER] 🎉 Upload HOÀN TẤT ${uploadedUrls.length}/${files.length} ảnh lên Google Drive!`);
-
-        return new Response(JSON.stringify({ urls: uploadedUrls }), {
-          status: 200,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
-      } catch (err) {
-        console.error('[CF WORKER] 💥 Lỗi hệ thống trong quá trình upload:', err);
-        return new Response(JSON.stringify({ error: err.message }), {
-          status: 500,
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-        });
+        console.log(`[CF WORKER] Uploaded ${uploadedUrls.length}/${files.length} image(s)`);
+        return jsonResponse({ urls: uploadedUrls }, 200, corsHeaders);
+      } catch (error) {
+        const errorStatus = getErrorStatus(error);
+        const status = errorStatus >= 400 && errorStatus < 500 ? errorStatus : 500;
+        console.error('[CF WORKER] Upload request failed:', getErrorMessage(error));
+        return jsonResponse({ error: getErrorMessage(error) }, status, corsHeaders);
       }
     }
 
     return new Response('Sutie Reader Google Drive Worker Active', { status: 200, headers: corsHeaders });
   },
 };
+
+export default worker;

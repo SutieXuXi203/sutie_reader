@@ -139,7 +139,7 @@ export async function POST(
         content: nextChapters[0]?.content || '',
         images: nextChapters[0]?.images || [],
       },
-      { new: true, runValidators: true }
+      { returnDocument: 'after', runValidators: true }
     );
 
     if (!updatedPost) {
@@ -159,4 +159,3 @@ export async function POST(
     );
   }
 }
-

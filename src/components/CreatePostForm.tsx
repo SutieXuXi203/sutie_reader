@@ -126,6 +126,7 @@ export function CreatePostForm({
   const uploadImages = async (
     files: File[],
     uploadTitle: string,
+    postId: string,
     onProgress?: (completed: number, total: number) => void
   ): Promise<string[]> => {
     if (!files.length) return [];
@@ -161,6 +162,7 @@ export function CreatePostForm({
 
       const formData = new FormData();
       formData.append('title', uploadTitle);
+      formData.append('postId', postId);
       batch.forEach((compressed, idx) =>
         formData.append('files', compressed, originalBatchFiles[idx].name)
       );
@@ -256,7 +258,7 @@ export function CreatePostForm({
     showProgress(`${currentTitle} (${currentFiles.length} ảnh)`, currentFiles.length);
 
     try {
-      const imageUrls = await uploadImages(currentFiles, uploadTitle, (completed, total) => {
+      const imageUrls = await uploadImages(currentFiles, uploadTitle, currentPostId, (completed, total) => {
         updateProgress(completed, total, 'uploading');
       });
 
