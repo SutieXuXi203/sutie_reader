@@ -244,8 +244,8 @@ export function CreatePostForm({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground">
-        <DialogHeader className="p-6 pb-4 border-b border-border/40 shrink-0">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5">
+        <DialogHeader>
           <DialogTitle className="text-xl font-medium">
             {step === 'story' ? 'Tạo truyện mới' : 'Thêm chương cho truyện'}
           </DialogTitle>
@@ -257,51 +257,49 @@ export function CreatePostForm({
         </DialogHeader>
 
         {step === 'story' ? (
-          <form onSubmit={handleCreateStory} className="flex flex-col flex-1 overflow-hidden min-h-0">
-            <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
-              <div>
-                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-                  Tiêu đề truyện
-                </label>
-                <Input
-                  value={title}
-                  onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Tên truyện"
-                  maxLength={100}
-                  disabled={isSubmitting}
-                  className="rounded-[8px]"
-                />
-                <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-                  Tag (không bắt buộc)
-                </label>
-                <TagPicker
-                  selectedTags={tags}
-                  onChange={setTags}
-                  availableTags={availableTags}
-                  disabled={isSubmitting}
-                  placeholder="Nhập tag rồi nhấn Enter"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-                  Tên tác giả (không bắt buộc)
-                </label>
-                <Input
-                  value={author}
-                  onChange={(e) => setAuthor(e.target.value)}
-                  placeholder="Tên của bạn"
-                  disabled={isSubmitting}
-                  className="rounded-[8px]"
-                />
-              </div>
+          <form onSubmit={handleCreateStory} className="space-y-5">
+            <div>
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                Tiêu đề truyện
+              </label>
+              <Input
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                placeholder="Tên truyện"
+                maxLength={100}
+                disabled={isSubmitting}
+                className="rounded-[8px]"
+              />
+              <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p>
             </div>
 
-            <div className="p-4 border-t border-border/40 bg-card/95 shrink-0 flex gap-2 justify-end">
+            <div>
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                Tag (không bắt buộc)
+              </label>
+              <TagPicker
+                selectedTags={tags}
+                onChange={setTags}
+                availableTags={availableTags}
+                disabled={isSubmitting}
+                placeholder="Nhập tag rồi nhấn Enter"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                Tên tác giả (không bắt buộc)
+              </label>
+              <Input
+                value={author}
+                onChange={(e) => setAuthor(e.target.value)}
+                placeholder="Tên của bạn"
+                disabled={isSubmitting}
+                className="rounded-[8px]"
+              />
+            </div>
+
+            <div className="pt-3 border-t border-border/40 flex gap-2 justify-end">
               <Button
                 type="button"
                 variant="outline"
@@ -323,102 +321,100 @@ export function CreatePostForm({
             </div>
           </form>
         ) : (
-          <div className="flex flex-col flex-1 overflow-hidden min-h-0">
-            <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
-              <div className="rounded-[8px] border border-border bg-card/60 px-4 py-3 text-sm">
-                <p className="font-medium text-foreground">
-                  Truyện: <span className="text-primary">{createdPostTitle}</span>
-                </p>
-                <p className="text-xs text-muted-foreground mt-1">
-                  Đã thêm {createdChapterCount} chương
-                </p>
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-                  Tên chương
-                </label>
-                <Input
-                  value={chapterTitle}
-                  onChange={(e) => setChapterTitle(e.target.value)}
-                  placeholder={`Chương ${createdChapterCount + 1}`}
-                  disabled={isSubmitting}
-                  className="rounded-[8px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-                  Nội dung chương
-                </label>
-                <Textarea
-                  value={chapterContent}
-                  onChange={(e) => setChapterContent(e.target.value)}
-                  placeholder="Nội dung chương"
-                  rows={4}
-                  disabled={isSubmitting}
-                  className="rounded-[8px]"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-                  Ảnh chương
-                </label>
-                <div className="border border-input rounded-[8px] p-6 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors">
-                  <input
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleImageSelect}
-                    disabled={isSubmitting}
-                    className="hidden"
-                    id="chapter-image-input"
-                  />
-                  <label htmlFor="chapter-image-input" className="cursor-pointer block">
-                    <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm text-foreground/80">
-                      Nhấn để tải ảnh lên
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF tối đa 50MB</p>
-                  </label>
-                </div>
-              </div>
-
-              {imagePreviews.length > 0 && (
-                <div>
-                  <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-                    Đã chọn ({imagePreviews.length})
-                  </label>
-                  <div className="max-h-64 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
-                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                      {imagePreviews.map((preview, index) => (
-                        <div
-                          key={index}
-                          className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24"
-                        >
-                          <Image
-                            src={preview}
-                            alt={`Xem trước ${index}`}
-                            fill
-                            className="object-cover"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(index)}
-                            className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-[8px] opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer"
-                          >
-                            <X className="h-3 w-3" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
+          <div className="space-y-5">
+            <div className="rounded-[8px] border border-border bg-card/60 px-4 py-3 text-sm">
+              <p className="font-medium text-foreground">
+                Truyện: <span className="text-primary">{createdPostTitle}</span>
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                Đã thêm {createdChapterCount} chương
+              </p>
             </div>
 
-            <div className="p-4 border-t border-border/40 bg-card/95 shrink-0 flex flex-wrap gap-2 justify-end">
+            <div>
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                Tên chương
+              </label>
+              <Input
+                value={chapterTitle}
+                onChange={(e) => setChapterTitle(e.target.value)}
+                placeholder={`Chương ${createdChapterCount + 1}`}
+                disabled={isSubmitting}
+                className="rounded-[8px]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                Nội dung chương
+              </label>
+              <Textarea
+                value={chapterContent}
+                onChange={(e) => setChapterContent(e.target.value)}
+                placeholder="Nội dung chương"
+                rows={4}
+                disabled={isSubmitting}
+                className="rounded-[8px]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                Ảnh chương
+              </label>
+              <div className="border border-input rounded-[8px] p-6 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors">
+                <input
+                  type="file"
+                  multiple
+                  accept="image/*"
+                  onChange={handleImageSelect}
+                  disabled={isSubmitting}
+                  className="hidden"
+                  id="chapter-image-input"
+                />
+                <label htmlFor="chapter-image-input" className="cursor-pointer block">
+                  <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                  <p className="text-sm text-foreground/80">
+                    Nhấn để tải ảnh lên
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF tối đa 50MB</p>
+                </label>
+              </div>
+            </div>
+
+            {imagePreviews.length > 0 && (
+              <div>
+                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                  Đã chọn ({imagePreviews.length})
+                </label>
+                <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
+                  <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                    {imagePreviews.map((preview, index) => (
+                      <div
+                        key={index}
+                        className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24"
+                      >
+                        <Image
+                          src={preview}
+                          alt={`Xem trước ${index}`}
+                          fill
+                          className="object-cover"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => removeImage(index)}
+                          className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-[8px] opacity-0 group-hover:opacity-100 transition-opacity text-xs cursor-pointer"
+                        >
+                          <X className="h-3 w-3" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            <div className="pt-3 border-t border-border/40 flex flex-wrap gap-2 justify-end">
               <Button
                 type="button"
                 variant="outline"

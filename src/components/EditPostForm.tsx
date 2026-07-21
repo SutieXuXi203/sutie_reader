@@ -124,85 +124,83 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground"
+                className="max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5"
             >
-                <DialogHeader className="p-6 pb-4 border-b border-border/40 shrink-0">
+                <DialogHeader>
                     <DialogTitle className="text-xl font-medium">Chỉnh sửa bài viết</DialogTitle>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="flex flex-col flex-1 overflow-hidden min-h-0">
-                    <div className="flex-1 overflow-y-auto p-6 space-y-5 custom-scrollbar">
-                        <div>
-                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tiêu đề</label>
-                            <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tiêu đề" maxLength={100} disabled={isSubmitting} className="rounded-[8px]" />
-                            <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p>
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tag (không bắt buộc)</label>
-                            <TagPicker
-                                selectedTags={tags}
-                                onChange={setTags}
-                                availableTags={availableTags}
-                                disabled={isSubmitting}
-                                placeholder="Nhập tag rồi nhấn Enter"
-                            />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Nội dung</label>
-                            <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Nội dung bài viết" rows={4} disabled={isSubmitting} className="rounded-[8px]" />
-                        </div>
-                        <div>
-                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tác giả (tuỳ chọn)</label>
-                            <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tên của bạn" disabled={isSubmitting} className="rounded-[8px]" />
-                        </div>
-                        {keptImages.length > 0 && (
-                            <div>
-                                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh hiện tại ({keptImages.length})</label>
-                                <div className="max-h-64 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
-                                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                                        {keptImages.map((src, idx) => (
-                                            <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
-                                                <Image src={getOptimizedImageUrl(src)} alt={`Ảnh ${idx + 1}`} fill className="object-cover" unoptimized />
-                                                <button type="button" onClick={() => removeKept(idx)}
-                                                    className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
-                        <div>
-                            <label className="block text-sm font-medium text-foreground mb-2">Thêm ảnh mới</label>
-                            <div className="border border-input rounded-[8px] p-6 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors">
-                                <input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isSubmitting} className="hidden" id="edit-image-input" />
-                                <label htmlFor="edit-image-input" className="cursor-pointer block">
-                                    <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                                    <p className="text-sm text-foreground/80">Click để tải ảnh lên</p>
-                                    <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF tối đa 50MB</p>
-                                </label>
-                            </div>
-                        </div>
-                        {newImagePreviews.length > 0 && (
-                            <div>
-                                <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh mới ({newImagePreviews.length})</label>
-                                <div className="max-h-64 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
-                                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                                        {newImagePreviews.map((preview, idx) => (
-                                            <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
-                                                <Image src={preview} alt={`Preview ${idx}`} fill className="object-cover" />
-                                                <button type="button" onClick={() => removeNew(idx)}
-                                                    className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
-                                                    <X className="h-3 w-3" />
-                                                </button>
-                                            </div>
-                                        ))}
-                                    </div>
-                                </div>
-                            </div>
-                        )}
+                <form onSubmit={handleSubmit} className="space-y-5">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tiêu đề</label>
+                        <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Tiêu đề" maxLength={100} disabled={isSubmitting} className="rounded-[8px]" />
+                        <p className="text-xs text-muted-foreground mt-1">{title.length}/100</p>
                     </div>
-                    <div className="p-4 border-t border-border/40 bg-card/95 shrink-0 flex gap-2 justify-end">
+                    <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tag (không bắt buộc)</label>
+                        <TagPicker
+                            selectedTags={tags}
+                            onChange={setTags}
+                            availableTags={availableTags}
+                            disabled={isSubmitting}
+                            placeholder="Nhập tag rồi nhấn Enter"
+                        />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Nội dung</label>
+                        <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Nội dung bài viết" rows={4} disabled={isSubmitting} className="rounded-[8px]" />
+                    </div>
+                    <div>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Tác giả (tuỳ chọn)</label>
+                        <Input value={author} onChange={(e) => setAuthor(e.target.value)} placeholder="Tên của bạn" disabled={isSubmitting} className="rounded-[8px]" />
+                    </div>
+                    {keptImages.length > 0 && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh hiện tại ({keptImages.length})</label>
+                            <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
+                                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                    {keptImages.map((src, idx) => (
+                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
+                                            <Image src={getOptimizedImageUrl(src)} alt={`Ảnh ${idx + 1}`} fill className="object-cover" unoptimized />
+                                            <button type="button" onClick={() => removeKept(idx)}
+                                                className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <div>
+                        <label className="block text-sm font-medium text-foreground mb-2">Thêm ảnh mới</label>
+                        <div className="border border-input rounded-[8px] p-6 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors">
+                            <input type="file" multiple accept="image/*" onChange={handleImageSelect} disabled={isSubmitting} className="hidden" id="edit-image-input" />
+                            <label htmlFor="edit-image-input" className="cursor-pointer block">
+                                <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                                <p className="text-sm text-foreground/80">Click để tải ảnh lên</p>
+                                <p className="text-xs text-muted-foreground mt-1">PNG, JPG, GIF tối đa 50MB</p>
+                            </label>
+                        </div>
+                    </div>
+                    {newImagePreviews.length > 0 && (
+                        <div>
+                            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Ảnh mới ({newImagePreviews.length})</label>
+                            <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-muted/20 custom-scrollbar">
+                                <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                                    {newImagePreviews.map((preview, idx) => (
+                                        <div key={idx} className="relative group bg-slate-100 dark:bg-slate-800 rounded-[8px] overflow-hidden h-24">
+                                            <Image src={preview} alt={`Preview ${idx}`} fill className="object-cover" />
+                                            <button type="button" onClick={() => removeNew(idx)}
+                                                className="absolute top-1 right-1 bg-primary hover:bg-primary/90 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer">
+                                                <X className="h-3 w-3" />
+                                            </button>
+                                        </div>
+                                    ))}
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                    <div className="pt-3 border-t border-border/40 flex gap-2 justify-end">
                         <Button type="button" variant="outline" onClick={() => onOpenChange(false)} disabled={isSubmitting} className="rounded-[8px]" size="sm">Hủy</Button>
                         <Button type="submit" disabled={isSubmitting} className="rounded-[8px]" size="sm">
                             {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
