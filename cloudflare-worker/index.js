@@ -394,6 +394,7 @@ const worker = {
         const uploadedUrls = [];
         for (let i = 0; i < files.length; i++) {
           const fileId = await uploadFileToDrive(accessToken, targetFolderId, postId, files[i], i, files.length);
+          await assertImageCanBeServed(accessToken, parentFolderId, fileId);
           uploadedUrls.push(`${imageBaseUrl}/image/${fileId}`);
         }
 

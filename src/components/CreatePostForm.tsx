@@ -51,6 +51,7 @@ export function CreatePostForm({
 
   const draftPostIdRef = useRef<string | null>(null);
   const createdChapterCountRef = useRef(0);
+  const isSavingChapterRef = useRef(false);
 
   const resetStoryFields = () => {
     setTitle('');
@@ -74,11 +75,12 @@ export function CreatePostForm({
     resetChapterFields();
     draftPostIdRef.current = null;
     createdChapterCountRef.current = 0;
+    isSavingChapterRef.current = false;
   };
 
   const cleanupDraftPost = async () => {
     const draftId = draftPostIdRef.current;
-    if (!draftId || createdChapterCountRef.current > 0) return;
+    if (!draftId || createdChapterCountRef.current > 0 || isSavingChapterRef.current) return;
     try {
       await fetch(`/api/posts/${draftId}`, { method: 'DELETE' });
     } catch (cleanupError) {
@@ -88,8 +90,10 @@ export function CreatePostForm({
 
   const handleDialogOpenChange = (nextOpen: boolean) => {
     if (!nextOpen) {
-      void cleanupDraftPost();
-      resetAll();
+      if (!isSavingChapterRef.current) {
+        void cleanupDraftPost();
+        resetAll();
+      }
     }
     onOpenChange(nextOpen);
   };
@@ -245,10 +249,11 @@ export function CreatePostForm({
     const uploadTitle = createdPostTitle || title || 'untitled';
     const chapterNumber = createdChapterCountRef.current + 1;
 
+    isSavingChapterRef.current = true;
+
     // Đóng popup chính ngay lập tức để người dùng không bị khóa giao diện!
     if (!keepAdding) {
       onOpenChange(false);
-      resetAll();
     } else {
       resetChapterFields();
       setChapterTitle(`Chương ${chapterNumber + 1}`);
@@ -287,6 +292,9 @@ export function CreatePostForm({
       updateProgress(currentFiles.length, currentFiles.length, 'success');
 
       onPostCreated();
+      if (!keepAdding) {
+        resetAll();
+      }
 
       setTimeout(() => {
         // Tự động đóng Widget sau 4 giây
@@ -297,6 +305,8 @@ export function CreatePostForm({
       console.error('Lỗi khi lưu chương:', err);
 
       updateProgress(0, currentFiles.length, 'error', message);
+    } finally {
+      isSavingChapterRef.current = false;
     }
   };
 
