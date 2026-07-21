@@ -171,7 +171,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
     return (
         <Dialog open={open} onOpenChange={(val) => { onOpenChange(val); if (!val) resetState(); }}>
-            <DialogContent className="sm:max-w-md bg-card border-border">
+            <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar bg-card border-border">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold text-center text-foreground mb-2">
                         {mode === 'login' && 'Chào mừng trở lại'}

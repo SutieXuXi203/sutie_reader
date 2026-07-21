@@ -150,7 +150,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
-        className="sm:max-w-md bg-popover border-border shadow-2xl"
+        className="sm:max-w-md max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar bg-popover border-border shadow-2xl"
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center text-card-foreground mb-2">

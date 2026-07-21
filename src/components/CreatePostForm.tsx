@@ -274,7 +274,7 @@ export function CreatePostForm({
 
   return (
     <Dialog open={open} onOpenChange={handleDialogOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5">
+      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5">
         <DialogHeader>
           <DialogTitle className="text-xl font-medium">
             {step === 'story' ? 'Tạo truyện mới' : 'Thêm chương cho truyện'}

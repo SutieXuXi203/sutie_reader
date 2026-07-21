@@ -156,7 +156,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
-                className="max-w-2xl max-h-[85vh] overflow-y-auto custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5"
+                className="max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5"
             >
                 <DialogHeader>
                     <DialogTitle className="text-xl font-medium">Chỉnh sửa bài viết</DialogTitle>
