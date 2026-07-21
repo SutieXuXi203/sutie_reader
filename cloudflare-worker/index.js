@@ -1,6 +1,3 @@
-// Cloudflare Worker for Google Drive Image Upload & Proxy
-// Copy toàn bộ mã nguồn này dán vào Cloudflare Worker dashboard (Worker: sutie-images)
-
 async function getAccessToken(env) {
   console.log('[CF WORKER] 🔑 Đang xin Google Access Token từ OAuth2 Refresh Token...');
   const params = new URLSearchParams({
@@ -132,7 +129,6 @@ export default {
       return new Response(null, { headers: corsHeaders });
     }
 
-    // 1. GET /image/:fileId
     if (request.method === 'GET' && url.pathname.startsWith('/image/')) {
       const fileId = url.pathname.replace('/image/', '');
       console.log(`[CF WORKER] 🖼️ Serving image request for file ID: ${fileId}`);
@@ -158,7 +154,6 @@ export default {
       }
     }
 
-    // 2. POST /upload
     if (request.method === 'POST' && url.pathname === '/upload') {
       console.log('[CF WORKER] 📥 Nhận request POST /upload');
 

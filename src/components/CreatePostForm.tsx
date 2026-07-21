@@ -99,14 +99,12 @@ export function CreatePostForm({
 
     e.target.value = '';
 
-    // Gộp ảnh cũ + mới và sắp xếp theo số tự nhiên trong tên file (0 -> 1 -> ... -> 10)
     const allFiles = [...imageFiles, ...selectedFiles].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
     );
 
     setImageFiles(allFiles);
 
-    // Đọc preview theo đúng thứ tự file đã được sắp xếp
     const previewPromises = allFiles.map((file) => {
       return new Promise<string>((resolve) => {
         const reader = new FileReader();
@@ -130,7 +128,6 @@ export function CreatePostForm({
   ): Promise<string[]> => {
     if (!files.length) return [];
 
-    // Sắp xếp lại lần nữa để đảm bảo thứ tự trước khi tải lên
     const sortedFiles = [...files].sort((a, b) =>
       a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
     );

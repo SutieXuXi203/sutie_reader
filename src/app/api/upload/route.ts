@@ -22,14 +22,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Không có file nào được gửi' }, { status: 400 });
         }
 
-        // Sắp xếp các file theo thứ tự số tự nhiên dựa trên tên file (VD: 0.png, 1.png, 2.png...)
         const files = rawFiles.sort((a, b) =>
             a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
         );
 
         console.log(`[API UPLOAD] 📥 Nhận ${files.length} ảnh upload cho tiêu đề: "${title}"`);
 
-        // Thử upload qua Cloudflare Worker nếu có cấu hình
         const workerUrl = process.env.CLOUDFLARE_WORKER_URL?.replace(/\/+$/, '');
         const uploadSecret = process.env.CLOUDFLARE_UPLOAD_SECRET;
 
