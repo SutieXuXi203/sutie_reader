@@ -132,14 +132,24 @@ async function deleteDriveFolder(postTitle: string) {
       q: `mimeType='application/vnd.google-apps.folder' and name='${postTitle.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,
       fields: 'files(id, name)',
       spaces: 'drive',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
     });
     if (searchRes.data.files && searchRes.data.files.length > 0) {
       const targetFolderId = searchRes.data.files[0].id!;
-      await drive.files.delete({ fileId: targetFolderId });
+      await drive.files.delete({
+        fileId: targetFolderId,
+        supportsAllDrives: true,
+      });
       console.log(`Đã xóa folder Drive "${postTitle}" (${targetFolderId})`);
     }
-  } catch (err) {
-    console.warn(`Không thể xóa folder Drive cho bài "${postTitle}":`, err);
+  } catch (err: unknown) {
+    const errorObj = err as { code?: number; status?: number };
+    if (errorObj?.code === 404 || errorObj?.status === 404) {
+      console.log(`Folder Drive cho bài "${postTitle}" không tồn tại hoặc đã bị xóa trước đó.`);
+    } else {
+      console.warn(`Không thể xóa folder Drive cho bài "${postTitle}":`, err);
+    }
   }
 }
 
@@ -153,12 +163,15 @@ async function renameDriveFolder(oldTitle: string, newTitle: string) {
       q: `mimeType='application/vnd.google-apps.folder' and name='${oldTitle.replace(/'/g, "\\'")}' and '${folderId}' in parents and trashed=false`,
       fields: 'files(id, name)',
       spaces: 'drive',
+      supportsAllDrives: true,
+      includeItemsFromAllDrives: true,
     });
     if (searchRes.data.files && searchRes.data.files.length > 0) {
       const targetFolderId = searchRes.data.files[0].id!;
       await drive.files.update({
         fileId: targetFolderId,
         requestBody: { name: newTitle },
+        supportsAllDrives: true,
       });
       console.log(`Đã đổi tên folder Drive từ "${oldTitle}" thành "${newTitle}" (${targetFolderId})`);
     } else {
