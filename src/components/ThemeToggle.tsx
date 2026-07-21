@@ -1,7 +1,7 @@
 'use client';
 import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
-import { Moon, Sun } from 'lucide-react';
+import { AnimatedSun, AnimatedMoon } from '@/components/animate-ui/icons/AnimateIcon';
 import { useSyncExternalStore } from 'react';
 
 export function ThemeToggle() {
@@ -22,9 +22,9 @@ export function ThemeToggle() {
       onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}
     >
       {theme === 'dark' ? (
-        <Sun className="h-4 w-4 animate-in fade-in zoom-in spin-in-180 duration-500" />
+        <AnimatedSun className="h-4 w-4" animation="rotate" />
       ) : (
-        <Moon className="h-4 w-4 animate-in fade-in zoom-in spin-in-[-180deg] duration-500" />
+        <AnimatedMoon className="h-4 w-4" animation="rotate" />
       )}
     </Button>
   );

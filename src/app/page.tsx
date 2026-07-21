@@ -2,8 +2,9 @@
 import { useState, useEffect, useCallback, useDeferredValue, useMemo, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import { 
-  BookOpen, BookmarkCheck, ChevronRight, X, Search, Lock
-} from 'lucide-react';
+  AnimatedBookOpen, AnimatedBookmarkCheck, AnimatedSearch, AnimatedLock, AnimateIcon
+} from '@/components/animate-ui/icons/AnimateIcon';
+import { ChevronRight, X } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -177,7 +178,7 @@ function HomeContent() {
           {user && bookmarks.length > 0 && (
             <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
-                <BookmarkCheck className="w-4 h-4 text-primary" />
+                <AnimatedBookmarkCheck className="w-4 h-4 text-primary" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Đang đọc dở</h3>
               </div>
               
@@ -207,7 +208,7 @@ function HomeContent() {
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                           <div className="absolute bottom-2 left-3 flex items-center gap-1 text-white text-[10px] font-bold">
-                            <BookOpen className="w-3 h-3" />
+                            <AnimatedBookOpen className="w-3 h-3" />
                             Chương {(bm.chapterIndex ?? 0) + 1} · Trang {bm.currentPage + 1}/{bm.totalPages}
                           </div>
                         </div>
@@ -249,7 +250,7 @@ function HomeContent() {
                 <div className="w-full sm:w-[240px] shrink-0">
                   <div className="relative group">
                     <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/90 transition-colors group-focus-within:text-primary">
-                      <Search className="w-4 h-4" />
+                      <AnimatedSearch className="w-4 h-4" />
                     </span>
                     <Input
                       id="home-post-search"
@@ -301,7 +302,7 @@ function HomeContent() {
             <div className="reveal flex flex-col items-center justify-center py-20 px-6 bg-card/50 backdrop-blur-md border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
               <div className="relative z-10 w-16 h-16 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                <Lock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors group-hover:animate-bounce" />
+                <AnimatedLock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors" animation="bounce" />
               </div>
               <h3 className="relative z-10 text-xl font-bold text-foreground mb-2">Nội dung đã bị khóa</h3>
               <p className="relative z-10 text-muted-foreground max-w-sm mb-8">

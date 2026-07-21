@@ -1,5 +1,6 @@
 'use client';
-import { Trash2, Pencil, CalendarDays, User, ShieldAlert, Eye } from 'lucide-react';
+import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
+import { CalendarDays, ShieldAlert, Eye } from 'lucide-react';
 import React, { useEffect, useState, useCallback } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -170,13 +171,13 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             </p>
           )}
           <div className="flex items-center gap-2 mb-6 text-foreground/80 font-semibold w-fit">
-            <User className="w-4 h-4" />
+            <AnimatedUser className="w-4 h-4" />
             <span className="text-sm">{post.author}</span>
           </div>
           <div className="flex flex-wrap items-center justify-between gap-y-3 text-[12px] sm:text-[13px] pt-4 border-t border-border mt-auto">
             <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground font-medium">
               <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <CalendarDays className="w-3.5 h-3.5" />
+                <AnimateIcon icon={CalendarDays} animation="scale" className="w-3.5 h-3.5" />
                 {formattedCreatedAt}
               </span>
             </div>
@@ -187,7 +188,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                   className="p-1.5 sm:p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-[8px] transition-all cursor-pointer"
                   title="Chỉnh sửa"
                 >
-                  <Pencil className="h-4 w-4" />
+                  <AnimatedEdit className="h-4 w-4" />
                 </button>
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDeleteConfirmOpen(true); }}
@@ -195,7 +196,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                   className="p-1.5 sm:p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-[8px] transition-all disabled:opacity-50 cursor-pointer"
                   title="Xóa"
                 >
-                  <Trash2 className="h-4 w-4" />
+                  <AnimatedTrash className="h-4 w-4" />
                 </button>
               </div>
             )}

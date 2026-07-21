@@ -3,20 +3,20 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import {
-  BookOpen,
-  ArrowLeft,
-  Loader2,
-  ShieldAlert,
-  Bookmark,
-  BookmarkCheck,
-  ArrowRight,
-  ChevronDown,
-} from 'lucide-react';
+  AnimatedBookOpen,
+  AnimatedArrowLeft,
+  AnimatedArrowRight,
+  AnimatedBookmark,
+  AnimatedBookmarkCheck,
+  AnimatedShieldAlert,
+  AnimatedLock,
+  AnimateIcon,
+} from '@/components/animate-ui/icons/AnimateIcon';
+import { Loader2, ChevronDown } from 'lucide-react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthContext';
-import { Lock } from 'lucide-react';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 
@@ -311,7 +311,7 @@ export default function PostDetailPage() {
     return (
       <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground px-6 text-center">
         <div className="w-20 h-20 bg-card rounded-[8px] flex items-center justify-center mb-8 border border-border shadow-lg">
-          <Lock className="w-10 h-10 text-muted-foreground" />
+          <AnimatedLock className="w-10 h-10 text-muted-foreground" />
         </div>
         <h1 className="text-3xl font-bold mb-4">Quyền truy cập bị giới hạn</h1>
         <p className="text-muted-foreground max-w-md mb-10 leading-relaxed">
@@ -346,7 +346,7 @@ export default function PostDetailPage() {
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-destructive/10 filter blur-[100px] rounded-full pointer-events-none" />
         <div className="relative z-10 flex flex-col items-center max-w-[500px]">
           <div className="w-16 h-16 bg-card rounded-[8px] flex items-center justify-center mb-8 border border-border shadow-lg">
-            <ShieldAlert className="w-8 h-8 text-destructive" />
+            <AnimatedShieldAlert className="w-8 h-8 text-destructive" />
           </div>
           <h1 className="text-3xl sm:text-4xl font-extrabold mb-5 text-foreground tracking-tight">
             Cảnh báo nội dung
@@ -399,10 +399,10 @@ export default function PostDetailPage() {
               href="/#posts"
               className="p-1.5 md:p-2 rounded-[8px] bg-secondary hover:bg-muted text-foreground transition-colors"
             >
-              <ArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+              <AnimatedArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
             </Link>
             <div className="flex min-w-0 items-center gap-2 md:gap-3">
-              <BookOpen className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground flex-shrink-0" />
+              <AnimatedBookOpen className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
                 <h1 className="text-foreground font-bold text-sm md:text-base leading-tight line-clamp-1">
                   {post.title}
@@ -445,9 +445,9 @@ export default function PostDetailPage() {
                 }`}
             >
               {hasBookmark ? (
-                <BookmarkCheck className="w-4 h-4 md:w-5 md:h-5" />
+                <AnimatedBookmarkCheck className="w-4 h-4 md:w-5 md:h-5" />
               ) : (
-                <Bookmark className="w-4 h-4 md:w-5 md:h-5" />
+                <AnimatedBookmark className="w-4 h-4 md:w-5 md:h-5" />
               )}
             </button>
             <span className="text-foreground text-xs md:text-sm font-bold bg-secondary px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-border">
@@ -540,7 +540,7 @@ export default function PostDetailPage() {
             disabled={activeChapterIndex === 0}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-background text-foreground disabled:text-muted-foreground cursor-pointer disabled:cursor-not-allowed text-[11px] md:text-xs font-medium transition-colors disabled:opacity-50"
           >
-            <ArrowLeft className="w-3.5 h-3.5" />
+            <AnimatedArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Chương trước</span>
           </button>
           <div className="relative">
@@ -567,7 +567,7 @@ export default function PostDetailPage() {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-background text-foreground disabled:text-muted-foreground cursor-pointer disabled:cursor-not-allowed text-[11px] md:text-xs font-medium transition-colors disabled:opacity-50"
           >
             <span className="hidden sm:inline">Chương sau</span>
-            <ArrowRight className="w-3.5 h-3.5" />
+            <AnimatedArrowRight className="w-3.5 h-3.5" />
           </button>
         </div>
       </div>
