@@ -481,7 +481,7 @@ export default function PostDetailPage() {
               </div>
             ))
           ) : (
-            <div className="w-full max-w-3xl mt-16 rounded-[12px] border border-border bg-card/50 p-8 text-center">
+            <div className="w-full max-w-3xl mt-16 rounded-[8px] border border-border bg-card/50 p-8 text-center">
               <p className="text-foreground font-semibold mb-2">Chưa có ảnh cho chương này</p>
               <p className="text-sm text-muted-foreground">
                 Hãy thêm ảnh trong trang quản trị để hiển thị nội dung chương.
@@ -534,7 +534,7 @@ export default function PostDetailPage() {
         className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 pointer-events-none ${showUI ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
           }`}
       >
-        <div className="flex items-center gap-1.5 bg-background p-1 rounded-[12px] border border-border shadow-2xl pointer-events-auto">
+        <div className="flex items-center gap-1.5 bg-background p-1 rounded-[8px] border border-border shadow-2xl pointer-events-auto">
           <button
             onClick={() => goToChapter(activeChapterIndex - 1)}
             disabled={activeChapterIndex === 0}

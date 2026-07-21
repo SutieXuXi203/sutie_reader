@@ -153,13 +153,13 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                   type="button"
                   onClick={(e) => handleTagClick(e, tag)}
                   key={`${post._id}-${tag}`}
-                  className="inline-flex items-center rounded-[4px] border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+                  className="inline-flex items-center rounded-[8px] border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
                 >
                   #{tag.toLowerCase()}
                 </button>
               ))}
               {post.tags.length > 4 && (
-                <span className="inline-flex items-center rounded-[4px] border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-primary">
+                <span className="inline-flex items-center rounded-[8px] border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-primary">
                   +{post.tags.length - 4}
                 </span>
               )}
@@ -251,10 +251,10 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           >
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/20 filter blur-[100px] rounded-full pointer-events-none" />
             <div
-              className="relative z-10 flex flex-col items-center max-w-[400px] w-full bg-card border border-border p-8 rounded-[12px] shadow-2xl"
+              className="relative z-10 flex flex-col items-center max-w-[400px] w-full bg-card border border-border p-8 rounded-[8px] shadow-2xl"
               onClick={(e) => e.stopPropagation()}
             >
-              <div className="w-14 h-14 bg-secondary rounded-[12px] flex items-center justify-center mb-6 border border-border/50">
+              <div className="w-14 h-14 bg-secondary rounded-[8px] flex items-center justify-center mb-6 border border-border/50">
                 <ShieldAlert className="w-7 h-7 text-primary" />
               </div>
               <h3 className="text-2xl font-bold mb-4 text-foreground">Cảnh báo !</h3>

@@ -151,8 +151,6 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent
         className="sm:max-w-md bg-popover border-border shadow-2xl"
-        overlayClassName="bg-primary/35 dark:bg-black/60 md:bg-primary/18 md:dark:bg-black/45 backdrop-blur-sm"
-        onOpenAutoFocus={(e) => e.preventDefault()}
       >
         <DialogHeader>
           <DialogTitle className="text-2xl font-bold text-center text-card-foreground mb-2">

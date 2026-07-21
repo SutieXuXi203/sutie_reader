@@ -120,7 +120,7 @@ export default function ProductsPage() {
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1">
                 
                 {/* Posts Card Wrapper */}
-                <div className="border border-border rounded-[16px] bg-card/40 p-5 md:p-6 shadow-sm mt-8">
+                <div className="border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm mt-8">
                     
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4 border-b border-border/50 pb-4">
                         <div>
@@ -175,8 +175,8 @@ export default function ProductsPage() {
                     ) : !user ? (
                         <div className="flex flex-col items-center justify-center py-20 px-6 bg-card/50 backdrop-blur-md border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-                            <div className="relative z-10 w-16 h-16 bg-background rounded-[8px] flex items-center justify-center mb-6 border border-border group-hover:scale-110 transition-transform duration-500 shadow-md">
-                                <Lock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors" />
+                            <div className="relative z-10 w-16 h-16 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+                                <Lock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors group-hover:animate-bounce" />
                             </div>
                             <h3 className="relative z-10 text-xl font-bold text-foreground mb-2">Nội dung đã bị khóa</h3>
                             <p className="relative z-10 text-muted-foreground max-w-sm mb-8">

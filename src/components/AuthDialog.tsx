@@ -338,7 +338,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     type="checkbox"
                                     checked={rememberMe}
                                     onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 rounded-[8px] border-red-300 dark:border-red-700 text-red-600 focus:ring-primary accent-red-600 dark:accent-red-400 hover:cursor-pointer"
+                                    className="w-4 h-4 rounded-[8px] border-neutral-300 dark:border-neutral-600 text-foreground focus:ring-primary accent-black dark:accent-white hover:cursor-pointer"
                                 />
                                 <span className="text-xs text-neutral-600 dark:text-neutral-300 group-hover:text-neutral-800 dark:group-hover:text-neutral-100 transition-colors">
                                     Ghi nhớ đăng nhập
@@ -347,7 +347,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                             <button
                                 type="button"
                                 onClick={() => setMode('forgot-password')}
-                                className="text-xs text-neutral-600 dark:text-neutral-300 hover:text-red-600 dark:hover:text-red-400 transition-colors"
+                                className="text-xs text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
                             >
                                 Quên mật khẩu?
                             </button>

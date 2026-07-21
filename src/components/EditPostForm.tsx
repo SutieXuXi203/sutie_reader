@@ -125,7 +125,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
                 className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-[8px] border border-border shadow-2xl dark:shadow-primary/20 no-scrollbar"
-                onOpenAutoFocus={(e) => e.preventDefault()}
             >
                 <DialogHeader>
                     <DialogTitle className="text-xl font-medium">Chỉnh sửa bài viết</DialogTitle>

@@ -383,7 +383,7 @@ export default function AdminDashboard() {
     return (
         <div className="min-h-screen pt-20 pb-24 lg:pb-0 [scrollbar-gutter:stable] bg-background font-sans selection:bg-primary/20">
             <div className="mx-auto flex w-full max-w-[1600px] gap-4 px-4 py-4">
-            <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto rounded-[10px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
+            <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto rounded-[8px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
                 <div className="p-6">
                     <h2 className="font-semibold text-lg text-foreground">Quản trị</h2>
                 </div>
@@ -435,7 +435,7 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </aside>
-            <main className="flex-1 min-w-0 min-h-[calc(100vh-2rem)] rounded-[10px] border border-border/70 bg-card/35 shadow-sm">
+            <main className="flex-1 min-w-0 min-h-[calc(100vh-2rem)] rounded-[8px] border border-border/70 bg-card/35 shadow-sm">
                 <header className="h-20 bg-card/55 backdrop-blur-md border-b border-border/70 px-6 sm:px-8 lg:px-10 flex items-center justify-between sticky top-0 z-10 rounded-t-[10px]">
                     <div className="flex items-center gap-6">
                         <div className="lg:hidden">
@@ -681,7 +681,7 @@ export default function AdminDashboard() {
                                                     ) : filteredUsers.length === 0 ? (
                                                         <tr>
                                                             <td colSpan={7} className="px-5 py-12 text-center">
-                                                                <div className="mx-auto max-w-sm rounded-[10px] border border-border/60 bg-card/70 px-6 py-7">
+                                                                <div className="mx-auto max-w-sm rounded-[8px] border border-border/60 bg-card/70 px-6 py-7">
                                                                     <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-secondary/80">
                                                                         <Users className="w-6 h-6 text-foreground" />
                                                                     </div>

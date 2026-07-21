@@ -62,7 +62,7 @@ export default function ContactPage() {
           </div>
 
           {/* Contact Form Section Stretched */}
-          <section className="border border-border bg-card/50 backdrop-blur-md rounded-[16px] p-6 md:p-8 shadow-sm">
+          <section className="border border-border bg-card/50 backdrop-blur-md rounded-[8px] p-6 md:p-8 shadow-sm">
           <div className="text-center mb-6">
             <p className="text-[10px] font-bold uppercase tracking-wider text-primary mb-1.5 flex items-center justify-center gap-1.5">
               <Mail className="w-3.5 h-3.5" />

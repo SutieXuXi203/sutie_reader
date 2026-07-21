@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import {
   LogOut, User as UserIcon, LogIn,
-  LayoutDashboard, Mail, Newspaper, X, Menu, BookOpen, Home
+  LayoutDashboard, Mail, Newspaper, X, Menu, Home
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
@@ -80,7 +80,6 @@ export function SiteNav() {
           
           {/* Logo / Brand */}
           <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-90 transition-opacity">
-            <BookOpen className="w-5 h-5" />
             <span className="font-extrabold text-sm sm:text-base tracking-tight text-foreground">
               LuBu
             </span>
@@ -173,7 +172,7 @@ export function SiteNav() {
             ) : (
               <button
                 onClick={() => setIsAuthDialogOpen(true)}
-                className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-primary/50 text-primary hover:text-primary-foreground hover:bg-primary hover:border-primary transition-all active:scale-95 cursor-pointer bg-transparent"
+                className="inline-flex items-center justify-center w-8 h-8 rounded-full border border-dashed border-primary/50 text-primary hover:text-primary-foreground hover:bg-primary hover:border-primary transition-all active:scale-95 cursor-pointer bg-transparent hover:animate-pulse animate-infinite"
                 title="Đăng nhập"
               >
                 <LogIn className="w-4 h-4" />

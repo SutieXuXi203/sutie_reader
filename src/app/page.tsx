@@ -175,7 +175,7 @@ function HomeContent() {
           
           {/* Bookmarks ("Đang đọc dở") */}
           {user && bookmarks.length > 0 && (
-            <div className="reveal border border-border rounded-[16px] bg-card/40 p-5 md:p-6 shadow-sm">
+            <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <BookmarkCheck className="w-4 h-4 text-primary" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Đang đọc dở</h3>
@@ -185,7 +185,7 @@ function HomeContent() {
                 {bookmarks.map((bm) => {
                   const progress = bm.totalPages > 1 ? ((bm.currentPage) / (bm.totalPages - 1)) * 100 : 100;
                   return (
-                    <div key={bm._id} className="group relative flex-shrink-0 w-[240px] sm:w-[280px] bg-card border border-border rounded-[12px] overflow-hidden hover:border-primary/50 transition-all shadow-sm">
+                    <div key={bm._id} className="group relative flex-shrink-0 w-[240px] sm:w-[280px] bg-card border border-border rounded-[8px] overflow-hidden hover:border-primary/50 transition-all shadow-sm">
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeBookmark(bm.postId); }}
                         className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-black/60 text-white/80 hover:text-white hover:bg-destructive/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer border-0"
@@ -238,7 +238,7 @@ function HomeContent() {
 
           {/* Stories List Section */}
           {user && (
-            <div className="reveal border border-border rounded-[16px] bg-card/40 p-5 md:p-6 shadow-sm">
+            <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
               <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4 border-b border-border/50 pb-4">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
@@ -300,8 +300,8 @@ function HomeContent() {
           {!user && (
             <div className="reveal flex flex-col items-center justify-center py-20 px-6 bg-card/50 backdrop-blur-md border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-              <div className="relative z-10 w-16 h-16 bg-background rounded-[8px] flex items-center justify-center mb-6 border border-border group-hover:scale-110 transition-transform duration-500 shadow-md">
-                <Lock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors" />
+              <div className="relative z-10 w-16 h-16 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
+                <Lock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors group-hover:animate-bounce" />
               </div>
               <h3 className="relative z-10 text-xl font-bold text-foreground mb-2">Nội dung đã bị khóa</h3>
               <p className="relative z-10 text-muted-foreground max-w-sm mb-8">
