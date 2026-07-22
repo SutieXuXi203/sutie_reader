@@ -28,24 +28,38 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
         if (uiTimer.current) clearTimeout(uiTimer.current);
         uiTimer.current = setTimeout(() => setShowUI(false), 3000);
     }, []);
+    const closeDetail = useCallback(() => {
+        setCurrentPage(0);
+        setShowUI(true);
+        if (uiTimer.current) clearTimeout(uiTimer.current);
+        onOpenChange(false);
+    }, [onOpenChange]);
     useEffect(() => {
-        if (!open) {
+        if (uiTimer.current) clearTimeout(uiTimer.current);
+
+        const resetFrame = requestAnimationFrame(() => {
             setCurrentPage(0);
             setShowUI(true);
-            if (uiTimer.current) clearTimeout(uiTimer.current);
-            return;
+        });
+
+        if (!open) {
+            return () => cancelAnimationFrame(resetFrame);
         }
+
         uiTimer.current = setTimeout(() => setShowUI(false), 3000);
-        return () => { if (uiTimer.current) clearTimeout(uiTimer.current); };
-    }, [open]);
+        return () => {
+            cancelAnimationFrame(resetFrame);
+            if (uiTimer.current) clearTimeout(uiTimer.current);
+        };
+    }, [open, post._id]);
     useEffect(() => {
         if (!open) return;
         const handleKey = (e: KeyboardEvent) => {
-            if (e.key === 'Escape') onOpenChange(false);
+            if (e.key === 'Escape') closeDetail();
         };
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
-    }, [open, onOpenChange]);
+    }, [open, closeDetail]);
     useEffect(() => {
         if (!open) return;
         const container = scrollRef.current;
@@ -92,7 +106,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                         <span className="text-white/50 text-xs font-medium">{total}</span>
                     </div>
                     <button
-                        onClick={() => onOpenChange(false)}
+                        onClick={closeDetail}
                         className="w-8 h-8 rounded-[8px] bg-white/10 hover:bg-primary/90 text-white transition-all flex items-center justify-center hover:shadow-lg hover:shadow-primary/25"
                     >
                         <X className="w-4 h-4" />
@@ -129,7 +143,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                         <p className="text-primary-foreground/70 text-sm font-medium tracking-widest uppercase">Hết chương</p>
                         <div className="w-16 h-px bg-gradient-to-r from-transparent via-primary/60 to-transparent" />
                         <button
-                            onClick={() => onOpenChange(false)}
+                            onClick={closeDetail}
                             className="mt-2 px-8 py-2.5 rounded-[8px] gradient-red text-white text-sm font-bold transition-all hover:opacity-90 shadow-xl shadow-primary/30 active:scale-95 cursor-pointer"
                         >
                             Đóng

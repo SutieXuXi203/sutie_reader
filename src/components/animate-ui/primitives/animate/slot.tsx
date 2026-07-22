@@ -1,7 +1,7 @@
 'use client';
 
 import * as React from 'react';
-import { motion, isMotionComponent, type HTMLMotionProps } from 'motion/react';
+import type { HTMLMotionProps } from 'motion/react';
 import { cn } from '@/lib/utils';
 
 type AnyProps = Record<string, unknown>;
@@ -16,8 +16,7 @@ type WithAsChild<Base extends object> =
   | (Base & { asChild?: false | undefined });
 
 type SlotProps<T extends HTMLElement = HTMLElement> = {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  children?: any;
+  children?: React.ReactElement;
 } & DOMMotionProps<T>;
 
 function mergeRefs<T>(
@@ -63,28 +62,19 @@ function Slot<T extends HTMLElement = HTMLElement>({
   ref,
   ...props
 }: SlotProps<T>) {
-  const isAlreadyMotion =
-    typeof children.type === 'object' &&
-    children.type !== null &&
-    isMotionComponent(children.type);
-
-  const Base = React.useMemo(
-    () =>
-      isAlreadyMotion
-        ? (children.type as React.ElementType)
-        : motion.create(children.type as React.ElementType),
-    [isAlreadyMotion, children.type],
-  );
-
   if (!React.isValidElement(children)) return null;
 
-  const { ref: childRef, ...childProps } = children.props as AnyProps;
+  const child = children as React.ReactElement<
+    AnyProps & { ref?: React.Ref<T> }
+  >;
+  const { ref: childRef, ...childProps } = child.props;
 
   const mergedProps = mergeProps(childProps, props);
 
-  return (
-    <Base {...mergedProps} ref={mergeRefs(childRef as React.Ref<T>, ref)} />
-  );
+  return React.cloneElement(child, {
+    ...mergedProps,
+    ref: mergeRefs(childRef, ref),
+  });
 }
 
 export {

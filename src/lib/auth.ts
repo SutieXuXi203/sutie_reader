@@ -7,7 +7,7 @@ export async function getAuthUser(request: NextRequest) {
         if (!token) return null;
         const { payload } = await jwtVerify(token, JWT_SECRET);
         return payload as { id: string; email: string; role: 'user' | 'admin' };
-    } catch (error) {
+    } catch {
         return null;
     }
 }

@@ -233,6 +233,8 @@ export function CreatePostForm({
   };
 
   const handleSaveChapter = async (keepAdding: boolean) => {
+    if (isSavingChapterRef.current) return;
+
     if (!createdPostId) {
       notify.error('Không tìm thấy truyện để thêm chương');
       return;
@@ -250,6 +252,7 @@ export function CreatePostForm({
     const chapterNumber = createdChapterCountRef.current + 1;
 
     isSavingChapterRef.current = true;
+    setIsSubmitting(true);
 
     // Đóng popup chính ngay lập tức để người dùng không bị khóa giao diện!
     if (!keepAdding) {
@@ -307,6 +310,7 @@ export function CreatePostForm({
       updateProgress(0, currentFiles.length, 'error', message);
     } finally {
       isSavingChapterRef.current = false;
+      setIsSubmitting(false);
     }
   };
 

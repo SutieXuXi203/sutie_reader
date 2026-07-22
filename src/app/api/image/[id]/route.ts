@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { google } from 'googleapis';
+import type { Readable } from 'node:stream';
 async function getDriveService() {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -28,10 +29,12 @@ export async function GET(
             { fileId: id, alt: 'media' },
             { responseType: 'stream' }
         );
-        const nodeStream = response.data as any;
-        const webStream = new ReadableStream({
+        const nodeStream = response.data as Readable;
+        const webStream = new ReadableStream<Uint8Array>({
             start(controller) {
-                nodeStream.on('data', (chunk: Buffer) => controller.enqueue(chunk));
+                nodeStream.on('data', (chunk: Buffer | string) =>
+                    controller.enqueue(typeof chunk === 'string' ? Buffer.from(chunk) : chunk)
+                );
                 nodeStream.on('end', () => controller.close());
                 nodeStream.on('error', (err: Error) => controller.error(err));
             }
@@ -43,8 +46,9 @@ export async function GET(
                 'Content-Disposition': `inline; filename="${encodeURIComponent(filename)}"`,
             },
         });
-    } catch (error: any) {
-        console.error('Error serving image from Drive:', error.message || error);
+    } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        console.error('Error serving image from Drive:', message);
         return NextResponse.json({ error: 'Lỗi tải ảnh' }, { status: 500 });
     }
 }

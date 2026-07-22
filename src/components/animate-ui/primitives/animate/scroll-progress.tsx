@@ -132,27 +132,32 @@ function ScrollProgress({
 }: ScrollProgressProps) {
   const { scale, direction, global } = useScrollProgress();
   const scaleValue = useMotionValueState(scale);
+  const { children, ...motionProps } = props;
 
-  const Component = asChild ? Slot : motion.div;
+  const progressProps = {
+    'data-slot': 'scroll-progress',
+    'data-direction': direction,
+    'data-mode': mode,
+    'data-global': global,
+    style: {
+      ...(mode === 'width' || mode === 'height'
+        ? {
+            [mode]: scaleValue * 100 + '%',
+          }
+        : {
+            [mode]: scale,
+          }),
+      ...style,
+    },
+    ...motionProps,
+  };
+
+  if (asChild) {
+    return <Slot {...progressProps}>{children as React.ReactElement}</Slot>;
+  }
 
   return (
-    <Component
-      data-slot="scroll-progress"
-      data-direction={direction}
-      data-mode={mode}
-      data-global={global}
-      style={{
-        ...(mode === 'width' || mode === 'height'
-          ? {
-              [mode]: scaleValue * 100 + '%',
-            }
-          : {
-              [mode]: scale,
-            }),
-        ...style,
-      }}
-      {...props}
-    />
+    <motion.div {...progressProps}>{children}</motion.div>
   );
 }
 
@@ -164,19 +169,24 @@ function ScrollProgressContainer({
   ...props
 }: ScrollProgressContainerProps) {
   const { containerRef, direction, global } = useScrollProgress();
+  const { children, ...motionProps } = props;
 
   React.useImperativeHandle(ref, () => containerRef.current as HTMLDivElement);
 
-  const Component = asChild ? Slot : motion.div;
+  const containerProps = {
+    ref: containerRef,
+    'data-slot': 'scroll-progress-container',
+    'data-direction': direction,
+    'data-global': global,
+    ...motionProps,
+  };
+
+  if (asChild) {
+    return <Slot {...containerProps}>{children as React.ReactElement}</Slot>;
+  }
 
   return (
-    <Component
-      ref={containerRef}
-      data-slot="scroll-progress-container"
-      data-direction={direction}
-      data-global={global}
-      {...props}
-    />
+    <motion.div {...containerProps}>{children}</motion.div>
   );
 }
 

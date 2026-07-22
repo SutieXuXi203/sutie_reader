@@ -5,7 +5,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
 export const maxDuration = 60;
 const normalizeTag = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase();
-export async function GET(request: NextRequest) {
+type MongoDuplicateKeyError = Error & { code?: number };
+
+export async function GET() {
     try {
         await connectDB();
         const tags = await Tag.find({}).sort({ name: 1 }).lean();
@@ -35,12 +37,14 @@ export async function POST(request: NextRequest) {
         }
         const newTag = await Tag.create({ name: normalizedName });
         return NextResponse.json({ message: 'Tạo tag thành công', tag: newTag }, { status: 201 });
-    } catch (error: any) {
+    } catch (error) {
         console.error('Lỗi khi tạo tag:', error);
-        if (error.code === 11000) {
+        const mongoError = error as MongoDuplicateKeyError;
+        if (mongoError.code === 11000) {
             return NextResponse.json({ error: 'Tag này đã tồn tại.' }, { status: 409 });
         }
-        return NextResponse.json({ error: 'Tạo tag không thành công', details: error.message }, { status: 500 });
+        const message = error instanceof Error ? error.message : 'Unknown error';
+        return NextResponse.json({ error: 'Tạo tag không thành công', details: message }, { status: 500 });
     }
 }
 export async function PUT(request: NextRequest) {
@@ -70,12 +74,7 @@ export async function PUT(request: NextRequest) {
                 { status: 400 }
             );
         }
-        const result = await Post.updateMany(
-            { tags: { $regex: new RegExp(`^${nOldTag}$`, 'i') } },
-            {
-                $pull: { tags: { $regex: new RegExp(`^${nOldTag}$`, 'i') } },
-            }
-        );
+        const postsWithOldTag = await Post.find({ tags: { $regex: new RegExp(`^${nOldTag}$`, 'i') } });
         const currentTag = await Tag.findOne({ name: nOldTag });
         if (currentTag) {
             currentTag.name = nNewTag;
@@ -83,7 +82,6 @@ export async function PUT(request: NextRequest) {
         } else {
             await Tag.updateOne({ name: nNewTag }, { $set: { name: nNewTag } }, { upsert: true });
         }
-        const postsWithOldTag = await Post.find({ tags: { $regex: new RegExp(`^${nOldTag}$`, 'i') } });
         let updatedCount = 0;
         for (const post of postsWithOldTag) {
             const updatedTags = post.tags?.filter(t => t.toLowerCase() !== nOldTag) || [];

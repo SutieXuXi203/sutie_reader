@@ -15,6 +15,7 @@ import {
 import { X, Menu } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
+import Image from 'next/image';
 import { usePathname } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { ScrollProgressProvider, ScrollProgress } from '@/components/animate-ui/primitives/animate/scroll-progress';
@@ -33,16 +34,12 @@ export function SiteNav() {
   const profileButtonRef = useRef<HTMLButtonElement | null>(null);
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
-  const isHomePage = pathname === '/';
   const isPostReaderPage = pathname.startsWith('/posts/');
-
-  useEffect(() => {
-    if (!user) setIsProfileMenuOpen(false);
-  }, [user]);
+  const showProfileMenu = Boolean(user && isProfileMenuOpen);
 
   // Handle clicking outside the profile dropdown
   useEffect(() => {
-    if (!isProfileMenuOpen) return;
+    if (!showProfileMenu) return;
     const handlePointerDown = (event: PointerEvent) => {
       const target = event.target as Node;
       if (profileButtonRef.current?.contains(target) || profileMenuRef.current?.contains(target)) return;
@@ -50,7 +47,7 @@ export function SiteNav() {
     };
     document.addEventListener('pointerdown', handlePointerDown);
     return () => document.removeEventListener('pointerdown', handlePointerDown);
-  }, [isProfileMenuOpen]);
+  }, [showProfileMenu]);
 
   // Prevent background scroll when mobile menu is open
   useEffect(() => {
@@ -64,22 +61,11 @@ export function SiteNav() {
 
   // Close mobile menu on path changes
   useEffect(() => {
-    setIsMobileMenuOpen(false);
+    const frame = requestAnimationFrame(() => setIsMobileMenuOpen(false));
+    return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
   if (isPostReaderPage) return null;
-
-  const scrollToSection = (id: string) => {
-    setIsMobileMenuOpen(false);
-    if (!isHomePage) {
-      window.location.href = `/#${id}`;
-      return;
-    }
-    const el = document.getElementById(id);
-    if (el) {
-      el.scrollIntoView({ behavior: 'smooth' });
-    }
-  };
 
   return (
     <>
@@ -129,19 +115,19 @@ export function SiteNav() {
                 <button
                   ref={profileButtonRef}
                   onClick={() => setIsProfileMenuOpen(!isProfileMenuOpen)}
-                  aria-expanded={isProfileMenuOpen}
+                  aria-expanded={showProfileMenu}
                   aria-haspopup="menu"
                   className="w-8 h-8 rounded-full overflow-hidden border border-border hover:border-primary transition-all flex items-center justify-center cursor-pointer bg-secondary"
                 >
                   {user.avatar ? (
-                    <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
+                    <Image src={user.avatar} alt={user.name} width={32} height={32} className="w-full h-full object-cover" unoptimized />
                   ) : (
                     <AnimatedUser className="w-4 h-4 text-primary" />
                   )}
                 </button>
 
                 {/* Profile Dropdown Menu */}
-                {isProfileMenuOpen && (
+                {showProfileMenu && (
                   <div
                     ref={profileMenuRef}
                     className="absolute right-0 mt-2 bg-background border border-border rounded-[8px] shadow-2xl p-2 min-w-[240px] z-50 animate-popup-preview"

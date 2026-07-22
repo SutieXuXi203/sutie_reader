@@ -10,7 +10,6 @@ import {
   AnimatedBookmarkCheck,
   AnimatedShieldAlert,
   AnimatedLock,
-  AnimateIcon,
 } from '@/components/animate-ui/icons/AnimateIcon';
 import { Loader2, ChevronDown } from 'lucide-react';
 import Image from 'next/image';

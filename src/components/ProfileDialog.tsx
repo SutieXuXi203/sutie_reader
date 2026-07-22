@@ -13,6 +13,7 @@ import { Input } from '@/components/ui/input';
 import { User, Loader2, ImagePlus } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import Cropper, { Area } from 'react-easy-crop';
+import Image from 'next/image';
 import 'react-easy-crop/react-easy-crop.css';
 import { getCroppedImg } from '@/lib/cropImage';
 import { notify } from '@/lib/notify';
@@ -216,7 +217,7 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
                 onClick={() => fileInputRef.current?.click()}
               >
                 {avatarUrl ? (
-                  <img src={avatarUrl} alt="Avatar" className="w-full h-full object-cover" />
+                  <Image src={avatarUrl} alt="Avatar" width={96} height={96} className="w-full h-full object-cover" unoptimized />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center">
                     <User className="w-10 h-10 text-muted-foreground" />

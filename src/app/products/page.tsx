@@ -1,8 +1,7 @@
 'use client';
 import { useState, useEffect, useDeferredValue, useMemo } from 'react';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { BookOpen, Search, Lock, Plus } from 'lucide-react';
+import { Search, Lock, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { PostCard } from '@/components/PostCard';
 import { useAuth } from '@/providers/AuthContext';

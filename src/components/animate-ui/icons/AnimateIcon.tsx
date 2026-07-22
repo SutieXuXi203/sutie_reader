@@ -18,21 +18,15 @@ import {
   Newspaper,
   ShieldAlert,
   Lock,
-  ChevronDown,
-  Loader2,
   Search,
   Sparkles,
   Clock,
-  Filter,
-  ArrowUpRight,
   Sun,
   Moon,
   Trash2,
   Edit3,
   Plus,
   Tag,
-  X,
-  Menu,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 

@@ -156,6 +156,7 @@ async function findDriveFolder(
 
     const foundByPostId = byPostId.data.files?.[0]?.id;
     if (foundByPostId) return foundByPostId;
+    return null;
   }
 
   const byTitle = await drive.files.list({

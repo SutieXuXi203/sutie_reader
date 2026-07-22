@@ -135,30 +135,12 @@ async function findFolderByTitle(accessToken, parentFolderId, title) {
   return data.files?.[0] || null;
 }
 
-async function setFolderPostId(accessToken, folderId, postId) {
-  await driveFetch(
-    accessToken,
-    `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(folderId)}?supportsAllDrives=true`,
-    {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ appProperties: { sutiePostId: postId } }),
-    },
-    'Set Drive folder postId'
-  );
-}
-
 async function getOrCreateFolder(accessToken, parentFolderId, title, postId) {
   const folderTitle = title.trim().slice(0, 100) || 'Untitled';
 
   let folder = postId ? await findFolderByPostId(accessToken, parentFolderId, postId) : null;
-  if (!folder) {
+  if (!folder && !postId) {
     folder = await findFolderByTitle(accessToken, parentFolderId, folderTitle);
-    if (folder && postId) {
-      await setFolderPostId(accessToken, folder.id, postId).catch((error) => {
-        console.warn('[CF WORKER] Could not tag legacy Drive folder with postId:', getErrorMessage(error));
-      });
-    }
   }
 
   if (folder?.id) {

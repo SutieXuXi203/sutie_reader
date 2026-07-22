@@ -2,7 +2,7 @@
 
 import { useState, useCallback } from 'react';
 import Link from 'next/link';
-import { ArrowLeft, Mail, BookOpen } from 'lucide-react';
+import { ArrowLeft, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/providers/AuthContext';
 import { notify } from '@/lib/notify';
