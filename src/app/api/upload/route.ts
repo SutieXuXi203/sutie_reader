@@ -99,7 +99,7 @@ export async function POST(request: NextRequest) {
         }
 
         if (data.urls && Array.isArray(data.urls)) {
-            console.log(`[API UPLOAD] ✅ Cloudflare Worker upload THÀNH CÔNG! Trả về ${data.urls.length} URLs.`);
+            console.log(`[API UPLOAD] Cloudflare Worker upload THÀNH CÔNG! Trả về ${data.urls.length} URLs.`);
             return NextResponse.json({ urls: data.urls });
         }
 

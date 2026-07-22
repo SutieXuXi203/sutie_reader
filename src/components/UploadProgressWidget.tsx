@@ -48,7 +48,7 @@ export function UploadProgressWidget({ state, onClose, onRetry }: UploadProgress
               <p className="text-xs text-muted-foreground line-clamp-1 mt-0.5">
                 {state.status === 'uploading' && `Đang nén & tải lên ảnh (${state.completed}/${state.total})...`}
                 {state.status === 'saving' && 'Đang lưu nội dung chương...'}
-                {state.status === 'success' && '✅ Tải lên & Lưu thành công!'}
+                {state.status === 'success' && 'Tải lên & Lưu thành công!'}
                 {state.status === 'error' && (state.errorMessage || 'Tải lên thất bại')}
               </p>
             </div>

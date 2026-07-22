@@ -2,9 +2,9 @@
 import { useState, useEffect, useCallback, useDeferredValue, useMemo, Suspense } from 'react';
 import dynamic from 'next/dynamic';
 import {
-  AnimatedBookOpen, AnimatedBookmarkCheck, AnimatedSearch, AnimatedLock
+  AnimatedBookOpen, AnimatedBookmarkCheck, AnimatedLock
 } from '@/components/animate-ui/icons/AnimateIcon';
-import { ChevronRight, X } from 'lucide-react';
+import { ChevronRight, Search, X } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import Link from 'next/link';
 import Image from 'next/image';
@@ -150,12 +150,12 @@ function HomeContent() {
 
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const normalizedSearch = normalizeSearchText(isSearchComposing ? '' : deferredSearchTerm);
-  
+
   const filteredPosts = useMemo(() => normalizedSearch
     ? posts.filter((post) =>
-        [post.title, post.description || '', post.author, ...(post.tags || [])]
-          .some((value) => normalizeSearchText(value).includes(normalizedSearch))
-      )
+      [post.title, post.description || '', post.author, ...(post.tags || [])]
+        .some((value) => normalizeSearchText(value).includes(normalizedSearch))
+    )
     : posts,
     [normalizedSearch, posts]
   );
@@ -181,7 +181,7 @@ function HomeContent() {
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20 pt-20 pb-0 flex flex-col justify-between">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.primary)_1px,transparent_1px)] opacity-[0.05] z-0 mix-blend-screen" />
-      
+
       {/* Decorative Orbs */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
         <div className="absolute top-[8%] left-[2%] w-48 h-48 rounded-full border border-primary/10 bg-primary/5 opacity-30 animate-float-y-soft float-y-fast" />
@@ -190,10 +190,10 @@ function HomeContent() {
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1">
-        
+
         {/* Dashboard Content */}
         <div id="main-content" className="space-y-8">
-          
+
           {/* Bookmarks ("Đang đọc dở") */}
           {user && bookmarks.length > 0 && (
             <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
@@ -201,7 +201,7 @@ function HomeContent() {
                 <AnimatedBookmarkCheck className="w-4 h-4 text-primary" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Đang đọc dở</h3>
               </div>
-              
+
               <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
                 {bookmarks.map((bm) => {
                   const progress = bm.totalPages > 1 ? ((bm.currentPage) / (bm.totalPages - 1)) * 100 : 100;
@@ -214,7 +214,7 @@ function HomeContent() {
                       >
                         <X className="w-2.5 h-2.5" />
                       </button>
-                      
+
                       <Link href={`/posts/${bm.postId}`} className="block">
                         <div className="relative h-32 bg-secondary/30 overflow-hidden">
                           {bm.post.images[0] && (
@@ -232,7 +232,7 @@ function HomeContent() {
                             Chương {(bm.chapterIndex ?? 0) + 1} · Trang {bm.currentPage + 1}/{bm.totalPages}
                           </div>
                         </div>
-                        
+
                         <div className="p-3">
                           <h4 className="text-xs font-bold text-foreground line-clamp-1 mb-1">{bm.post.title}</h4>
                           <p className="text-[10px] text-muted-foreground mb-3">{bm.post.author}</p>
@@ -265,15 +265,15 @@ function HomeContent() {
                   <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
                   <h2 className="text-base sm:text-lg font-extrabold text-foreground font-sans">Danh sách truyện</h2>
                 </div>
-                
+
                 {/* Search Bar */}
                 <div className="w-full sm:w-[240px] shrink-0">
                   <div className="relative group">
                     <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/90 transition-colors group-focus-within:text-primary">
-                      <AnimatedSearch className="w-4 h-4" />
+                      <Search className="w-4 h-4" />
                     </span>
                     <Input
-                      id="home-post-search"
+                      id="post-search"
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
