@@ -520,10 +520,12 @@ export default function AdminDashboard() {
                             ? 'p-3 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 rounded-[8px] border border-border bg-card/50 backdrop-blur-md'
                             : 'p-3 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 border-b border-border'}>
                             <div className="relative w-full sm:w-[400px]">
-                                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/70 dark:text-neutral-300" />
+                                <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-foreground/70 dark:text-neutral-300">
+                                    <Search className="h-4 w-4" />
+                                </span>
                                 <Input
                                     placeholder={activeTab === 'posts' ? "Tìm bài viết, tác giả, tag..." : activeTab === 'users' ? "Tìm tên, email..." : "Tìm thẻ tag..."}
-                                    className="pl-10 h-10 bg-background border border-border rounded-[8px] focus-visible:ring-1 focus-visible:ring-primary text-sm text-foreground placeholder:text-foreground/90 dark:placeholder:text-neutral-300"
+                                    className="h-10 pl-10 pr-3 py-0 leading-10 bg-background border border-border rounded-[8px] focus-visible:ring-1 focus-visible:ring-primary text-sm text-foreground placeholder:text-foreground/90 dark:placeholder:text-neutral-300"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
