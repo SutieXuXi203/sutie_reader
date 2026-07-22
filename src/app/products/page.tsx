@@ -202,6 +202,7 @@ export default function ProductsPage() {
                                     post={post}
                                     onDelete={handlePostDeleted}
                                     onUpdate={fetchPosts}
+                                    availableTags={availableTags}
                                     compact
                                 />
                             ))}

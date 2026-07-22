@@ -56,6 +56,7 @@ function HomeContent() {
   const { user, isLoading: isAuthLoading } = useAuth();
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
   const [posts, setPosts] = useState<Post[]>([]);
+  const [standaloneTags, setStandaloneTags] = useState<{ _id: string; name: string }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [isSearchComposing, setIsSearchComposing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);
@@ -99,15 +100,28 @@ function HomeContent() {
     }
   }, []);
 
+  const fetchTags = useCallback(async () => {
+    try {
+      const response = await fetch('/api/tags');
+      if (response.ok) {
+        setStandaloneTags(await response.json());
+      }
+    } catch (error) {
+      console.error('Lỗi khi tải tags:', error);
+    }
+  }, []);
+
   useEffect(() => {
     if (user) {
       fetchBookmarks();
       fetchPosts();
+      fetchTags();
     } else {
       setBookmarks([]);
       setPosts([]);
+      setStandaloneTags([]);
     }
-  }, [user, fetchBookmarks, fetchPosts]);
+  }, [user, fetchBookmarks, fetchPosts, fetchTags]);
 
   useEffect(() => {
     setSearchTerm(tagParam || '');
@@ -145,6 +159,12 @@ function HomeContent() {
     : posts,
     [normalizedSearch, posts]
   );
+
+  const availableTags = useMemo(() => {
+    const postTags = posts.flatMap((post) => post.tags || []);
+    const standaloneNames = standaloneTags.map((tag) => tag.name);
+    return Array.from(new Set([...postTags, ...standaloneNames])).filter(Boolean);
+  }, [posts, standaloneTags]);
 
   const handlePostDeleted = useCallback((postId: string) => {
     setPosts((prev) => prev.filter((post) => post._id !== postId));
@@ -290,6 +310,7 @@ function HomeContent() {
                       post={post}
                       onDelete={handlePostDeleted}
                       onUpdate={fetchPosts}
+                      availableTags={availableTags}
                       compact
                     />
                   ))}
