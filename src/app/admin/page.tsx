@@ -348,6 +348,7 @@ export default function AdminDashboard() {
             reasonLabel.includes(normalizedQuery)
         );
     });
+    const filteredTagNames = availablePostTags.filter((tag) => tag.includes(searchQuery.toLowerCase()));
 
     const totalUsersPages = Math.max(1, Math.ceil(filteredUsers.length / ROWS_PER_PAGE));
     const totalDeletedAccountsPages = Math.max(1, Math.ceil(filteredDeletedAccounts.length / ROWS_PER_PAGE));
@@ -381,8 +382,8 @@ export default function AdminDashboard() {
         );
     }
     return (
-        <div className="min-h-screen pt-20 pb-24 lg:pb-0 [scrollbar-gutter:stable] bg-background font-sans selection:bg-primary/20">
-            <div className="mx-auto flex w-full max-w-[1600px] gap-4 px-4 py-4">
+        <div className="min-h-screen pt-16 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 [scrollbar-gutter:stable] bg-background font-sans selection:bg-primary/20">
+            <div className="mx-auto flex w-full max-w-[1600px] gap-4 px-2 py-2 sm:px-4 sm:py-4">
             <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto rounded-[8px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
                 <div className="p-6">
                     <h2 className="font-semibold text-lg text-foreground">Quản trị</h2>
@@ -435,11 +436,15 @@ export default function AdminDashboard() {
                     </div>
                 </div>
             </aside>
-            <main className="flex-1 min-w-0 min-h-[calc(100vh-2rem)] rounded-[8px] border border-border/70 bg-card/35 shadow-sm">
-                <header className="h-20 bg-card/55 backdrop-blur-md border-b border-border/70 px-6 sm:px-8 lg:px-10 flex items-center justify-between sticky top-0 z-10 rounded-t-[10px]">
-                    <div className="flex items-center gap-6">
-                        <div className="lg:hidden">
-                            <Link href="/" className="text-base font-medium text-neutral-800 dark:text-neutral-200">Quản trị</Link>
+            <main className="flex-1 min-w-0 min-h-[calc(100vh-5rem)] rounded-[8px] border border-border/70 bg-card/35 shadow-sm">
+                <header className="min-h-16 bg-card/80 backdrop-blur-md border-b border-border/70 px-3 py-3 sm:px-8 lg:px-10 flex items-start sm:items-center justify-between gap-3 sticky top-14 z-30 rounded-t-[8px]">
+                    <div className="flex min-w-0 flex-1 items-center gap-6">
+                        <div className="min-w-0 lg:hidden">
+                            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Quản trị</p>
+                            <h1 className="truncate text-base font-semibold text-foreground">
+                                {activeTab === 'posts' ? 'Quản lý bài viết' : activeTab === 'users' ? 'Quản lý người dùng' : 'Quản lý thẻ Tag'}
+                            </h1>
+                            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{user.email}</p>
                         </div>
                         <div className="hidden lg:flex items-center gap-4">
                             <h1 className="text-lg font-semibold text-foreground">
@@ -451,25 +456,21 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     </div>
-                    <div className="flex items-center gap-3">
-                        <div className="lg:hidden flex items-center gap-2 px-3 py-2 rounded-[8px] bg-card">
-                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                            <span className="text-xs text-muted-foreground truncate max-w-[120px]">{user.email}</span>
-                        </div>
+                    <div className="flex shrink-0 items-center gap-2">
                         {activeTab === 'posts' && (
                             <Button
                                 onClick={() => setIsCreateDialogOpen(true)}
-                                className="rounded-[8px] bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 px-5 h-10 font-medium transition-colors"
+                                className="h-9 rounded-[8px] bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 px-3 sm:px-5 text-xs sm:text-sm font-medium transition-colors"
                             >
-                                <Plus className="w-4 h-4 mr-2" />
-                                Tạo bài mới
+                                <Plus className="w-4 h-4 sm:mr-2" />
+                                <span className="hidden min-[380px]:inline">Tạo bài mới</span>
                             </Button>
                         )}
                     </div>
                 </header>
-                <div className="p-6 sm:p-8 lg:p-10 space-y-6">
+                <div className="p-3 sm:p-8 lg:p-10 space-y-4 sm:space-y-6">
                     {activeTab !== 'tags' && (
-                        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div className="grid grid-cols-3 gap-2 sm:gap-4">
                             {(activeTab === 'posts' ? [
                                 { label: 'Tổng bài viết', value: posts.length },
                                 { label: 'Tác giả', value: '1' },
@@ -479,14 +480,14 @@ export default function AdminDashboard() {
                                 { label: 'Quản trị viên', value: usersList.filter(u => u.role === 'admin').length },
                                 { label: 'Người dùng', value: usersList.filter(u => u.role !== 'admin').length },
                             ]).map((stat, i) => (
-                                <div key={i} className="bg-card/50 backdrop-blur-md p-5 rounded-[8px] border border-border shadow-md">
-                                    <p className="text-xs font-medium text-muted-foreground mb-2">{stat.label}</p>
+                                <div key={i} className="bg-card/50 backdrop-blur-md p-3 sm:p-5 rounded-[8px] border border-border shadow-md">
+                                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1.5 sm:mb-2 leading-tight">{stat.label}</p>
                                     {typeof stat.value === 'number' ? (
-                                        <p className="text-2xl font-semibold text-foreground">{stat.value}</p>
+                                        <p className="text-lg sm:text-2xl font-semibold text-foreground">{stat.value}</p>
                                     ) : (
-                                        <div className="flex items-center gap-2">
+                                        <div className="flex items-center gap-1.5 sm:gap-2">
                                             <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                            <span className="text-base font-medium text-foreground">{stat.value}</span>
+                                            <span className="text-xs sm:text-base font-medium text-foreground">{stat.value}</span>
                                         </div>
                                     )}
                                 </div>
@@ -494,7 +495,7 @@ export default function AdminDashboard() {
                         </div>
                     )}
                     {activeTab === 'posts' && availablePostTags.length > 0 && (
-                        <div className="bg-card/50 backdrop-blur-md p-5 rounded-[8px] border border-border shadow-md">
+                        <div className="bg-card/50 backdrop-blur-md p-3 sm:p-5 rounded-[8px] border border-border shadow-md">
                             <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-3 flex items-center gap-2">
                                 <Tag className="w-4 h-4 text-primary" />
                                 Danh sách Tag đã sử dụng ({availablePostTags.length})
@@ -514,10 +515,10 @@ export default function AdminDashboard() {
                             </div>
                         </div>
                     )}
-                    <div className={activeTab === 'users' ? 'space-y-4' : 'bg-card/50 backdrop-blur-md rounded-[8px] border border-border overflow-hidden'}>
+                    <div className={activeTab === 'users' ? 'space-y-3 sm:space-y-4' : 'bg-card/50 backdrop-blur-md rounded-[8px] border border-border overflow-hidden'}>
                         <div className={activeTab === 'users'
-                            ? 'p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 rounded-[8px] border border-border bg-card/50 backdrop-blur-md'
-                            : 'p-4 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 border-b border-border'}>
+                            ? 'p-3 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 rounded-[8px] border border-border bg-card/50 backdrop-blur-md'
+                            : 'p-3 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 border-b border-border'}>
                             <div className="relative w-full sm:w-[400px]">
                                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-foreground/70 dark:text-neutral-300" />
                                 <Input
@@ -545,11 +546,78 @@ export default function AdminDashboard() {
                         </div>
                         <div className="w-full">
                             {activeTab === 'posts' ? (
-                                <div className="min-h-[560px] lg:min-h-[680px] overflow-x-auto">
+                                <div className="min-h-[360px] lg:min-h-[680px]">
+                                    <div className="md:hidden p-3 space-y-3">
+                                        {isLoading ? (
+                                            <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-neutral-500">
+                                                <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
+                                                <p className="text-sm">Đang tải...</p>
+                                            </div>
+                                        ) : filteredPosts.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center">
+                                                <FileText className="w-10 h-10 mb-3 text-primary/80" />
+                                                <p className="text-sm font-medium text-foreground/90">{searchQuery ? 'Không tìm thấy' : 'Chưa có bài viết'}</p>
+                                            </div>
+                                        ) : filteredPosts.map((post) => (
+                                            <article key={post._id} className="rounded-[8px] border border-border/70 bg-card/55 p-3 shadow-sm">
+                                                <div className="flex gap-3">
+                                                    <div className="relative flex h-20 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-card">
+                                                        {post.images[0] ? (
+                                                            <Image src={getOptimizedImageUrl(post.images[0])} alt={post.title} fill className="object-cover object-top" unoptimized />
+                                                        ) : (
+                                                            <FileText className="w-7 h-7 text-primary/80" />
+                                                        )}
+                                                    </div>
+                                                    <div className="min-w-0 flex-1">
+                                                        <p className="line-clamp-2 text-sm font-semibold leading-tight text-foreground">{post.title}</p>
+                                                        {post.tags && post.tags.length > 0 ? (
+                                                            <div className="mt-2 flex flex-wrap gap-1">
+                                                                {post.tags.slice(0, 3).map((tag) => (
+                                                                    <span key={`${post._id}-${tag}`} className="inline-flex rounded-[8px] border border-border px-1.5 py-0.5 text-[10px] text-primary">
+                                                                        #{tag.toLowerCase()}
+                                                                    </span>
+                                                                ))}
+                                                                {post.tags.length > 3 && (
+                                                                    <span className="inline-flex rounded-[8px] border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground/80">
+                                                                        +{post.tags.length - 3}
+                                                                    </span>
+                                                                )}
+                                                            </div>
+                                                        ) : (
+                                                            <p className="mt-1 text-xs text-muted-foreground/80">Chưa gắn tag</p>
+                                                        )}
+                                                        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                                                            <span className="truncate">{post.author}</span>
+                                                            <span className="text-right whitespace-nowrap">{new Date(post.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                                <div className="mt-3 grid grid-cols-2 gap-2">
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => { setSelectedPost(post); setIsEditOpen(true); }}
+                                                        className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
+                                                    >
+                                                        <Pencil className="w-4 h-4" />
+                                                        Sửa
+                                                    </button>
+                                                    <button
+                                                        type="button"
+                                                        onClick={() => handleDelete(post)}
+                                                        className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
+                                                    >
+                                                        <Trash2 className="w-4 h-4" />
+                                                        Xóa
+                                                    </button>
+                                                </div>
+                                            </article>
+                                        ))}
+                                    </div>
+                                    <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-center">
                                     <thead>
                                         <tr className="text-xs font-medium text-muted-foreground border-b border-border">
-                                            <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Bài viết</th>
+                                            <th className="px-5 py-4 text-left border-r border-border/60 last:border-r-0">Bài viết</th>
                                             <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Tác giả</th>
                                             <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Ngày tạo</th>
                                             <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Thao tác</th>
@@ -574,8 +642,8 @@ export default function AdminDashboard() {
                                             </tr>
                                         ) : filteredPosts.map((post) => (
                                             <tr key={post._id} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
-                                                <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
-                                                    <div className="flex items-center justify-center gap-4">
+                                                <td className="px-5 py-4 text-left border-r border-border/40 last:border-r-0">
+                                                    <div className="flex items-center justify-start gap-4">
                                                         <div className="relative w-12 h-12 rounded-[8px] overflow-hidden bg-card shrink-0">
                                                             {post.images[0] ? (
                                                                 <Image src={getOptimizedImageUrl(post.images[0])} alt={post.title} fill className="object-cover" unoptimized />
@@ -583,7 +651,7 @@ export default function AdminDashboard() {
                                                                 <FileText className="w-6 h-6 m-3 text-primary/80" />
                                                             )}
                                                         </div>
-                                                        <div className="min-w-0 max-w-xs">
+                                                        <div className="min-w-0 max-w-xs text-left">
                                                             <p className="text-sm font-medium text-foreground truncate">{post.title}</p>
                                                             {post.tags && post.tags.length > 0 ? (
                                                                 <div className="mt-1 flex flex-wrap gap-1">
@@ -633,11 +701,12 @@ export default function AdminDashboard() {
                                         ))}
                                     </tbody>
                                 </table>
+                                    </div>
                                 </div>
                             ) : activeTab === 'users' ? (
-                                <div className="w-full min-h-[560px] lg:min-h-[680px] space-y-4 pb-4">
+                                <div className="w-full min-h-[360px] lg:min-h-[680px] space-y-3 sm:space-y-4 pb-4">
                                     <div className="rounded-[8px] border border-border/60 bg-card/30 shadow-sm overflow-hidden">
-                                        <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+                                        <div className="flex flex-col min-[430px]:flex-row min-[430px]:items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 border-b border-border/60">
                                             <p className="text-sm font-semibold text-foreground">Tài khoản hiện tại</p>
                                             <div className="flex items-center gap-3">
                                                 <span className="text-xs text-muted-foreground">{filteredUsers.length} tài khoản</span>
@@ -657,7 +726,100 @@ export default function AdminDashboard() {
                                                 </Button>
                                             </div>
                                         </div>
-                                        <div className="overflow-x-auto">
+                                        <div className="md:hidden p-3 space-y-3">
+                                            {isUsersLoading ? (
+                                                <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-neutral-500">
+                                                    <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
+                                                    <p className="text-sm">Đang tải...</p>
+                                                </div>
+                                            ) : filteredUsers.length === 0 ? (
+                                                <div className="rounded-[8px] border border-border/60 bg-card/70 px-4 py-8 text-center">
+                                                    <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-secondary/80">
+                                                        <Users className="w-6 h-6 text-foreground" />
+                                                    </div>
+                                                    <p className="text-sm font-semibold text-foreground">
+                                                        {usersLoadError
+                                                            ? 'Không tải được danh sách người dùng'
+                                                            : (searchQuery ? 'Không tìm thấy người dùng' : 'Chưa có người dùng')}
+                                                    </p>
+                                                    {usersLoadError && (
+                                                        <p className="mt-1 text-xs text-muted-foreground">{usersLoadError}</p>
+                                                    )}
+                                                </div>
+                                            ) : paginatedUsers.map((u) => {
+                                                const isAdminUser = u.role === 'admin';
+                                                const isVerified = Boolean(u.isVerified);
+                                                return (
+                                                    <article key={u._id} className="rounded-[8px] border border-border/70 bg-card/55 p-3 shadow-sm">
+                                                        <div className="flex items-start gap-3">
+                                                            <div className="relative shrink-0">
+                                                                <div className="relative h-11 w-11 overflow-hidden rounded-[8px] bg-card">
+                                                                    {u.avatar ? (
+                                                                        <Image src={getOptimizedImageUrl(u.avatar)} alt={u.name || 'Avatar'} fill className="object-cover" unoptimized />
+                                                                    ) : (
+                                                                        <User className="w-5 h-5 m-3 text-primary/80" />
+                                                                    )}
+                                                                </div>
+                                                                {u.email === user?.email ? (
+                                                                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-background" title="Tài khoản đang đăng nhập" />
+                                                                ) : (
+                                                                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600 ring-2 ring-background" title="Không hoạt động" />
+                                                                )}
+                                                            </div>
+                                                            <div className="min-w-0 flex-1">
+                                                                <p className="truncate text-sm font-semibold text-foreground">{u.name || 'Ẩn danh'}</p>
+                                                                <p className="mt-0.5 break-all text-xs text-muted-foreground">{u.email}</p>
+                                                                <div className="mt-2 flex flex-wrap gap-1.5">
+                                                                    {isAdminUser ? (
+                                                                        <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-secondary px-2 py-1 text-[11px] font-medium text-primary">
+                                                                            <ShieldAlert className="w-3 h-3" /> Quản trị
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex rounded-[8px] bg-neutral-100 px-2 py-1 text-[11px] font-medium text-muted-foreground dark:bg-neutral-800/50">
+                                                                            Người dùng
+                                                                        </span>
+                                                                    )}
+                                                                    {isAdminUser ? (
+                                                                        <span className="inline-flex rounded-[8px] border border-sky-300/60 bg-sky-100/70 px-2 py-1 text-[11px] font-medium text-sky-700 dark:border-sky-700/60 dark:bg-sky-900/30 dark:text-sky-300">
+                                                                            Miễn xác thực
+                                                                        </span>
+                                                                    ) : isVerified ? (
+                                                                        <span className="inline-flex rounded-[8px] border border-emerald-300/60 bg-emerald-100/70 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/30 dark:text-emerald-300">
+                                                                            Đã xác thực
+                                                                        </span>
+                                                                    ) : (
+                                                                        <span className="inline-flex rounded-[8px] border border-amber-300/60 bg-amber-100/70 px-2 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/30 dark:text-amber-300">
+                                                                            Chưa xác thực
+                                                                        </span>
+                                                                    )}
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                                                            <div>
+                                                                <p>Hoạt động</p>
+                                                                <p className="mt-0.5 font-medium text-foreground/80">
+                                                                    {u.email === user?.email ? formatSessionTime(sessionSeconds) : 'Chưa hoạt động'}
+                                                                </p>
+                                                            </div>
+                                                            <div className="text-right">
+                                                                <p>Ngày tham gia</p>
+                                                                <p className="mt-0.5 font-medium text-foreground/80">{new Date(u.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
+                                                            </div>
+                                                        </div>
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => handleDeleteUser(u)}
+                                                            className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
+                                                        >
+                                                            <Trash2 className="w-4 h-4" />
+                                                            Xóa người dùng
+                                                        </button>
+                                                    </article>
+                                                );
+                                            })}
+                                        </div>
+                                        <div className="hidden md:block overflow-x-auto">
                                             <table className="w-full text-center">
                                                 <thead>
                                                     <tr className="text-xs font-medium text-muted-foreground border-b border-border bg-secondary/20">
@@ -781,16 +943,16 @@ export default function AdminDashboard() {
                                             </table>
                                         </div>
                                         {filteredUsers.length > 0 && (
-                                            <div className="px-5 py-3 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                            <div className="px-3 sm:px-5 py-3 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                                 <p className="text-xs text-muted-foreground">
                                                     Trang {usersPage}/{totalUsersPages} • Hiển thị {paginatedUsers.length}/{filteredUsers.length} tài khoản
                                                 </p>
-                                                <div className="flex items-center gap-2">
+                                                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
                                                     <Button
                                                         type="button"
                                                         size="sm"
                                                         variant="outline"
-                                                        className="h-8 rounded-[8px]"
+                                                        className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
                                                         onClick={() => setUsersPage((prev) => Math.max(1, prev - 1))}
                                                         disabled={usersPage === 1}
                                                     >
@@ -800,7 +962,7 @@ export default function AdminDashboard() {
                                                         type="button"
                                                         size="sm"
                                                         variant="outline"
-                                                        className="h-8 rounded-[8px]"
+                                                        className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
                                                         onClick={() => setUsersPage((prev) => Math.min(totalUsersPages, prev + 1))}
                                                         disabled={usersPage === totalUsersPages}
                                                     >
@@ -812,7 +974,7 @@ export default function AdminDashboard() {
                                     </div>
 
                                     <div className="rounded-[8px] border border-border/60 bg-card/30 shadow-sm overflow-hidden">
-                                        <div className="flex items-center justify-between px-5 py-4 border-b border-border/60">
+                                        <div className="flex flex-col min-[430px]:flex-row min-[430px]:items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 border-b border-border/60">
                                             <p className="text-sm font-semibold text-foreground">Tài khoản bị xóa tự động (chưa xác thực)</p>
                                             <div className="flex items-center gap-3">
                                                 <span className="text-xs text-muted-foreground">{filteredDeletedAccounts.length} tài khoản</span>
@@ -828,7 +990,55 @@ export default function AdminDashboard() {
                                                 </Button>
                                             </div>
                                         </div>
-                                        <div className="overflow-x-auto">
+                                        <div className="md:hidden p-3 space-y-3">
+                                            {isDeletedAccountsLoading ? (
+                                                <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-foreground/80">
+                                                    <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
+                                                    <p className="text-sm">Đang tải...</p>
+                                                </div>
+                                            ) : filteredDeletedAccounts.length === 0 ? (
+                                                <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-foreground/80">
+                                                    <Users className="w-10 h-10 mb-3 text-foreground/55" />
+                                                    <p className="text-sm">{searchQuery ? 'Không tìm thấy' : 'Chưa có tài khoản bị xóa tự động'}</p>
+                                                </div>
+                                            ) : paginatedDeletedAccounts.map((account) => (
+                                                <article key={account._id} className="rounded-[8px] border border-border/70 bg-card/55 p-3 shadow-sm">
+                                                    <div className="min-w-0">
+                                                        <p className="truncate text-sm font-semibold text-foreground">{account.name || 'Ẩn danh'}</p>
+                                                        <p className="mt-0.5 break-all text-xs text-muted-foreground">{account.email}</p>
+                                                    </div>
+                                                    <div className="mt-3 flex flex-wrap gap-1.5">
+                                                        <span className="inline-flex rounded-[8px] bg-neutral-100 px-2 py-1 text-[11px] font-medium text-muted-foreground dark:bg-neutral-800/50">
+                                                            {account.deletionTrigger === 'verify'
+                                                                ? 'Xác thực'
+                                                                : account.deletionTrigger === 'system'
+                                                                    ? 'Hệ thống'
+                                                                    : 'Đăng nhập'}
+                                                        </span>
+                                                        <span className="inline-flex rounded-[8px] border border-amber-300/60 bg-amber-100/70 px-2 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/30 dark:text-amber-300">
+                                                            Chưa xác thực quá hạn 24h
+                                                        </span>
+                                                    </div>
+                                                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
+                                                        <div>
+                                                            <p>Hạn xác thực</p>
+                                                            <p className="mt-0.5 font-medium text-foreground/80">
+                                                                {account.verificationExpiresAt
+                                                                    ? new Date(account.verificationExpiresAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
+                                                                    : '--'}
+                                                            </p>
+                                                        </div>
+                                                        <div className="text-right">
+                                                            <p>Thời điểm xóa</p>
+                                                            <p className="mt-0.5 font-medium text-foreground/80">
+                                                                {new Date(account.deletedAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </article>
+                                            ))}
+                                        </div>
+                                        <div className="hidden md:block overflow-x-auto">
                                             <table className="w-full text-center">
                                                 <thead>
                                                     <tr className="text-xs font-medium text-muted-foreground border-b border-border bg-secondary/20">
@@ -891,16 +1101,16 @@ export default function AdminDashboard() {
                                             </table>
                                         </div>
                                         {filteredDeletedAccounts.length > 0 && (
-                                            <div className="px-5 py-3 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                            <div className="px-3 sm:px-5 py-3 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                                                 <p className="text-xs text-muted-foreground">
                                                     Trang {deletedAccountsPage}/{totalDeletedAccountsPages} • Hiển thị {paginatedDeletedAccounts.length}/{filteredDeletedAccounts.length} tài khoản
                                                 </p>
-                                                <div className="flex items-center gap-2">
+                                                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
                                                     <Button
                                                         type="button"
                                                         size="sm"
                                                         variant="outline"
-                                                        className="h-8 rounded-[8px]"
+                                                        className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
                                                         onClick={() => setDeletedAccountsPage((prev) => Math.max(1, prev - 1))}
                                                         disabled={deletedAccountsPage === 1}
                                                     >
@@ -910,7 +1120,7 @@ export default function AdminDashboard() {
                                                         type="button"
                                                         size="sm"
                                                         variant="outline"
-                                                        className="h-8 rounded-[8px]"
+                                                        className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
                                                         onClick={() => setDeletedAccountsPage((prev) => Math.min(totalDeletedAccountsPages, prev + 1))}
                                                         disabled={deletedAccountsPage === totalDeletedAccountsPages}
                                                     >
@@ -922,7 +1132,80 @@ export default function AdminDashboard() {
                                     </div>
                                 </div>
                             ) : activeTab === 'tags' ? (
-                                <div className="min-h-[560px] lg:min-h-[680px] overflow-x-auto">
+                                <div className="min-h-[360px] lg:min-h-[680px]">
+                                    <div className="md:hidden p-3 space-y-3">
+                                        {filteredTagNames.length === 0 ? (
+                                            <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-foreground/80">
+                                                <Tag className="w-10 h-10 mb-3 text-primary/80" />
+                                                <p className="text-sm">{searchQuery ? 'Không tìm thấy tag' : 'Chưa có tag'}</p>
+                                            </div>
+                                        ) : filteredTagNames.map((tag) => (
+                                            <article key={tag} className="rounded-[8px] border border-border/70 bg-card/55 p-3 shadow-sm">
+                                                {editingTag?.oldName === tag ? (
+                                                    <div className="space-y-3">
+                                                        <Input
+                                                            value={editingTag.newName}
+                                                            onChange={(e) => setEditingTag({ ...editingTag, newName: e.target.value })}
+                                                            className="h-10 text-sm text-foreground"
+                                                            autoFocus
+                                                            disabled={isUpdatingTag}
+                                                        />
+                                                        <div className="grid grid-cols-2 gap-2">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="ghost"
+                                                                className="h-9 rounded-[8px] text-muted-foreground"
+                                                                onClick={() => setEditingTag(null)}
+                                                                disabled={isUpdatingTag}
+                                                            >
+                                                                Hủy
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                className="h-9 rounded-[8px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20"
+                                                                onClick={handleUpdateTag}
+                                                                disabled={isUpdatingTag}
+                                                            >
+                                                                {isUpdatingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lưu'}
+                                                            </Button>
+                                                        </div>
+                                                    </div>
+                                                ) : (
+                                                    <>
+                                                        <div className="flex items-start justify-between gap-3">
+                                                            <div className="min-w-0">
+                                                                <span className="inline-flex max-w-full items-center gap-1.5 rounded-[8px] border border-border bg-card px-3 py-1.5 text-sm font-medium text-primary">
+                                                                    <span className="truncate">#{tag}</span>
+                                                                </span>
+                                                                <p className="mt-2 text-xs text-muted-foreground">
+                                                                    {tagCounts[tag] || 0} bài viết đang sử dụng
+                                                                </p>
+                                                            </div>
+                                                        </div>
+                                                        <div className="mt-3 grid grid-cols-2 gap-2">
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setEditingTag({ oldName: tag, newName: tag })}
+                                                                className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
+                                                            >
+                                                                <Pencil className="w-4 h-4" />
+                                                                Sửa
+                                                            </button>
+                                                            <button
+                                                                type="button"
+                                                                onClick={() => setDeleteTarget({ type: 'tag', id: tag, name: tag })}
+                                                                className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
+                                                            >
+                                                                <Trash2 className="w-4 h-4" />
+                                                                Xóa
+                                                            </button>
+                                                        </div>
+                                                    </>
+                                                )}
+                                            </article>
+                                        ))}
+                                    </div>
+                                    <div className="hidden md:block overflow-x-auto">
                                 <table className="w-full text-center">
                                     <thead>
                                         <tr className="text-xs font-medium text-muted-foreground border-b border-border">
@@ -932,9 +1215,7 @@ export default function AdminDashboard() {
                                         </tr>
                                     </thead>
                                     <tbody className="divide-y divide-border">
-                                        {availablePostTags
-                                            .filter(tag => tag.includes(searchQuery.toLowerCase()))
-                                            .map((tag) => (
+                                        {filteredTagNames.map((tag) => (
                                                 <tr key={tag} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
                                                     <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
                                                         {editingTag?.oldName === tag ? (
@@ -1002,6 +1283,7 @@ export default function AdminDashboard() {
                                             ))}
                                     </tbody>
                                 </table>
+                                    </div>
                                 </div>
                             ) : null}
                         </div>
@@ -1009,11 +1291,11 @@ export default function AdminDashboard() {
                 </div>
             </main >
             </div>
-            <nav className="lg:hidden fixed bottom-3 left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1rem)] max-w-md rounded-[8px] bg-card/75 backdrop-blur-xl border border-border/70 shadow-[0_10px_30px_rgba(0,0,0,0.18)] px-2 py-1.5">
+            <nav className="lg:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1rem)] max-w-md rounded-[8px] bg-card/85 backdrop-blur-xl border border-border/70 shadow-[0_10px_30px_rgba(0,0,0,0.18)] px-2 py-1.5">
                 <div className="grid grid-cols-4 gap-1">
                     <Link
                         href="/"
-                        className="flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium text-foreground/80 hover:text-primary transition-colors"
+                        className="flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium text-foreground/80 hover:bg-secondary/70 hover:text-primary transition-colors"
                         title="Trang chủ"
                     >
                         <Home className="w-4 h-4" />
@@ -1021,7 +1303,7 @@ export default function AdminDashboard() {
                     </Link>
                     <button
                         onClick={() => setActiveTab('posts')}
-                        className={`flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'posts' ? 'text-primary' : 'text-foreground/80 hover:text-primary'}`}
+                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'posts' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'}`}
                         title="Bài viết"
                     >
                         <FileText className="w-4 h-4" />
@@ -1029,7 +1311,7 @@ export default function AdminDashboard() {
                     </button>
                     <button
                         onClick={() => setActiveTab('tags')}
-                        className={`flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'tags' ? 'text-primary' : 'text-foreground/80 hover:text-primary'}`}
+                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'tags' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'}`}
                         title="Tag"
                     >
                         <Tag className="w-4 h-4" />
@@ -1037,7 +1319,7 @@ export default function AdminDashboard() {
                     </button>
                     <button
                         onClick={() => setActiveTab('users')}
-                        className={`flex flex-col items-center justify-center gap-0.5 py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'users' ? 'text-primary' : 'text-foreground/80 hover:text-primary'}`}
+                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'users' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'}`}
                         title="Người dùng"
                     >
                         <Users className="w-4 h-4" />

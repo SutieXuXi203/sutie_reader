@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Mail, Lock, User, Loader2 } from 'lucide-react';
+import { Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import { notify } from '@/lib/notify';
 
@@ -56,6 +56,8 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
+    const [showPassword, setShowPassword] = useState(false);
+    const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [name, setName] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
@@ -66,6 +68,8 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         setEmail('');
         setPassword('');
         setConfirmPassword('');
+        setShowPassword(false);
+        setShowConfirmPassword(false);
         setName('');
         setVerificationCode('');
     };
@@ -230,13 +234,30 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                             <div className="relative">
                                 <Lock className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                                 <Input
-                                    type="password"
+                                    type={showPassword && password.length > 0 ? 'text' : 'password'}
                                     placeholder="Mật khẩu"
                                     value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="pl-10"
+                                    onChange={(e) => {
+                                        const nextPassword = e.target.value;
+                                        setPassword(nextPassword);
+                                        if (!nextPassword) setShowPassword(false);
+                                    }}
+                                    className="pl-10 pr-10"
                                     required
                                 />
+                                {password.length > 0 && (
+                                    <button
+                                        type="button"
+                                        onClick={() => setShowPassword((current) => !current)}
+                                        onMouseDown={(event) => event.preventDefault()}
+                                        className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[8px] text-neutral-400 transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                                        aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                        aria-pressed={showPassword}
+                                        title={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
+                                    >
+                                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                    </button>
+                                )}
                             </div>
 
                             {mode === 'register' && password.length > 0 && (
@@ -273,13 +294,30 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 <div className="relative">
                                     <Lock className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                                     <Input
-                                        type="password"
+                                        type={showConfirmPassword && confirmPassword.length > 0 ? 'text' : 'password'}
                                         placeholder="Xác nhận mật khẩu"
                                         value={confirmPassword}
-                                        onChange={(e) => setConfirmPassword(e.target.value)}
-                                        className="pl-10"
+                                        onChange={(e) => {
+                                            const nextConfirmPassword = e.target.value;
+                                            setConfirmPassword(nextConfirmPassword);
+                                            if (!nextConfirmPassword) setShowConfirmPassword(false);
+                                        }}
+                                        className="pl-10 pr-10"
                                         required
                                     />
+                                    {confirmPassword.length > 0 && (
+                                        <button
+                                            type="button"
+                                            onClick={() => setShowConfirmPassword((current) => !current)}
+                                            onMouseDown={(event) => event.preventDefault()}
+                                            className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[8px] text-neutral-400 transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
+                                            aria-label={showConfirmPassword ? 'Ẩn xác nhận mật khẩu' : 'Hiện xác nhận mật khẩu'}
+                                            aria-pressed={showConfirmPassword}
+                                            title={showConfirmPassword ? 'Ẩn xác nhận mật khẩu' : 'Hiện xác nhận mật khẩu'}
+                                        >
+                                            {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                                        </button>
+                                    )}
                                 </div>
                             )}
                         </div>

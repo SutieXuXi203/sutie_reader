@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect, useCallback, useDeferredValue, useMemo, Suspense } from 'react';
 import dynamic from 'next/dynamic';
-import { 
-  AnimatedBookOpen, AnimatedBookmarkCheck, AnimatedSearch, AnimatedLock, AnimateIcon
+import {
+  AnimatedBookOpen, AnimatedBookmarkCheck, AnimatedSearch, AnimatedLock
 } from '@/components/animate-ui/icons/AnimateIcon';
 import { ChevronRight, X } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
@@ -271,9 +271,9 @@ function HomeContent() {
               </div>
 
               {isLoading ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 animate-pulse">
                   {[1, 2, 3, 4, 5, 6].map((i) => (
-                    <div key={i} className="bg-card border border-border rounded-[8px] h-72 animate-pulse shadow-sm" />
+                    <div key={i} className="bg-card border border-border rounded-[8px] h-56 sm:h-64 animate-pulse shadow-sm" />
                   ))}
                 </div>
               ) : filteredPosts.length === 0 ? (
@@ -283,13 +283,14 @@ function HomeContent() {
                   </p>
                 </div>
               ) : (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
                   {filteredPosts.map((post) => (
                     <PostCard
                       key={post._id}
                       post={post}
                       onDelete={handlePostDeleted}
                       onUpdate={fetchPosts}
+                      compact
                     />
                   ))}
                 </div>

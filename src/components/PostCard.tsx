@@ -8,7 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
-import { getOptimizedImageUrl } from '@/lib/utils';
+import { cn, getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
 const DeleteConfirmDialog = dynamic(() => import('@/components/DeleteConfirmDialog').then(m => ({ default: m.DeleteConfirmDialog })), { ssr: false });
@@ -28,8 +28,9 @@ interface PostCardProps {
   onDelete: (id: string) => void;
   onUpdate: () => void;
   availableTags?: string[];
+  compact?: boolean;
 }
-export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate, availableTags = [] }: PostCardProps) {
+export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate, availableTags = [], compact = false }: PostCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
@@ -99,6 +100,13 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
     });
   }, []);
   const formattedCreatedAt = formatDate(post.createdAt);
+  const formattedCompactCreatedAt = new Date(post.createdAt).toLocaleDateString('vi-VN', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric',
+  });
+  const visibleTags = post.tags?.slice(0, compact ? 2 : 4) || [];
+  const remainingTags = Math.max(0, (post.tags?.length || 0) - visibleTags.length);
   return (
     <>
       <Link
@@ -106,7 +114,10 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
         className="group/card flex flex-col h-full bg-card/60 backdrop-blur-md border border-border rounded-[8px] overflow-hidden hover:shadow-[0_8px_30px_rgba(140,47,57,0.18)] hover:-translate-y-1 transition-all duration-500 cursor-pointer relative"
       >
         <div
-          className="relative w-full aspect-[16/9] bg-card/20 overflow-hidden border-b border-border dark:border-primary/20"
+          className={cn(
+            "relative w-full bg-card/20 overflow-hidden border-b border-border dark:border-primary/20",
+            compact ? "aspect-[4/5]" : "aspect-[16/9]"
+          )}
           onMouseEnter={() => { if (canHoverPreview && (!isNSFW || nsfwRevealed)) setShowPreview(true); }}
           onMouseLeave={() => setShowPreview(false)}
         >
@@ -115,8 +126,12 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               src={getOptimizedImageUrl(post.images[0])}
               alt={post.title}
               fill
-              sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
-              className={`object-cover transition-transform duration-700 group-hover/card:scale-105 ${isNSFW && !nsfwRevealed ? 'blur-xl scale-110 brightness-90 saturate-75' : ''}`}
+              sizes={compact ? "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 16vw" : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"}
+              className={cn(
+                "object-cover transition-transform duration-700 group-hover/card:scale-105",
+                compact && "object-top",
+                isNSFW && !nsfwRevealed && "blur-xl scale-110 brightness-90 saturate-75"
+              )}
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-primary-foreground/80 dark:text-primary/40">
@@ -143,60 +158,66 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
         </div>
-        <div className="p-5 md:p-6 flex flex-col flex-grow text-left">
-          <h3 className="text-lg font-bold text-foreground mb-3 group-hover/card:text-primary transition-colors line-clamp-2 leading-tight">
+        <div className={cn("flex flex-col flex-grow text-left", compact ? "p-2.5 sm:p-3" : "p-5 md:p-6")}>
+          <h3 className={cn("font-bold text-foreground group-hover/card:text-primary transition-colors line-clamp-2 leading-tight", compact ? "mb-2 text-xs sm:text-sm" : "mb-3 text-lg")}>
             {post.title}
           </h3>
           {post.tags && post.tags.length > 0 ? (
-            <div className="mb-4 flex flex-wrap gap-1.5 min-h-[28px]">
-              {post.tags.slice(0, 4).map((tag) => (
+            <div className={cn("flex flex-wrap", compact ? "mb-3 gap-1 min-h-[22px]" : "mb-4 gap-1.5 min-h-[28px]")}>
+              {visibleTags.map((tag) => (
                 <button
                   type="button"
                   onClick={(e) => handleTagClick(e, tag)}
                   key={`${post._id}-${tag}`}
-                  className="inline-flex items-center rounded-[8px] border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer"
+                  className={cn(
+                    "inline-flex items-center rounded-[8px] border border-primary/20 bg-primary/10 font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer",
+                    compact ? "px-1 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px] sm:text-[11px]"
+                  )}
                 >
                   #{tag.toLowerCase()}
                 </button>
               ))}
-              {post.tags.length > 4 && (
-                <span className="inline-flex items-center rounded-[8px] border border-primary/20 bg-primary/10 px-1.5 py-0.5 text-[10px] sm:text-[11px] font-semibold text-primary">
-                  +{post.tags.length - 4}
+              {remainingTags > 0 && (
+                <span className={cn(
+                  "inline-flex items-center rounded-[8px] border border-primary/20 bg-primary/10 font-semibold text-primary",
+                  compact ? "px-1 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px] sm:text-[11px]"
+                )}>
+                  +{remainingTags}
                 </span>
               )}
             </div>
           ) : (
-            <p className="text-sm text-muted-foreground mb-4 line-clamp-3 leading-relaxed flex-grow">
+            <p className={cn("text-muted-foreground leading-relaxed flex-grow", compact ? "mb-3 line-clamp-2 text-xs" : "mb-4 line-clamp-3 text-sm")}>
               {post.description || 'Chưa gắn tag'}
             </p>
           )}
-          <div className="flex items-center gap-2 mb-6 text-foreground/80 font-semibold w-fit">
-            <AnimatedUser className="w-4 h-4" />
-            <span className="text-sm">{post.author}</span>
+          <div className={cn("flex items-center text-foreground/80 font-semibold max-w-full", compact ? "gap-1.5 mb-3" : "gap-2 mb-6 w-fit")}>
+            <AnimatedUser className={cn("shrink-0", compact ? "w-3.5 h-3.5" : "w-4 h-4")} />
+            <span className={cn("truncate", compact ? "text-[11px] sm:text-xs" : "text-sm")}>{post.author}</span>
           </div>
-          <div className="flex flex-wrap items-center justify-between gap-y-3 text-[12px] sm:text-[13px] pt-4 border-t border-border mt-auto">
-            <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-muted-foreground font-medium">
-              <span className="flex items-center gap-1.5 whitespace-nowrap">
-                <AnimateIcon icon={CalendarDays} animation="scale" className="w-3.5 h-3.5" />
-                {formattedCreatedAt}
+          <div className={cn("flex flex-wrap items-center justify-between border-t border-border mt-auto", compact ? "gap-y-2 pt-2 text-[10px]" : "gap-y-3 pt-4 text-[12px] sm:text-[13px]")}>
+            <div className={cn("flex flex-wrap items-center gap-y-1 text-muted-foreground font-medium", compact ? "gap-x-2" : "gap-x-3")}>
+              <span className={cn("flex items-center whitespace-nowrap", compact ? "gap-1" : "gap-1.5")}>
+                <AnimateIcon icon={CalendarDays} animation="scale" className={cn(compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
+                {compact ? formattedCompactCreatedAt : formattedCreatedAt}
               </span>
             </div>
             {isAdmin && (
-              <div className="flex items-center gap-1 ml-auto">
+              <div className={cn("flex items-center gap-1 ml-auto", compact && "mt-1")}>
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditOpen(true); }}
-                  className="p-1.5 sm:p-2 text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-[8px] transition-all cursor-pointer"
+                  className={cn("text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-[8px] transition-all cursor-pointer", compact ? "p-1" : "p-1.5 sm:p-2")}
                   title="Chỉnh sửa"
                 >
-                  <AnimatedEdit className="h-4 w-4" />
+                  <AnimatedEdit className={cn(compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
                 </button>
                 <button
                   onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDeleteConfirmOpen(true); }}
                   disabled={isDeleting}
-                  className="p-1.5 sm:p-2 text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-[8px] transition-all disabled:opacity-50 cursor-pointer"
+                  className={cn("text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-[8px] transition-all disabled:opacity-50 cursor-pointer", compact ? "p-1" : "p-1.5 sm:p-2")}
                   title="Xóa"
                 >
-                  <AnimatedTrash className="h-4 w-4" />
+                  <AnimatedTrash className={cn(compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
                 </button>
               </div>
             )}

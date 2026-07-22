@@ -5,6 +5,7 @@ import { SmoothScrollProvider } from "@/providers/SmoothScrollProvider";
 import { UploadProgressProvider } from "@/providers/UploadProgressProvider";
 import { SiteNav } from "@/components/SiteNav";
 import { GooeyToastProvider } from "@/components/GooeyToastProvider";
+import { DevPointerCaptureGuard } from "@/components/DevPointerCaptureGuard";
 import "./globals.css";
 import "goey-toast/styles.css";
 import { Inter } from "next/font/google";
@@ -52,6 +53,7 @@ export default function RootLayout({
         className={`${sfPro.variable} font-sans antialiased bg-background text-foreground`}
         suppressHydrationWarning
       >
+        <DevPointerCaptureGuard />
         <Providers>
           <UploadProgressProvider>
             <SmoothScrollProvider>
