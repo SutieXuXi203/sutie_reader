@@ -166,9 +166,9 @@ export default function ProductsPage() {
                     </div>
 
                     {isLoading || isAuthLoading ? (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 animate-pulse">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 animate-pulse">
                             {[1, 2, 3, 4, 5, 6].map((i) => (
-                                <div key={i} className="bg-card border border-border rounded-[8px] h-72 animate-pulse shadow-sm" />
+                                <div key={i} className="bg-card border border-border rounded-[8px] h-56 sm:h-64 animate-pulse shadow-sm" />
                             ))}
                         </div>
                     ) : !user ? (
@@ -195,13 +195,14 @@ export default function ProductsPage() {
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-8">
+                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
                             {filteredPosts.map((post) => (
                                 <PostCard
                                     key={post._id}
                                     post={post}
                                     onDelete={handlePostDeleted}
                                     onUpdate={fetchPosts}
+                                    compact
                                 />
                             ))}
                         </div>

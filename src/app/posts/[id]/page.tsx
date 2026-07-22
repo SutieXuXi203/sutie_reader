@@ -396,9 +396,10 @@ export default function PostDetailPage() {
           <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-4">
             <Link
               href="/#posts"
-              className="p-1.5 md:p-2 rounded-[8px] bg-secondary hover:bg-muted text-foreground transition-colors"
+              className="inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] bg-transparent text-foreground/80 transition-colors hover:text-foreground"
+              aria-label="Quay lại danh sách truyện"
             >
-              <AnimatedArrowLeft className="w-4 h-4 md:w-5 md:h-5" />
+              <AnimatedArrowLeft className="block w-4 h-4 md:w-5 md:h-5" />
             </Link>
             <div className="flex min-w-0 items-center gap-2 md:gap-3">
               <AnimatedBookOpen className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground flex-shrink-0" />
@@ -438,15 +439,15 @@ export default function PostDetailPage() {
                 }
               }}
               title={hasBookmark ? 'Xóa đánh dấu' : 'Lưu vị trí đọc'}
-              className={`p-1.5 md:p-2 rounded-[8px] transition-all cursor-pointer ${hasBookmark
-                  ? 'bg-primary/20 text-primary hover:bg-primary/30'
-                  : 'bg-secondary text-foreground/60 hover:bg-muted hover:text-foreground'
+              className={`inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] bg-transparent p-0 transition-colors cursor-pointer ${hasBookmark
+                  ? 'text-primary hover:text-primary/80'
+                  : 'text-foreground/60 hover:text-foreground'
                 }`}
             >
               {hasBookmark ? (
-                <AnimatedBookmarkCheck className="w-4 h-4 md:w-5 md:h-5" />
+                <AnimatedBookmarkCheck className="block w-4 h-4 md:w-5 md:h-5" />
               ) : (
-                <AnimatedBookmark className="w-4 h-4 md:w-5 md:h-5" />
+                <AnimatedBookmark className="block w-4 h-4 md:w-5 md:h-5" />
               )}
             </button>
             <span className="text-foreground text-xs md:text-sm font-bold bg-secondary px-2 py-1 md:px-3 md:py-1 rounded-[8px] backdrop-blur-sm border border-border">

@@ -263,7 +263,7 @@ export function CreatePostForm({
     }
 
     // Hiển thị Widget tiến trình toàn cục ở dưới góc phải
-    showProgress(`${currentTitle} (${currentFiles.length} ảnh)`, currentFiles.length);
+    showProgress(`${uploadTitle} (${currentFiles.length} ảnh)`, currentFiles.length);
 
     try {
       const imageUrls = await uploadImages(currentFiles, uploadTitle, currentPostId, (completed, total) => {
