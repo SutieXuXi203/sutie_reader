@@ -16,7 +16,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthContext';
-import { getOptimizedImageUrl } from '@/lib/utils';
+import { cn, getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 
 interface Chapter {
@@ -90,6 +90,7 @@ export default function PostDetailPage() {
   const [currentPage, setCurrentPage] = useState(0);
   const [nsfwAccepted, setNsfwAccepted] = useState(false);
   const [hasBookmark, setHasBookmark] = useState(false);
+  const [isChapterMenuOpen, setIsChapterMenuOpen] = useState(false);
   const [pendingResume, setPendingResume] = useState<{
     chapterIndex: number;
     page: number;
@@ -99,6 +100,7 @@ export default function PostDetailPage() {
   const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialScrollDone = useRef(false);
+  const chapterSelectRef = useRef<HTMLDivElement | null>(null);
 
   const resetUiTimer = useCallback(() => {
     setShowUI(true);
@@ -118,6 +120,7 @@ export default function PostDetailPage() {
 
   const goToChapter = useCallback(
     (index: number) => {
+      setIsChapterMenuOpen(false);
       const chapters = normalizeChapters(post);
       if (index < 0 || index >= chapters.length || index === activeChapterIndex) return;
       setActiveChapterIndex(index);
@@ -264,6 +267,33 @@ export default function PostDetailPage() {
       if (uiTimer.current) clearTimeout(uiTimer.current);
     };
   }, []);
+
+  useEffect(() => {
+    if (!isChapterMenuOpen) return;
+
+    setShowUI(true);
+    if (uiTimer.current) clearTimeout(uiTimer.current);
+
+    const handlePointerDown = (event: PointerEvent) => {
+      if (!chapterSelectRef.current?.contains(event.target as Node)) {
+        setIsChapterMenuOpen(false);
+      }
+    };
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        setIsChapterMenuOpen(false);
+      }
+    };
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [isChapterMenuOpen]);
 
   useEffect(() => {
     if (!post) return;
@@ -543,23 +573,51 @@ export default function PostDetailPage() {
             <AnimatedArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Chương trước</span>
           </button>
-          <div className="relative">
-            <select
-              value={String(activeChapterIndex)}
-              onChange={(e) => goToChapter(Number(e.target.value))}
-              className="appearance-none bg-background hover:bg-muted border border-border text-foreground px-4 py-1.5 pr-8 rounded-[8px] text-[11px] md:text-xs font-medium focus:outline-none focus:border-primary/50 cursor-pointer transition-colors shadow-sm"
+          <div ref={chapterSelectRef} className="relative">
+            <button
+              type="button"
+              aria-haspopup="listbox"
+              aria-expanded={isChapterMenuOpen}
+              aria-label="Chọn chương"
+              onClick={() => setIsChapterMenuOpen((open) => !open)}
+              className="inline-flex h-8 min-w-[104px] items-center justify-between gap-2 rounded-[8px] border border-border bg-background px-3.5 text-[11px] font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring/30 md:text-xs"
             >
-              {chapters.map((chapter, index) => (
-                <option
-                  key={`${chapter.chapterNumber}-${index}`}
-                  value={String(index)}
-                  className="bg-background text-foreground py-2"
-                >
-                  Chương {chapter.chapterNumber}
-                </option>
-              ))}
-            </select>
-            <ChevronDown className="w-3 h-3 absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground pointer-events-none" />
+              <span className="truncate">Chương {activeChapter?.chapterNumber || activeChapterIndex + 1}</span>
+              <ChevronDown
+                className={cn(
+                  "h-3 w-3 shrink-0 text-muted-foreground transition-transform",
+                  isChapterMenuOpen && "rotate-180"
+                )}
+              />
+            </button>
+
+            {isChapterMenuOpen && (
+              <div
+                role="listbox"
+                aria-label="Danh sách chương"
+                className="absolute bottom-full left-1/2 z-50 mb-2 max-h-56 w-36 -translate-x-1/2 overflow-y-auto rounded-[8px] border border-border bg-background p-1 shadow-2xl"
+              >
+                {chapters.map((chapter, index) => {
+                  const isActive = index === activeChapterIndex;
+
+                  return (
+                    <button
+                      key={`${chapter.chapterNumber}-${index}`}
+                      type="button"
+                      role="option"
+                      aria-selected={isActive}
+                      onClick={() => goToChapter(index)}
+                      className={cn(
+                        "flex h-8 w-full items-center rounded-[6px] px-3 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-muted focus-visible:bg-muted md:text-xs",
+                        isActive && "bg-muted font-bold text-foreground"
+                      )}
+                    >
+                      Chương {chapter.chapterNumber}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
           <button
             onClick={() => goToChapter(activeChapterIndex + 1)}
