@@ -389,7 +389,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 <SelectContent>
                   {chapters.map((ch, idx) => (
                     <SelectItem key={`chapter-option-${idx}`} value={idx.toString()}>
-                      {`${idx + 1} - ${ch.title || 'Chương không tên'}`}
+                      {ch.title || `Chương ${idx + 1}`}
                     </SelectItem>
                   ))}
                 </SelectContent>
