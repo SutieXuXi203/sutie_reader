@@ -59,7 +59,23 @@ function HomeContent() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string; name: string }[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
+  const [currentPage, _setCurrentPage] = useState(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('homePage');
+      return saved ? parseInt(saved, 10) : 1;
+    }
+    return 1;
+  });
+
+  const setCurrentPage = useCallback((page: number | ((prev: number) => number)) => {
+    _setCurrentPage(prev => {
+      const next = typeof page === 'function' ? page(prev) : page;
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('homePage', next.toString());
+      }
+      return next;
+    });
+  }, []);
   const itemsPerPage = 12;
   const [isSearchComposing, setIsSearchComposing] = useState(false);
   const [isLoading, setIsLoading] = useState(true);

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useDeferredValue, useMemo } from 'react';
+import { useState, useEffect, useDeferredValue, useMemo, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Lock, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -28,7 +28,23 @@ interface Post {
 export default function ProductsPage() {
     const [posts, setPosts] = useState<Post[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
-    const [currentPage, setCurrentPage] = useState(1);
+    const [currentPage, _setCurrentPage] = useState(() => {
+        if (typeof window !== 'undefined') {
+            const saved = sessionStorage.getItem('productsPage');
+            return saved ? parseInt(saved, 10) : 1;
+        }
+        return 1;
+    });
+
+    const setCurrentPage = useCallback((page: number | ((prev: number) => number)) => {
+        _setCurrentPage(prev => {
+            const next = typeof page === 'function' ? page(prev) : page;
+            if (typeof window !== 'undefined') {
+                sessionStorage.setItem('productsPage', next.toString());
+            }
+            return next;
+        });
+    }, []);
     const itemsPerPage = 12;
     const [isSearchComposing, setIsSearchComposing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
