@@ -37,7 +37,7 @@ export const uploadImages = async (
           return await imageCompression(file, {
             maxSizeMB: 1,
             maxWidthOrHeight: 1920,
-            useWebWorker: false, // Turned off to prevent worker termination issues during page navigation
+            useWebWorker: true,
           });
         } catch (error) {
           console.error('Lỗi khi nén ảnh:', error);
