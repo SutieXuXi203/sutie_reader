@@ -370,18 +370,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     )}
 
                     {mode === 'login' && (
-                        <div className="flex items-center justify-between">
-                            <label className="flex items-center gap-2 cursor-pointer group">
-                                <input
-                                    type="checkbox"
-                                    checked={rememberMe}
-                                    onChange={(e) => setRememberMe(e.target.checked)}
-                                    className="w-4 h-4 rounded-[8px] border-neutral-300 dark:border-neutral-600 text-foreground focus:ring-primary accent-black dark:accent-white hover:cursor-pointer"
-                                />
-                                <span className="text-xs text-neutral-600 dark:text-neutral-300 group-hover:text-neutral-800 dark:group-hover:text-neutral-100 transition-colors">
-                                    Ghi nhớ đăng nhập
-                                </span>
-                            </label>
+                        <div className="flex items-center justify-end">
                             <button
                                 type="button"
                                 onClick={() => setMode('forgot-password')}
