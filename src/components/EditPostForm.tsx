@@ -388,7 +388,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     {activeChapter.title || `Chương ${selectedChapterIndex + 1}`}
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent alignItemWithTrigger={false}>
                   {chapters.map((ch, idx) => (
                     <SelectItem key={`chapter-option-${idx}`} value={idx.toString()}>
                       {ch.title || `Chương ${idx + 1}`}
