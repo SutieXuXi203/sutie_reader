@@ -52,6 +52,7 @@ interface ChapterEditState {
 export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availableTags = [] }: EditPostFormProps) {
   const { showProgress, updateProgress } = useUploadProgress();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isLoadingDetails, setIsLoadingDetails] = useState(false);
   const [title, setTitle] = useState(post.title);
   const [tags, setTags] = useState<string[]>(post.tags || []);
   const [author, setAuthor] = useState(post.author);
@@ -60,32 +61,67 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const [selectedChapterIndex, setSelectedChapterIndex] = useState<number>(0);
 
   useEffect(() => {
+    if (!open) return;
     setTitle(post.title);
     setTags(post.tags || []);
     setAuthor(post.author);
 
-    const initialChapters: ChapterEditState[] = (
-      post.chapters && post.chapters.length > 0
-        ? post.chapters
-        : [
+    if (post.chapters && post.chapters.length > 0) {
+      setChapters(post.chapters.map((ch, idx) => ({
+        title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
+        chapterNumber: ch.chapterNumber || idx + 1,
+        content: ch.content || '',
+        keptImages: Array.isArray(ch.images) ? ch.images : [],
+        newImageFiles: [],
+        newImagePreviews: [],
+      })));
+      setSelectedChapterIndex(0);
+    } else {
+      setIsLoadingDetails(true);
+      fetch(`/api/posts/${post._id}`)
+        .then((res) => res.json())
+        .then((data) => {
+          const fetchedChapters = data.chapters && data.chapters.length > 0
+            ? data.chapters
+            : [
+                {
+                  title: 'Chương 1',
+                  chapterNumber: 1,
+                  content: data.content || post.content || '',
+                  images: data.images || post.images || [],
+                },
+              ];
+
+          setChapters(
+            fetchedChapters.map((ch: any, idx: number) => ({
+              title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
+              chapterNumber: ch.chapterNumber || idx + 1,
+              content: ch.content || '',
+              keptImages: Array.isArray(ch.images) ? ch.images : [],
+              newImageFiles: [],
+              newImagePreviews: [],
+            }))
+          );
+          setSelectedChapterIndex(0);
+        })
+        .catch((err) => {
+          console.error('Lỗi tải chi tiết truyện:', err);
+          setChapters([
             {
               title: 'Chương 1',
               chapterNumber: 1,
               content: post.content || '',
-              images: post.images || [],
+              keptImages: post.images || [],
+              newImageFiles: [],
+              newImagePreviews: [],
             },
-          ]
-    ).map((ch, idx) => ({
-      title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
-      chapterNumber: ch.chapterNumber || idx + 1,
-      content: ch.content || '',
-      keptImages: Array.isArray(ch.images) ? ch.images : [],
-      newImageFiles: [],
-      newImagePreviews: [],
-    }));
-
-    setChapters(initialChapters);
-    setSelectedChapterIndex(0);
+          ]);
+          setSelectedChapterIndex(0);
+        })
+        .finally(() => {
+          setIsLoadingDetails(false);
+        });
+    }
   }, [post, open]);
 
   const activeChapter = chapters[selectedChapterIndex] || {
@@ -580,14 +616,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               type="button"
               variant="outline"
               onClick={() => onOpenChange(false)}
-              disabled={isSubmitting}
+              disabled={isSubmitting || isLoadingDetails}
               className="rounded-[8px]"
               size="sm"
             >
               Hủy
             </Button>
-            <Button type="submit" disabled={isSubmitting} className="rounded-[8px]" size="sm">
-              {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+            <Button type="submit" disabled={isSubmitting || isLoadingDetails} className="rounded-[8px]" size="sm">
+              {isLoadingDetails ? 'Đang tải dữ liệu...' : isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
             </Button>
           </div>
         </form>
