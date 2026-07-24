@@ -233,8 +233,9 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     setIsSubmitting(true);
     onOpenChange(false);
 
+    let taskId = '';
     if (totalNewFiles > 0) {
-      showProgress(`Đang cập nhật "${currentTitle}"`, totalNewFiles);
+      taskId = showProgress(`Đang cập nhật "${currentTitle}"`, totalNewFiles);
     }
 
     try {
@@ -252,7 +253,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             ch.title,
             post._id,
             (completed) => {
-              updateProgress(uploadedCount + completed, totalNewFiles, 'uploading');
+              if (taskId) updateProgress(taskId, uploadedCount + completed, totalNewFiles, 'uploading');
             }
           );
           uploadedCount += ch.newImageFiles.length;
@@ -266,8 +267,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         });
       }
 
-      if (totalNewFiles > 0) {
-        updateProgress(totalNewFiles, totalNewFiles, 'saving');
+      if (totalNewFiles > 0 && taskId) {
+        updateProgress(taskId, totalNewFiles, totalNewFiles, 'saving');
       }
 
       const response = await fetch(`/api/posts/${post._id}`, {
@@ -288,20 +289,20 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         throw new Error(data?.details || data?.error || `Server error ${response.status}`);
       }
 
-      if (totalNewFiles > 0) {
-        updateProgress(totalNewFiles, totalNewFiles, 'success');
+      if (totalNewFiles > 0 && taskId) {
+        updateProgress(taskId, totalNewFiles, totalNewFiles, 'success');
       } else {
         notify.success('Cập nhật bài viết thành công');
       }
 
       onPostUpdated();
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      notify.error('Cập nhật không thành công', message);
-      console.error('Lỗi khi cập nhật bài viết:', err);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      notify.error(`Lỗi: ${message}`);
+      console.error('Lỗi khi cập nhật bài viết:', error);
 
-      if (totalNewFiles > 0) {
-        updateProgress(0, totalNewFiles, 'error', message);
+      if (totalNewFiles > 0 && taskId) {
+        updateProgress(taskId, 0, totalNewFiles, 'error', message);
       }
     } finally {
       setIsSubmitting(false);

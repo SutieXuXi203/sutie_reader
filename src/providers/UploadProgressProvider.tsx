@@ -4,56 +4,62 @@ import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { UploadProgressWidget, UploadProgressState } from '@/components/UploadProgressWidget';
 
 interface UploadProgressContextType {
-  progressState: UploadProgressState;
-  showProgress: (title: string, total: number) => void;
-  updateProgress: (completed: number, total: number, status?: UploadProgressState['status'], errorMessage?: string) => void;
-  hideProgress: () => void;
+  tasks: UploadProgressState[];
+  showProgress: (title: string, total: number) => string;
+  updateProgress: (id: string, completed: number, total: number, status?: UploadProgressState['status'], errorMessage?: string) => void;
+  hideProgress: (id: string) => void;
 }
 
 const UploadProgressContext = createContext<UploadProgressContextType | undefined>(undefined);
 
 export function UploadProgressProvider({ children }: { children: ReactNode }) {
-  const [progressState, setProgressState] = useState<UploadProgressState>({
-    isVisible: false,
-    title: '',
-    completed: 0,
-    total: 0,
-    status: 'uploading',
-  });
+  const [tasks, setTasks] = useState<UploadProgressState[]>([]);
 
   const showProgress = (title: string, total: number) => {
-    setProgressState({
-      isVisible: true,
-      title,
-      completed: 0,
-      total,
-      status: 'uploading',
-    });
+    const id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
+    setTasks((prev) => [
+      ...prev,
+      {
+        id,
+        title,
+        completed: 0,
+        total,
+        status: 'uploading',
+      },
+    ]);
+    return id;
   };
 
   const updateProgress = (
+    id: string,
     completed: number,
     total: number,
     status: UploadProgressState['status'] = 'uploading',
     errorMessage?: string
   ) => {
-    setProgressState((prev) => ({
-      ...prev,
-      completed,
-      total,
-      status,
-      errorMessage: errorMessage || prev.errorMessage,
-    }));
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === id
+          ? {
+              ...task,
+              completed,
+              total,
+              status,
+              errorMessage: errorMessage || task.errorMessage,
+            }
+          : task
+      )
+    );
   };
 
-  const hideProgress = () => {
-    setProgressState((prev) => ({ ...prev, isVisible: false }));
+  const hideProgress = (id: string) => {
+    setTasks((prev) => prev.filter((task) => task.id !== id));
   };
 
   return (
-    <UploadProgressContext.Provider value={{ progressState, showProgress, updateProgress, hideProgress }}>
+    <UploadProgressContext.Provider value={{ tasks, showProgress, updateProgress, hideProgress }}>
       {children}
-      <UploadProgressWidget state={progressState} onClose={hideProgress} />
+      <UploadProgressWidget tasks={tasks} onClose={hideProgress} />
     </UploadProgressContext.Provider>
   );
 }

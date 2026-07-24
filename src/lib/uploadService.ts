@@ -86,19 +86,19 @@ export const processBackgroundChapterSave = async (
   files: File[],
   chapNum: number,
   upTitle: string,
-  showProgress: (title: string, total: number) => void,
-  updateProgress: (completed: number, total: number, status?: 'uploading' | 'saving' | 'success' | 'error', errorMessage?: string) => void,
+  showProgress: (title: string, total: number) => string,
+  updateProgress: (taskId: string, completed: number, total: number, status?: 'uploading' | 'saving' | 'success' | 'error', errorMessage?: string) => void,
   onPostCreated: () => void,
   notifyError: (title: string, message?: string) => void
 ) => {
-  showProgress(`${upTitle} - ${chapTitle} (${files.length} ảnh)`, files.length);
+  const taskId = showProgress(`${upTitle} - ${chapTitle} (${files.length} ảnh)`, files.length);
 
   try {
     const imageUrls = await uploadImages(files, upTitle, chapTitle, postId, (completed, total) => {
-      updateProgress(completed, total, 'uploading');
+      updateProgress(taskId, completed, total, 'uploading');
     });
 
-    updateProgress(files.length, files.length, 'saving');
+    updateProgress(taskId, files.length, files.length, 'saving');
 
     const response = await fetch(`/api/posts/${postId}/chapters`, {
       method: 'POST',
@@ -116,13 +116,13 @@ export const processBackgroundChapterSave = async (
       throw new Error(data?.details || data?.error || `Server error ${response.status}`);
     }
 
-    updateProgress(files.length, files.length, 'success');
+    updateProgress(taskId, files.length, files.length, 'success');
     onPostCreated();
   } catch (err) {
     const message = err instanceof Error ? err.message : 'Unknown error';
     notifyError(`Lưu ${chapTitle} không thành công`, message);
     console.error(`Lỗi khi lưu ${chapTitle}:`, err);
 
-    updateProgress(0, files.length, 'error', message);
+    updateProgress(taskId, 0, files.length, 'error', message);
   }
 };
