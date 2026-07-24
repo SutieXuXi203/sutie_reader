@@ -1,5 +1,6 @@
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
+import { Bookmark } from '@/models/Bookmark';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin } from '@/lib/auth';
@@ -401,6 +402,12 @@ export async function DELETE(
     if (!deletedPost) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
+    
+    // Xóa lịch sử đọc (Bookmark) liên quan
+    await Bookmark.deleteMany({ postId: id }).catch(err => {
+      console.error('Lỗi khi xóa bookmark liên quan:', err);
+    });
+
     deleteDriveFolder(id, deletedPost.title).catch((err) =>
       console.warn('Lỗi khi xóa folder Drive:', err)
     );

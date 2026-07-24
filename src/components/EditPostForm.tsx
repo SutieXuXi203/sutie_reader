@@ -7,11 +7,11 @@ import { Textarea } from '@/components/ui/textarea';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Upload, X, Plus, Trash2 } from 'lucide-react';
 import Image from 'next/image';
-import imageCompression from 'browser-image-compression';
-import { cn, getOptimizedImageUrl } from '@/lib/utils';
 import { TagPicker } from '@/components/TagPicker';
 import { notify } from '@/lib/notify';
 import { useUploadProgress } from '@/providers/UploadProgressProvider';
+import { uploadImages } from '@/lib/uploadService';
+import { cn, getOptimizedImageUrl } from '@/lib/utils';
 
 interface Chapter {
   _id?: string;
@@ -207,82 +207,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     }
   };
 
-  const uploadNewImages = async (
-    files: File[],
-    uploadTitle: string,
-    postId: string,
-    onProgress?: (completed: number, total: number) => void
-  ): Promise<string[]> => {
-    if (!files.length) return [];
-
-    const tokenRes = await fetch('/api/auth/token');
-    if (!tokenRes.ok) {
-      const errData = await tokenRes.json().catch(() => ({}));
-      throw new Error(errData?.error || 'Không lấy được phiên đăng nhập Admin');
-    }
-    const { token } = await tokenRes.json();
-
-    const workerUrl = (
-      process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
-      'https://sutie-images.manhdinh0410.workers.dev'
-    ).replace(/\/+$/, '');
-
-    const sortedFiles = [...files].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-    );
-
-    const BATCH_SIZE = 2;
-    const allUrls: string[] = [];
-
-    for (let i = 0; i < sortedFiles.length; i += BATCH_SIZE) {
-      const batchFiles = sortedFiles.slice(i, i + BATCH_SIZE);
-
-      const compressedBatch = await Promise.all(
-        batchFiles.map(async (file) => {
-          if (file.size <= 500 * 1024) return file;
-          try {
-            return await imageCompression(file, {
-              maxSizeMB: 1,
-              maxWidthOrHeight: 1920,
-              useWebWorker: true,
-            });
-          } catch (error) {
-            console.error('Lỗi khi nén ảnh:', error);
-            return file;
-          }
-        })
-      );
-
-      const formData = new FormData();
-      formData.append('title', uploadTitle);
-      if (postId) formData.append('postId', postId);
-      compressedBatch.forEach((compressed, idx) =>
-        formData.append('files', compressed, batchFiles[idx].name)
-      );
-
-      const res = await fetch(`${workerUrl}/upload`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
-        body: formData,
-      });
-
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(
-          data?.details || data?.error || `Upload thất bại ở nhóm ảnh ${Math.floor(i / BATCH_SIZE) + 1}`
-        );
-      }
-
-      const { urls } = await res.json();
-      allUrls.push(...(urls as string[]));
-
-      onProgress?.(allUrls.length, sortedFiles.length);
-    }
-
-    return allUrls;
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -322,7 +246,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         let uploadedUrls: string[] = [];
 
         if (ch.newImageFiles.length > 0) {
-          uploadedUrls = await uploadNewImages(
+          uploadedUrls = await uploadImages(
             ch.newImageFiles,
             currentTitle,
             post._id,
