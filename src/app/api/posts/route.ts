@@ -151,17 +151,15 @@ export async function GET() {
           author: 1,
           createdAt: 1,
           updatedAt: 1,
-          firstChapter: { $arrayElemAt: ['$chapters', 0] },
+          firstChapterImages: { $arrayElemAt: ['$chapters.images', 0] },
           chapterCount: { $size: { $ifNull: ['$chapters', []] } },
-          content: 1,
           images: 1,
         },
       },
     ]);
 
     const serialized = posts.map((post) => {
-      const previewContent = post.firstChapter?.content || post.content || '';
-      const previewImages = post.firstChapter?.images || post.images || [];
+      const previewImages = post.firstChapterImages || post.images || [];
 
       return {
         _id: post._id.toString(),
@@ -172,7 +170,6 @@ export async function GET() {
         createdAt: post.createdAt,
         updatedAt: post.updatedAt,
         chapterCount: post.chapterCount,
-        content: previewContent,
         images: previewImages,
       };
     });

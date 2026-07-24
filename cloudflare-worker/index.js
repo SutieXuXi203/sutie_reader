@@ -435,12 +435,12 @@ const worker = {
         const targetFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
         const imageBaseUrl = (env.PUBLIC_IMAGE_BASE_URL || url.origin).replace(/\/+$/, '');
 
-        const uploadedUrls = [];
-        for (let i = 0; i < files.length; i++) {
-          const fileId = await uploadFileToDrive(accessToken, targetFolderId, postId, files[i], i, files.length);
+        const uploadPromises = files.map(async (file, i) => {
+          const fileId = await uploadFileToDrive(accessToken, targetFolderId, postId, file, i, files.length);
           await assertImageCanBeServed(accessToken, parentFolderId, fileId);
-          uploadedUrls.push(`${imageBaseUrl}/image/${fileId}`);
-        }
+          return `${imageBaseUrl}/image/${fileId}`;
+        });
+        const uploadedUrls = await Promise.all(uploadPromises);
 
         console.log(`[CF WORKER] Uploaded ${uploadedUrls.length}/${files.length} image(s)`);
         return jsonResponse({ urls: uploadedUrls }, 200, corsHeaders);

@@ -17,7 +17,7 @@ interface Post {
   title: string;
   description?: string;
   tags?: string[];
-  content: string;
+  content?: string;
   images: string[];
   author: string;
   createdAt: string;
