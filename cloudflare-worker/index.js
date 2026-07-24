@@ -239,22 +239,10 @@ async function fileIsInAllowedFolder(accessToken, rootFolderId, metadata) {
       parent &&
       !parent.trashed &&
       parent.mimeType === DRIVE_FOLDER_MIME_TYPE &&
-      Array.isArray(parent.parents)
+      Array.isArray(parent.parents) &&
+      parent.parents.includes(rootFolderId)
     ) {
-      if (parent.parents.includes(rootFolderId)) return true;
-      
-      for (const grandParentId of parent.parents) {
-        const grandParent = await getFileMetadata(accessToken, grandParentId, 'id,mimeType,parents,trashed').catch(() => null);
-        if (
-          grandParent &&
-          !grandParent.trashed &&
-          grandParent.mimeType === DRIVE_FOLDER_MIME_TYPE &&
-          Array.isArray(grandParent.parents) &&
-          grandParent.parents.includes(rootFolderId)
-        ) {
-          return true;
-        }
-      }
+      return true;
     }
   }
 
@@ -427,19 +415,9 @@ const worker = {
         const formData = await request.formData();
         const entries = formData.getAll('files');
         const files = entries.filter((entry) => entry instanceof File);
-        const rawTitle = formData.get('title'); // Fallback old client
-        const rawPostTitle = formData.get('postTitle');
-        const rawChapterTitle = formData.get('chapterTitle');
+        const rawTitle = formData.get('title');
         const rawPostId = formData.get('postId');
-        
-        const postTitle = (typeof rawPostTitle === 'string' && rawPostTitle.trim()) 
-          ? rawPostTitle.trim() 
-          : ((typeof rawTitle === 'string' && rawTitle.trim()) ? rawTitle.trim() : 'Untitled Post');
-          
-        const chapterTitle = (typeof rawChapterTitle === 'string' && rawChapterTitle.trim()) 
-          ? rawChapterTitle.trim() 
-          : 'Untitled Chapter';
-
+        const title = typeof rawTitle === 'string' && rawTitle.trim() ? rawTitle.trim() : 'Untitled';
         const postId = typeof rawPostId === 'string' ? rawPostId.trim() : '';
 
         if (files.length !== entries.length) {
@@ -453,10 +431,8 @@ const worker = {
         validateUploadFiles(files);
 
         const accessToken = await getAccessToken(env);
-        const rootFolderId = getRootFolderId(env);
-        
-        const postFolderId = await getOrCreateFolder(accessToken, rootFolderId, postTitle, postId);
-        const targetFolderId = await getOrCreateFolder(accessToken, postFolderId, chapterTitle, null);
+        const parentFolderId = getRootFolderId(env);
+        const targetFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
         const imageBaseUrl = (env.PUBLIC_IMAGE_BASE_URL || url.origin).replace(/\/+$/, '');
 
         const uploadedUrls = [];

@@ -2,8 +2,7 @@ import imageCompression from 'browser-image-compression';
 
 export const uploadImages = async (
   files: File[],
-  postTitle: string,
-  chapterTitle: string,
+  uploadTitle: string,
   postId: string,
   onProgress?: (completed: number, total: number) => void
 ): Promise<string[]> => {
@@ -48,8 +47,7 @@ export const uploadImages = async (
     );
 
     const formData = new FormData();
-    formData.append('postTitle', postTitle);
-    formData.append('chapterTitle', chapterTitle);
+    formData.append('title', uploadTitle);
     if (postId) formData.append('postId', postId);
     compressedBatch.forEach((compressed, idx) =>
       formData.append('files', compressed, batchFiles[idx].name)
@@ -94,7 +92,7 @@ export const processBackgroundChapterSave = async (
   const taskId = showProgress(`${upTitle} - ${chapTitle} (${files.length} ảnh)`, files.length);
 
   try {
-    const imageUrls = await uploadImages(files, upTitle, chapTitle, postId, (completed, total) => {
+    const imageUrls = await uploadImages(files, upTitle, postId, (completed, total) => {
       updateProgress(taskId, completed, total, 'uploading');
     });
 

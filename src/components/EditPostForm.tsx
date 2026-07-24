@@ -250,7 +250,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
           uploadedUrls = await uploadImages(
             ch.newImageFiles,
             currentTitle,
-            ch.title,
             post._id,
             (completed) => {
               if (taskId) updateProgress(taskId, uploadedCount + completed, totalNewFiles, 'uploading');
