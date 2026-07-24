@@ -239,8 +239,8 @@ export function CreatePostForm({
       notify.error('Không tìm thấy truyện để thêm chương');
       return;
     }
-    if (!chapterContent.trim() || imageFiles.length === 0) {
-      notify.error('Vui lòng nhập nội dung chương và chọn ít nhất một ảnh');
+    if (!chapterContent.trim() && imageFiles.length === 0) {
+      notify.error('Vui lòng nhập nội dung chương hoặc chọn ít nhất một ảnh');
       return;
     }
 
@@ -418,7 +418,7 @@ export function CreatePostForm({
 
             <div>
               <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
-                Nội dung chương
+                Nội dung chương (không bắt buộc)
               </label>
               <Textarea
                 value={chapterContent}
@@ -528,4 +528,3 @@ export function CreatePostForm({
     </Dialog>
   );
 }
-

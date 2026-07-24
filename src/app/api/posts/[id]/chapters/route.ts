@@ -89,9 +89,9 @@ export async function POST(
     const content = typeof payload?.content === 'string' ? payload.content.trim() : '';
     const images = normalizeImages(payload?.images);
 
-    if (!content || images.length === 0) {
+    if (!content && images.length === 0) {
       return NextResponse.json(
-        { error: 'Nội dung chương và ít nhất 1 ảnh là bắt buộc' },
+        { error: 'Nội dung chương hoặc ít nhất 1 ảnh là bắt buộc' },
         { status: 400 }
       );
     }
