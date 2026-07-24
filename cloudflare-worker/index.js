@@ -2,6 +2,10 @@ const DRIVE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const MAX_FILES_PER_REQUEST = 10;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 
+let cachedAccessToken = null;
+let tokenExpiry = 0;
+const metadataCache = new Map();
+
 function jsonResponse(payload, status, corsHeaders) {
   return new Response(JSON.stringify(payload), {
     status,
@@ -64,6 +68,11 @@ async function readJson(res, context) {
 }
 
 async function getAccessToken(env) {
+  const now = Date.now();
+  if (cachedAccessToken && tokenExpiry > now + 60000) {
+    return cachedAccessToken;
+  }
+
   const params = new URLSearchParams({
     client_id: getRequiredEnv(env, 'GOOGLE_CLIENT_ID'),
     client_secret: getRequiredEnv(env, 'GOOGLE_CLIENT_SECRET'),
@@ -81,7 +90,10 @@ async function getAccessToken(env) {
   if (!data.access_token) {
     throw new Error('Google OAuth response did not include an access token');
   }
-  return data.access_token;
+  
+  cachedAccessToken = data.access_token;
+  tokenExpiry = now + ((data.expires_in || 3600) * 1000);
+  return cachedAccessToken;
 }
 
 async function driveFetch(accessToken, url, init = {}, context = 'Google Drive request') {
@@ -250,6 +262,10 @@ async function fileIsInAllowedFolder(accessToken, rootFolderId, metadata) {
 }
 
 async function assertImageCanBeServed(accessToken, rootFolderId, fileId) {
+  if (metadataCache.has(fileId)) {
+    return metadataCache.get(fileId);
+  }
+
   const metadata = await getFileMetadata(accessToken, fileId, 'id,name,mimeType,parents,trashed');
 
   if (metadata.trashed) {
@@ -263,6 +279,11 @@ async function assertImageCanBeServed(accessToken, rootFolderId, fileId) {
   const allowed = await fileIsInAllowedFolder(accessToken, rootFolderId, metadata);
   if (!allowed) {
     throw httpError('Image is outside the allowed Drive folder', 403);
+  }
+
+  metadataCache.set(fileId, metadata);
+  if (metadataCache.size > 2000) {
+    metadataCache.delete(metadataCache.keys().next().value);
   }
 
   return metadata;
@@ -340,7 +361,7 @@ function authMatches(authHeader, expectedSecret) {
 }
 
 const worker = {
-  async fetch(request, env) {
+  async fetch(request, env, ctx) {
     const url = new URL(request.url);
     const corsHeaders = {
       'Access-Control-Allow-Origin': '*',
@@ -357,6 +378,13 @@ const worker = {
       const fileId = url.pathname.slice('/image/'.length);
       if (!isValidDriveFileId(fileId)) {
         return new Response('Invalid image id', { status: 400, headers: corsHeaders });
+      }
+
+      const cache = caches.default;
+      const cacheKey = new Request(request.url, request);
+      const cachedResponse = await cache.match(cacheKey);
+      if (cachedResponse) {
+        return cachedResponse;
       }
 
       try {
@@ -376,7 +404,9 @@ const worker = {
         headers.set('Cache-Control', 'public, max-age=31536000, immutable');
         headers.set('Content-Disposition', `inline; filename="${encodeURIComponent(metadata.name || 'image')}"`);
 
-        return new Response(driveRes.body, { status: 200, headers });
+        const response = new Response(driveRes.body, { status: 200, headers });
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        return response;
       } catch (error) {
         const status = getErrorStatus(error);
         const message = status === 404 ? 'Image not found' : status === 403 ? 'Forbidden' : 'Error loading image';

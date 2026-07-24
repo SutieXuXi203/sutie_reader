@@ -52,12 +52,17 @@ interface BookmarkItem {
   };
 }
 
+let cachedPosts: Post[] = [];
+let cachedBookmarks: BookmarkItem[] = [];
+let cachedTags: { _id: string; name: string }[] = [];
+let lastFetchTime = 0;
+
 function HomeContent() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const { user, isLoading: isAuthLoading } = useAuth();
-  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>([]);
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [standaloneTags, setStandaloneTags] = useState<{ _id: string; name: string }[]>([]);
+  const [bookmarks, setBookmarks] = useState<BookmarkItem[]>(cachedBookmarks);
+  const [posts, setPosts] = useState<Post[]>(cachedPosts);
+  const [standaloneTags, setStandaloneTags] = useState<{ _id: string; name: string }[]>(cachedTags);
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, _setCurrentPage] = useState(() => {
     if (typeof window !== 'undefined') {
@@ -78,7 +83,7 @@ function HomeContent() {
   }, []);
   const itemsPerPage = 12;
   const [isSearchComposing, setIsSearchComposing] = useState(false);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(cachedPosts.length === 0);
 
   const searchParams = useSearchParams();
   const tagParam = searchParams.get('tag');
@@ -88,6 +93,7 @@ function HomeContent() {
       const res = await fetch('/api/bookmarks');
       if (res.ok) {
         const data = await res.json();
+        cachedBookmarks = data;
         setBookmarks(data);
       }
     } catch (error) {
@@ -104,12 +110,18 @@ function HomeContent() {
     }
   }, []);
 
-  const fetchPosts = useCallback(async () => {
+  const fetchPosts = useCallback(async (force = false) => {
+    // Only skip if we have cached posts and it's been less than 1 minute
+    if (!force && cachedPosts.length > 0 && Date.now() - lastFetchTime < 60000) {
+      return; // Use cache entirely
+    }
     try {
-      setIsLoading(true);
+      if (cachedPosts.length === 0) setIsLoading(true);
       const response = await fetch('/api/posts');
       if (response.ok) {
         const data = await response.json();
+        cachedPosts = data;
+        lastFetchTime = Date.now();
         setPosts(data);
       }
     } catch (error) {
@@ -123,7 +135,9 @@ function HomeContent() {
     try {
       const response = await fetch('/api/tags');
       if (response.ok) {
-        setStandaloneTags(await response.json());
+        const data = await response.json();
+        cachedTags = data;
+        setStandaloneTags(data);
       }
     } catch (error) {
       console.error('Lỗi khi tải tags:', error);
@@ -196,8 +210,10 @@ function HomeContent() {
   }, [posts, standaloneTags]);
 
   const handlePostDeleted = useCallback((postId: string) => {
-    setPosts((prev) => prev.filter((post) => post._id !== postId));
-  }, []);
+    const newPosts = posts.filter((post) => post._id !== postId);
+    cachedPosts = newPosts;
+    setPosts(newPosts);
+  }, [posts]);
 
   if (isAuthLoading) {
     return (
@@ -339,7 +355,7 @@ function HomeContent() {
                         key={post._id}
                         post={post}
                         onDelete={handlePostDeleted}
-                        onUpdate={fetchPosts}
+                        onUpdate={() => fetchPosts(true)}
                         availableTags={availableTags}
                         compact
                       />

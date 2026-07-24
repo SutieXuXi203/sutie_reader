@@ -10,6 +10,10 @@ export function getOptimizedImageUrl(url: string): string {
 
   const matchDriveId = url.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{25,})/);
   if (url.includes('drive.google.com') && matchDriveId) {
+    const workerUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL;
+    if (workerUrl) {
+      return `${workerUrl.replace(/\/+$/, '')}/image/${matchDriveId[1]}`;
+    }
     return `/api/image/${matchDriveId[1]}`;
   }
   return url;
