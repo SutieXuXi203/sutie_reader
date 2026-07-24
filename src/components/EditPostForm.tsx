@@ -383,15 +383,15 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 value={selectedChapterIndex.toString()}
                 onValueChange={(val) => setSelectedChapterIndex(parseInt(val || '0', 10))}
               >
-                <SelectTrigger className="flex-1 bg-background">
+                <SelectTrigger className="flex-1 min-w-0 bg-background overflow-hidden text-left">
                   <SelectValue placeholder="Chọn chương...">
-                    {activeChapter.title || `Chương ${selectedChapterIndex + 1}`}
+                    <span className="truncate block w-full">{activeChapter.title || `Chương ${selectedChapterIndex + 1}`}</span>
                   </SelectValue>
                 </SelectTrigger>
-                <SelectContent alignItemWithTrigger={false}>
+                <SelectContent alignItemWithTrigger={false} className="max-w-[calc(100vw-2rem)] sm:max-w-md">
                   {chapters.map((ch, idx) => (
                     <SelectItem key={`chapter-option-${idx}`} value={idx.toString()}>
-                      {ch.title || `Chương ${idx + 1}`}
+                      <span className="truncate block max-w-[200px] sm:max-w-[300px]">{ch.title || `Chương ${idx + 1}`}</span>
                     </SelectItem>
                   ))}
                 </SelectContent>
