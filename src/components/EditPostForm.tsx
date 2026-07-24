@@ -35,7 +35,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [title, setTitle] = useState(post.title);
     const [tags, setTags] = useState<string[]>(post.tags || []);
-    const [content, setContent] = useState(post.content);
+    const [content, setContent] = useState(post.content || '');
     const [author, setAuthor] = useState(post.author);
 
     const [keptImages, setKeptImages] = useState<string[]>(post.images);
@@ -45,7 +45,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     useEffect(() => {
         setTitle(post.title);
         setTags(post.tags || []);
-        setContent(post.content);
+        setContent(post.content || '');
         setAuthor(post.author);
         setKeptImages(post.images);
         setNewImageFiles([]);
@@ -143,8 +143,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
-        if (!title || !content) {
-            notify.error('Vui lòng điền tiêu đề và nội dung');
+        if (!title.trim()) {
+            notify.error('Vui lòng điền tiêu đề');
             return;
         }
         if (keptImages.length + newImageFiles.length === 0) {
@@ -217,6 +217,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             setIsSubmitting(false);
         }
     };
+
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent
@@ -242,7 +243,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                         />
                     </div>
                     <div>
-                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Nội dung</label>
+                        <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">Nội dung (không bắt buộc)</label>
                         <Textarea value={content} onChange={(e) => setContent(e.target.value)} placeholder="Nội dung bài viết" rows={4} disabled={isSubmitting} className="rounded-[8px]" />
                     </div>
                     <div>
