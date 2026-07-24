@@ -283,6 +283,51 @@ function validateUploadFiles(files) {
   }
 }
 
+function base64UrlDecode(str) {
+  let base64 = str.replace(/-/g, '+').replace(/_/g, '/');
+  while (base64.length % 4) {
+    base64 += '=';
+  }
+  const binary = atob(base64);
+  const bytes = new Uint8Array(binary.length);
+  for (let i = 0; i < binary.length; i++) {
+    bytes[i] = binary.charCodeAt(i);
+  }
+  return bytes;
+}
+
+async function verifyJwtToken(token, secretStr) {
+  if (!token || !secretStr) return null;
+  const parts = token.split('.');
+  if (parts.length !== 3) return null;
+
+  const [headerB64, payloadB64, sigB64] = parts;
+  const encoder = new TextEncoder();
+  const secretKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secretStr),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['verify']
+  );
+
+  const dataToVerify = encoder.encode(`${headerB64}.${payloadB64}`);
+  const signatureBytes = base64UrlDecode(sigB64);
+
+  const isValid = await crypto.subtle.verify('HMAC', secretKey, signatureBytes, dataToVerify);
+  if (!isValid) return null;
+
+  const payloadJson = new TextDecoder().decode(base64UrlDecode(payloadB64));
+  const payload = JSON.parse(payloadJson);
+
+  if (payload.exp && typeof payload.exp === 'number') {
+    const nowInSec = Math.floor(Date.now() / 1000);
+    if (nowInSec > payload.exp) return null;
+  }
+
+  return payload;
+}
+
 function authMatches(authHeader, expectedSecret) {
   const expected = `Bearer ${expectedSecret}`;
   if (authHeader.length !== expected.length) return false;
@@ -342,11 +387,28 @@ const worker = {
 
     if (request.method === 'POST' && url.pathname === '/upload') {
       const authHeader = (request.headers.get('Authorization') || '').trim();
-      const expectedSecret = (env.UPLOAD_SECRET || '').trim();
+      let isAuthorized = false;
 
-      if (!expectedSecret || !authMatches(authHeader, expectedSecret)) {
+      const expectedSecret = (env.UPLOAD_SECRET || '').trim();
+      const jwtSecret = (env.JWT_SECRET || expectedSecret || '').trim();
+
+      if (expectedSecret && authMatches(authHeader, expectedSecret)) {
+        isAuthorized = true;
+      } else if (authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7).trim();
+        try {
+          const payload = await verifyJwtToken(token, jwtSecret);
+          if (payload && payload.role === 'admin') {
+            isAuthorized = true;
+          }
+        } catch (jwtErr) {
+          console.warn('[CF WORKER] JWT verify error:', jwtErr);
+        }
+      }
+
+      if (!isAuthorized) {
         console.warn('[CF WORKER] Unauthorized upload request');
-        return jsonResponse({ error: 'Unauthorized' }, 401, corsHeaders);
+        return jsonResponse({ error: 'Unauthorized: Quyền truy cập bị từ chối' }, 401, corsHeaders);
       }
 
       try {

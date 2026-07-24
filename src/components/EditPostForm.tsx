@@ -92,41 +92,54 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     ): Promise<string[]> => {
         if (!files.length) return [];
 
+        const tokenRes = await fetch('/api/auth/token');
+        if (!tokenRes.ok) {
+            const errData = await tokenRes.json().catch(() => ({}));
+            throw new Error(errData?.error || 'Không lấy được phiên đăng nhập Admin');
+        }
+        const { token } = await tokenRes.json();
+
+        const workerUrl = (process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL || 'https://sutie-images.manhdinh0410.workers.dev').replace(/\/+$/, '');
+
         const sortedFiles = [...files].sort((a, b) =>
             a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-        );
-
-        onProgress?.(0, sortedFiles.length);
-
-        const compressedFiles = await Promise.all(
-            sortedFiles.map(async (file) => {
-                const options = {
-                    maxSizeMB: 1,
-                    maxWidthOrHeight: 1920,
-                    useWebWorker: true,
-                };
-                try {
-                    return await imageCompression(file, options);
-                } catch (error) {
-                    console.error('Lỗi khi nén ảnh:', error);
-                    return file;
-                }
-            })
         );
 
         const BATCH_SIZE = 2;
         const allUrls: string[] = [];
 
-        for (let i = 0; i < compressedFiles.length; i += BATCH_SIZE) {
-            const batch = compressedFiles.slice(i, i + BATCH_SIZE);
-            const originalBatchFiles = sortedFiles.slice(i, i + BATCH_SIZE);
+        for (let i = 0; i < sortedFiles.length; i += BATCH_SIZE) {
+            const batchFiles = sortedFiles.slice(i, i + BATCH_SIZE);
+
+            const compressedBatch = await Promise.all(
+                batchFiles.map(async (file) => {
+                    if (file.size <= 500 * 1024) return file;
+                    try {
+                        return await imageCompression(file, {
+                            maxSizeMB: 1,
+                            maxWidthOrHeight: 1920,
+                            useWebWorker: true,
+                        });
+                    } catch (error) {
+                        console.error('Lỗi khi nén ảnh:', error);
+                        return file;
+                    }
+                })
+            );
 
             const formData = new FormData();
             formData.append('title', uploadTitle);
-            formData.append('postId', postId);
-            batch.forEach((compressed, idx) => formData.append('files', compressed, originalBatchFiles[idx].name));
+            if (postId) formData.append('postId', postId);
+            compressedBatch.forEach((compressed, idx) => formData.append('files', compressed, batchFiles[idx].name));
 
-            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const res = await fetch(`${workerUrl}/upload`, {
+                method: 'POST',
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+                body: formData,
+            });
+
             if (!res.ok) {
                 const data = await res.json().catch(() => ({}));
                 throw new Error(data?.details || data?.error || `Upload thất bại ở nhóm ảnh ${Math.floor(i / BATCH_SIZE) + 1}`);
