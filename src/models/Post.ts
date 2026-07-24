@@ -35,7 +35,6 @@ const ChapterSchema = new Schema<IPostChapter>(
     },
     content: {
       type: String,
-      required: true,
       default: '',
     },
     images: {
