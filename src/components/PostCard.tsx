@@ -33,8 +33,6 @@ interface PostCardProps {
 export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate, availableTags = [], compact = false }: PostCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
-  const [showPreview, setShowPreview] = useState(false);
-  const [canHoverPreview, setCanHoverPreview] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [nsfwRevealed, setNsfwRevealed] = useState(false);
@@ -42,22 +40,10 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   const { isAdmin } = useAuth();
   const isNSFW = (post.tags || []).some(tag => tag.toLowerCase().includes('18+'));
   useEffect(() => {
-    const mediaQuery = window.matchMedia('(hover: hover) and (pointer: fine)');
-    const updateHoverCapability = () => setCanHoverPreview(mediaQuery.matches);
-    updateHoverCapability();
-    if (typeof mediaQuery.addEventListener === 'function') {
-      mediaQuery.addEventListener('change', updateHoverCapability);
-      return () => mediaQuery.removeEventListener('change', updateHoverCapability);
-    }
-    mediaQuery.addListener(updateHoverCapability);
-    return () => mediaQuery.removeListener(updateHoverCapability);
-  }, []);
-  useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
     if (nsfwRevealed) {
       timeout = setTimeout(() => {
         setNsfwRevealed(false);
-        setShowPreview(false);
       }, 5000);
     }
     return () => {
@@ -118,8 +104,6 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             "relative w-full bg-card/20 overflow-hidden border-b border-border dark:border-primary/20",
             compact ? "aspect-[4/5]" : "aspect-[16/9]"
           )}
-          onMouseEnter={() => { if (canHoverPreview && (!isNSFW || nsfwRevealed)) setShowPreview(true); }}
-          onMouseLeave={() => setShowPreview(false)}
         >
           {post.images.length > 0 ? (
             <Image
@@ -244,27 +228,6 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           />
         </>
       )}
-      {
-        canHoverPreview && showPreview && (!isNSFW || nsfwRevealed) && post.images.length > 0 && typeof document !== 'undefined' && createPortal(
-          <div className="fixed inset-0 w-full h-full min-h-screen z-[9999] flex items-center justify-center pointer-events-none p-6 backdrop-blur-md bg-background/70 dark:bg-background/65">
-            <div className="animate-popup-preview relative w-full max-w-[420px] aspect-[4/5] rounded-[8px] overflow-hidden shadow-2xl border border-border bg-card">
-              <Image
-                src={getOptimizedImageUrl(post.images[0])}
-                alt="Preview"
-                fill
-                sizes="420px"
-                className="object-cover"
-              />
-              <div className="absolute inset-0 bg-gradient-to-t from-primary/80 via-primary/25 to-transparent" />
-              <div className="absolute bottom-0 left-0 right-0 p-6">
-                <h4 className="text-white font-bold text-lg drop-shadow-md line-clamp-1">{post.title}</h4>
-                <p className="text-white/80 text-xs drop-shadow-sm mt-1">Xem chi tiết bài viết</p>
-              </div>
-            </div>
-          </div>,
-          document.body
-        )
-      }
       {
         showNsfwConfirm && typeof document !== 'undefined' && createPortal(
           <div
