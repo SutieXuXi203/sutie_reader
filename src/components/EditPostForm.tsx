@@ -4,6 +4,13 @@ import { useEffect, useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Upload, X, Plus, Trash2 } from 'lucide-react';
 import Image from 'next/image';
@@ -371,34 +378,35 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               </Button>
             </div>
 
-            <div className="flex items-center gap-1.5 overflow-x-auto custom-scrollbar p-1.5 bg-muted/30 rounded-xl border border-border/40">
-              {chapters.map((ch, idx) => (
-                <button
-                  key={idx}
+            <div className="flex items-center gap-2 mb-4">
+              <Select
+                value={selectedChapterIndex.toString()}
+                onValueChange={(val) => setSelectedChapterIndex(parseInt(val || '0', 10))}
+              >
+                <SelectTrigger className="flex-1 bg-background">
+                  <SelectValue placeholder="Chọn chương..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {chapters.map((ch, idx) => (
+                    <SelectItem key={`chapter-option-${idx}`} value={idx.toString()}>
+                      {idx + 1} - {ch.title || 'Chương không tên'}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+
+              {chapters.length > 1 && (
+                <Button
                   type="button"
-                  onClick={() => setSelectedChapterIndex(idx)}
-                  className={cn(
-                    'px-3 py-1.5 text-xs font-medium rounded-lg transition-all whitespace-nowrap flex items-center gap-1.5 cursor-pointer',
-                    selectedChapterIndex === idx
-                      ? 'bg-primary text-primary-foreground shadow-sm'
-                      : 'bg-background/80 hover:bg-background text-muted-foreground hover:text-foreground border border-border/40'
-                  )}
+                  variant="destructive"
+                  size="icon"
+                  className="shrink-0 bg-rose-500/10 text-rose-500 hover:bg-rose-500 hover:text-white"
+                  title="Xóa chương đang chọn"
+                  onClick={() => handleDeleteChapter(selectedChapterIndex)}
                 >
-                  <span>{ch.title || `Chương ${idx + 1}`}</span>
-                  {chapters.length > 1 && (
-                    <span
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleDeleteChapter(idx);
-                      }}
-                      className="hover:text-rose-400 p-0.5 rounded-full cursor-pointer ml-1"
-                      title="Xóa chương này"
-                    >
-                      <Trash2 className="w-3 h-3" />
-                    </span>
-                  )}
-                </button>
-              ))}
+                  <Trash2 className="w-4 h-4" />
+                </Button>
+              )}
             </div>
 
             <div className="p-4 rounded-xl border border-border/60 bg-muted/10 space-y-4">
