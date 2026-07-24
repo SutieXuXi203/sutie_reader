@@ -466,9 +466,26 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
               {activeChapter.keptImages.length > 0 && (
                 <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Ảnh hiện tại của chương ({activeChapter.keptImages.length})
-                  </label>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <label className="block text-xs font-medium text-muted-foreground">
+                      Ảnh hiện tại của chương ({activeChapter.keptImages.length})
+                    </label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-6 text-[10px] text-rose-500 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-950/50 px-2"
+                      onClick={() => {
+                        if (confirm('Bạn có chắc chắn muốn xóa tất cả ảnh hiện tại của chương này?')) {
+                          updateActiveChapter((ch) => ({ ...ch, keptImages: [] }));
+                        }
+                      }}
+                      disabled={isSubmitting || isSyncing}
+                    >
+                      <Trash2 className="h-3 w-3 mr-1" />
+                      Xóa tất cả
+                    </Button>
+                  </div>
                   <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-background/50 custom-scrollbar">
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
                       {activeChapter.keptImages.map((src, idx) => (
