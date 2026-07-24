@@ -12,12 +12,12 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Upload, X, Plus, Trash2 } from 'lucide-react';
+import { Upload, X, Plus, Trash2, RefreshCw } from 'lucide-react';
 import Image from 'next/image';
 import { TagPicker } from '@/components/TagPicker';
 import { notify } from '@/lib/notify';
 import { useUploadProgress } from '@/providers/UploadProgressProvider';
-import { uploadImages } from '@/lib/uploadService';
+import { uploadImages, syncDriveImages } from '@/lib/uploadService';
 import { cn, getOptimizedImageUrl } from '@/lib/utils';
 
 interface Chapter {
@@ -60,6 +60,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const { showProgress, updateProgress } = useUploadProgress();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isLoadingDetails, setIsLoadingDetails] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
   const [title, setTitle] = useState(post.title);
   const [tags, setTags] = useState<string[]>(post.tags || []);
   const [author, setAuthor] = useState(post.author);
@@ -214,6 +215,25 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     }
   };
 
+  const handleSyncDrive = async () => {
+    try {
+      setIsSyncing(true);
+      const syncedUrls = await syncDriveImages(title, post._id);
+      
+      updateActiveChapter((ch) => ({
+        ...ch,
+        keptImages: syncedUrls,
+        newImageFiles: [],
+        newImagePreviews: [],
+      }));
+      notify.success(`Đã đồng bộ ${syncedUrls.length} ảnh từ Google Drive cho chương hiện tại.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Unknown error';
+      notify.error('Đồng bộ thất bại', msg);
+    } finally {
+      setIsSyncing(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -483,9 +503,22 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               )}
 
               <div>
-                <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                  Thêm ảnh mới cho chương này
-                </label>
+                <div className="flex items-center justify-between mb-1.5">
+                  <label className="block text-xs font-medium text-muted-foreground">
+                    Thêm ảnh mới cho chương này
+                  </label>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs px-2"
+                    onClick={handleSyncDrive}
+                    disabled={isSyncing || isSubmitting}
+                  >
+                    <RefreshCw className={cn("h-3 w-3 mr-1.5", isSyncing && "animate-spin")} />
+                    {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ Drive'}
+                  </Button>
+                </div>
                 <div className="border border-input rounded-[8px] p-5 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors bg-background">
                   <input
                     type="file"

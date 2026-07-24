@@ -452,6 +452,74 @@ const worker = {
       }
     }
 
+    if (request.method === 'GET' && url.pathname === '/sync') {
+      const authHeader = (request.headers.get('Authorization') || '').trim();
+      let isAuthorized = false;
+
+      const expectedSecret = (env.UPLOAD_SECRET || '').trim();
+      const jwtSecret = (env.JWT_SECRET || expectedSecret || '').trim();
+
+      if (expectedSecret && authMatches(authHeader, expectedSecret)) {
+        isAuthorized = true;
+      } else if (authHeader.startsWith('Bearer ')) {
+        const token = authHeader.slice(7).trim();
+        try {
+          const payload = await verifyJwtToken(token, jwtSecret);
+          if (payload && payload.role === 'admin') {
+            isAuthorized = true;
+          }
+        } catch (jwtErr) {
+          console.warn('[CF WORKER] JWT verify error:', jwtErr);
+        }
+      }
+
+      if (!isAuthorized) {
+        console.warn('[CF WORKER] Unauthorized sync request');
+        return jsonResponse({ error: 'Unauthorized: Quyền truy cập bị từ chối' }, 401, corsHeaders);
+      }
+
+      try {
+        const title = url.searchParams.get('title') || 'Untitled';
+        const postId = url.searchParams.get('postId') || '';
+
+        if (postId && !isValidPostId(postId)) {
+          return jsonResponse({ error: 'Invalid postId' }, 400, corsHeaders);
+        }
+
+        const accessToken = await getAccessToken(env);
+        const parentFolderId = getRootFolderId(env);
+        const targetFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
+        const imageBaseUrl = (env.PUBLIC_IMAGE_BASE_URL || url.origin).replace(/\/+$/, '');
+
+        const q = [
+          `'${escapeDriveQueryValue(targetFolderId)}' in parents`,
+          "mimeType contains 'image/'",
+          "trashed=false"
+        ].join(' and ');
+
+        const listUrl = new URL('https://www.googleapis.com/drive/v3/files');
+        listUrl.searchParams.set('q', q);
+        listUrl.searchParams.set('fields', 'files(id,name)');
+        listUrl.searchParams.set('pageSize', '1000');
+        listUrl.searchParams.set('supportsAllDrives', 'true');
+        listUrl.searchParams.set('includeItemsFromAllDrives', 'true');
+        listUrl.searchParams.set('orderBy', 'name_natural,name');
+
+        const data = await driveFetch(accessToken, listUrl.toString(), {}, 'List Drive files for sync');
+        const files = data.files || [];
+
+        const syncedUrls = files.map(f => `${imageBaseUrl}/image/${f.id}`);
+
+        console.log(`[CF WORKER] Synced ${syncedUrls.length} image(s) for post ${postId}`);
+        return jsonResponse({ urls: syncedUrls }, 200, corsHeaders);
+      } catch (error) {
+        const errorStatus = getErrorStatus(error);
+        const status = errorStatus >= 400 && errorStatus < 500 ? errorStatus : 500;
+        console.error('[CF WORKER] Sync request failed:', getErrorMessage(error));
+        return jsonResponse({ error: getErrorMessage(error) }, status, corsHeaders);
+      }
+    }
+
     return new Response('Sutie Reader Google Drive Worker Active', { status: 200, headers: corsHeaders });
   },
 };

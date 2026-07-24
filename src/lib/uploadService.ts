@@ -124,3 +124,39 @@ export const processBackgroundChapterSave = async (
     updateProgress(taskId, 0, files.length, 'error', message);
   }
 };
+
+export const syncDriveImages = async (
+  uploadTitle: string,
+  postId: string
+): Promise<string[]> => {
+  const tokenRes = await fetch('/api/auth/token');
+  if (!tokenRes.ok) {
+    const errData = await tokenRes.json().catch(() => ({}));
+    throw new Error(errData?.error || 'Không lấy được phiên đăng nhập Admin');
+  }
+  const { token } = await tokenRes.json();
+
+  const workerUrl = (
+    process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
+    'https://sutie-images.manhdinh0410.workers.dev'
+  ).replace(/\/+$/, '');
+
+  const queryParams = new URLSearchParams();
+  if (uploadTitle) queryParams.set('title', uploadTitle);
+  if (postId) queryParams.set('postId', postId);
+
+  const res = await fetch(`${workerUrl}/sync?${queryParams.toString()}`, {
+    method: 'GET',
+    headers: {
+      Authorization: `Bearer ${token}`,
+    },
+  });
+
+  if (!res.ok) {
+    const data = await res.json().catch(() => ({}));
+    throw new Error(data?.details || data?.error || 'Đồng bộ thất bại');
+  }
+
+  const { urls } = await res.json();
+  return urls as string[];
+};
