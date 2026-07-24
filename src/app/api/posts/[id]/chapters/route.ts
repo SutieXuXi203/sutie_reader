@@ -128,16 +128,10 @@ export async function POST(
       images,
     };
 
-    const nextChapters = [...currentChapters, newChapter].sort(
-      (a, b) => a.chapterNumber - b.chapterNumber
-    );
-
     const updatedPost = await Post.findByIdAndUpdate(
       id,
       {
-        chapters: nextChapters,
-        content: nextChapters[0]?.content || '',
-        images: nextChapters[0]?.images || [],
+        $push: { chapters: newChapter },
       },
       { returnDocument: 'after', runValidators: true }
     );
@@ -146,9 +140,23 @@ export async function POST(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
+    // Cập nhật lại thứ tự chapters và nội dung/ảnh của chương 1 nếu cần
+    const sortedChapters = [...updatedPost.chapters].sort((a, b) => a.chapterNumber - b.chapterNumber);
+    const firstChapter = sortedChapters[0];
+
+    const finalPost = await Post.findByIdAndUpdate(
+      id,
+      {
+        chapters: sortedChapters,
+        content: firstChapter?.content || '',
+        images: firstChapter?.images || [],
+      },
+      { returnDocument: 'after' }
+    ) || updatedPost;
+
     return NextResponse.json({
       chapter: newChapter,
-      post: serializePost(updatedPost),
+      post: serializePost(finalPost),
     });
   } catch (error) {
     console.error('Lỗi khi thêm chương:', error);

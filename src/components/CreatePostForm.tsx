@@ -245,9 +245,51 @@ export function CreatePostForm({
     }
   };
 
-  const handleSaveChapter = async (keepAdding: boolean) => {
-    if (isSavingChapterRef.current) return;
+  const processBackgroundChapterSave = async (
+    postId: string,
+    chapTitle: string,
+    chapContent: string,
+    files: File[],
+    chapNum: number,
+    upTitle: string
+  ) => {
+    showProgress(`${upTitle} - ${chapTitle} (${files.length} ảnh)`, files.length);
 
+    try {
+      const imageUrls = await uploadImages(files, upTitle, postId, (completed, total) => {
+        updateProgress(completed, total, 'uploading');
+      });
+
+      updateProgress(files.length, files.length, 'saving');
+
+      const response = await fetch(`/api/posts/${postId}/chapters`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: chapTitle,
+          chapterNumber: chapNum,
+          content: chapContent,
+          images: imageUrls,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = await response.json().catch(() => ({}));
+        throw new Error(data?.details || data?.error || `Server error ${response.status}`);
+      }
+
+      updateProgress(files.length, files.length, 'success');
+      onPostCreated();
+    } catch (err) {
+      const message = err instanceof Error ? err.message : 'Unknown error';
+      notify.error(`Lưu ${chapTitle} không thành công`, message);
+      console.error(`Lỗi khi lưu ${chapTitle}:`, err);
+
+      updateProgress(0, files.length, 'error', message);
+    }
+  };
+
+  const handleSaveChapter = (keepAdding: boolean) => {
     if (!createdPostId) {
       notify.error('Không tìm thấy truyện để thêm chương');
       return;
@@ -264,67 +306,28 @@ export function CreatePostForm({
     const uploadTitle = createdPostTitle || title || 'untitled';
     const chapterNumber = createdChapterCountRef.current + 1;
 
-    isSavingChapterRef.current = true;
-    setIsSubmitting(true);
+    // Tăng số lượng chương đã thêm ngay lập tức
+    createdChapterCountRef.current += 1;
+    setCreatedChapterCount(createdChapterCountRef.current);
 
-    // Đóng popup chính ngay lập tức để người dùng không bị khóa giao diện!
     if (!keepAdding) {
       onOpenChange(false);
+      resetAll();
     } else {
+      // Xóa các ô nhập liệu ngay lập tức để người dùng có thể nhập tiếp Chương tiếp theo mà không phải chờ!
       resetChapterFields();
-      setChapterTitle(`Chương ${chapterNumber + 1}`);
+      setChapterTitle(`Chương ${createdChapterCountRef.current + 1}`);
     }
 
-    // Hiển thị Widget tiến trình toàn cục ở dưới góc phải
-    showProgress(`${uploadTitle} (${currentFiles.length} ảnh)`, currentFiles.length);
-
-    try {
-      const imageUrls = await uploadImages(currentFiles, uploadTitle, currentPostId, (completed, total) => {
-        updateProgress(completed, total, 'uploading');
-      });
-
-      updateProgress(currentFiles.length, currentFiles.length, 'saving');
-
-      const response = await fetch(`/api/posts/${currentPostId}/chapters`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: currentTitle,
-          chapterNumber,
-          content: currentContent,
-          images: imageUrls,
-        }),
-      });
-
-      if (!response.ok) {
-        const data = await response.json().catch(() => ({}));
-        throw new Error(data?.details || data?.error || `Server error ${response.status}`);
-      }
-
-      const nextChapterCount = createdChapterCountRef.current + 1;
-      createdChapterCountRef.current = nextChapterCount;
-      setCreatedChapterCount(nextChapterCount);
-
-      updateProgress(currentFiles.length, currentFiles.length, 'success');
-
-      onPostCreated();
-      if (!keepAdding) {
-        resetAll();
-      }
-
-      setTimeout(() => {
-        // Tự động đóng Widget sau 4 giây
-      }, 4000);
-    } catch (err) {
-      const message = err instanceof Error ? err.message : 'Unknown error';
-      notify.error('Lưu chương không thành công', message);
-      console.error('Lỗi khi lưu chương:', err);
-
-      updateProgress(0, currentFiles.length, 'error', message);
-    } finally {
-      isSavingChapterRef.current = false;
-      setIsSubmitting(false);
-    }
+    // Chạy tác vụ tải & lưu chương dưới nền độc lập
+    void processBackgroundChapterSave(
+      currentPostId,
+      currentTitle,
+      currentContent,
+      currentFiles,
+      chapterNumber,
+      uploadTitle
+    );
   };
 
   return (
