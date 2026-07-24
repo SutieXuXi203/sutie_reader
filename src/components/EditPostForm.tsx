@@ -384,7 +384,9 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 onValueChange={(val) => setSelectedChapterIndex(parseInt(val || '0', 10))}
               >
                 <SelectTrigger className="flex-1 bg-background">
-                  <SelectValue placeholder="Chọn chương..." />
+                  <SelectValue placeholder="Chọn chương...">
+                    {activeChapter.title || `Chương ${selectedChapterIndex + 1}`}
+                  </SelectValue>
                 </SelectTrigger>
                 <SelectContent>
                   {chapters.map((ch, idx) => (
