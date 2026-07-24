@@ -28,6 +28,8 @@ interface Post {
 export default function ProductsPage() {
     const [posts, setPosts] = useState<Post[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
+    const [currentPage, setCurrentPage] = useState(1);
+    const itemsPerPage = 12;
     const [isSearchComposing, setIsSearchComposing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
     const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
@@ -84,6 +86,10 @@ export default function ProductsPage() {
         }
     }, []);
 
+    useEffect(() => {
+        setCurrentPage(1);
+    }, [searchTerm]);
+
     const handlePostDeleted = (postId: string) => {
         setPosts((prev) => prev.filter((post) => post._id !== postId));
     };
@@ -98,6 +104,12 @@ export default function ProductsPage() {
         )
         : posts,
         [normalizedSearch, posts]
+    );
+
+    const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
+    const paginatedPosts = filteredPosts.slice(
+        (currentPage - 1) * itemsPerPage,
+        currentPage * itemsPerPage
     );
 
     const availableTags = useMemo(() => {
@@ -195,18 +207,44 @@ export default function ProductsPage() {
                             </p>
                         </div>
                     ) : (
-                        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
-                            {filteredPosts.map((post) => (
-                                <PostCard
-                                    key={post._id}
-                                    post={post}
-                                    onDelete={handlePostDeleted}
-                                    onUpdate={fetchPosts}
-                                    availableTags={availableTags}
-                                    compact
-                                />
-                            ))}
-                        </div>
+                        <>
+                            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
+                                {paginatedPosts.map((post) => (
+                                    <PostCard
+                                        key={post._id}
+                                        post={post}
+                                        onDelete={handlePostDeleted}
+                                        onUpdate={fetchPosts}
+                                        availableTags={availableTags}
+                                        compact
+                                    />
+                                ))}
+                            </div>
+                            
+                            {totalPages > 1 && (
+                                <div className="flex items-center justify-center mt-8 gap-4">
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                                        disabled={currentPage === 1}
+                                    >
+                                        Trước
+                                    </Button>
+                                    <span className="text-sm font-medium text-muted-foreground">
+                                        Trang {currentPage} / {totalPages}
+                                    </span>
+                                    <Button
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                                        disabled={currentPage === totalPages}
+                                    >
+                                        Sau
+                                    </Button>
+                                </div>
+                            )}
+                        </>
                     )}
                 </div>
             </div>
