@@ -5,7 +5,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { pin } = body;
 
-    const SECRET_TOKEN = '123456';
+    const SECRET_TOKEN = process.env.UNLOCK_PIN || '123456';
     const ACCESS_COOKIE_NAME = 'site_access_token';
 
     if (pin === SECRET_TOKEN) {
