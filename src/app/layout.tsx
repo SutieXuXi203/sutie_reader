@@ -51,19 +51,21 @@ export default function RootLayout({
   return (
     <html lang="vi" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
       <body
-        className={`${sfPro.variable} font-sans antialiased bg-background text-foreground`}
+        className={`${sfPro.variable} font-sans antialiased bg-background text-foreground relative`}
         suppressHydrationWarning
       >
-        <DevPointerCaptureGuard />
-        <Providers>
-          <UploadProgressProvider>
-            <SmoothScrollProvider>
+        <div className="relative z-10 flex flex-col min-h-screen">
+          <DevPointerCaptureGuard />
+          <Providers>
+            <UploadProgressProvider>
+              <SmoothScrollProvider>
               <SiteNav />
               {children}
               <GooeyToastProvider />
             </SmoothScrollProvider>
           </UploadProgressProvider>
-        </Providers>
+          </Providers>
+        </div>
         <SpeedInsights />
       </body>
     </html>

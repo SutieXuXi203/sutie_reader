@@ -179,7 +179,7 @@ function UnlockForm() {
           <motion.div 
             animate={isError ? { x: [-10, 10, -10, 10, -5, 5, 0] } : {}}
             transition={{ duration: 0.4 }}
-            className="flex justify-between gap-1.5 sm:gap-2 md:gap-3 mb-8"
+            className="flex justify-center gap-1.5 sm:gap-2 md:gap-3 mb-8"
           >
             {pin.map((digit, i) => (
               <input
