@@ -148,7 +148,7 @@ function UnlockForm() {
         transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10 w-full max-w-md"
       >
-        <div className="bg-card/40 backdrop-blur-xl border border-border rounded-3xl p-8 md:p-10 shadow-2xl text-center">
+        <div className="bg-card/40 backdrop-blur-xl border border-border rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl text-center">
           
           <motion.div 
             initial={{ scale: 0.8 }}
@@ -175,7 +175,7 @@ function UnlockForm() {
           <motion.div 
             animate={isError ? { x: [-10, 10, -10, 10, -5, 5, 0] } : {}}
             transition={{ duration: 0.4 }}
-            className="flex justify-between gap-2 md:gap-3 mb-8"
+            className="flex justify-between gap-1.5 sm:gap-2 md:gap-3 mb-8"
           >
             {pin.map((digit, i) => (
               <input
@@ -189,7 +189,7 @@ function UnlockForm() {
                 onKeyDown={(e) => handleKeyDown(i, e)}
                 onPaste={handlePaste}
                 disabled={isLoading}
-                className={`w-12 h-14 md:w-14 md:h-16 text-center text-xl md:text-2xl font-bold bg-background/50 border-2 rounded-xl outline-none transition-all duration-200 
+                className={`w-10 h-12 sm:w-12 sm:h-14 md:w-14 md:h-16 text-center text-lg sm:text-xl md:text-2xl font-bold bg-background/50 border-2 rounded-xl outline-none transition-all duration-200 
                   ${digit ? 'border-primary shadow-[0_0_15px_rgba(var(--primary),0.15)] text-primary' : 'border-border text-foreground focus:border-primary/50 focus:bg-background'}
                   ${isError ? 'border-destructive text-destructive bg-destructive/5' : ''}
                   ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
