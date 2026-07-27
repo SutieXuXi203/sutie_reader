@@ -7,6 +7,18 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { gooeyToast } from 'goey-toast';
 
 export default function UnlockPage() {
+  return (
+    <React.Suspense fallback={
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    }>
+      <UnlockForm />
+    </React.Suspense>
+  );
+}
+
+function UnlockForm() {
   const [pin, setPin] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
   const [isError, setIsError] = useState(false);
