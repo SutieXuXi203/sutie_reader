@@ -87,14 +87,12 @@ export function SiteNav() {
             >
               Trang chủ
             </Link>
-            {isAdmin && (
-              <Link 
-                href="/products" 
-                className={`text-xs font-bold tracking-wide uppercase transition-colors hover:text-primary ${pathname === '/products' ? 'text-primary' : 'text-muted-foreground'}`}
-              >
-                Quản lý danh sách
-              </Link>
-            )}
+            <Link 
+              href="/products" 
+              className={`text-xs font-bold tracking-wide uppercase transition-colors hover:text-primary ${pathname === '/products' ? 'text-primary' : 'text-muted-foreground'}`}
+            >
+              Quản lý danh sách
+            </Link>
             <Link 
               href="/contact" 
               className={`text-xs font-bold tracking-wide uppercase transition-colors hover:text-primary ${pathname === '/contact' ? 'text-primary' : 'text-muted-foreground'}`}
@@ -202,16 +200,14 @@ export function SiteNav() {
               <span>Trang chủ</span>
             </Link>
             
-            {isAdmin && (
-              <Link 
-                href="/products"
-                onClick={() => setIsMobileMenuOpen(false)}
-                className={`flex items-center gap-3 px-4 py-3 rounded-[8px] text-sm font-bold border ${pathname === '/products' ? 'border-primary bg-secondary/30 text-primary' : 'border-border bg-card text-foreground'}`}
-              >
-                <AnimatedNewspaper className="w-4 h-4" />
-                <span>Quản lý danh sách</span>
-              </Link>
-            )}
+            <Link 
+              href="/products"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`flex items-center gap-3 px-4 py-3 rounded-[8px] text-sm font-bold border ${pathname === '/products' ? 'border-primary bg-secondary/30 text-primary' : 'border-border bg-card text-foreground'}`}
+            >
+              <AnimatedNewspaper className="w-4 h-4" />
+              <span>Quản lý danh sách</span>
+            </Link>
             
             <Link 
               href="/contact"
