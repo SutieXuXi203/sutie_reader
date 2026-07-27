@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
 import { cn, getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
+import { GlareHover } from '@/components/GlareHover';
 const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
 const DeleteConfirmDialog = dynamic(() => import('@/components/DeleteConfirmDialog').then(m => ({ default: m.DeleteConfirmDialog })), { ssr: false });
 interface Post {
@@ -105,6 +106,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             compact ? "aspect-[4/5]" : "aspect-[16/9]"
           )}
         >
+          <GlareHover width="100%" height="100%" borderRadius="0" borderColor="transparent" glareOpacity={0.3} glareSize={250}>
           {post.images.length > 0 ? (
             <Image
               src={getOptimizedImageUrl(post.images[0])}
@@ -141,6 +143,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             </div>
           )}
           <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
+          </GlareHover>
         </div>
         <div className={cn("flex flex-col flex-grow text-left", compact ? "p-2.5 sm:p-3" : "p-5 md:p-6")}>
           <h3 className={cn("font-bold text-foreground group-hover/card:text-primary transition-colors line-clamp-2 leading-tight", compact ? "mb-2 text-xs sm:text-sm" : "mb-3 text-lg")}>
