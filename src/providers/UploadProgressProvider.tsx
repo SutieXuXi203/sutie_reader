@@ -1,7 +1,15 @@
 'use client';
 
-import React, { createContext, useContext, useState, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { UploadProgressWidget, UploadProgressState } from '@/components/UploadProgressWidget';
+
+// Global state outside React to survive any unmounts or layout changes
+let globalTasks: UploadProgressState[] = [];
+let listeners: ((tasks: UploadProgressState[]) => void)[] = [];
+
+const notifyListeners = () => {
+  listeners.forEach(listener => listener([...globalTasks]));
+};
 
 interface UploadProgressContextType {
   tasks: UploadProgressState[];
@@ -13,12 +21,20 @@ interface UploadProgressContextType {
 const UploadProgressContext = createContext<UploadProgressContextType | undefined>(undefined);
 
 export function UploadProgressProvider({ children }: { children: ReactNode }) {
-  const [tasks, setTasks] = useState<UploadProgressState[]>([]);
+  const [tasks, setTasks] = useState<UploadProgressState[]>(globalTasks);
+
+  useEffect(() => {
+    const listener = (newTasks: UploadProgressState[]) => setTasks(newTasks);
+    listeners.push(listener);
+    return () => {
+      listeners = listeners.filter(l => l !== listener);
+    };
+  }, []);
 
   const showProgress = (title: string, total: number) => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
-    setTasks((prev) => [
-      ...prev,
+    globalTasks = [
+      ...globalTasks,
       {
         id,
         title,
@@ -26,7 +42,8 @@ export function UploadProgressProvider({ children }: { children: ReactNode }) {
         total,
         status: 'uploading',
       },
-    ]);
+    ];
+    notifyListeners();
     return id;
   };
 
@@ -37,23 +54,23 @@ export function UploadProgressProvider({ children }: { children: ReactNode }) {
     status: UploadProgressState['status'] = 'uploading',
     errorMessage?: string
   ) => {
-    setTasks((prev) =>
-      prev.map((task) =>
-        task.id === id
-          ? {
-              ...task,
-              completed,
-              total,
-              status,
-              errorMessage: errorMessage || task.errorMessage,
-            }
-          : task
-      )
+    globalTasks = globalTasks.map((task) =>
+      task.id === id
+        ? {
+            ...task,
+            completed,
+            total,
+            status,
+            errorMessage: errorMessage || task.errorMessage,
+          }
+        : task
     );
+    notifyListeners();
   };
 
   const hideProgress = (id: string) => {
-    setTasks((prev) => prev.filter((task) => task.id !== id));
+    globalTasks = globalTasks.filter((task) => task.id !== id);
+    notifyListeners();
   };
 
   return (

@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useDeferredValue, useMemo, useCallback } from 'react';
+import { useState, useEffect, useDeferredValue, useMemo, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Lock, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -102,7 +102,12 @@ export default function ProductsPage() {
         }
     }, []);
 
+    const isFirstRender = useRef(true);
     useEffect(() => {
+        if (isFirstRender.current) {
+            isFirstRender.current = false;
+            return;
+        }
         setCurrentPage(1);
     }, [searchTerm]);
 

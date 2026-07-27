@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useDeferredValue, useMemo, Suspense } from 'react';
+import { useState, useEffect, useCallback, useDeferredValue, useMemo, Suspense, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
   AnimatedBookOpen, AnimatedBookmarkCheck, AnimatedLock
@@ -160,7 +160,12 @@ function HomeContent() {
     setSearchTerm(tagParam || '');
   }, [tagParam]);
 
+  const isFirstRender = useRef(true);
   useEffect(() => {
+    if (isFirstRender.current) {
+      isFirstRender.current = false;
+      return;
+    }
     setCurrentPage(1);
   }, [searchTerm]);
 
