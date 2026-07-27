@@ -3,6 +3,7 @@ import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
+import { tagSchema, updateTagSchema } from '@/lib/validations';
 export const maxDuration = 60;
 const normalizeTag = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase();
 type MongoDuplicateKeyError = Error & { code?: number };
@@ -23,10 +24,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Bạn không có quyền thực hiện hành động này' }, { status: 403 });
         }
         await connectDB();
-        const { name } = await request.json();
-        if (!name || typeof name !== 'string') {
-            return NextResponse.json({ error: 'Tên tag không hợp lệ' }, { status: 400 });
+        const body = await request.json();
+        const parseResult = tagSchema.safeParse(body);
+        if (!parseResult.success) {
+            return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
         }
+        const { name } = parseResult.data;
         const normalizedName = normalizeTag(name);
         if (normalizedName.length > 30) {
             return NextResponse.json({ error: 'Tag không được dài quá 30 ký tự.' }, { status: 400 });
@@ -53,13 +56,12 @@ export async function PUT(request: NextRequest) {
             return NextResponse.json({ error: 'Bạn không có quyền thực hiện hành động này' }, { status: 403 });
         }
         await connectDB();
-        const { oldTag, newTag } = await request.json();
-        if (!oldTag || !newTag || typeof oldTag !== 'string' || typeof newTag !== 'string') {
-            return NextResponse.json(
-                { error: 'Yêu cầu không hợp lệ. Cần có tag cũ và tag mới.' },
-                { status: 400 }
-            );
+        const body = await request.json();
+        const parseResult = updateTagSchema.safeParse(body);
+        if (!parseResult.success) {
+            return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
         }
+        const { oldTag, newTag } = parseResult.data;
         const nOldTag = normalizeTag(oldTag);
         const nNewTag = normalizeTag(newTag);
         if (nOldTag === nNewTag) {

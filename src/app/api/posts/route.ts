@@ -3,6 +3,7 @@ import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
+import { postSchema } from '@/lib/validations';
 
 export const maxDuration = 60;
 
@@ -189,13 +190,15 @@ export async function POST(request: NextRequest) {
 
     await connectDB();
 
-    const payload = await request.json();
+    const body = await request.json();
+    const parseResult = postSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
+    }
+    const payload = parseResult.data;
+    
     const rawTitle = typeof payload?.title === 'string' ? payload.title.trim() : '';
     const title = rawTitle.slice(0, 100);
-
-    if (!title) {
-      return NextResponse.json({ error: 'Tiêu đề là bắt buộc' }, { status: 400 });
-    }
 
     const normalizedDescription =
       typeof payload?.description === 'string'

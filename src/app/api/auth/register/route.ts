@@ -3,13 +3,16 @@ import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { sendVerificationEmail } from '@/lib/mail';
+import { registerSchema } from '@/lib/validations';
 export async function POST(request: NextRequest) {
     try {
         await connectDB();
-        const { email, password, name, avatar } = await request.json();
-        if (!email || !password || !name) {
-            return NextResponse.json({ error: 'Thiếu thông tin đăng ký' }, { status: 400 });
+        const body = await request.json();
+        const parseResult = registerSchema.safeParse(body);
+        if (!parseResult.success) {
+            return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
         }
+        const { email, password, name, avatar } = parseResult.data;
         const isAdminEmail = email === process.env.ADMIN_USERNAME;
         if (!isAdminEmail && !email.toLowerCase().endsWith('@gmail.com')) {
             return NextResponse.json({ error: 'Vui lòng sử dụng tài khoản Gmail hợp lệ' }, { status: 400 });

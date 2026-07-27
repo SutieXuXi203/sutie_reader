@@ -4,6 +4,7 @@ import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
+import { loginSchema } from '@/lib/validations';
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.JWT_SECRET || 'your-fallback-secret-key-at-least-32-characters'
@@ -12,11 +13,12 @@ const JWT_SECRET = new TextEncoder().encode(
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    const { email, password, rememberMe } = await request.json();
-
-    if (!email || !password) {
-      return NextResponse.json({ error: 'Vui lòng nhập email và mật khẩu' }, { status: 400 });
+    const body = await request.json();
+    const parseResult = loginSchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
     }
+    const { email, password, rememberMe } = parseResult.data;
 
     const isAdminInput =
       email === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD;
@@ -32,7 +34,7 @@ export async function POST(request: NextRequest) {
       isMatch = true;
 
       if (!user) {
-        const hashedPassword = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(password, 12);
         user = new User({
           email,
           password: hashedPassword,

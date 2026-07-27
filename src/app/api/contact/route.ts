@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { contactSchema } from '@/lib/validations';
 export async function POST(request: Request) {
     try {
-        const { name, email, message } = await request.json();
-        if (!name || !email || !message) {
-            return NextResponse.json(
-                { error: 'Vui lòng cung cấp đầy đủ tên, email và tin nhắn.' },
-                { status: 400 }
-            );
+        const body = await request.json();
+        const parseResult = contactSchema.safeParse(body);
+        if (!parseResult.success) {
+            return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
         }
+        const { name, email, message } = parseResult.data;
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
