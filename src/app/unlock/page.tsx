@@ -21,6 +21,7 @@ export default function UnlockPage() {
 function UnlockForm() {
   const [pin, setPin] = useState(['', '', '', '', '', '']);
   const [isLoading, setIsLoading] = useState(false);
+  const [isSuccess, setIsSuccess] = useState(false);
   const [isError, setIsError] = useState(false);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   
@@ -94,7 +95,7 @@ function UnlockForm() {
   };
 
   const handleSubmit = async (fullPin: string) => {
-    if (fullPin.length !== 6) return;
+    if (fullPin.length !== 6 || isLoading || isSuccess) return;
     
     setIsLoading(true);
     setIsError(false);
@@ -109,16 +110,18 @@ function UnlockForm() {
       const data = await res.json();
       
       if (res.ok && data.success) {
+        setIsSuccess(true);
+        setIsLoading(false);
         gooeyToast.success('Mở khóa thành công', {
           description: 'Chào mừng bạn quay lại Sutie Reader!',
         });
         // Short delay for the animation to play
         setTimeout(() => {
-          router.push(callbackUrl);
-          router.refresh();
+          window.location.href = callbackUrl;
         }, 500);
       } else {
         setIsError(true);
+        setIsLoading(false);
         gooeyToast.error('Lỗi xác thực', {
           description: data.error || 'Mã PIN không chính xác',
         });
@@ -127,11 +130,10 @@ function UnlockForm() {
       }
     } catch (error) {
       setIsError(true);
+      setIsLoading(false);
       gooeyToast.error('Đã xảy ra lỗi', {
         description: 'Vui lòng thử lại sau',
       });
-    } finally {
-      setIsLoading(false);
     }
   };
 
@@ -158,10 +160,12 @@ function UnlockForm() {
           >
             {isLoading ? (
               <Loader2 className="w-8 h-8 animate-spin" />
+            ) : isSuccess ? (
+              <ShieldCheck className="w-8 h-8 text-green-500" />
             ) : isError ? (
               <Lock className="w-8 h-8 text-destructive" />
             ) : (
-              <ShieldCheck className="w-8 h-8" />
+              <Lock className="w-8 h-8" />
             )}
           </motion.div>
 
@@ -201,11 +205,13 @@ function UnlockForm() {
           <div className="flex flex-col gap-4 mt-6">
             <button
               onClick={() => handleSubmit(pin.join(''))}
-              disabled={isLoading || pin.join('').length !== 6}
+              disabled={isLoading || isSuccess || pin.join('').length !== 6}
               className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-3.5 rounded-xl font-medium transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100"
             >
               {isLoading ? (
                 <span>Đang kiểm tra...</span>
+              ) : isSuccess ? (
+                <span>Đang chuyển hướng...</span>
               ) : (
                 <>
                   <span>Xác nhận mở khóa</span>
