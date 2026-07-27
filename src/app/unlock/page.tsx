@@ -50,7 +50,7 @@ function UnlockForm() {
     }
 
     // Auto-submit if all filled
-    if (value && index === 5 && newPin.every(d => d !== '')) {
+    if (newPin.every(d => d !== '')) {
       handleSubmit(newPin.join(''));
     }
   };
