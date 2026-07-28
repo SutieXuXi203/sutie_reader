@@ -7,7 +7,7 @@ export async function POST(request: Request) {
     const body = await request.json();
     const { pin } = body;
 
-    const SECRET_TOKEN = process.env.UNLOCK_PIN;
+    const SECRET_TOKEN = process.env.UNLOCK_PIN || '';
     const ACCESS_COOKIE_NAME = 'site_access_token';
 
     // 1. Get client IP
