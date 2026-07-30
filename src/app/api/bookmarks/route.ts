@@ -15,7 +15,7 @@ type BookmarkLean = {
 type PostLean = {
     _id: { toString: () => string } | string;
     title?: string;
-    images?: string[];
+    coverImage?: string;
     author?: string;
     tags?: string[];
 };
@@ -57,26 +57,44 @@ export async function GET(request: NextRequest) {
             .sort({ updatedAt: -1 })
             .lean()) as BookmarkLean[];
         const { Post } = await import('@/models/Post');
-        const postIds = bookmarks.map((b) => b.postId.toString());
-        const posts = (await Post.find({ _id: { $in: postIds } })
-            .select('title images author tags')
-            .lean()) as PostLean[];
+        const postIds = bookmarks.map((b) => b.postId);
+        const posts = postIds.length > 0
+            ? ((await Post.aggregate([
+                { $match: { _id: { $in: postIds } } },
+                {
+                    $project: {
+                        title: 1,
+                        author: 1,
+                        tags: 1,
+                        coverImage: {
+                            $ifNull: [
+                                { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
+                                { $arrayElemAt: ['$images', 0] },
+                            ],
+                        },
+                    },
+                },
+            ])) as PostLean[])
+            : [];
         const postMap = new Map(posts.map((p) => [p._id.toString(), p]));
         const result = bookmarks
             .map((b) => {
                 const post = postMap.get(b.postId.toString());
                 if (!post) return null;
+                const coverImage = typeof post.coverImage === 'string' && post.coverImage.trim()
+                    ? post.coverImage
+                    : '';
                 return {
-                    _id: b._id,
-                    postId: b.postId,
+                    _id: String(b._id),
+                    postId: b.postId.toString(),
                     chapterIndex: b.chapterIndex ?? 0,
                     currentPage: b.currentPage,
                     totalPages: b.totalPages,
-                    updatedAt: b.updatedAt,
+                    updatedAt: b.updatedAt instanceof Date ? b.updatedAt.toISOString() : b.updatedAt,
                     post: {
-                        _id: post._id,
+                        _id: String(post._id),
                         title: post.title,
-                        images: post.images,
+                        images: coverImage ? [coverImage] : [],
                         author: post.author,
                         tags: post.tags,
                     },

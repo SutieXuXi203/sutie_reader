@@ -89,6 +89,7 @@ function HomeContent() {
 
   const searchParams = useSearchParams();
   const tagParam = searchParams.get('tag');
+  const userId = user?.id;
 
   const fetchBookmarks = useCallback(async () => {
     try {
@@ -147,7 +148,7 @@ function HomeContent() {
   }, []);
 
   useEffect(() => {
-    if (user) {
+    if (userId) {
       fetchBookmarks();
       fetchPosts();
       fetchTags();
@@ -156,7 +157,7 @@ function HomeContent() {
       setPosts([]);
       setStandaloneTags([]);
     }
-  }, [user, fetchBookmarks, fetchPosts, fetchTags]);
+  }, [userId, fetchBookmarks, fetchPosts, fetchTags]);
 
   useEffect(() => {
     setSearchTerm(tagParam || '');

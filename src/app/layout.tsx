@@ -11,6 +11,7 @@ import "goey-toast/styles.css";
 import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { SpeedInsights } from "@vercel/speed-insights/next";
+import { getCurrentUser } from "@/lib/server-auth";
 
 const inter = Inter({subsets:['latin'],variable:'--font-sans'});
 
@@ -43,11 +44,13 @@ export const metadata: Metadata = {
     apple: "/logo.png",
   },
 };
-export default function RootLayout({
+export default async function RootLayout({
   children,
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  const initialUser = await getCurrentUser();
+
   return (
     <html lang="vi" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
       <body
@@ -56,7 +59,7 @@ export default function RootLayout({
       >
         <div className="relative z-10 flex flex-col min-h-screen">
           <DevPointerCaptureGuard />
-          <Providers>
+          <Providers initialUser={initialUser}>
             <UploadProgressProvider>
               <SmoothScrollProvider>
               <SiteNav />

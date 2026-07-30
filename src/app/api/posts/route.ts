@@ -152,15 +152,21 @@ export async function GET() {
           author: 1,
           createdAt: 1,
           updatedAt: 1,
-          firstChapterImages: { $arrayElemAt: ['$chapters.images', 0] },
+          coverImage: {
+            $ifNull: [
+              { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
+              { $arrayElemAt: ['$images', 0] },
+            ],
+          },
           chapterCount: { $size: { $ifNull: ['$chapters', []] } },
-          images: 1,
         },
       },
     ]);
 
     const serialized = posts.map((post) => {
-      const previewImages = post.firstChapterImages || post.images || [];
+      const coverImage = typeof post.coverImage === 'string' && post.coverImage.trim()
+        ? post.coverImage
+        : '';
 
       return {
         _id: post._id.toString(),
@@ -168,10 +174,10 @@ export async function GET() {
         description: post.description || '',
         tags: post.tags || [],
         author: post.author || 'Ẩn danh',
-        createdAt: post.createdAt,
-        updatedAt: post.updatedAt,
+        createdAt: post.createdAt instanceof Date ? post.createdAt.toISOString() : post.createdAt,
+        updatedAt: post.updatedAt instanceof Date ? post.updatedAt.toISOString() : post.updatedAt,
         chapterCount: post.chapterCount,
-        images: previewImages,
+        images: coverImage ? [coverImage] : [],
       };
     });
 
@@ -234,4 +240,3 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Tạo bài viết không thành công', details: message }, { status: 500 });
   }
 }
-

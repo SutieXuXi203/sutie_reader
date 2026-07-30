@@ -1,7 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
 import { notify } from '@/lib/notify';
-interface User {
+export interface User {
     id: string;
     email: string;
     name: string;
@@ -17,9 +17,16 @@ interface AuthContextType {
     isAdmin: boolean;
 }
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
-export function AuthProvider({ children }: { children: ReactNode }) {
-    const [user, setUser] = useState<User | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
+export function AuthProvider({
+    children,
+    initialUser,
+}: {
+    children: ReactNode;
+    initialUser?: User | null;
+}) {
+    const hasInitialAuth = initialUser !== undefined;
+    const [user, setUser] = useState<User | null>(initialUser ?? null);
+    const [isLoading, setIsLoading] = useState(!hasInitialAuth);
     const checkAuth = useCallback(async () => {
         try {
             const res = await fetch('/api/auth/me');
@@ -37,16 +44,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
     }, []);
     useEffect(() => {
+        if (hasInitialAuth) {
+            if (initialUser) {
+                void checkAuth();
+            }
+            return;
+        }
         checkAuth();
-    }, [checkAuth]);
+    }, [checkAuth, hasInitialAuth, initialUser]);
     const login = useCallback((userData: User) => {
         setUser(userData);
+        setIsLoading(false);
     }, []);
     const logout = useCallback(async () => {
         try {
             const res = await fetch('/api/auth/logout', { method: 'POST' });
             if (res.ok) {
                 setUser(null);
+                setIsLoading(false);
                 notify.success('Đăng xuất thành công');
             } else {
                 notify.error('Đăng xuất không thành công');
