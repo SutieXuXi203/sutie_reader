@@ -232,13 +232,10 @@ function HomeContent() {
 
   return (
     <div className="min-h-screen bg-background text-foreground transition-colors relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20 pt-20 pb-0 flex flex-col justify-between">
-      <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.primary)_1px,transparent_1px)] opacity-[0.05] z-0 mix-blend-screen" />
-
-      {/* Decorative Orbs */}
-      <div className="absolute inset-0 pointer-events-none overflow-hidden z-0" aria-hidden="true">
-        <div className="absolute top-[8%] left-[2%] w-48 h-48 rounded-full border border-primary/10 bg-primary/5 opacity-30 animate-float-y-soft float-y-fast" />
-        <div className="absolute top-[20%] right-[10%] w-72 h-72 rounded-full bg-primary/10 blur-[120px] opacity-20 animate-float-y-soft float-y-slow" />
-        <div className="absolute bottom-[30%] left-[5%] w-56 h-56 rounded-full border border-foreground/10 bg-foreground/5 opacity-20 animate-float-y-soft animation-delay-2000" />
+      <div className="fixed inset-0 pointer-events-none z-0" aria-hidden="true">
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,theme(colors.primary)_1px,transparent_0)] bg-[size:28px_28px] opacity-[0.08] dark:opacity-[0.06] mix-blend-screen" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,theme(colors.foreground)_1px,transparent_1px),linear-gradient(theme(colors.foreground)_1px,transparent_1px)] bg-[size:180px_180px] opacity-[0.035] dark:opacity-[0.05] mix-blend-overlay" />
+        <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/0 to-background/35 dark:to-background/55" />
       </div>
 
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1">
