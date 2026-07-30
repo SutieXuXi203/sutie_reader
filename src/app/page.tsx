@@ -265,7 +265,7 @@ function HomeContent() {
                         <X className="w-2.5 h-2.5" />
                       </button>
 
-                      <Link href={`/posts/${bm.postId}`} className="block">
+                      <Link href={`/posts/${bm.postId}`} prefetch={false} className="block">
                         <div className="relative h-32 bg-secondary/30 overflow-hidden">
                           {bm.post.images[0] && (
                             <Image

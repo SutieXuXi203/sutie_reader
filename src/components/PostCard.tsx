@@ -101,6 +101,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
     <>
       <Link
         href={`/posts/${post._id}`}
+        prefetch={false}
         className="group/card flex flex-col h-full bg-card/60 backdrop-blur-md border border-border rounded-[8px] overflow-hidden hover:shadow-[0_8px_30px_rgba(140,47,57,0.18)] hover:-translate-y-1 transition-all duration-500 cursor-pointer relative"
       >
         <div
