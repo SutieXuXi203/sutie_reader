@@ -6,9 +6,10 @@ import {
 } from '@/components/animate-ui/icons/AnimateIcon';
 import { ChevronRight, Search, X } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
+import { useThumbnailBlur } from '@/providers/ThumbnailBlurProvider';
 import Link from 'next/link';
 import Image from 'next/image';
-import { getOptimizedImageUrl, normalizeSearchText } from '@/lib/utils';
+import { cn, getOptimizedImageUrl, normalizeSearchText } from '@/lib/utils';
 import { Footer } from '@/components/Footer';
 import { PostCard } from '@/components/PostCard';
 import { Input } from '@/components/ui/input';
@@ -60,6 +61,7 @@ let lastFetchTime = 0;
 function HomeContent() {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const { user, isLoading: isAuthLoading } = useAuth();
+  const { isThumbnailBlurred } = useThumbnailBlur();
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>(cachedBookmarks);
   const [posts, setPosts] = useState<Post[]>(cachedPosts);
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string; name: string }[]>(cachedTags);
@@ -272,7 +274,10 @@ function HomeContent() {
                               src={getOptimizedImageUrl(bm.post.images[0])}
                               alt={bm.post.title}
                               fill
-                              className="object-cover object-top group-hover:scale-105 transition-transform duration-500"
+                              className={cn(
+                                "object-cover object-top group-hover:scale-105 transition-[transform,filter] duration-500",
+                                isThumbnailBlurred && "blur-xl scale-110 brightness-90 saturate-75 group-hover:blur-none group-hover:brightness-100 group-hover:saturate-100"
+                              )}
                               unoptimized
                             />
                           )}

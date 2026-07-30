@@ -8,6 +8,7 @@ import { useRouter } from 'next/navigation';
 import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
+import { useThumbnailBlur } from '@/providers/ThumbnailBlurProvider';
 import { cn, getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { GlareHover } from '@/components/GlareHover';
@@ -39,7 +40,9 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   const [nsfwRevealed, setNsfwRevealed] = useState(false);
   const [showNsfwConfirm, setShowNsfwConfirm] = useState(false);
   const { isAdmin } = useAuth();
+  const { isThumbnailBlurred } = useThumbnailBlur();
   const isNSFW = (post.tags || []).some(tag => tag.toLowerCase().includes('18+'));
+  const isNsfwLocked = isNSFW && !nsfwRevealed;
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
     if (nsfwRevealed) {
@@ -114,9 +117,10 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               fill
               sizes={compact ? "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 16vw" : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"}
               className={cn(
-                "object-cover transition-transform duration-700 group-hover/card:scale-105",
+                "object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
                 compact && "object-top",
-                isNSFW && !nsfwRevealed && "blur-xl scale-110 brightness-90 saturate-75"
+                isThumbnailBlurred && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
+                isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
               )}
             />
           ) : (

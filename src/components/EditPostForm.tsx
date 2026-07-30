@@ -47,6 +47,12 @@ interface EditPostFormProps {
   availableTags?: string[];
 }
 
+interface PostDetailsResponse {
+  content?: string;
+  images?: string[];
+  chapters?: Chapter[];
+}
+
 interface ChapterEditState {
   title: string;
   chapterNumber: number;
@@ -88,8 +94,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       setIsLoadingDetails(true);
       fetch(`/api/posts/${post._id}`)
         .then((res) => res.json())
-        .then((data) => {
-          const fetchedChapters = data.chapters && data.chapters.length > 0
+        .then((data: PostDetailsResponse) => {
+          const fetchedChapters: Chapter[] = data.chapters && data.chapters.length > 0
             ? data.chapters
             : [
                 {
@@ -101,7 +107,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               ];
 
           setChapters(
-            fetchedChapters.map((ch: any, idx: number) => ({
+            fetchedChapters.map((ch, idx) => ({
               title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
               chapterNumber: ch.chapterNumber || idx + 1,
               content: ch.content || '',
