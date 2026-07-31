@@ -12,7 +12,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
-import { Upload, X, Plus, Trash2, RefreshCw } from 'lucide-react';
+import { Upload, X, Plus, Trash2, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import Image from 'next/image';
 import { TagPicker } from '@/components/TagPicker';
 import { notify } from '@/lib/notify';
@@ -81,6 +81,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const [chapters, setChapters] = useState<ChapterEditState[]>([]);
   const [selectedChapterIndex, setSelectedChapterIndex] = useState<number>(0);
   const [draggedImageId, setDraggedImageId] = useState<string | null>(null);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -537,6 +538,20 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                         variant="outline"
                         size="sm"
                         className="h-6 text-[10px] px-2"
+                        onClick={() => setIsExpanded(!isExpanded)}
+                        disabled={isSubmitting}
+                      >
+                        {isExpanded ? (
+                          <><Minimize2 className="h-3 w-3 mr-1" /> Thu nhỏ</>
+                        ) : (
+                          <><Maximize2 className="h-3 w-3 mr-1" /> Phóng to</>
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[10px] px-2"
                         onClick={() => updateActiveChapter(ch => ({ ...ch, images: smartSortImages(ch.images) }))}
                         disabled={isSubmitting}
                       >
@@ -559,8 +574,27 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                       </Button>
                     </div>
                   </div>
-                  <div className="max-h-80 overflow-y-auto rounded-lg border border-border/60 p-3 bg-background/50 custom-scrollbar">
-                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
+                  <div className={cn(
+                    "custom-scrollbar transition-all",
+                    isExpanded 
+                      ? "fixed inset-2 md:inset-10 z-[100] bg-background/95 backdrop-blur-xl p-4 md:p-6 rounded-2xl shadow-2xl overflow-y-auto border border-border flex flex-col" 
+                      : "max-h-80 overflow-y-auto rounded-lg border border-border/60 p-3 bg-background/50"
+                  )}>
+                    {isExpanded && (
+                      <div className="flex items-center justify-between sticky -top-4 md:-top-6 bg-background/95 backdrop-blur z-20 pb-4 pt-4 md:pt-6 border-b border-border/50 mb-4 -mx-4 md:-mx-6 px-4 md:px-6">
+                        <div>
+                          <h3 className="font-semibold text-lg md:text-xl">Sắp xếp ảnh</h3>
+                          <p className="text-xs text-muted-foreground mt-0.5">Kéo thả để sắp xếp lại thứ tự ảnh</p>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" className="rounded-full bg-secondary hover:bg-rose-500 hover:text-white" onClick={() => setIsExpanded(false)}>
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    )}
+                    <div className={cn(
+                      "grid gap-3",
+                      isExpanded ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8" : "grid-cols-3 md:grid-cols-4"
+                    )}>
                       {activeChapter.images.map((img, idx) => (
                         <div
                           key={img.id}
