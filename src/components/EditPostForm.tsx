@@ -111,13 +111,13 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
           const fetchedChapters: Chapter[] = data.chapters && data.chapters.length > 0
             ? data.chapters
             : [
-                {
-                  title: 'Chương 1',
-                  chapterNumber: 1,
-                  content: data.content || post.content || '',
-                  images: data.images || post.images || [],
-                },
-              ];
+              {
+                title: 'Chương 1',
+                chapterNumber: 1,
+                content: data.content || post.content || '',
+                images: data.images || post.images || [],
+              },
+            ];
 
           setChapters(
             fetchedChapters.map((ch, idx) => ({
@@ -266,7 +266,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     try {
       setIsSyncing(true);
       const syncedUrls = await syncDriveImages(title, post._id);
-      
+
       const newSyncedImages: ChapterImage[] = syncedUrls.map(url => ({
         id: generateId(),
         isNew: false,
@@ -322,7 +322,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
       for (let i = 0; i < chapters.length; i++) {
         const ch = chapters[i];
-        
+
         const newImagesInOrder = ch.images.filter(img => img.isNew);
         const newFiles = newImagesInOrder.map(img => img.file!);
         let uploadedUrls: string[] = [];
@@ -399,12 +399,15 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5">
-        <DialogHeader>
+      <DialogContent className={cn(
+        "overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 transition-all duration-300 flex flex-col",
+        isExpanded ? "max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh]" : "max-w-2xl max-h-[85vh] space-y-5"
+      )}>
+        <DialogHeader className={cn(isExpanded && "hidden")}>
           <DialogTitle className="text-xl font-medium">Chỉnh sửa bài viết</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className="space-y-5">
-          <div>
+        <form onSubmit={handleSubmit} className={cn("flex flex-col min-h-0", isExpanded ? "flex-1" : "space-y-5")}>
+          <div className={cn("space-y-5", isExpanded && "hidden")}>
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
               Tiêu đề bộ truyện
             </label>
@@ -443,8 +446,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             />
           </div>
 
-          <div className="pt-4 border-t border-border/50 space-y-4">
-            <div className="flex items-center justify-between">
+          <div className={cn("border-border/50 flex flex-col min-h-0", !isExpanded && "pt-4 border-t space-y-4", isExpanded && "flex-1")}>
+            <div className={cn("flex items-center justify-between", isExpanded && "hidden")}>
               <label className="block text-sm font-semibold text-slate-900 dark:text-white">
                 Danh sách Chương ({chapters.length})
               </label>
@@ -460,7 +463,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               </Button>
             </div>
 
-            <div className="flex items-center gap-2 mb-4">
+            <div className={cn("flex items-center gap-2", !isExpanded && "mb-4", isExpanded && "hidden")}>
               <Select
                 value={selectedChapterIndex.toString()}
                 onValueChange={(val) => setSelectedChapterIndex(parseInt(val || '0', 10))}
@@ -493,8 +496,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               )}
             </div>
 
-            <div className="p-4 rounded-xl border border-border/60 bg-muted/10 space-y-4">
-              <div>
+            <div className={cn("rounded-xl border border-border/60 bg-muted/10 flex flex-col min-h-0", !isExpanded && "p-4 space-y-4", isExpanded && "flex-1 p-2 md:p-6")}>
+              <div className={cn(isExpanded && "hidden")}>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                   Tiêu đề Chương ({selectedChapterIndex + 1})
                 </label>
@@ -510,7 +513,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 />
               </div>
 
-              <div>
+              <div className={cn(isExpanded && "hidden")}>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                   Nội dung Chương (không bắt buộc)
                 </label>
@@ -527,9 +530,9 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               </div>
 
               {activeChapter.images.length > 0 && (
-                <div>
-                  <div className="flex items-center justify-between mb-1.5">
-                    <label className="block text-xs font-medium text-muted-foreground">
+                <div className={cn(isExpanded && "flex-1 flex flex-col min-h-0")}>
+                  <div className={cn("flex items-center justify-between mb-1.5", isExpanded && "pb-2 border-b border-border/50 mb-3 md:mb-4")}>
+                    <label className={cn("block font-medium text-muted-foreground", isExpanded ? "text-lg text-foreground font-semibold" : "text-xs")}>
                       Ảnh hiện tại của chương ({activeChapter.images.length})
                     </label>
                     <div className="flex gap-2">
@@ -575,10 +578,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     </div>
                   </div>
                   <div className={cn(
-                    "custom-scrollbar transition-all",
-                    isExpanded 
-                      ? "fixed inset-2 md:inset-10 z-[100] bg-background/95 backdrop-blur-xl p-4 md:p-6 rounded-2xl shadow-2xl overflow-y-auto border border-border flex flex-col" 
-                      : "max-h-80 overflow-y-auto rounded-lg border border-border/60 p-3 bg-background/50"
+                    "custom-scrollbar transition-all overflow-y-auto rounded-lg border border-border/60 p-3 bg-background/50",
+                    isExpanded ? "flex-1 min-h-0" : "max-h-80"
                   )}>
                     {isExpanded && (
                       <div className="flex items-center justify-between sticky -top-4 md:-top-6 bg-background/95 backdrop-blur z-20 pb-4 pt-4 md:pt-6 border-b border-border/50 mb-4 -mx-4 md:-mx-6 px-4 md:px-6">
@@ -640,7 +641,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 </div>
               )}
 
-              <div>
+              <div className={cn(isExpanded && "hidden")}>
                 <div className="flex items-center justify-between mb-1.5 mt-4">
                   <label className="block text-xs font-medium text-muted-foreground">
                     Thêm ảnh mới cho chương này
@@ -680,7 +681,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             </div>
           </div>
 
-          <div className="pt-3 border-t border-border/40 flex gap-2 justify-end">
+          <div className={cn("flex gap-2 justify-end shrink-0", !isExpanded && "pt-3 border-t border-border/40", isExpanded && "pt-4")}>
             <Button
               type="button"
               variant="outline"
