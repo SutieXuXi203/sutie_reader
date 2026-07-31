@@ -1,4 +1,5 @@
 import imageCompression from 'browser-image-compression';
+import { getOptimizedImageUrl } from '@/lib/utils';
 
 export const uploadImages = async (
   files: File[],
@@ -67,7 +68,7 @@ export const uploadImages = async (
     }
 
     const { urls } = await res.json();
-    allUrls.push(...(urls as string[]));
+    allUrls.push(...(urls as string[]).map(getOptimizedImageUrl));
 
     onProgress?.(allUrls.length, sortedFiles.length);
   }
@@ -156,5 +157,5 @@ export const syncDriveImages = async (
   }
 
   const { urls } = await res.json();
-  return urls as string[];
+  return (urls as string[]).map(getOptimizedImageUrl);
 };

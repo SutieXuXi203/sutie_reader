@@ -1,6 +1,10 @@
 const DRIVE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const MAX_FILES_PER_REQUEST = 10;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
+const IMAGE_SIGNATURE_VERSION = 'v1';
+const IMAGE_SIGNATURE_MAX_FUTURE_SECONDS = 3600;
+const CLIENT_IMAGE_CACHE_SECONDS = 120;
+const EDGE_IMAGE_CACHE_SECONDS = 31536000;
 
 let cachedAccessToken = null;
 let tokenExpiry = 0;
@@ -51,6 +55,128 @@ function isValidDriveFileId(fileId) {
 
 function isValidPostId(postId) {
   return /^[a-f\d]{24}$/i.test(postId);
+}
+
+function getOptionalEnv(env, keys) {
+  for (const key of keys) {
+    const value = env[key];
+    if (value && String(value).trim()) {
+      return String(value).trim();
+    }
+  }
+  return '';
+}
+
+function base64UrlEncode(bytes) {
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/g, '');
+}
+
+function getImageSignaturePayload(method, fileId, expiresAt, subject) {
+  return [
+    IMAGE_SIGNATURE_VERSION,
+    method.toUpperCase(),
+    `/image/${fileId}`,
+    String(expiresAt),
+    subject,
+  ].join('\n');
+}
+
+async function signImageRequest(method, fileId, expiresAt, subject, secretStr) {
+  const encoder = new TextEncoder();
+  const secretKey = await crypto.subtle.importKey(
+    'raw',
+    encoder.encode(secretStr),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign']
+  );
+
+  const signature = await crypto.subtle.sign(
+    'HMAC',
+    secretKey,
+    encoder.encode(getImageSignaturePayload(method, fileId, expiresAt, subject))
+  );
+
+  return base64UrlEncode(new Uint8Array(signature));
+}
+
+function constantTimeEqual(a, b) {
+  if (a.length !== b.length) return false;
+
+  let diff = 0;
+  for (let i = 0; i < a.length; i++) {
+    diff |= a.charCodeAt(i) ^ b.charCodeAt(i);
+  }
+  return diff === 0;
+}
+
+async function verifyImageRequestSignature(request, url, fileId, env) {
+  const secret = getOptionalEnv(env, ['IMAGE_SIGNING_SECRET', 'UPLOAD_SECRET', 'JWT_SECRET']);
+  if (!secret) {
+    throw httpError('Image signing is not configured', 500);
+  }
+
+  const expiresAtRaw = url.searchParams.get('exp') || '';
+  const subject = url.searchParams.get('sub') || '';
+  const signature = url.searchParams.get('sig') || '';
+
+  if (
+    !/^\d{1,12}$/.test(expiresAtRaw) ||
+    subject.length < 1 ||
+    subject.length > 200 ||
+    !/^[a-zA-Z0-9_-]{32,128}$/.test(signature)
+  ) {
+    throw httpError('Unauthorized image request', 401);
+  }
+
+  const expiresAt = Number(expiresAtRaw);
+  const now = Math.floor(Date.now() / 1000);
+  if (!Number.isFinite(expiresAt) || expiresAt < now) {
+    throw httpError('Expired image request', 403);
+  }
+
+  if (expiresAt > now + IMAGE_SIGNATURE_MAX_FUTURE_SECONDS) {
+    throw httpError('Image request expiry is too far in the future', 403);
+  }
+
+  const expectedSignature = await signImageRequest(
+    request.method,
+    fileId,
+    expiresAt,
+    subject,
+    secret
+  );
+
+  if (!constantTimeEqual(signature, expectedSignature)) {
+    throw httpError('Invalid image signature', 403);
+  }
+
+  return { subject };
+}
+
+function createImageCacheKey(request) {
+  const cacheUrl = new URL(request.url);
+  cacheUrl.search = '';
+  return new Request(cacheUrl.toString(), { method: 'GET' });
+}
+
+function imageResponseForClient(response, corsHeaders) {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    headers.set(key, value);
+  }
+  headers.set('Cache-Control', `private, max-age=${CLIENT_IMAGE_CACHE_SECONDS}`);
+  headers.set('Vary', 'Cookie');
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
 }
 
 function sanitizeFileName(name) {
@@ -380,14 +506,16 @@ const worker = {
         return new Response('Invalid image id', { status: 400, headers: corsHeaders });
       }
 
-      const cache = caches.default;
-      const cacheKey = new Request(request.url, request);
-      const cachedResponse = await cache.match(cacheKey);
-      if (cachedResponse) {
-        return cachedResponse;
-      }
-
       try {
+        await verifyImageRequestSignature(request, url, fileId, env);
+
+        const cache = caches.default;
+        const cacheKey = createImageCacheKey(request);
+        const cachedResponse = await cache.match(cacheKey);
+        if (cachedResponse) {
+          return imageResponseForClient(cachedResponse, corsHeaders);
+        }
+
         const accessToken = await getAccessToken(env);
         const rootFolderId = getRootFolderId(env);
         const metadata = await assertImageCanBeServed(accessToken, rootFolderId, fileId);
@@ -399,17 +527,17 @@ const worker = {
           throw httpError('Image not found', driveRes.status);
         }
 
-        const headers = new Headers(corsHeaders);
-        headers.set('Content-Type', metadata.mimeType || driveRes.headers.get('content-type') || 'image/jpeg');
-        headers.set('Cache-Control', 'public, max-age=31536000, immutable');
-        headers.set('Content-Disposition', `inline; filename="${encodeURIComponent(metadata.name || 'image')}"`);
+        const edgeHeaders = new Headers(corsHeaders);
+        edgeHeaders.set('Content-Type', metadata.mimeType || driveRes.headers.get('content-type') || 'image/jpeg');
+        edgeHeaders.set('Cache-Control', `public, max-age=${EDGE_IMAGE_CACHE_SECONDS}, immutable`);
+        edgeHeaders.set('Content-Disposition', `inline; filename="${encodeURIComponent(metadata.name || 'image')}"`);
 
-        const response = new Response(driveRes.body, { status: 200, headers });
+        const response = new Response(driveRes.body, { status: 200, headers: edgeHeaders });
         ctx.waitUntil(cache.put(cacheKey, response.clone()));
-        return response;
+        return imageResponseForClient(response, corsHeaders);
       } catch (error) {
         const status = getErrorStatus(error);
-        const message = status === 404 ? 'Image not found' : status === 403 ? 'Forbidden' : 'Error loading image';
+        const message = status === 401 ? 'Unauthorized' : status === 404 ? 'Image not found' : status === 403 ? 'Forbidden' : 'Error loading image';
         console.error('[CF WORKER] Image request failed:', getErrorMessage(error));
         return new Response(message, { status, headers: corsHeaders });
       }

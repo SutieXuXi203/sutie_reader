@@ -5,18 +5,40 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
-const DEFAULT_IMAGE_WORKER_URL = 'https://sutie-images.manhdinh0410.workers.dev';
+const DRIVE_FILE_ID_PATTERN = /^[a-zA-Z0-9_-]{10,}$/;
+
+export function extractDriveImageId(url: string): string | null {
+  const value = typeof url === 'string' ? url.trim() : '';
+  if (!value) return null;
+
+  if (DRIVE_FILE_ID_PATTERN.test(value)) {
+    return value;
+  }
+
+  const apiImageMatch = value.match(/(?:^|\/)api\/image\/([a-zA-Z0-9_-]{10,})(?:[/?#]|$)/);
+  if (apiImageMatch) {
+    return apiImageMatch[1];
+  }
+
+  const workerImageMatch = value.match(/\/image\/([a-zA-Z0-9_-]{10,})(?:[/?#]|$)/);
+  if (workerImageMatch) {
+    return workerImageMatch[1];
+  }
+
+  const driveMatch = value.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{10,})/);
+  if (driveMatch) {
+    return driveMatch[1];
+  }
+
+  return null;
+}
 
 export function getOptimizedImageUrl(url: string): string {
   if (!url) return '';
 
-  const matchDriveId = url.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{25,})/);
-  if (url.includes('drive.google.com') && matchDriveId) {
-    const workerUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL || DEFAULT_IMAGE_WORKER_URL;
-    if (workerUrl) {
-      return `${workerUrl.replace(/\/+$/, '')}/image/${matchDriveId[1]}`;
-    }
-    return `/api/image/${matchDriveId[1]}`;
+  const imageId = extractDriveImageId(url);
+  if (imageId) {
+    return `/api/image/${encodeURIComponent(imageId)}`;
   }
   return url;
 }

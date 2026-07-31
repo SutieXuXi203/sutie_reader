@@ -13,10 +13,6 @@ const nextConfig: NextConfig = {
     remotePatterns: [
       {
         protocol: 'https',
-        hostname: 'sutie-images.manhdinh0410.workers.dev',
-      },
-      {
-        protocol: 'https',
         hostname: 'api.dicebear.com',
       },
       {
@@ -26,8 +22,8 @@ const nextConfig: NextConfig = {
     ],
     localPatterns: [
       {
-        pathname: '/api/image',
-        search: '?id=*',
+        pathname: '/api/image/**',
+        search: '',
       },
       {
         pathname: '/**',
