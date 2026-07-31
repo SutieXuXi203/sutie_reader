@@ -225,8 +225,10 @@ export function SiteNav() {
         </div>
       )}
 
-      <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
-      {user && (
+      {isAuthDialogOpen && (
+        <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
+      )}
+      {user && isProfileDialogOpen && (
         <ProfileDialog open={isProfileDialogOpen} onOpenChange={setIsProfileDialogOpen} />
       )}
     </>

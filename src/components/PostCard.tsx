@@ -219,6 +219,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       </Link >
       {isAdmin && (
         <>
+          {isEditOpen && (
           <EditPostForm
             post={post}
             open={isEditOpen}
@@ -226,6 +227,8 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             onPostUpdated={() => { setIsEditOpen(false); onUpdate(); }}
             availableTags={availableTags}
           />
+          )}
+          {isDeleteConfirmOpen && (
           <DeleteConfirmDialog
             open={isDeleteConfirmOpen}
             onOpenChange={setIsDeleteConfirmOpen}
@@ -235,6 +238,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             description={`Bạn có chắc chắn muốn xóa "${post.title}"? Hành động này không thể hoàn tác.`}
             confirmLabel={isDeleting ? 'Đang xóa...' : 'Xóa'}
           />
+          )}
         </>
       )}
       {

@@ -90,9 +90,11 @@ export default function ProductsPage() {
     }, []);
 
     useEffect(() => {
-        fetchPosts();
-        fetchTags();
-    }, [fetchPosts, fetchTags]);
+        if (!isAuthLoading && isAdmin) {
+            fetchPosts();
+            fetchTags();
+        }
+    }, [isAuthLoading, isAdmin, fetchPosts, fetchTags]);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -279,17 +281,21 @@ export default function ProductsPage() {
                 </div>
             </div>
             
-            <AuthDialog
-                open={isAuthDialogOpen}
-                onOpenChange={setIsAuthDialogOpen}
-            />
+            {isAuthDialogOpen && (
+                <AuthDialog
+                    open={isAuthDialogOpen}
+                    onOpenChange={setIsAuthDialogOpen}
+                />
+            )}
             
-            <CreatePostForm
-                open={isCreateDialogOpen}
-                onOpenChange={setIsCreateDialogOpen}
-                onPostCreated={fetchPosts}
-                availableTags={availableTags}
-            />
+            {isCreateDialogOpen && (
+                <CreatePostForm
+                    open={isCreateDialogOpen}
+                    onOpenChange={setIsCreateDialogOpen}
+                    onPostCreated={fetchPosts}
+                    availableTags={availableTags}
+                />
+            )}
 
             <Footer />
         </div>

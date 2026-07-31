@@ -1,14 +1,12 @@
 'use client';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
 import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User, Tag, RefreshCw } from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { CreatePostForm } from '@/components/CreatePostForm';
-import { EditPostForm } from '@/components/EditPostForm';
-import { DeleteConfirmDialog } from '@/components/DeleteConfirmDialog';
+import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
@@ -45,6 +43,36 @@ interface DeletedAccountRecord {
 
 const ROWS_PER_PAGE = 5;
 
+const CreatePostForm = dynamic(() => import('@/components/CreatePostForm').then(m => ({ default: m.CreatePostForm })), { ssr: false });
+const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
+const DeleteConfirmDialog = dynamic(() => import('@/components/DeleteConfirmDialog').then(m => ({ default: m.DeleteConfirmDialog })), { ssr: false });
+
+const formatSessionTime = (sec: number) => {
+    const h = Math.floor(sec / 3600);
+    const m = Math.floor((sec % 3600) / 60);
+    const s = sec % 60;
+    if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+    return `${m}:${s.toString().padStart(2, '0')}`;
+};
+
+function SessionElapsedTime({
+    as: Component = 'span',
+    className,
+}: {
+    as?: 'p' | 'span';
+    className?: string;
+}) {
+    const [sessionSeconds, setSessionSeconds] = useState(0);
+
+    useEffect(() => {
+        const start = Date.now();
+        const timer = setInterval(() => setSessionSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
+        return () => clearInterval(timer);
+    }, []);
+
+    return <Component className={className}>{formatSessionTime(sessionSeconds)}</Component>;
+}
+
 export default function AdminDashboard() {
     const { user, isLoading: isAuthLoading } = useAuth();
     const router = useRouter();
@@ -62,7 +90,6 @@ export default function AdminDashboard() {
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
-    const [sessionSeconds, setSessionSeconds] = useState(0);
     const [deleteTarget, setDeleteTarget] = useState<
         | { type: 'post'; id: string; title: string }
         | { type: 'user'; id: string; email: string }
@@ -76,38 +103,12 @@ export default function AdminDashboard() {
     const [newTagName, setNewTagName] = useState('');
     const [isCreatingTag, setIsCreatingTag] = useState(false);
     useEffect(() => {
-        if (!user) return;
-        const start = Date.now();
-        const timer = setInterval(() => setSessionSeconds(Math.floor((Date.now() - start) / 1000)), 1000);
-        return () => clearInterval(timer);
-    }, [user]);
-    const formatSessionTime = (sec: number) => {
-        const h = Math.floor(sec / 3600);
-        const m = Math.floor((sec % 3600) / 60);
-        const s = sec % 60;
-        if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
-        return `${m}:${s.toString().padStart(2, '0')}`;
-    };
-    useEffect(() => {
-        if (!isAuthLoading) {
-            if (!user || user.role !== 'admin') {
-                router.push('/');
-            } else {
-                fetchPosts();
-                fetchUsers();
-                fetchDeletedAccounts();
-                fetchTags();
-            }
-        }
-    }, [user, isAuthLoading, router]);
-
-    useEffect(() => {
         if (activeTab === 'users') {
             setUsersPage(1);
             setDeletedAccountsPage(1);
         }
     }, [searchQuery, activeTab]);
-    const fetchTags = async () => {
+    const fetchTags = useCallback(async () => {
         try {
             const res = await fetch('/api/tags');
             if (res.ok) {
@@ -117,8 +118,8 @@ export default function AdminDashboard() {
         } catch (error) {
             console.error('Error fetching tags:', error);
         }
-    };
-    const fetchPosts = async () => {
+    }, []);
+    const fetchPosts = useCallback(async () => {
         setIsLoading(true);
         try {
             const res = await fetch('/api/posts');
@@ -131,8 +132,8 @@ export default function AdminDashboard() {
         } finally {
             setIsLoading(false);
         }
-    };
-    const fetchUsers = async () => {
+    }, []);
+    const fetchUsers = useCallback(async () => {
         setIsUsersLoading(true);
         setUsersLoadError(null);
         try {
@@ -160,8 +161,8 @@ export default function AdminDashboard() {
         } finally {
             setIsUsersLoading(false);
         }
-    };
-    const fetchDeletedAccounts = async () => {
+    }, []);
+    const fetchDeletedAccounts = useCallback(async () => {
         setIsDeletedAccountsLoading(true);
         try {
             const res = await fetch('/api/admin/deleted-accounts?limit=200');
@@ -174,7 +175,20 @@ export default function AdminDashboard() {
         } finally {
             setIsDeletedAccountsLoading(false);
         }
-    };
+    }, []);
+
+    useEffect(() => {
+        if (!isAuthLoading) {
+            if (!user || user.role !== 'admin') {
+                router.push('/');
+            } else {
+                fetchPosts();
+                fetchUsers();
+                fetchDeletedAccounts();
+                fetchTags();
+            }
+        }
+    }, [user, isAuthLoading, router, fetchPosts, fetchUsers, fetchDeletedAccounts, fetchTags]);
     const handleDelete = (post: Post) => {
         setDeleteTarget({
             type: 'post',
@@ -315,24 +329,23 @@ export default function AdminDashboard() {
         });
         return counts;
     }, [posts]);
-    const filteredPosts = posts.filter(post =>
-        post.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        post.author.toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (post.tags || []).some((tag) => tag.toLowerCase().includes(searchQuery.toLowerCase()))
-    );
-    const filteredUsers = usersList.filter(u => {
-        const normalizedQuery = searchQuery.toLowerCase();
+    const lowercaseSearchQuery = useMemo(() => searchQuery.toLowerCase(), [searchQuery]);
+    const filteredPosts = useMemo(() => posts.filter(post =>
+        post.title.toLowerCase().includes(lowercaseSearchQuery) ||
+        post.author.toLowerCase().includes(lowercaseSearchQuery) ||
+        (post.tags || []).some((tag) => tag.toLowerCase().includes(lowercaseSearchQuery))
+    ), [posts, lowercaseSearchQuery]);
+    const filteredUsers = useMemo(() => usersList.filter(u => {
         const verificationLabel = u.role === 'admin'
             ? 'miễn xác thực'
             : (Boolean(u.isVerified) ? 'đã xác thực' : 'chưa xác thực');
         return (
-            u.name?.toLowerCase().includes(normalizedQuery) ||
-            u.email?.toLowerCase().includes(normalizedQuery) ||
-            verificationLabel.includes(normalizedQuery)
+            u.name?.toLowerCase().includes(lowercaseSearchQuery) ||
+            u.email?.toLowerCase().includes(lowercaseSearchQuery) ||
+            verificationLabel.includes(lowercaseSearchQuery)
         );
-    });
-    const filteredDeletedAccounts = deletedAccounts.filter((account) => {
-        const normalizedQuery = searchQuery.toLowerCase();
+    }), [usersList, lowercaseSearchQuery]);
+    const filteredDeletedAccounts = useMemo(() => deletedAccounts.filter((account) => {
         const triggerLabel = account.deletionTrigger === 'verify'
             ? 'xac thuc xác thực'
             : account.deletionTrigger === 'system'
@@ -342,13 +355,16 @@ export default function AdminDashboard() {
             ? 'chua xac thuc qua han 24 gio chưa xác thực quá hạn 24 giờ'
             : account.deletionReason;
         return (
-            account.name?.toLowerCase().includes(normalizedQuery) ||
-            account.email?.toLowerCase().includes(normalizedQuery) ||
-            triggerLabel.includes(normalizedQuery) ||
-            reasonLabel.includes(normalizedQuery)
+            account.name?.toLowerCase().includes(lowercaseSearchQuery) ||
+            account.email?.toLowerCase().includes(lowercaseSearchQuery) ||
+            triggerLabel.includes(lowercaseSearchQuery) ||
+            reasonLabel.includes(lowercaseSearchQuery)
         );
-    });
-    const filteredTagNames = availablePostTags.filter((tag) => tag.includes(searchQuery.toLowerCase()));
+    }), [deletedAccounts, lowercaseSearchQuery]);
+    const filteredTagNames = useMemo(
+        () => availablePostTags.filter((tag) => tag.includes(lowercaseSearchQuery)),
+        [availablePostTags, lowercaseSearchQuery]
+    );
 
     const totalUsersPages = Math.max(1, Math.ceil(filteredUsers.length / ROWS_PER_PAGE));
     const totalDeletedAccountsPages = Math.max(1, Math.ceil(filteredDeletedAccounts.length / ROWS_PER_PAGE));
@@ -431,7 +447,7 @@ export default function AdminDashboard() {
                         <div className="min-w-0 flex-1">
                             <p className="text-sm font-medium text-foreground truncate">{user.name || 'Quản trị viên'}</p>
                             <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                            <p className="text-xs font-mono text-primary mt-1 tabular-nums">{formatSessionTime(sessionSeconds)}</p>
+                            <SessionElapsedTime as="p" className="text-xs font-mono text-primary mt-1 tabular-nums" />
                         </div>
                     </div>
                 </div>
@@ -801,7 +817,9 @@ export default function AdminDashboard() {
                                                             <div>
                                                                 <p>Hoạt động</p>
                                                                 <p className="mt-0.5 font-medium text-foreground/80">
-                                                                    {u.email === user?.email ? formatSessionTime(sessionSeconds) : 'Chưa hoạt động'}
+                                                                    {u.email === user?.email ? (
+                                                                        <SessionElapsedTime as="span" />
+                                                                    ) : 'Chưa hoạt động'}
                                                                 </p>
                                                             </div>
                                                             <div className="text-right">
@@ -916,7 +934,7 @@ export default function AdminDashboard() {
                                                                 <td className="px-5 py-4 text-sm text-center whitespace-nowrap border-r border-border/40 last:border-r-0">
                                                                     {u.email === user?.email ? (
                                                                         <span className="inline-flex items-center rounded-[8px] border border-emerald-300/60 dark:border-emerald-700/60 bg-emerald-100/70 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold font-mono text-emerald-700 dark:text-emerald-300 tabular-nums">
-                                                                            {formatSessionTime(sessionSeconds)}
+                                                                            <SessionElapsedTime />
                                                                         </span>
                                                                     ) : (
                                                                         <span className="inline-flex items-center rounded-[8px] border border-border/70 bg-card/40 px-2.5 py-1 text-xs font-medium text-foreground/75 dark:text-neutral-300">
@@ -1329,13 +1347,15 @@ export default function AdminDashboard() {
                     </button>
                 </div>
             </nav>
-            < CreatePostForm
+            {isCreateDialogOpen && (
+            <CreatePostForm
                 open={isCreateDialogOpen}
                 onOpenChange={setIsCreateDialogOpen}
                 onPostCreated={fetchPosts}
                 availableTags={availablePostTags}
             />
-            {selectedPost && (
+            )}
+            {selectedPost && isEditOpen && (
                 <EditPostForm
                     post={selectedPost}
                     open={isEditOpen}
@@ -1345,6 +1365,7 @@ export default function AdminDashboard() {
                 />
             )
             }
+            {deleteTarget && (
             <DeleteConfirmDialog
                 open={!!deleteTarget}
                 onOpenChange={(open) => {
@@ -1364,6 +1385,7 @@ export default function AdminDashboard() {
                 }
                 confirmLabel={isDeletingTarget ? 'Đang xóa...' : 'Xóa'}
             />
+            )}
         </div >
     );
 }

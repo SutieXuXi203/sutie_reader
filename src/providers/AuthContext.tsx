@@ -1,5 +1,5 @@
 'use client';
-import React, { createContext, useContext, useState, useEffect, useCallback, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { notify } from '@/lib/notify';
 export interface User {
     id: string;
@@ -66,8 +66,20 @@ export function AuthProvider({
             notify.error('Đã xảy ra lỗi khi đăng xuất');
         }
     }, []);
+    const value = useMemo(
+        () => ({
+            user,
+            isLoading,
+            login,
+            logout,
+            checkAuth,
+            isAdmin: user?.role === 'admin',
+        }),
+        [user, isLoading, login, logout, checkAuth]
+    );
+
     return (
-        <AuthContext.Provider value={{ user, isLoading, login, logout, checkAuth, isAdmin: user?.role === 'admin' }}>
+        <AuthContext.Provider value={value}>
             {children}
         </AuthContext.Provider>
     );

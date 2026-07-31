@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef, useCallback } from 'react';
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AnimatedBookOpen,
@@ -101,11 +101,24 @@ export default function PostDetailPage() {
   const saveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const initialScrollDone = useRef(false);
   const chapterSelectRef = useRef<HTMLDivElement | null>(null);
+  const showUIRef = useRef(showUI);
+  const scrollRafRef = useRef<number | null>(null);
+  const chapters = useMemo(() => normalizeChapters(post), [post]);
+
+  useEffect(() => {
+    showUIRef.current = showUI;
+  }, [showUI]);
 
   const resetUiTimer = useCallback(() => {
-    setShowUI(true);
+    if (!showUIRef.current) {
+      showUIRef.current = true;
+      setShowUI(true);
+    }
     if (uiTimer.current) clearTimeout(uiTimer.current);
-    uiTimer.current = setTimeout(() => setShowUI(false), 2000);
+    uiTimer.current = setTimeout(() => {
+      showUIRef.current = false;
+      setShowUI(false);
+    }, 2000);
   }, []);
 
   const removeBookmark = useCallback(async () => {
@@ -121,17 +134,17 @@ export default function PostDetailPage() {
   const goToChapter = useCallback(
     (index: number) => {
       setIsChapterMenuOpen(false);
-      const chapters = normalizeChapters(post);
       if (index < 0 || index >= chapters.length || index === activeChapterIndex) return;
       setActiveChapterIndex(index);
       setCurrentPage(0);
       imageRefs.current = [];
+      showUIRef.current = true;
       setShowUI(true);
       setTimeout(() => {
         window.scrollTo({ top: 0, behavior: 'smooth' });
       }, 50);
     },
-    [activeChapterIndex, post]
+    [activeChapterIndex, chapters]
   );
 
   useEffect(() => {
@@ -169,7 +182,6 @@ export default function PostDetailPage() {
         const res = await fetch(`/api/bookmarks/${post._id}`);
         if (res.ok) {
           const data = (await res.json()) as BookmarkData | null;
-          const chapters = normalizeChapters(post);
           if (data && chapters.length > 0) {
             const savedChapter = clamp(data.chapterIndex ?? 0, 0, chapters.length - 1);
             const chapterImages = chapters[savedChapter]?.images || [];
@@ -194,13 +206,12 @@ export default function PostDetailPage() {
       }
     };
     fetchBookmark();
-  }, [post, user]);
+  }, [post, user, chapters]);
 
   useEffect(() => {
     if (!post || !pendingResume) return;
     if (pendingResume.chapterIndex !== activeChapterIndex) return;
 
-    const chapters = normalizeChapters(post);
     const activeChapter = chapters[activeChapterIndex];
     const timer = setTimeout(() => {
       const targetRef = imageRefs.current[pendingResume.page];
@@ -215,13 +226,12 @@ export default function PostDetailPage() {
     }, 800);
 
     return () => clearTimeout(timer);
-  }, [pendingResume, activeChapterIndex, post]);
+  }, [pendingResume, activeChapterIndex, post, chapters]);
 
   useEffect(() => {
     if (!post || !user) return;
     if (!initialScrollDone.current) return;
 
-    const chapters = normalizeChapters(post);
     const activeChapter = chapters[activeChapterIndex];
     if (!activeChapter || activeChapter.images.length === 0) return;
 
@@ -259,10 +269,13 @@ export default function PostDetailPage() {
     return () => {
       if (saveTimer.current) clearTimeout(saveTimer.current);
     };
-  }, [currentPage, activeChapterIndex, post, user, hasBookmark, removeBookmark]);
+  }, [currentPage, activeChapterIndex, post, user, hasBookmark, removeBookmark, chapters]);
 
   useEffect(() => {
-    uiTimer.current = setTimeout(() => setShowUI(false), 2000);
+    uiTimer.current = setTimeout(() => {
+      showUIRef.current = false;
+      setShowUI(false);
+    }, 2000);
     return () => {
       if (uiTimer.current) clearTimeout(uiTimer.current);
     };
@@ -272,6 +285,7 @@ export default function PostDetailPage() {
     if (!isChapterMenuOpen) return;
 
     setShowUI(true);
+    showUIRef.current = true;
     if (uiTimer.current) clearTimeout(uiTimer.current);
 
     const handlePointerDown = (event: PointerEvent) => {
@@ -297,7 +311,6 @@ export default function PostDetailPage() {
 
   useEffect(() => {
     if (!post) return;
-    const chapters = normalizeChapters(post);
     const activeChapter = chapters[activeChapterIndex];
     if (!activeChapter || activeChapter.images.length === 0) {
       setCurrentPage(0);
@@ -305,27 +318,39 @@ export default function PostDetailPage() {
     }
 
     const handleScroll = () => {
-      resetUiTimer();
-      const viewportCenter = window.scrollY + window.innerHeight * 0.35;
-      let closestIdx = 0;
-      let closestDist = Infinity;
-      imageRefs.current.forEach((ref, idx) => {
-        if (!ref) return;
-        const rect = ref.getBoundingClientRect();
-        const absTop = rect.top + window.scrollY;
-        const dist = Math.abs(absTop - viewportCenter);
-        if (dist < closestDist) {
-          closestDist = dist;
-          closestIdx = idx;
-        }
+      if (scrollRafRef.current !== null) return;
+
+      scrollRafRef.current = window.requestAnimationFrame(() => {
+        scrollRafRef.current = null;
+        resetUiTimer();
+
+        const viewportCenter = window.scrollY + window.innerHeight * 0.35;
+        let closestIdx = 0;
+        let closestDist = Infinity;
+        imageRefs.current.forEach((ref, idx) => {
+          if (!ref) return;
+          const rect = ref.getBoundingClientRect();
+          const absTop = rect.top + window.scrollY;
+          const dist = Math.abs(absTop - viewportCenter);
+          if (dist < closestDist) {
+            closestDist = dist;
+            closestIdx = idx;
+          }
+        });
+        setCurrentPage((prev) => (prev === closestIdx ? prev : closestIdx));
       });
-      setCurrentPage(closestIdx);
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
     handleScroll();
-    return () => window.removeEventListener('scroll', handleScroll);
-  }, [post, activeChapterIndex, resetUiTimer]);
+    return () => {
+      window.removeEventListener('scroll', handleScroll);
+      if (scrollRafRef.current !== null) {
+        window.cancelAnimationFrame(scrollRafRef.current);
+        scrollRafRef.current = null;
+      }
+    };
+  }, [post, activeChapterIndex, resetUiTimer, chapters]);
 
   if (isLoading || isAuthLoading) {
     return (
@@ -358,7 +383,6 @@ export default function PostDetailPage() {
 
   if (!post) return null;
 
-  const chapters = normalizeChapters(post);
   const activeChapter = chapters[activeChapterIndex] || chapters[0];
   const chapterImages = activeChapter?.images || [];
   const total = chapterImages.length;

@@ -436,7 +436,9 @@ function HomeContent() {
 
       <Footer />
 
-      <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
+      {isAuthDialogOpen && (
+        <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
+      )}
     </div>
   );
 }

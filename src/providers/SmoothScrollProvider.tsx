@@ -2,8 +2,8 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
-import Lenis from 'lenis';
-import Snap from 'lenis/snap';
+import type Lenis from 'lenis';
+import type Snap from 'lenis/snap';
 
 export function SmoothScrollProvider({ children }: { children: React.ReactNode }) {
   const lenisRef = useRef<Lenis | null>(null);
@@ -12,112 +12,116 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
   const pathname = usePathname();
 
   useEffect(() => {
-    // Stop any running rAF loop first
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
     }
 
-    // Destroy previous Lenis instance
-    if (lenisRef.current) {
-      lenisRef.current.destroy();
-      lenisRef.current = null;
-    }
-
-    // Clean up any residual Lenis styles/classes on <html>
-    const html = document.documentElement;
-    html.className = html.className.replace(/lenis(-\w+)?/g, '').trim();
-    html.style.removeProperty('overflow');
-
-    // Disable Lenis on reading pages so sticky/fixed header works correctly
-    if (pathname.startsWith('/posts/')) return;
-
-    const lenis = new Lenis({
-      duration: 1.2,
-      easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-      touchMultiplier: 1.5,
-      infinite: false,
-    });
-
-    lenisRef.current = lenis;
-
-    function raf(time: number) {
-      lenis.raf(time);
-      rafIdRef.current = requestAnimationFrame(raf);
-    }
-
-    rafIdRef.current = requestAnimationFrame(raf);
-
-    // Sync Lenis with anchor clicks that use scrollIntoView
-    const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const anchor = target.closest('a[href^="#"]');
-      if (anchor) {
-        const href = anchor.getAttribute('href');
-        if (href && href.startsWith('#')) {
-          const el = document.getElementById(href.slice(1));
-          if (el) {
-            e.preventDefault();
-            lenis.scrollTo(el, { offset: 0 });
-          }
-        }
-      }
-    };
-
-    document.addEventListener('click', handleClick);
-
-    return () => {
-      document.removeEventListener('click', handleClick);
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-      lenis.destroy();
-      lenisRef.current = null;
-      // Clean up residual styles
-      html.style.removeProperty('overflow');
-    };
-  }, [pathname]);
-
-  // Setup snap only on home page
-  useEffect(() => {
-    const lenis = lenisRef.current;
-    if (!lenis) return;
-
-    // Destroy previous snap instance
     if (snapRef.current) {
       snapRef.current.destroy();
       snapRef.current = null;
     }
 
-    const isHomePage = pathname === '/';
-    if (!isHomePage) return;
+    if (lenisRef.current) {
+      lenisRef.current.destroy();
+      lenisRef.current = null;
+    }
 
-    // Small delay to ensure DOM sections are rendered
-    const timer = setTimeout(() => {
-      const snap = new Snap(lenis, {
-        type: 'proximity',
-        lerp: 0.08,
+    const html = document.documentElement;
+    html.className = html.className.replace(/lenis(-\w+)?/g, '').trim();
+    html.style.removeProperty('overflow');
+
+    if (pathname.startsWith('/posts/')) return;
+
+    let cancelled = false;
+    let snapTimer: ReturnType<typeof setTimeout> | null = null;
+    let handleClick: ((e: MouseEvent) => void) | null = null;
+
+    const setupSmoothScroll = async () => {
+      const { default: LenisCtor } = await import('lenis');
+      if (cancelled) return;
+
+      const lenis = new LenisCtor({
         duration: 1.2,
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+        touchMultiplier: 1.5,
+        infinite: false,
       });
 
-      const sections = document.querySelectorAll('[data-section]');
-      sections.forEach((section) => {
-        snap.addElement(section as HTMLElement, {
-          align: ['start'],
-        });
-      });
+      lenisRef.current = lenis;
 
-      snapRef.current = snap;
-    }, 300);
+      function raf(time: number) {
+        lenis.raf(time);
+        rafIdRef.current = requestAnimationFrame(raf);
+      }
+
+      rafIdRef.current = requestAnimationFrame(raf);
+
+      handleClick = (e: MouseEvent) => {
+        const target = e.target as HTMLElement;
+        const anchor = target.closest('a[href^="#"]');
+        if (anchor) {
+          const href = anchor.getAttribute('href');
+          if (href && href.startsWith('#')) {
+            const el = document.getElementById(href.slice(1));
+            if (el) {
+              e.preventDefault();
+              lenis.scrollTo(el, { offset: 0 });
+            }
+          }
+        }
+      };
+
+      document.addEventListener('click', handleClick);
+
+      if (pathname === '/') {
+        snapTimer = setTimeout(() => {
+          void import('lenis/snap').then(({ default: SnapCtor }) => {
+            if (cancelled || lenisRef.current !== lenis) return;
+
+            const snap = new SnapCtor(lenis, {
+              type: 'proximity',
+              lerp: 0.08,
+              duration: 1.2,
+              easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
+            });
+
+            const sections = document.querySelectorAll('[data-section]');
+            sections.forEach((section) => {
+              snap.addElement(section as HTMLElement, {
+                align: ['start'],
+              });
+            });
+
+            snapRef.current = snap;
+          });
+        }, 300);
+      }
+    };
+
+    void setupSmoothScroll();
 
     return () => {
-      clearTimeout(timer);
+      cancelled = true;
+      if (handleClick) {
+        document.removeEventListener('click', handleClick);
+      }
+      if (snapTimer) {
+        clearTimeout(snapTimer);
+      }
       if (snapRef.current) {
         snapRef.current.destroy();
         snapRef.current = null;
       }
+      if (rafIdRef.current !== null) {
+        cancelAnimationFrame(rafIdRef.current);
+        rafIdRef.current = null;
+      }
+      if (lenisRef.current) {
+        lenisRef.current.destroy();
+        lenisRef.current = null;
+      }
+      html.style.removeProperty('overflow');
     };
   }, [pathname]);
 

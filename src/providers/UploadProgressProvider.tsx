@@ -1,6 +1,6 @@
 'use client';
 
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { UploadProgressWidget, UploadProgressState } from '@/components/UploadProgressWidget';
 
 // Global state outside React to survive any unmounts or layout changes
@@ -31,7 +31,7 @@ export function UploadProgressProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  const showProgress = (title: string, total: number) => {
+  const showProgress = useCallback((title: string, total: number) => {
     const id = Date.now().toString() + Math.random().toString(36).substring(2, 9);
     globalTasks = [
       ...globalTasks,
@@ -45,9 +45,9 @@ export function UploadProgressProvider({ children }: { children: ReactNode }) {
     ];
     notifyListeners();
     return id;
-  };
+  }, []);
 
-  const updateProgress = (
+  const updateProgress = useCallback((
     id: string,
     completed: number,
     total: number,
@@ -66,15 +66,20 @@ export function UploadProgressProvider({ children }: { children: ReactNode }) {
         : task
     );
     notifyListeners();
-  };
+  }, []);
 
-  const hideProgress = (id: string) => {
+  const hideProgress = useCallback((id: string) => {
     globalTasks = globalTasks.filter((task) => task.id !== id);
     notifyListeners();
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({ tasks, showProgress, updateProgress, hideProgress }),
+    [tasks, showProgress, updateProgress, hideProgress]
+  );
 
   return (
-    <UploadProgressContext.Provider value={{ tasks, showProgress, updateProgress, hideProgress }}>
+    <UploadProgressContext.Provider value={value}>
       {children}
       <UploadProgressWidget tasks={tasks} onClose={hideProgress} />
     </UploadProgressContext.Provider>
