@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -19,6 +19,13 @@ import { notify } from '@/lib/notify';
 import { useUploadProgress } from '@/providers/UploadProgressProvider';
 import { uploadImages, syncDriveImages } from '@/lib/uploadService';
 import { cn, getOptimizedImageUrl } from '@/lib/utils';
+
+export interface ChapterImage {
+  id: string;
+  isNew: boolean;
+  url: string; // the existing url or the preview url
+  file?: File; // only present if isNew is true
+}
 
 interface Chapter {
   _id?: string;
@@ -57,10 +64,10 @@ interface ChapterEditState {
   title: string;
   chapterNumber: number;
   content: string;
-  keptImages: string[];
-  newImageFiles: File[];
-  newImagePreviews: string[];
+  images: ChapterImage[];
 }
+
+const generateId = () => Math.random().toString(36).substring(2, 9);
 
 export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availableTags = [] }: EditPostFormProps) {
   const { showProgress, updateProgress } = useUploadProgress();
@@ -73,6 +80,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
   const [chapters, setChapters] = useState<ChapterEditState[]>([]);
   const [selectedChapterIndex, setSelectedChapterIndex] = useState<number>(0);
+  const [draggedImageId, setDraggedImageId] = useState<string | null>(null);
 
   useEffect(() => {
     if (!open) return;
@@ -80,14 +88,18 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     setTags(post.tags || []);
     setAuthor(post.author);
 
+    const mapToChapterImage = (url: string): ChapterImage => ({
+      id: generateId(),
+      isNew: false,
+      url,
+    });
+
     if (post.chapters && post.chapters.length > 0) {
       setChapters(post.chapters.map((ch, idx) => ({
         title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
         chapterNumber: ch.chapterNumber || idx + 1,
         content: ch.content || '',
-        keptImages: Array.isArray(ch.images) ? ch.images : [],
-        newImageFiles: [],
-        newImagePreviews: [],
+        images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
       })));
       setSelectedChapterIndex(0);
     } else {
@@ -111,9 +123,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
               chapterNumber: ch.chapterNumber || idx + 1,
               content: ch.content || '',
-              keptImages: Array.isArray(ch.images) ? ch.images : [],
-              newImageFiles: [],
-              newImagePreviews: [],
+              images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
             }))
           );
           setSelectedChapterIndex(0);
@@ -125,9 +135,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               title: 'Chương 1',
               chapterNumber: 1,
               content: post.content || '',
-              keptImages: post.images || [],
-              newImageFiles: [],
-              newImagePreviews: [],
+              images: (post.images || []).map(mapToChapterImage),
             },
           ]);
           setSelectedChapterIndex(0);
@@ -142,9 +150,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     title: '',
     chapterNumber: 1,
     content: '',
-    keptImages: [],
-    newImageFiles: [],
-    newImagePreviews: [],
+    images: [],
   };
 
   const updateActiveChapter = (updater: (prev: ChapterEditState) => ChapterEditState) => {
@@ -153,47 +159,83 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     );
   };
 
+  const smartSortImages = (imagesList: ChapterImage[]) => {
+    return [...imagesList].sort((a, b) => {
+      const getNum = (str: string) => {
+        const filename = str.split('/').pop()?.split('?')[0] || str;
+        return filename;
+      };
+      const nameA = a.isNew ? a.file!.name : a.url;
+      const nameB = b.isNew ? b.file!.name : b.url;
+      return getNum(nameA).localeCompare(getNum(nameB), undefined, { numeric: true, sensitivity: 'base' });
+    });
+  };
+
   const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     if (!selectedFiles.length) return;
 
     e.target.value = '';
 
-    const currentNewFiles = activeChapter.newImageFiles || [];
-    const allNewFiles = [...currentNewFiles, ...selectedFiles].sort((a, b) =>
-      a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-    );
-
-    const previewPromises = allNewFiles.map((file) => {
-      return new Promise<string>((resolve) => {
+    const previewPromises = selectedFiles.map((file) => {
+      return new Promise<ChapterImage>((resolve) => {
         const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
+        reader.onloadend = () => resolve({
+          id: generateId(),
+          isNew: true,
+          url: reader.result as string,
+          file,
+        });
         reader.readAsDataURL(file);
       });
     });
 
-    const sortedPreviews = await Promise.all(previewPromises);
+    const newImages = await Promise.all(previewPromises);
 
     updateActiveChapter((ch) => ({
       ...ch,
-      newImageFiles: allNewFiles,
-      newImagePreviews: sortedPreviews,
+      images: smartSortImages([...ch.images, ...newImages]),
     }));
   };
 
-  const removeKept = (idx: number) => {
+  const removeImage = (idToRemove: string) => {
     updateActiveChapter((ch) => ({
       ...ch,
-      keptImages: ch.keptImages.filter((_, i) => i !== idx),
+      images: ch.images.filter((img) => img.id !== idToRemove),
     }));
   };
 
-  const removeNew = (idx: number) => {
-    updateActiveChapter((ch) => ({
-      ...ch,
-      newImageFiles: ch.newImageFiles.filter((_, i) => i !== idx),
-      newImagePreviews: ch.newImagePreviews.filter((_, i) => i !== idx),
-    }));
+  const handleDragStart = (e: DragEvent, id: string) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedImageId(id);
+  };
+
+  const handleDragOver = (e: DragEvent) => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDrop = (e: DragEvent, targetId: string) => {
+    e.preventDefault();
+    if (!draggedImageId || draggedImageId === targetId) return;
+
+    updateActiveChapter((ch) => {
+      const newImages = [...ch.images];
+      const draggedIdx = newImages.findIndex((img) => img.id === draggedImageId);
+      const targetIdx = newImages.findIndex((img) => img.id === targetId);
+
+      if (draggedIdx === -1 || targetIdx === -1) return ch;
+
+      const [draggedItem] = newImages.splice(draggedIdx, 1);
+      newImages.splice(targetIdx, 0, draggedItem);
+
+      return { ...ch, images: newImages };
+    });
+    setDraggedImageId(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedImageId(null);
   };
 
   const handleAddChapter = () => {
@@ -202,9 +244,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       title: `Chương ${nextNum}`,
       chapterNumber: nextNum,
       content: '',
-      keptImages: [],
-      newImageFiles: [],
-      newImagePreviews: [],
+      images: [],
     };
     setChapters((prev) => [...prev, newChap]);
     setSelectedChapterIndex(chapters.length);
@@ -226,11 +266,15 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       setIsSyncing(true);
       const syncedUrls = await syncDriveImages(title, post._id);
       
+      const newSyncedImages: ChapterImage[] = syncedUrls.map(url => ({
+        id: generateId(),
+        isNew: false,
+        url,
+      }));
+
       updateActiveChapter((ch) => ({
         ...ch,
-        keptImages: syncedUrls,
-        newImageFiles: [],
-        newImagePreviews: [],
+        images: newSyncedImages,
       }));
       notify.success(`Đã đồng bộ ${syncedUrls.length} ảnh từ Google Drive cho chương hiện tại.`);
     } catch (err) {
@@ -250,7 +294,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
     for (let i = 0; i < chapters.length; i++) {
       const ch = chapters[i];
-      if (!ch.content.trim() && ch.keptImages.length + ch.newImageFiles.length === 0) {
+      if (!ch.content.trim() && ch.images.length === 0) {
         notify.error(`Chương "${ch.title}" cần có ít nhất nội dung chữ hoặc một hình ảnh`);
         setSelectedChapterIndex(i);
         return;
@@ -261,7 +305,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     const currentAuthor = author.trim();
     const currentTags = tags;
 
-    const totalNewFiles = chapters.reduce((sum, ch) => sum + ch.newImageFiles.length, 0);
+    const totalNewFiles = chapters.reduce((sum, ch) => sum + ch.images.filter(img => img.isNew).length, 0);
 
     setIsSubmitting(true);
     onOpenChange(false);
@@ -277,25 +321,36 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
       for (let i = 0; i < chapters.length; i++) {
         const ch = chapters[i];
+        
+        const newImagesInOrder = ch.images.filter(img => img.isNew);
+        const newFiles = newImagesInOrder.map(img => img.file!);
         let uploadedUrls: string[] = [];
 
-        if (ch.newImageFiles.length > 0) {
+        if (newFiles.length > 0) {
           uploadedUrls = await uploadImages(
-            ch.newImageFiles,
+            newFiles,
             currentTitle,
             post._id,
             (completed) => {
               if (taskId) updateProgress(taskId, uploadedCount + completed, totalNewFiles, 'uploading');
             }
           );
-          uploadedCount += ch.newImageFiles.length;
+          uploadedCount += newFiles.length;
         }
+
+        let newUrlIndex = 0;
+        const finalImageUrls = ch.images.map(img => {
+          if (img.isNew) {
+            return uploadedUrls[newUrlIndex++];
+          }
+          return img.url;
+        });
 
         updatedChaptersPayload.push({
           title: ch.title.trim() || `Chương ${i + 1}`,
           chapterNumber: i + 1,
           content: ch.content.trim(),
-          images: [...ch.keptImages, ...uploadedUrls],
+          images: finalImageUrls,
         });
       }
 
@@ -470,51 +525,77 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 />
               </div>
 
-              {activeChapter.keptImages.length > 0 && (
+              {activeChapter.images.length > 0 && (
                 <div>
                   <div className="flex items-center justify-between mb-1.5">
                     <label className="block text-xs font-medium text-muted-foreground">
-                      Ảnh hiện tại của chương ({activeChapter.keptImages.length})
+                      Ảnh hiện tại của chương ({activeChapter.images.length})
                     </label>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="sm"
-                      className="h-6 text-[10px] text-rose-500 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-950/50 px-2"
-                      onClick={() => {
-                        if (confirm('Bạn có chắc chắn muốn xóa tất cả ảnh hiện tại của chương này?')) {
-                          updateActiveChapter((ch) => ({ ...ch, keptImages: [] }));
-                        }
-                      }}
-                      disabled={isSubmitting || isSyncing}
-                    >
-                      <Trash2 className="h-3 w-3 mr-1" />
-                      Xóa tất cả
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="h-6 text-[10px] px-2"
+                        onClick={() => updateActiveChapter(ch => ({ ...ch, images: smartSortImages(ch.images) }))}
+                        disabled={isSubmitting}
+                      >
+                        Sắp xếp lại
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] text-rose-500 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-950/50 px-2"
+                        onClick={() => {
+                          if (confirm('Bạn có chắc chắn muốn xóa tất cả ảnh hiện tại của chương này?')) {
+                            updateActiveChapter((ch) => ({ ...ch, images: [] }));
+                          }
+                        }}
+                        disabled={isSubmitting || isSyncing}
+                      >
+                        <Trash2 className="h-3 w-3 mr-1" />
+                        Xóa tất cả
+                      </Button>
+                    </div>
                   </div>
-                  <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-background/50 custom-scrollbar">
+                  <div className="max-h-80 overflow-y-auto rounded-lg border border-border/60 p-3 bg-background/50 custom-scrollbar">
                     <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                      {activeChapter.keptImages.map((src, idx) => (
+                      {activeChapter.images.map((img, idx) => (
                         <div
-                          key={idx}
-                          className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all"
+                          key={img.id}
+                          draggable={!isSubmitting}
+                          onDragStart={(e) => handleDragStart(e, img.id)}
+                          onDragOver={handleDragOver}
+                          onDrop={(e) => handleDrop(e, img.id)}
+                          onDragEnd={handleDragEnd}
+                          className={cn(
+                            "relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-32 border shadow-sm hover:shadow-md transition-all cursor-move",
+                            draggedImageId === img.id ? "opacity-50 scale-95 border-primary" : "border-border/40",
+                            img.isNew && "ring-2 ring-primary/50"
+                          )}
                         >
                           <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
                             #{idx + 1}
                           </span>
+                          {img.isNew && (
+                            <span className="absolute bottom-1.5 left-1.5 bg-blue-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 select-none">
+                              MỚI
+                            </span>
+                          )}
                           <Image
-                            src={getOptimizedImageUrl(src)}
+                            src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
                             alt={`Ảnh ${idx + 1}`}
                             fill
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
-                            unoptimized
+                            unoptimized={!img.isNew}
                           />
                           <button
                             type="button"
-                            onClick={() => removeKept(idx)}
+                            onClick={() => removeImage(img.id)}
                             title="Xóa ảnh"
                             aria-label="Xóa ảnh"
-                            className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center"
+                            className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all z-10 border border-white/40 flex items-center justify-center"
                           >
                             <X className="h-3.5 w-3.5 stroke-[2.5]" />
                           </button>
@@ -526,7 +607,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               )}
 
               <div>
-                <div className="flex items-center justify-between mb-1.5">
+                <div className="flex items-center justify-between mb-1.5 mt-4">
                   <label className="block text-xs font-medium text-muted-foreground">
                     Thêm ảnh mới cho chương này
                   </label>
@@ -562,43 +643,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                   </label>
                 </div>
               </div>
-
-              {activeChapter.newImagePreviews.length > 0 && (
-                <div>
-                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
-                    Ảnh mới chuẩn bị thêm ({activeChapter.newImagePreviews.length})
-                  </label>
-                  <div className="max-h-60 overflow-y-auto rounded-lg border border-border/60 p-3 bg-background/50 custom-scrollbar">
-                    <div className="grid grid-cols-3 md:grid-cols-4 gap-3">
-                      {activeChapter.newImagePreviews.map((preview, idx) => (
-                        <div
-                          key={idx}
-                          className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all"
-                        >
-                          <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
-                            #{idx + 1}
-                          </span>
-                          <Image
-                            src={preview}
-                            alt={`Preview ${idx + 1}`}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeNew(idx)}
-                            title="Xóa ảnh"
-                            aria-label="Xóa ảnh"
-                            className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center"
-                          >
-                            <X className="h-3.5 w-3.5 stroke-[2.5]" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-              )}
             </div>
           </div>
 

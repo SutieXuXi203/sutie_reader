@@ -20,9 +20,7 @@ export const uploadImages = async (
     'https://sutie-images.manhdinh0410.workers.dev'
   ).replace(/\/+$/, '');
 
-  const sortedFiles = [...files].sort((a, b) =>
-    a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
-  );
+  const sortedFiles = [...files];
 
   const BATCH_SIZE = 2;
   const allUrls: string[] = [];
