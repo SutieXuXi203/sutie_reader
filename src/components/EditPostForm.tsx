@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, DragEvent } from 'react';
+import { useEffect, useRef, useState, DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -11,7 +11,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
+import { Dialog, DialogContent, DialogHeader, DialogPortal, DialogTitle } from '@/components/ui/dialog';
 import { Upload, X, Plus, Trash2, RefreshCw, Maximize2, Minimize2 } from 'lucide-react';
 import Image from 'next/image';
 import { TagPicker } from '@/components/TagPicker';
@@ -68,6 +68,15 @@ interface ChapterEditState {
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
+const EXPANDED_INITIAL_IMAGE_COUNT = 10;
+const EXPANDED_IMAGE_BATCH_SIZE = 18;
+const EXPANDED_IMAGE_BATCH_DELAY_MS = 28;
+
+const revokeImagePreview = (image: ChapterImage) => {
+  if (image.isNew && image.url.startsWith('blob:') && typeof URL !== 'undefined') {
+    URL.revokeObjectURL(image.url);
+  }
+};
 
 export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availableTags = [] }: EditPostFormProps) {
   const { showProgress, updateProgress } = useUploadProgress();
@@ -82,9 +91,13 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const [selectedChapterIndex, setSelectedChapterIndex] = useState<number>(0);
   const [draggedImageId, setDraggedImageId] = useState<string | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
+  const [expandedImageLimit, setExpandedImageLimit] = useState(0);
+  const chaptersRef = useRef<ChapterEditState[]>([]);
 
   useEffect(() => {
     if (!open) return;
+    setIsExpanded(false);
+    setExpandedImageLimit(0);
     setTitle(post.title);
     setTags(post.tags || []);
     setAuthor(post.author);
@@ -147,6 +160,25 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     }
   }, [post, open]);
 
+  useEffect(() => {
+    chaptersRef.current = chapters;
+  }, [chapters]);
+
+  useEffect(() => {
+    if (open) return;
+    setIsExpanded(false);
+    setExpandedImageLimit(0);
+    setChapters((current) => {
+      if (current.length === 0) return current;
+      current.forEach((chapter) => chapter.images.forEach(revokeImagePreview));
+      return [];
+    });
+  }, [open]);
+
+  useEffect(() => () => {
+    chaptersRef.current.forEach((chapter) => chapter.images.forEach(revokeImagePreview));
+  }, []);
+
   const activeChapter = chapters[selectedChapterIndex] || {
     title: '',
     chapterNumber: 1,
@@ -160,50 +192,73 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     );
   };
 
-  const smartSortImages = (imagesList: ChapterImage[]) => {
-    return [...imagesList].sort((a, b) => {
-      const getNum = (str: string) => {
-        const filename = str.split('/').pop()?.split('?')[0] || str;
-        return filename;
-      };
-      const nameA = a.isNew ? a.file!.name : a.url;
-      const nameB = b.isNew ? b.file!.name : b.url;
-      return getNum(nameA).localeCompare(getNum(nameB), undefined, { numeric: true, sensitivity: 'base' });
-    });
-  };
+  useEffect(() => {
+    if (!isExpanded) {
+      setExpandedImageLimit(0);
+      return;
+    }
 
-  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const totalImages = activeChapter.images.length;
+    const initialLimit = Math.min(EXPANDED_INITIAL_IMAGE_COUNT, totalImages);
+    setExpandedImageLimit(initialLimit);
+    if (totalImages <= initialLimit) return;
+
+    let nextLimit = initialLimit;
+    let timeoutId: ReturnType<typeof setTimeout> | undefined;
+    let cancelled = false;
+
+    const queueNextBatch = () => {
+      timeoutId = setTimeout(() => {
+        if (cancelled) return;
+        nextLimit = Math.min(nextLimit + EXPANDED_IMAGE_BATCH_SIZE, totalImages);
+        setExpandedImageLimit(nextLimit);
+        if (nextLimit < totalImages) queueNextBatch();
+      }, EXPANDED_IMAGE_BATCH_DELAY_MS);
+    };
+
+    queueNextBatch();
+
+    return () => {
+      cancelled = true;
+      if (timeoutId) clearTimeout(timeoutId);
+    };
+  }, [activeChapter.images.length, isExpanded]);
+
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     if (!selectedFiles.length) return;
 
     e.target.value = '';
 
-    const previewPromises = selectedFiles.map((file) => {
-      return new Promise<ChapterImage>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve({
-          id: generateId(),
-          isNew: true,
-          url: reader.result as string,
-          file,
-        });
-        reader.readAsDataURL(file);
-      });
-    });
-
-    const newImages = await Promise.all(previewPromises);
+    const newImages = selectedFiles.map<ChapterImage>((file) => ({
+      id: generateId(),
+      isNew: true,
+      url: URL.createObjectURL(file),
+      file,
+    }));
 
     updateActiveChapter((ch) => ({
       ...ch,
-      images: smartSortImages([...ch.images, ...newImages]),
+      images: [...ch.images, ...newImages],
     }));
   };
 
   const removeImage = (idToRemove: string) => {
+    const removedImage = activeChapter.images.find((img) => img.id === idToRemove);
+    if (removedImage) revokeImagePreview(removedImage);
+
     updateActiveChapter((ch) => ({
       ...ch,
       images: ch.images.filter((img) => img.id !== idToRemove),
     }));
+  };
+
+  const clearActiveChapterImages = () => {
+    updateActiveChapter((ch) => {
+      ch.images.forEach(revokeImagePreview);
+      return { ...ch, images: [] };
+    });
+    setIsExpanded(false);
   };
 
   const handleDragStart = (e: DragEvent, id: string) => {
@@ -256,6 +311,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       notify.error('Bài viết phải có ít nhất một chương');
       return;
     }
+    chapters[indexToDelete]?.images.forEach(revokeImagePreview);
     setChapters((prev) => prev.filter((_, i) => i !== indexToDelete));
     if (selectedChapterIndex >= indexToDelete && selectedChapterIndex > 0) {
       setSelectedChapterIndex(selectedChapterIndex - 1);
@@ -273,10 +329,13 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         url,
       }));
 
-      updateActiveChapter((ch) => ({
-        ...ch,
-        images: newSyncedImages,
-      }));
+      updateActiveChapter((ch) => {
+        ch.images.forEach(revokeImagePreview);
+        return {
+          ...ch,
+          images: newSyncedImages,
+        };
+      });
       notify.success(`Đã đồng bộ ${syncedUrls.length} ảnh từ Google Drive cho chương hiện tại.`);
     } catch (err) {
       const msg = err instanceof Error ? err.message : 'Unknown error';
@@ -397,17 +456,117 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     }
   };
 
+  const renderFormActions = (className?: string) => (
+    <div className={cn("flex flex-wrap justify-end gap-2 border-t border-border/40 pt-4 pb-1", className)}>
+      <Button
+        type="button"
+        variant="outline"
+        onClick={() => onOpenChange(false)}
+        disabled={isSubmitting || isLoadingDetails}
+        className="min-w-20 rounded-[8px]"
+        size="sm"
+      >
+        Hủy
+      </Button>
+      <Button type="submit" disabled={isSubmitting || isLoadingDetails} className="min-w-[118px] rounded-[8px]" size="sm">
+        {isLoadingDetails ? 'Đang tải dữ liệu...' : isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+      </Button>
+    </div>
+  );
+
+  const renderImageGrid = (expanded = false) => {
+    const visibleImages = expanded
+      ? activeChapter.images.slice(
+        0,
+        expandedImageLimit || Math.min(EXPANDED_INITIAL_IMAGE_COUNT, activeChapter.images.length)
+      )
+      : activeChapter.images;
+
+    return (
+      <div className={cn(
+        "grid gap-3",
+        expanded ? "grid-cols-2 min-[520px]:grid-cols-3 md:grid-cols-4 lg:grid-cols-5" : "grid-cols-2 min-[420px]:grid-cols-3 md:grid-cols-4"
+      )}>
+        {visibleImages.map((img, idx) => (
+        <div
+          key={img.id}
+          draggable={!isSubmitting}
+          onDragStart={(e) => handleDragStart(e, img.id)}
+          onDragOver={handleDragOver}
+          onDrop={(e) => handleDrop(e, img.id)}
+          onDragEnd={handleDragEnd}
+          style={expanded ? { contentVisibility: 'auto', containIntrinsicSize: '160px 240px' } : undefined}
+          className={cn(
+            "relative aspect-[2/3] cursor-move overflow-hidden rounded-[10px] border bg-slate-100 shadow-sm dark:bg-slate-800",
+            expanded ? "contain-layout contain-paint" : "group transition-shadow hover:shadow-md",
+            draggedImageId === img.id ? "opacity-60 scale-[0.98] border-primary" : "border-border/40",
+            img.isNew && "ring-2 ring-primary/50"
+          )}
+        >
+          <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md z-10 border border-white/20 select-none shadow">
+            #{idx + 1}
+          </span>
+          {img.isNew && (
+            <span className="absolute bottom-1.5 left-1.5 bg-blue-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md z-10 select-none">
+              MỚI
+            </span>
+          )}
+          {expanded ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
+              alt={`Ảnh ${idx + 1}`}
+              loading="lazy"
+              decoding="async"
+              draggable={false}
+              className="h-full w-full object-cover"
+            />
+          ) : (
+            <Image
+              src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
+              alt={`Ảnh ${idx + 1}`}
+              fill
+              sizes="(max-width: 420px) 45vw, (max-width: 768px) 28vw, 160px"
+              className="object-cover transition-transform duration-150 group-hover:scale-[1.02]"
+              unoptimized={!img.isNew}
+            />
+          )}
+          <button
+            type="button"
+            onClick={() => removeImage(img.id)}
+            title="Xóa ảnh"
+            aria-label="Xóa ảnh"
+            className="absolute top-1.5 right-1.5 z-10 flex items-center justify-center rounded-full border border-white/40 bg-rose-600 p-1.5 text-white shadow-md transition-colors hover:bg-rose-700 active:scale-95"
+          >
+            <X className="h-3.5 w-3.5 stroke-[2.5]" />
+          </button>
+        </div>
+        ))}
+      </div>
+    );
+  };
+
+  const openImagePopup = () => {
+    setExpandedImageLimit(Math.min(EXPANDED_INITIAL_IMAGE_COUNT, activeChapter.images.length));
+    setIsExpanded(true);
+  };
+
+  const closeImagePopup = () => {
+    setIsExpanded(false);
+    setExpandedImageLimit(0);
+  };
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className={cn(
-        "overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 transition-all duration-300 flex flex-col",
-        isExpanded ? "max-w-[95vw] w-[95vw] max-h-[95vh] h-[95vh]" : "max-w-2xl max-h-[85vh] space-y-5"
+        "overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-5 duration-75 flex flex-col sm:p-6 data-open:fade-in-0 data-closed:fade-out-0",
+        "!max-w-[min(720px,calc(100vw-2rem))] w-[min(720px,calc(100vw-2rem))] max-h-[92vh] space-y-5"
       )}>
-        <DialogHeader className={cn(isExpanded && "hidden")}>
+        <DialogHeader>
           <DialogTitle className="text-xl font-medium">Chỉnh sửa bài viết</DialogTitle>
         </DialogHeader>
-        <form onSubmit={handleSubmit} className={cn("flex flex-col min-h-0", isExpanded ? "flex-1" : "space-y-5")}>
-          <div className={cn("space-y-5", isExpanded && "hidden")}>
+        <form onSubmit={handleSubmit} className="flex flex-col min-h-0 space-y-5">
+          <div className="space-y-5">
             <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
               Tiêu đề bộ truyện
             </label>
@@ -446,8 +605,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             />
           </div>
 
-          <div className={cn("border-border/50 flex flex-col min-h-0", !isExpanded && "pt-4 border-t space-y-4", isExpanded && "flex-1")}>
-            <div className={cn("flex items-center justify-between", isExpanded && "hidden")}>
+          <div className="border-border/50 flex flex-col min-h-0 pt-4 border-t space-y-4">
+            <div className="flex flex-col gap-2 min-[420px]:flex-row min-[420px]:items-center min-[420px]:justify-between">
               <label className="block text-sm font-semibold text-slate-900 dark:text-white">
                 Danh sách Chương ({chapters.length})
               </label>
@@ -457,13 +616,13 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 size="sm"
                 onClick={handleAddChapter}
                 disabled={isSubmitting}
-                className="text-xs h-8 px-2.5 rounded-lg flex items-center gap-1"
+                className="h-8 self-start rounded-lg px-2.5 text-xs min-[420px]:self-auto"
               >
                 <Plus className="w-3.5 h-3.5" /> Thêm chương
               </Button>
             </div>
 
-            <div className={cn("flex items-center gap-2", !isExpanded && "mb-4", isExpanded && "hidden")}>
+            <div className="flex items-center gap-2 mb-4">
               <Select
                 value={selectedChapterIndex.toString()}
                 onValueChange={(val) => setSelectedChapterIndex(parseInt(val || '0', 10))}
@@ -496,8 +655,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               )}
             </div>
 
-            <div className={cn("rounded-xl border border-border/60 bg-muted/10 flex flex-col min-h-0", !isExpanded && "p-4 space-y-4", isExpanded && "flex-1 p-2 md:p-6")}>
-              <div className={cn(isExpanded && "hidden")}>
+            <div className="rounded-xl border border-border/60 bg-muted/10 flex flex-col min-h-0 p-3 space-y-4 sm:p-4">
+              <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                   Tiêu đề Chương ({selectedChapterIndex + 1})
                 </label>
@@ -513,7 +672,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 />
               </div>
 
-              <div className={cn(isExpanded && "hidden")}>
+              <div>
                 <label className="block text-xs font-medium text-muted-foreground mb-1.5">
                   Nội dung Chương (không bắt buộc)
                 </label>
@@ -530,44 +689,30 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               </div>
 
               {activeChapter.images.length > 0 && (
-                <div className={cn(isExpanded && "flex-1 flex flex-col min-h-0")}>
-                  <div className={cn("flex items-center justify-between mb-1.5", isExpanded && "pb-2 border-b border-border/50 mb-3 md:mb-4")}>
-                    <label className={cn("block font-medium text-muted-foreground", isExpanded ? "text-lg text-foreground font-semibold" : "text-xs")}>
+                <div>
+                  <div className="mb-2 flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
+                    <label className="block text-xs font-medium leading-tight text-muted-foreground">
                       Ảnh hiện tại của chương ({activeChapter.images.length})
                     </label>
-                    <div className="flex gap-2">
+                    <div className="grid w-full grid-cols-2 gap-1.5 min-[480px]:flex min-[480px]:w-auto min-[480px]:flex-wrap min-[480px]:justify-end min-[480px]:gap-2">
                       <Button
                         type="button"
                         variant="outline"
                         size="sm"
-                        className="h-6 text-[10px] px-2"
-                        onClick={() => setIsExpanded(!isExpanded)}
+                        className="h-7 min-w-0 px-2 text-[11px] leading-none"
+                        onClick={openImagePopup}
                         disabled={isSubmitting}
                       >
-                        {isExpanded ? (
-                          <><Minimize2 className="h-3 w-3 mr-1" /> Thu nhỏ</>
-                        ) : (
-                          <><Maximize2 className="h-3 w-3 mr-1" /> Phóng to</>
-                        )}
-                      </Button>
-                      <Button
-                        type="button"
-                        variant="outline"
-                        size="sm"
-                        className="h-6 text-[10px] px-2"
-                        onClick={() => updateActiveChapter(ch => ({ ...ch, images: smartSortImages(ch.images) }))}
-                        disabled={isSubmitting}
-                      >
-                        Sắp xếp lại
+                        <Maximize2 className="h-3 w-3 mr-1" /> Phóng to
                       </Button>
                       <Button
                         type="button"
                         variant="ghost"
                         size="sm"
-                        className="h-6 text-[10px] text-rose-500 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-950/50 px-2"
+                        className="h-7 min-w-0 px-2 text-[11px] leading-none text-rose-500 hover:text-rose-600 hover:bg-rose-50/50 dark:hover:bg-rose-950/50"
                         onClick={() => {
                           if (confirm('Bạn có chắc chắn muốn xóa tất cả ảnh hiện tại của chương này?')) {
-                            updateActiveChapter((ch) => ({ ...ch, images: [] }));
+                            clearActiveChapterImages();
                           }
                         }}
                         disabled={isSubmitting || isSyncing}
@@ -578,71 +723,16 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     </div>
                   </div>
                   <div className={cn(
-                    "custom-scrollbar transition-all overflow-y-auto rounded-lg border border-border/60 p-3 bg-background/50",
-                    isExpanded ? "flex-1 min-h-0" : "max-h-80"
+                    "custom-scrollbar overflow-y-auto rounded-lg border border-border/60 bg-background/50 p-2.5 sm:p-3",
+                    "max-h-[42vh] min-h-[152px]"
                   )}>
-                    {isExpanded && (
-                      <div className="flex items-center justify-between sticky -top-4 md:-top-6 bg-background/95 backdrop-blur z-20 pb-4 pt-4 md:pt-6 border-b border-border/50 mb-4 -mx-4 md:-mx-6 px-4 md:px-6">
-                        <div>
-                          <h3 className="font-semibold text-lg md:text-xl">Sắp xếp ảnh</h3>
-                          <p className="text-xs text-muted-foreground mt-0.5">Kéo thả để sắp xếp lại thứ tự ảnh</p>
-                        </div>
-                        <Button type="button" variant="ghost" size="icon" className="rounded-full bg-secondary hover:bg-rose-500 hover:text-white" onClick={() => setIsExpanded(false)}>
-                          <X className="w-4 h-4" />
-                        </Button>
-                      </div>
-                    )}
-                    <div className={cn(
-                      "grid gap-3",
-                      isExpanded ? "grid-cols-3 sm:grid-cols-4 md:grid-cols-6 lg:grid-cols-8" : "grid-cols-3 md:grid-cols-4"
-                    )}>
-                      {activeChapter.images.map((img, idx) => (
-                        <div
-                          key={img.id}
-                          draggable={!isSubmitting}
-                          onDragStart={(e) => handleDragStart(e, img.id)}
-                          onDragOver={handleDragOver}
-                          onDrop={(e) => handleDrop(e, img.id)}
-                          onDragEnd={handleDragEnd}
-                          className={cn(
-                            "relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-32 border shadow-sm hover:shadow-md transition-all cursor-move",
-                            draggedImageId === img.id ? "opacity-50 scale-95 border-primary" : "border-border/40",
-                            img.isNew && "ring-2 ring-primary/50"
-                          )}
-                        >
-                          <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
-                            #{idx + 1}
-                          </span>
-                          {img.isNew && (
-                            <span className="absolute bottom-1.5 left-1.5 bg-blue-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 select-none">
-                              MỚI
-                            </span>
-                          )}
-                          <Image
-                            src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
-                            alt={`Ảnh ${idx + 1}`}
-                            fill
-                            className="object-cover transition-transform duration-300 group-hover:scale-105"
-                            unoptimized={!img.isNew}
-                          />
-                          <button
-                            type="button"
-                            onClick={() => removeImage(img.id)}
-                            title="Xóa ảnh"
-                            aria-label="Xóa ảnh"
-                            className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all z-10 border border-white/40 flex items-center justify-center"
-                          >
-                            <X className="h-3.5 w-3.5 stroke-[2.5]" />
-                          </button>
-                        </div>
-                      ))}
-                    </div>
+                    {!isExpanded && renderImageGrid()}
                   </div>
                 </div>
               )}
 
-              <div className={cn(isExpanded && "hidden")}>
-                <div className="flex items-center justify-between mb-1.5 mt-4">
+              <div>
+                <div className="mt-4 mb-2 flex flex-col gap-2 min-[480px]:flex-row min-[480px]:items-center min-[480px]:justify-between">
                   <label className="block text-xs font-medium text-muted-foreground">
                     Thêm ảnh mới cho chương này
                   </label>
@@ -650,7 +740,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     type="button"
                     variant="outline"
                     size="sm"
-                    className="h-7 text-xs px-2"
+                    className="h-8 self-start px-2.5 text-xs min-[480px]:self-auto"
                     onClick={handleSyncDrive}
                     disabled={isSyncing || isSubmitting}
                   >
@@ -658,7 +748,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ Drive'}
                   </Button>
                 </div>
-                <div className="border border-input rounded-[8px] p-5 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors bg-background">
+                <div className="border border-dashed border-input rounded-[8px] p-6 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors bg-background">
                   <input
                     type="file"
                     multiple
@@ -677,27 +767,61 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     <p className="text-[11px] text-muted-foreground mt-0.5">PNG, JPG, GIF tối đa 50MB</p>
                   </label>
                 </div>
+                {renderFormActions("mt-6 mb-4")}
               </div>
             </div>
           </div>
 
-          <div className={cn("flex gap-2 justify-end shrink-0", !isExpanded && "pt-3 border-t border-border/40", isExpanded && "pt-4")}>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => onOpenChange(false)}
-              disabled={isSubmitting || isLoadingDetails}
-              className="rounded-[8px]"
-              size="sm"
-            >
-              Hủy
-            </Button>
-            <Button type="submit" disabled={isSubmitting || isLoadingDetails} className="rounded-[8px]" size="sm">
-              {isLoadingDetails ? 'Đang tải dữ liệu...' : isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
-            </Button>
-          </div>
         </form>
       </DialogContent>
+
+      {isExpanded && activeChapter.images.length > 0 && (
+        <DialogPortal>
+          <div
+            data-lenis-prevent=""
+            className="fixed inset-0 z-[120] flex items-center justify-center bg-black/68 p-3 animate-in fade-in-0 duration-75 sm:p-4"
+            role="dialog"
+            aria-modal="true"
+            aria-label="Ảnh hiện tại của chương"
+            onClick={closeImagePopup}
+          >
+            <div
+              data-lenis-prevent=""
+              className="flex max-h-[92vh] min-h-0 w-[min(1180px,calc(100vw-1.5rem))] flex-col overflow-hidden rounded-[12px] border border-border bg-popover text-popover-foreground shadow-2xl sm:w-[min(1180px,calc(100vw-2rem))]"
+              onClick={(event) => event.stopPropagation()}
+            >
+              <div className="flex flex-col gap-3 border-b border-border/50 p-4 sm:flex-row sm:items-center sm:justify-between">
+                <div>
+                  <h3 className="text-base font-semibold">
+                    Ảnh hiện tại của chương ({activeChapter.images.length})
+                  </h3>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    Kéo thả ảnh để đổi thứ tự hiển thị.
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  className="self-start rounded-[8px] sm:self-auto"
+                  onClick={closeImagePopup}
+                >
+                  <Minimize2 className="h-3.5 w-3.5 mr-1" />
+                  Thu nhỏ
+                </Button>
+              </div>
+              <div
+                data-lenis-prevent=""
+                className="custom-scrollbar min-h-0 flex-1 overflow-y-auto overscroll-contain p-4"
+                onWheel={(event) => event.stopPropagation()}
+                onTouchMove={(event) => event.stopPropagation()}
+              >
+                {renderImageGrid(true)}
+              </div>
+            </div>
+          </div>
+        </DialogPortal>
+      )}
     </Dialog>
   );
 }

@@ -39,7 +39,6 @@ const BookmarkSchema = new Schema<IBookmark>(
     { timestamps: true }
 );
 BookmarkSchema.index({ userId: 1, postId: 1 }, { unique: true });
-if (mongoose.models.Bookmark) {
-    delete mongoose.models.Bookmark;
-}
-export const Bookmark = mongoose.model<IBookmark>('Bookmark', BookmarkSchema);
+export const Bookmark =
+    (mongoose.models.Bookmark as mongoose.Model<IBookmark> | undefined) ||
+    mongoose.model<IBookmark>('Bookmark', BookmarkSchema);

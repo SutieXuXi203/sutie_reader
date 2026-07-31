@@ -4,8 +4,8 @@ import { Bookmark } from '@/models/Bookmark';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin } from '@/lib/auth';
-import { google } from 'googleapis';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
+import { invalidateApiCache } from '@/lib/api-cache';
 
 export const maxDuration = 60;
 
@@ -118,6 +118,7 @@ async function getDriveService() {
   const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
   const refreshToken = process.env.GOOGLE_REFRESH_TOKEN;
   if (!clientId || !clientSecret || !refreshToken) return null;
+  const { google } = await import('googleapis');
   const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret, 'https://developers.google.com/oauthplayground');
   oAuth2Client.setCredentials({ refresh_token: refreshToken });
   return google.drive({ version: 'v3', auth: oAuth2Client });
@@ -373,6 +374,7 @@ export async function PUT(
       }
     }
 
+    invalidateApiCache('posts:');
     return NextResponse.json(serializePost(updated));
   } catch (error) {
     console.error('Lỗi khi cập nhật bài viết:', error);
@@ -411,6 +413,7 @@ export async function DELETE(
     deleteDriveFolder(id, deletedPost.title).catch((err) =>
       console.warn('Lỗi khi xóa folder Drive:', err)
     );
+    invalidateApiCache('posts:');
     return NextResponse.json({ message: 'Bài viết đã được xóa thành công' });
   } catch (error) {
     console.error('Lỗi khi xóa bài viết:', error);

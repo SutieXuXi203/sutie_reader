@@ -1,7 +1,7 @@
 ﻿import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
+import { jwtVerify, SignJWT } from 'jose';
 import { getCurrentUserFromToken } from '@/lib/server-auth';
 
 const JWT_SECRET = new TextEncoder().encode(
@@ -91,7 +91,7 @@ export async function PUT(request: NextRequest) {
 
     await user.save();
 
-    return NextResponse.json({
+    const response = NextResponse.json({
       message: 'Cap nhat thanh cong',
       user: {
         id: user._id,
@@ -101,6 +101,32 @@ export async function PUT(request: NextRequest) {
         role: user.role,
       },
     });
+
+    const tokenMaxAge =
+      typeof payload.exp === 'number'
+        ? Math.max(0, payload.exp - Math.floor(Date.now() / 1000))
+        : undefined;
+    const nextToken = await new SignJWT({
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar || '',
+      role: user.role,
+    })
+      .setProtectedHeader({ alg: 'HS256' })
+      .setIssuedAt()
+      .setExpirationTime(tokenMaxAge ? `${tokenMaxAge}s` : '24h')
+      .sign(JWT_SECRET);
+
+    response.cookies.set('token', nextToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      ...(tokenMaxAge ? { maxAge: tokenMaxAge } : {}),
+    });
+
+    return response;
   } catch (error) {
     const details = error instanceof Error ? error.message : 'Unknown error';
     console.error('Loi cap nhat ho so:', error);

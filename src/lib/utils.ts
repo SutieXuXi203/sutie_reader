@@ -5,12 +5,14 @@ export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
 }
 
+const DEFAULT_IMAGE_WORKER_URL = 'https://sutie-images.manhdinh0410.workers.dev';
+
 export function getOptimizedImageUrl(url: string): string {
   if (!url) return '';
 
   const matchDriveId = url.match(/(?:id=|\/d\/)([a-zA-Z0-9_-]{25,})/);
   if (url.includes('drive.google.com') && matchDriveId) {
-    const workerUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL;
+    const workerUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL || DEFAULT_IMAGE_WORKER_URL;
     if (workerUrl) {
       return `${workerUrl.replace(/\/+$/, '')}/image/${matchDriveId[1]}`;
     }

@@ -44,14 +44,9 @@ export function AuthProvider({
         }
     }, []);
     useEffect(() => {
-        if (hasInitialAuth) {
-            if (initialUser) {
-                void checkAuth();
-            }
-            return;
-        }
+        if (hasInitialAuth) return;
         checkAuth();
-    }, [checkAuth, hasInitialAuth, initialUser]);
+    }, [checkAuth, hasInitialAuth]);
     const login = useCallback((userData: User) => {
         setUser(userData);
         setIsLoading(false);

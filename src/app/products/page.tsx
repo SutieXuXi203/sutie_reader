@@ -63,7 +63,7 @@ export default function ProductsPage() {
     
     const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
 
-    const fetchTags = async () => {
+    const fetchTags = useCallback(async () => {
         try {
             const response = await fetch('/api/tags');
             if (response.ok) {
@@ -72,9 +72,9 @@ export default function ProductsPage() {
         } catch (error) {
             console.error('Lỗi khi tải tags:', error);
         }
-    };
+    }, []);
 
-    const fetchPosts = async () => {
+    const fetchPosts = useCallback(async () => {
         try {
             setIsLoading(true);
             const response = await fetch('/api/posts');
@@ -87,12 +87,12 @@ export default function ProductsPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
 
     useEffect(() => {
         fetchPosts();
         fetchTags();
-    }, []);
+    }, [fetchPosts, fetchTags]);
 
     useEffect(() => {
         const params = new URLSearchParams(window.location.search);
@@ -109,22 +109,31 @@ export default function ProductsPage() {
             return;
         }
         setCurrentPage(1);
-    }, [searchTerm]);
+    }, [searchTerm, setCurrentPage]);
 
-    const handlePostDeleted = (postId: string) => {
+    const handlePostDeleted = useCallback((postId: string) => {
         setPosts((prev) => prev.filter((post) => post._id !== postId));
-    };
+    }, []);
 
     const deferredSearchTerm = useDeferredValue(searchTerm);
     const normalizedSearch = normalizeSearchText(isSearchComposing ? '' : deferredSearchTerm);
     
+    const searchablePosts = useMemo(
+        () => posts.map((post) => ({
+            post,
+            searchText: normalizeSearchText(
+                [post.title, post.description || '', post.author, ...(post.tags || [])].join(' ')
+            ),
+        })),
+        [posts]
+    );
+
     const filteredPosts = useMemo(() => normalizedSearch
-        ? posts.filter((post) =>
-            [post.title, post.description || '', post.author, ...(post.tags || [])]
-                .some((value) => normalizeSearchText(value).includes(normalizedSearch))
-        )
+        ? searchablePosts
+            .filter((item) => item.searchText.includes(normalizedSearch))
+            .map((item) => item.post)
         : posts,
-        [normalizedSearch, posts]
+        [normalizedSearch, posts, searchablePosts]
     );
 
     const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);

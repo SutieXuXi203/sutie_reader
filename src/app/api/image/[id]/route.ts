@@ -1,6 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { google } from 'googleapis';
 import type { Readable } from 'node:stream';
+
+const DEFAULT_IMAGE_WORKER_URL = 'https://sutie-images.manhdinh0410.workers.dev';
+
+function getWorkerImageUrl(id: string) {
+    const workerUrl =
+        process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
+        process.env.CLOUDFLARE_WORKER_URL ||
+        DEFAULT_IMAGE_WORKER_URL;
+
+    return `${workerUrl.replace(/\/+$/, '')}/image/${encodeURIComponent(id)}`;
+}
+
 async function getDriveService() {
     const clientId = process.env.GOOGLE_CLIENT_ID;
     const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
@@ -8,6 +19,7 @@ async function getDriveService() {
     if (!clientId || !clientSecret || !refreshToken) {
         throw new Error('Thiếu thông tin xác thực OAuth2 (GOOGLE_CLIENT_ID, GOOGLE_CLIENT_SECRET, hoặc GOOGLE_REFRESH_TOKEN)');
     }
+    const { google } = await import('googleapis');
     const oAuth2Client = new google.auth.OAuth2(clientId, clientSecret, 'https://developers.google.com/oauthplayground');
     oAuth2Client.setCredentials({ refresh_token: refreshToken });
     return google.drive({ version: 'v3', auth: oAuth2Client });
@@ -20,6 +32,17 @@ export async function GET(
     if (!id) {
         return NextResponse.json({ error: 'Missing id parameter' }, { status: 400 });
     }
+
+    const workerImageUrl = getWorkerImageUrl(id);
+    if (!workerImageUrl.startsWith(request.nextUrl.origin)) {
+        return NextResponse.redirect(workerImageUrl, {
+            status: 307,
+            headers: {
+                'Cache-Control': 'public, max-age=31536000, immutable',
+            },
+        });
+    }
+
     try {
         const drive = await getDriveService();
         const metaRes = await drive.files.get({ fileId: id, fields: 'mimeType, name' });

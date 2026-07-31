@@ -28,6 +28,8 @@ type LeanAuthUser = {
 type SessionPayload = {
   id: string;
   email: string;
+  name?: string;
+  avatar?: string;
   role: 'user' | 'admin';
 };
 
@@ -38,11 +40,13 @@ async function getSessionPayload(token?: string | null): Promise<SessionPayload 
     const { payload } = await jwtVerify(token, JWT_SECRET);
     const id = typeof payload.id === 'string' ? payload.id : null;
     const email = typeof payload.email === 'string' ? payload.email : null;
+    const name = typeof payload.name === 'string' ? payload.name : undefined;
+    const avatar = typeof payload.avatar === 'string' ? payload.avatar : undefined;
     const role = payload.role === 'admin' || payload.role === 'user' ? payload.role : null;
 
     if (!id || !email || !role) return null;
 
-    return { id, email, role };
+    return { id, email, name, avatar, role };
   } catch {
     return null;
   }
@@ -55,8 +59,8 @@ export async function getSessionUserFromToken(token?: string | null): Promise<Au
   return {
     id: payload.id,
     email: payload.email,
-    name: payload.email.split('@')[0] || payload.email,
-    avatar: '',
+    name: payload.name || payload.email.split('@')[0] || payload.email,
+    avatar: payload.avatar || '',
     role: payload.role,
   };
 }

@@ -4,15 +4,28 @@ import { Tag } from '@/models/Tag';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
 import { tagSchema, updateTagSchema } from '@/lib/validations';
+import { getApiCache, invalidateApiCache, setApiCache } from '@/lib/api-cache';
 export const maxDuration = 60;
+const TAGS_LIST_CACHE_KEY = 'tags:list';
+const TAGS_LIST_CACHE_TTL_MS = 60_000;
 const normalizeTag = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase();
 type MongoDuplicateKeyError = Error & { code?: number };
 
 export async function GET() {
     try {
+        const cachedTags = getApiCache<unknown[]>(TAGS_LIST_CACHE_KEY);
+        if (cachedTags) {
+            return NextResponse.json(cachedTags, {
+                headers: { 'Cache-Control': 'no-store', 'X-Sutie-Cache': 'HIT' },
+            });
+        }
+
         await connectDB();
         const tags = await Tag.find({}).sort({ name: 1 }).lean();
-        return NextResponse.json(tags);
+        setApiCache(TAGS_LIST_CACHE_KEY, tags, TAGS_LIST_CACHE_TTL_MS);
+        return NextResponse.json(tags, {
+            headers: { 'Cache-Control': 'no-store', 'X-Sutie-Cache': 'MISS' },
+        });
     } catch (error) {
         console.error('Lỗi khi lấy danh sách tag:', error);
         return NextResponse.json({ error: 'Không thể lấy danh sách tag' }, { status: 500 });
@@ -39,6 +52,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Tag này đã tồn tại.' }, { status: 409 });
         }
         const newTag = await Tag.create({ name: normalizedName });
+        invalidateApiCache('tags:');
         return NextResponse.json({ message: 'Tạo tag thành công', tag: newTag }, { status: 201 });
     } catch (error) {
         console.error('Lỗi khi tạo tag:', error);
@@ -94,6 +108,8 @@ export async function PUT(request: NextRequest) {
             await post.save();
             updatedCount++;
         }
+        invalidateApiCache('tags:');
+        invalidateApiCache('posts:');
         return NextResponse.json({ message: `Đã cập nhật tên tag đổi thành ${nNewTag}, và sửa trên ${updatedCount} bài viết.` });
     } catch (error) {
         console.error('Lỗi khi sửa tag:', error);
@@ -124,6 +140,8 @@ export async function DELETE(request: NextRequest) {
             await post.save();
             updatedCount++;
         }
+        invalidateApiCache('tags:');
+        invalidateApiCache('posts:');
         return NextResponse.json({ message: `Đã xóa tag và gỡ khỏi ${updatedCount} bài viết.` });
     } catch (error) {
         console.error('Lỗi khi xóa tag:', error);

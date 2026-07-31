@@ -79,7 +79,13 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
     }
 
-    const token = await new SignJWT({ id: user._id.toString(), email: user.email, role: user.role })
+    const token = await new SignJWT({
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      avatar: user.avatar || '',
+      role: user.role,
+    })
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
       .setExpirationTime(rememberMe ? '7d' : '24h')

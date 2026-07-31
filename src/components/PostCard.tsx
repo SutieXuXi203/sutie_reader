@@ -1,7 +1,7 @@
 'use client';
 import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
 import { CalendarDays, ShieldAlert, Eye } from 'lucide-react';
-import React, { useEffect, useState, useCallback } from 'react';
+import React, { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -80,22 +80,23 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       setIsDeleting(false);
     }
   };
-  const formatDate = useCallback((dateString: string) => {
-    return new Date(dateString).toLocaleDateString('vi-VN', {
+  const formattedCreatedAt = useMemo(() => {
+    return new Date(post.createdAt).toLocaleDateString('vi-VN', {
       hour: '2-digit',
       minute: '2-digit',
       year: 'numeric',
       month: 'short',
       day: 'numeric',
     });
-  }, []);
-  const formattedCreatedAt = formatDate(post.createdAt);
-  const formattedCompactCreatedAt = new Date(post.createdAt).toLocaleDateString('vi-VN', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  });
-  const visibleTags = post.tags?.slice(0, compact ? 2 : 4) || [];
+  }, [post.createdAt]);
+  const formattedCompactCreatedAt = useMemo(() => (
+    new Date(post.createdAt).toLocaleDateString('vi-VN', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+  ), [post.createdAt]);
+  const visibleTags = useMemo(() => post.tags?.slice(0, compact ? 2 : 4) || [], [compact, post.tags]);
   const remainingTags = Math.max(0, (post.tags?.length || 0) - visibleTags.length);
   return (
     <>

@@ -170,7 +170,7 @@ function HomeContent() {
       return;
     }
     setCurrentPage(1);
-  }, [searchTerm]);
+  }, [searchTerm, setCurrentPage]);
 
   useEffect(() => {
     const observer = new IntersectionObserver(
@@ -196,13 +196,22 @@ function HomeContent() {
   const deferredSearchTerm = useDeferredValue(searchTerm);
   const normalizedSearch = normalizeSearchText(isSearchComposing ? '' : deferredSearchTerm);
 
+  const searchablePosts = useMemo(
+    () => posts.map((post) => ({
+      post,
+      searchText: normalizeSearchText(
+        [post.title, post.description || '', post.author, ...(post.tags || [])].join(' ')
+      ),
+    })),
+    [posts]
+  );
+
   const filteredPosts = useMemo(() => normalizedSearch
-    ? posts.filter((post) =>
-      [post.title, post.description || '', post.author, ...(post.tags || [])]
-        .some((value) => normalizeSearchText(value).includes(normalizedSearch))
-    )
+    ? searchablePosts
+      .filter((item) => item.searchText.includes(normalizedSearch))
+      .map((item) => item.post)
     : posts,
-    [normalizedSearch, posts]
+    [normalizedSearch, posts, searchablePosts]
   );
 
   const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
@@ -222,6 +231,10 @@ function HomeContent() {
     cachedPosts = newPosts;
     setPosts(newPosts);
   }, [posts]);
+
+  const handlePostUpdated = useCallback(() => {
+    void fetchPosts(true);
+  }, [fetchPosts]);
 
   if (isAuthLoading) {
     return (
@@ -363,7 +376,7 @@ function HomeContent() {
                         key={post._id}
                         post={post}
                         onDelete={handlePostDeleted}
-                        onUpdate={() => fetchPosts(true)}
+                        onUpdate={handlePostUpdated}
                         availableTags={availableTags}
                         compact
                       />

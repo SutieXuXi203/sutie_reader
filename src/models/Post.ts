@@ -84,9 +84,6 @@ const PostSchema = new Schema<IPost>(
 PostSchema.index({ createdAt: -1 });
 PostSchema.index({ tags: 1 });
 
-if (mongoose.models.Post) {
-  delete mongoose.models.Post;
-}
-
-export const Post = mongoose.model<IPost>('Post', PostSchema);
-
+export const Post =
+  (mongoose.models.Post as mongoose.Model<IPost> | undefined) ||
+  mongoose.model<IPost>('Post', PostSchema);

@@ -4,6 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin } from '@/lib/auth';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
+import { invalidateApiCache } from '@/lib/api-cache';
 
 const normalizeImages = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
@@ -154,6 +155,7 @@ export async function POST(
       { returnDocument: 'after' }
     ) || updatedPost;
 
+    invalidateApiCache('posts:');
     return NextResponse.json({
       chapter: newChapter,
       post: serializePost(finalPost),

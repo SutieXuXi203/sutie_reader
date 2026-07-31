@@ -4,8 +4,11 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { postSchema } from '@/lib/validations';
+import { getApiCache, invalidateApiCache, setApiCache } from '@/lib/api-cache';
 
 export const maxDuration = 60;
+const POSTS_LIST_CACHE_KEY = 'posts:list';
+const POSTS_LIST_CACHE_TTL_MS = 30_000;
 
 type IncomingChapter = {
   title?: unknown;
@@ -141,6 +144,13 @@ const serializePost = (postDoc: unknown) => {
 
 export async function GET() {
   try {
+    const cachedPosts = getApiCache<ReturnType<typeof serializePost>[]>(POSTS_LIST_CACHE_KEY);
+    if (cachedPosts) {
+      return NextResponse.json(cachedPosts, {
+        headers: { 'Cache-Control': 'no-store', 'X-Sutie-Cache': 'HIT' },
+      });
+    }
+
     await connectDB();
     const posts = await Post.aggregate([
       { $sort: { createdAt: -1 } },
@@ -181,7 +191,10 @@ export async function GET() {
       };
     });
 
-    return NextResponse.json(serialized);
+    setApiCache(POSTS_LIST_CACHE_KEY, serialized, POSTS_LIST_CACHE_TTL_MS);
+    return NextResponse.json(serialized, {
+      headers: { 'Cache-Control': 'no-store', 'X-Sutie-Cache': 'MISS' },
+    });
   } catch (error) {
     console.error('Lỗi khi tải bài viết:', error);
     return NextResponse.json({ error: 'Tải bài viết không thành công' }, { status: 500 });
@@ -233,6 +246,7 @@ export async function POST(request: NextRequest) {
     });
 
     const savedPost = await post.save();
+    invalidateApiCache('posts:');
     return NextResponse.json(serializePost(savedPost), { status: 201 });
   } catch (error) {
     console.error('Lỗi khi tạo bài viết:', error);
