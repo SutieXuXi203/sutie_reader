@@ -124,6 +124,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                 isThumbnailBlurred && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
                 isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
               )}
+              unoptimized
             />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-primary-foreground/80 dark:text-primary/40">
