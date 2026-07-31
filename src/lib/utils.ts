@@ -6,6 +6,7 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 const DRIVE_FILE_ID_PATTERN = /^[a-zA-Z0-9_-]{10,}$/;
+const PROTECTED_IMAGE_URL_VERSION = '2';
 
 export function extractDriveImageId(url: string): string | null {
   const value = typeof url === 'string' ? url.trim() : '';
@@ -38,7 +39,7 @@ export function getOptimizedImageUrl(url: string): string {
 
   const imageId = extractDriveImageId(url);
   if (imageId) {
-    return `/api/image/${encodeURIComponent(imageId)}`;
+    return `/api/image/${encodeURIComponent(imageId)}?v=${PROTECTED_IMAGE_URL_VERSION}`;
   }
   return url;
 }
