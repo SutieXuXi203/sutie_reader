@@ -5,6 +5,7 @@ import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
 
 export const maxDuration = 60;
+export const dynamic = 'force-dynamic';
 
 type InitialPost = {
   _id: string;
