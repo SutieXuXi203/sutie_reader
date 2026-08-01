@@ -110,7 +110,7 @@ export default function AdminDashboard() {
     }, [searchQuery, activeTab]);
     const fetchTags = useCallback(async () => {
         try {
-            const res = await fetch('/api/tags');
+            const res = await fetch('/api/tags', { credentials: 'omit' });
             if (res.ok) {
                 const data = await res.json();
                 setStandaloneTags(data);
@@ -122,7 +122,7 @@ export default function AdminDashboard() {
     const fetchPosts = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('/api/posts');
+            const res = await fetch('/api/posts', { credentials: 'omit' });
             if (res.ok) {
                 const data = await res.json();
                 setPosts(data);
