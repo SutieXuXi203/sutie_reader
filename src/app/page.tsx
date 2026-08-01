@@ -1,6 +1,5 @@
 import HomeClient from './HomeClient';
 import { connectDB } from '@/lib/db';
-import { getCurrentUser } from '@/lib/server-auth';
 import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
 
@@ -50,11 +49,6 @@ async function getInitialCatalog(): Promise<{
   initialPosts: InitialPost[];
   initialTags: InitialTag[];
 }> {
-  const user = await getCurrentUser();
-  if (!user) {
-    return { initialPosts: [], initialTags: [] };
-  }
-
   await connectDB();
 
   const [posts, tags] = await Promise.all([
