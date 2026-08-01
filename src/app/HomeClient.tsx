@@ -58,6 +58,30 @@ let cachedBookmarks: BookmarkItem[] = [];
 let cachedTags: { _id: string; name: string }[] = [];
 let lastFetchTime = 0;
 
+async function fetchJsonWithTimeout<T>(
+  url: string,
+  options: RequestInit = {},
+  timeoutMs = 10_000
+): Promise<T> {
+  const controller = new AbortController();
+  const timeoutId = window.setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal,
+    });
+
+    if (!response.ok) {
+      throw new Error(`Request failed with ${response.status}`);
+    }
+
+    return (await response.json()) as T;
+  } finally {
+    window.clearTimeout(timeoutId);
+  }
+}
+
 interface HomeContentProps {
   initialPosts?: Post[];
   initialTags?: { _id: string; name: string }[];
@@ -137,13 +161,27 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     }
     try {
       if (cachedPosts.length === 0) setIsLoading(true);
-      const response = await fetch('/api/posts', { credentials: 'omit' });
-      if (response.ok) {
-        const data = await response.json();
-        cachedPosts = data;
-        lastFetchTime = Date.now();
-        setPosts(data);
+      const requestOptions: RequestInit = {
+        cache: 'no-store',
+        credentials: 'omit',
+        headers: { Accept: 'application/json' },
+      };
+      let data: Post[];
+      try {
+        data = await fetchJsonWithTimeout<Post[]>(
+          `/api/posts?ts=${Date.now()}`,
+          requestOptions
+        );
+      } catch (firstError) {
+        console.warn('Retrying posts fetch after timeout/error:', firstError);
+        data = await fetchJsonWithTimeout<Post[]>(
+          `/api/posts?retry=${Date.now()}`,
+          requestOptions
+        );
       }
+      cachedPosts = data;
+      lastFetchTime = Date.now();
+      setPosts(data);
     } catch (error) {
       console.error('Lỗi khi tải bài viết:', error);
     } finally {
@@ -153,12 +191,16 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
 
   const fetchTags = useCallback(async () => {
     try {
-      const response = await fetch('/api/tags', { credentials: 'omit' });
-      if (response.ok) {
-        const data = await response.json();
-        cachedTags = data;
-        setStandaloneTags(data);
-      }
+      const data = await fetchJsonWithTimeout<{ _id: string; name: string }[]>(
+        `/api/tags?ts=${Date.now()}`,
+        {
+          cache: 'no-store',
+          credentials: 'omit',
+          headers: { Accept: 'application/json' },
+        }
+      );
+      cachedTags = data;
+      setStandaloneTags(data);
     } catch (error) {
       console.error('Lỗi khi tải tags:', error);
     }
