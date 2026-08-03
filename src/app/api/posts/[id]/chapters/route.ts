@@ -150,7 +150,6 @@ export async function POST(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
-    // Cập nhật lại thứ tự chapters và nội dung/ảnh của chương 1 nếu cần
     const sortedChapters = [...updatedPost.chapters].sort((a, b) => a.chapterNumber - b.chapterNumber);
     const firstChapter = sortedChapters[0];
 

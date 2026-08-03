@@ -21,7 +21,6 @@ export async function GET(request: NextRequest) {
 
     await connectDB();
 
-    // Cleanup should never block admin from viewing the current user list.
     try {
       await cleanupExpiredUnverifiedUsers('login');
     } catch (cleanupError) {

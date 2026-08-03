@@ -38,7 +38,6 @@ export function SiteNav() {
   const isPostReaderPage = pathname.startsWith('/posts/');
   const showProfileMenu = Boolean(user && isProfileMenuOpen);
 
-  // Handle clicking outside the profile dropdown
   useEffect(() => {
     if (!showProfileMenu) return;
     const handlePointerDown = (event: PointerEvent) => {
@@ -50,7 +49,6 @@ export function SiteNav() {
     return () => document.removeEventListener('pointerdown', handlePointerDown);
   }, [showProfileMenu]);
 
-  // Prevent background scroll when mobile menu is open
   useEffect(() => {
     if (isMobileMenuOpen) {
       document.body.classList.add('overflow-hidden');
@@ -60,7 +58,6 @@ export function SiteNav() {
     return () => document.body.classList.remove('overflow-hidden');
   }, [isMobileMenuOpen]);
 
-  // Close mobile menu on path changes
   useEffect(() => {
     const frame = requestAnimationFrame(() => setIsMobileMenuOpen(false));
     return () => cancelAnimationFrame(frame);

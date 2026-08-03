@@ -512,7 +512,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             </span>
           )}
           {expanded ? (
-            // eslint-disable-next-line @next/next/no-img-element
             <img
               src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
               alt={`Ảnh ${idx + 1}`}

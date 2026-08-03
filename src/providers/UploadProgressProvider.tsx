@@ -3,7 +3,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { UploadProgressWidget, UploadProgressState } from '@/components/UploadProgressWidget';
 
-// Global state outside React to survive any unmounts or layout changes
 let globalTasks: UploadProgressState[] = [];
 let listeners: ((tasks: UploadProgressState[]) => void)[] = [];
 

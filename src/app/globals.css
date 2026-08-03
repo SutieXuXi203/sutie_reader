@@ -193,7 +193,7 @@
   }
 }
 
-/* Force hide scrollbars completely across all browsers and elements */
+
 html,
 body,
 * {
@@ -471,7 +471,7 @@ body {
   animation: fade-in 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
 }
 
-/* Unified goey-toast design */
+
 .app-toast .gooey-blobSvg {
   display: none !important;
 }
@@ -617,7 +617,7 @@ body {
   background: var(--primary) !important;
 }
 
-/* Force exact center for top-center toaster */
+
 [data-sonner-toaster][data-x-position='center'] {
   left: 0 !important;
   right: 0 !important;
@@ -643,7 +643,7 @@ body {
   margin-right: 0 !important;
 }
 
-/* Page transition animation */
+
 @keyframes page-transition-in {
   from {
     opacity: 0;

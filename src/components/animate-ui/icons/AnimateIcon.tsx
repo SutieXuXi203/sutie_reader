@@ -104,7 +104,6 @@ export function AnimateIcon({
   );
 }
 
-// Preset Animated Icon Wrappers for common Lucide icons
 export const AnimatedBookOpen = (props: Omit<AnimateIconProps, 'icon'>) => <AnimateIcon icon={BookOpen} animation="bounce" {...props} />;
 export const AnimatedArrowLeft = (props: Omit<AnimateIconProps, 'icon'>) => <AnimateIcon icon={ArrowLeft} animation="bounce" {...props} />;
 export const AnimatedArrowRight = (props: Omit<AnimateIconProps, 'icon'>) => <AnimateIcon icon={ArrowRight} animation="bounce" {...props} />;

@@ -190,7 +190,6 @@ export function CreatePostForm({
     const uploadTitle = createdPostTitle || title || 'untitled';
     const chapterNumber = createdChapterCountRef.current + 1;
 
-    // Tăng số lượng chương đã thêm ngay lập tức
     createdChapterCountRef.current += 1;
     setCreatedChapterCount(createdChapterCountRef.current);
 
@@ -198,12 +197,10 @@ export function CreatePostForm({
       onOpenChange(false);
       resetAll();
     } else {
-      // Xóa các ô nhập liệu ngay lập tức để người dùng có thể nhập tiếp Chương tiếp theo mà không phải chờ!
       resetChapterFields();
       setChapterTitle(`Chương ${createdChapterCountRef.current + 1}`);
     }
 
-    // Chạy tác vụ tải & lưu chương dưới nền độc lập
     void processBackgroundChapterSave(
       currentPostId,
       currentTitle,

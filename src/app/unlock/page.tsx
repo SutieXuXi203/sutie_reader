@@ -31,7 +31,6 @@ function UnlockForm() {
   const callbackUrl = searchParams.get('callbackUrl') || '/';
 
   useEffect(() => {
-    // Focus first input on mount
     if (inputRefs.current[0]) {
       inputRefs.current[0].focus();
     }
@@ -45,12 +44,10 @@ function UnlockForm() {
     setPin(newPin);
     setIsError(false);
 
-    // Auto-focus next
     if (value && index < 5 && inputRefs.current[index + 1]) {
       inputRefs.current[index + 1]?.focus();
     }
 
-    // Auto-submit if all filled
     if (newPin.every(d => d !== '')) {
       handleSubmit(newPin.join(''));
     }
@@ -59,13 +56,11 @@ function UnlockForm() {
   const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
     if (e.key === 'Backspace') {
       if (!pin[index] && index > 0 && inputRefs.current[index - 1]) {
-        // If empty and backspace pressed, go to previous and clear it
         const newPin = [...pin];
         newPin[index - 1] = '';
         setPin(newPin);
         inputRefs.current[index - 1]?.focus();
       } else {
-        // Just clear current
         const newPin = [...pin];
         newPin[index] = '';
         setPin(newPin);
@@ -115,7 +110,6 @@ function UnlockForm() {
         gooeyToast.success('Mở khóa thành công', {
           description: 'Chào mừng bạn quay lại Sutie Reader!',
         });
-        // Short delay for the animation to play
         setTimeout(() => {
           window.location.href = callbackUrl;
         }, 500);

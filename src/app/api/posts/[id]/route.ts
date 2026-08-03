@@ -419,7 +419,6 @@ export async function DELETE(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
     
-    // Xóa lịch sử đọc (Bookmark) liên quan
     await Bookmark.deleteMany({ postId: id }).catch(err => {
       console.error('Lỗi khi xóa bookmark liên quan:', err);
     });
