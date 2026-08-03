@@ -157,6 +157,8 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   const fetchPosts = useCallback(async (force = false) => {
     // Only skip if we have cached posts and it's been less than 1 minute
     if (!force && cachedPosts.length > 0 && Date.now() - lastFetchTime < 60000) {
+      setPosts(cachedPosts);
+      setIsLoading(false);
       return; // Use cache entirely
     }
     try {
