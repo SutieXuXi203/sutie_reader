@@ -1,6 +1,5 @@
-import 'server-only';
-
 import { createHmac } from 'node:crypto';
+import { extractDriveImageId } from './utils';
 
 const IMAGE_SIGNATURE_VERSION = 'v1';
 const DEFAULT_IMAGE_URL_TTL_SECONDS = 120;
@@ -79,4 +78,27 @@ export function createSignedWorkerImageUrl({
   url.searchParams.set('sub', subject);
   url.searchParams.set('sig', signImageRequest('GET', fileId, expiresAt, subject, secret));
   return url.toString();
+}
+
+export function signImageUrls(urls: string[], userId: string): string[] {
+  if (!urls || urls.length === 0) return [];
+  const workerBaseUrl =
+    process.env.CLOUDFLARE_WORKER_URL ||
+    process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
+    'https://sutie-images.manhdinh0410.workers.dev';
+
+  return urls.map((url) => {
+    const fileId = extractDriveImageId(url);
+    if (!fileId) return url;
+    try {
+      return createSignedWorkerImageUrl({
+        workerBaseUrl,
+        fileId,
+        subject: userId,
+      });
+    } catch (e) {
+      console.error('Error signing image URL:', e);
+      return url;
+    }
+  });
 }

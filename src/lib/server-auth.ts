@@ -13,9 +13,13 @@ export interface AuthUser {
   role: 'user' | 'admin';
 }
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-fallback-secret-key-at-least-32-characters'
-);
+export function getJwtSecret(): Uint8Array {
+  const secret = process.env.JWT_SECRET;
+  if (!secret) {
+    throw new Error('JWT_SECRET environment variable is missing');
+  }
+  return new TextEncoder().encode(secret);
+}
 
 type LeanAuthUser = {
   _id: unknown;
@@ -38,7 +42,7 @@ async function getSessionPayload(token?: string | null): Promise<SessionPayload 
   if (!token) return null;
 
   try {
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     const id =
       typeof payload.id === 'string'
         ? payload.id

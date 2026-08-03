@@ -37,6 +37,10 @@ export function extractDriveImageId(url: string): string | null {
 export function getOptimizedImageUrl(url: string): string {
   if (!url) return '';
 
+  if (url.includes('sig=') && url.includes('exp=')) {
+    return url;
+  }
+
   const imageId = extractDriveImageId(url);
   if (imageId) {
     return `/api/image/${encodeURIComponent(imageId)}?v=${PROTECTED_IMAGE_URL_VERSION}`;

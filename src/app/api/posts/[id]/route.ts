@@ -3,9 +3,10 @@ import { Post } from '@/models/Post';
 import { Bookmark } from '@/models/Bookmark';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { isAdmin } from '@/lib/auth';
+import { isAdmin, getAuthUser } from '@/lib/auth';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { invalidateApiCache } from '@/lib/api-cache';
+import { signImageUrls } from '@/lib/image-signing';
 
 export const maxDuration = 60;
 
@@ -243,7 +244,20 @@ export async function GET(
     if (!post) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
-    return NextResponse.json(serializePost(post));
+    const serialized = serializePost(post);
+    const user = await getAuthUser(request);
+    if (user) {
+      if (serialized.images) {
+        serialized.images = signImageUrls(serialized.images, user.id);
+      }
+      if (Array.isArray(serialized.chapters)) {
+        serialized.chapters = serialized.chapters.map((chapter: any) => ({
+          ...chapter,
+          images: signImageUrls(chapter.images || [], user.id),
+        }));
+      }
+    }
+    return NextResponse.json(serialized);
   } catch (error) {
     console.error('Lỗi khi tải bài viết:', error);
     return NextResponse.json({ error: 'Tải bài viết không thành công' }, { status: 500 });

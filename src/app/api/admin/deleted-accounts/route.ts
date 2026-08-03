@@ -3,9 +3,7 @@ import { DeletedAccount } from '@/models/DeletedAccount';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
 
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-fallback-secret-key-at-least-32-characters'
-);
+import { getJwtSecret } from '@/lib/server-auth';
 
 export async function GET(request: NextRequest) {
   try {
@@ -14,7 +12,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Chưa xác thực' }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload || payload.role !== 'admin') {
       return NextResponse.json({ error: 'Không có quyền truy cập' }, { status: 403 });
     }

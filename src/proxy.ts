@@ -17,6 +17,11 @@ export function proxy(request: NextRequest) {
   const ACCESS_COOKIE_NAME = 'site_access_token';
   const SECRET_TOKEN = process.env.UNLOCK_PIN;
 
+  // If no PIN is configured, bypass the lock screen entirely
+  if (!SECRET_TOKEN) {
+    return NextResponse.next();
+  }
+
   // 2. Check if the browser has the valid cookie
   const cookie = request.cookies.get(ACCESS_COOKIE_NAME);
   

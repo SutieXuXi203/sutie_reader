@@ -5,10 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { loginSchema } from '@/lib/validations';
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-fallback-secret-key-at-least-32-characters'
-);
+import { getJwtSecret } from '@/lib/server-auth';
 
 export async function POST(request: NextRequest) {
   try {
@@ -88,7 +85,7 @@ export async function POST(request: NextRequest) {
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
       .setExpirationTime(rememberMe ? '7d' : '24h')
-      .sign(JWT_SECRET);
+      .sign(getJwtSecret());
 
     const response = NextResponse.json({
       message: 'Đăng nhập thành công',

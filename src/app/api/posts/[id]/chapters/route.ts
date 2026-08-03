@@ -2,9 +2,10 @@ import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
-import { isAdmin } from '@/lib/auth';
+import { isAdmin, getAuthUser } from '@/lib/auth';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { invalidateApiCache } from '@/lib/api-cache';
+import { signImageUrls } from '@/lib/image-signing';
 
 const normalizeImages = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
@@ -56,9 +57,17 @@ export async function GET(
     }
 
     const chapters = getPostChapters(post);
+    const user = await getAuthUser(request);
+    const signedChapters = user
+      ? chapters.map((chapter) => ({
+          ...chapter,
+          images: signImageUrls(chapter.images || [], user.id),
+        }))
+      : chapters;
+
     return NextResponse.json({
-      chapters,
-      chapterCount: chapters.length,
+      chapters: signedChapters,
+      chapterCount: signedChapters.length,
     });
   } catch (error) {
     console.error('Lỗi khi tải danh sách chương:', error);

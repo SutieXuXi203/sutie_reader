@@ -1,7 +1,7 @@
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdmin } from '@/lib/auth';
+import { isAdmin, getAuthUser } from '@/lib/auth';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { postSchema } from '@/lib/validations';
 import { getApiCache, invalidateApiCache, setApiCache } from '@/lib/api-cache';
@@ -142,58 +142,72 @@ const serializePost = (postDoc: unknown) => {
   };
 };
 
-export async function GET() {
+import { signImageUrls } from '@/lib/image-signing';
+
+export async function GET(request: NextRequest) {
   try {
-    const cachedPosts = getApiCache<ReturnType<typeof serializePost>[]>(POSTS_LIST_CACHE_KEY);
+    const cachedPosts = getApiCache<any[]>(POSTS_LIST_CACHE_KEY);
+    let postsList: any[];
+
     if (cachedPosts) {
-      return NextResponse.json(cachedPosts, {
-        headers: { 'Cache-Control': 'no-store', 'X-Sutie-Cache': 'HIT' },
+      postsList = cachedPosts;
+    } else {
+      await connectDB();
+      const posts = await Post.aggregate([
+        { $sort: { createdAt: -1 } },
+        {
+          $project: {
+            title: 1,
+            description: 1,
+            tags: 1,
+            author: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            coverImage: {
+              $ifNull: [
+                { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
+                { $arrayElemAt: ['$images', 0] },
+              ],
+            },
+            chapterCount: { $size: { $ifNull: ['$chapters', []] } },
+          },
+        },
+      ]);
+
+      postsList = posts.map((post) => {
+        const coverImage = typeof post.coverImage === 'string' && post.coverImage.trim()
+          ? post.coverImage
+          : '';
+
+        return {
+          _id: post._id.toString(),
+          title: post.title,
+          description: post.description || '',
+          tags: post.tags || [],
+          author: post.author || 'Ẩn danh',
+          createdAt: post.createdAt instanceof Date ? post.createdAt.toISOString() : post.createdAt,
+          updatedAt: post.updatedAt instanceof Date ? post.updatedAt.toISOString() : post.updatedAt,
+          chapterCount: post.chapterCount,
+          images: coverImage ? [coverImage] : [],
+        };
       });
+
+      setApiCache(POSTS_LIST_CACHE_KEY, postsList, POSTS_LIST_CACHE_TTL_MS);
     }
 
-    await connectDB();
-    const posts = await Post.aggregate([
-      { $sort: { createdAt: -1 } },
-      {
-        $project: {
-          title: 1,
-          description: 1,
-          tags: 1,
-          author: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          coverImage: {
-            $ifNull: [
-              { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
-              { $arrayElemAt: ['$images', 0] },
-            ],
-          },
-          chapterCount: { $size: { $ifNull: ['$chapters', []] } },
-        },
+    const user = await getAuthUser(request);
+    const finalPosts = user
+      ? postsList.map((post) => ({
+          ...post,
+          images: signImageUrls(post.images || [], user.id),
+        }))
+      : postsList;
+
+    return NextResponse.json(finalPosts, {
+      headers: {
+        'Cache-Control': 'no-store',
+        'X-Sutie-Cache': cachedPosts ? 'HIT' : 'MISS',
       },
-    ]);
-
-    const serialized = posts.map((post) => {
-      const coverImage = typeof post.coverImage === 'string' && post.coverImage.trim()
-        ? post.coverImage
-        : '';
-
-      return {
-        _id: post._id.toString(),
-        title: post.title,
-        description: post.description || '',
-        tags: post.tags || [],
-        author: post.author || 'Ẩn danh',
-        createdAt: post.createdAt instanceof Date ? post.createdAt.toISOString() : post.createdAt,
-        updatedAt: post.updatedAt instanceof Date ? post.updatedAt.toISOString() : post.updatedAt,
-        chapterCount: post.chapterCount,
-        images: coverImage ? [coverImage] : [],
-      };
-    });
-
-    setApiCache(POSTS_LIST_CACHE_KEY, serialized, POSTS_LIST_CACHE_TTL_MS);
-    return NextResponse.json(serialized, {
-      headers: { 'Cache-Control': 'no-store', 'X-Sutie-Cache': 'MISS' },
     });
   } catch (error) {
     console.error('Lỗi khi tải bài viết:', error);

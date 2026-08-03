@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
+import { signImageUrls } from '@/lib/image-signing';
 
 type BookmarkLean = {
     _id: unknown;
@@ -84,6 +85,10 @@ export async function GET(request: NextRequest) {
                 const coverImage = typeof post.coverImage === 'string' && post.coverImage.trim()
                     ? post.coverImage
                     : '';
+                let coverImages = coverImage ? [coverImage] : [];
+                if (user) {
+                    coverImages = signImageUrls(coverImages, user.id);
+                }
                 return {
                     _id: String(b._id),
                     postId: b.postId.toString(),
@@ -94,7 +99,7 @@ export async function GET(request: NextRequest) {
                     post: {
                         _id: String(post._id),
                         title: post.title,
-                        images: coverImage ? [coverImage] : [],
+                        images: coverImages,
                         author: post.author,
                         tags: post.tags,
                     },

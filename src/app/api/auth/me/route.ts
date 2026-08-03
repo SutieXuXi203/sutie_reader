@@ -1,12 +1,8 @@
-﻿import { connectDB } from '@/lib/db';
+import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
-import { getCurrentUserFromToken } from '@/lib/server-auth';
-
-const JWT_SECRET = new TextEncoder().encode(
-  process.env.JWT_SECRET || 'your-fallback-secret-key-at-least-32-characters'
-);
+import { getCurrentUserFromToken, getJwtSecret } from '@/lib/server-auth';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
 function getDataUrlByteSize(dataUrl: string): number {
@@ -38,7 +34,7 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Chua xac thuc' }, { status: 401 });
     }
 
-    const { payload } = await jwtVerify(token, JWT_SECRET);
+    const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload || !payload.id) {
       return NextResponse.json({ error: 'Token khong hop le' }, { status: 401 });
     }
@@ -115,7 +111,7 @@ export async function PUT(request: NextRequest) {
       .setProtectedHeader({ alg: 'HS256' })
       .setIssuedAt()
       .setExpirationTime(tokenMaxAge ? `${tokenMaxAge}s` : '24h')
-      .sign(JWT_SECRET);
+      .sign(getJwtSecret());
 
     response.cookies.set('token', nextToken, {
       httpOnly: true,

@@ -2,7 +2,7 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify } from 'jose';
-const JWT_SECRET = new TextEncoder().encode(process.env.JWT_SECRET || 'your-fallback-secret-key-at-least-32-characters');
+import { getJwtSecret } from '@/lib/server-auth';
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -12,7 +12,7 @@ export async function DELETE(
         if (!token) {
             return NextResponse.json({ error: 'Chưa xác thực' }, { status: 401 });
         }
-        const { payload } = await jwtVerify(token, JWT_SECRET);
+        const { payload } = await jwtVerify(token, getJwtSecret());
         if (!payload || payload.role !== 'admin') {
             return NextResponse.json({ error: 'Không có quyền truy cập' }, { status: 403 });
         }
