@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useRef, useState, DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -16,6 +16,7 @@ import { TagPicker } from '@/components/TagPicker';
 import { notify } from '@/lib/notify';
 import { useUploadProgress } from '@/providers/UploadProgressProvider';
 import { processBackgroundChapterSave } from '@/lib/uploadService';
+import { cn } from '@/lib/utils';
 
 interface CreatePostFormProps {
   onPostCreated: () => void;
@@ -49,6 +50,10 @@ export function CreatePostForm({
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
 
+  const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
+  const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after' | null>(null);
+
   const draftPostIdRef = useRef<string | null>(null);
   const createdChapterCountRef = useRef(0);
   const isSavingChapterRef = useRef(false);
@@ -63,6 +68,9 @@ export function CreatePostForm({
     setChapterContent('');
     setImageFiles([]);
     setImagePreviews([]);
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+    setDragOverPosition(null);
   };
 
   const resetAll = () => {
@@ -125,6 +133,77 @@ export function CreatePostForm({
   const removeImage = (index: number) => {
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
     setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
+    e.dataTransfer.effectAllowed = 'move';
+    setDraggedIdx(index);
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, index: number) => {
+    e.preventDefault();
+    if (draggedIdx === null || draggedIdx === index) {
+      setDragOverIdx(null);
+      setDragOverPosition(null);
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const isBefore = mouseX < rect.width / 2;
+    const position = isBefore ? 'before' : 'after';
+
+    setDragOverIdx(index);
+    setDragOverPosition(position);
+    e.dataTransfer.dropEffect = 'move';
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>, index: number) => {
+    setDragOverIdx((current) => {
+      if (current === index) {
+        setDragOverPosition(null);
+        return null;
+      }
+      return current;
+    });
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, targetIdx: number) => {
+    e.preventDefault();
+    if (draggedIdx === null) return;
+
+    if (draggedIdx !== targetIdx) {
+      const newFiles = [...imageFiles];
+      const [draggedFile] = newFiles.splice(draggedIdx, 1);
+
+      const newPreviews = [...imagePreviews];
+      const [draggedPreview] = newPreviews.splice(draggedIdx, 1);
+
+      let insertIdx = targetIdx;
+      if (draggedIdx < targetIdx) {
+        insertIdx = targetIdx - 1;
+      }
+
+      if (dragOverPosition === 'after') {
+        insertIdx += 1;
+      }
+
+      newFiles.splice(insertIdx, 0, draggedFile);
+      newPreviews.splice(insertIdx, 0, draggedPreview);
+
+      setImageFiles(newFiles);
+      setImagePreviews(newPreviews);
+    }
+
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+    setDragOverPosition(null);
+  };
+
+  const handleDragEnd = () => {
+    setDraggedIdx(null);
+    setDragOverIdx(null);
+    setDragOverPosition(null);
   };
 
 
@@ -365,26 +444,47 @@ export function CreatePostForm({
                     {imagePreviews.map((preview, index) => (
                       <div
                         key={index}
-                        className="relative group bg-slate-100 dark:bg-slate-800 rounded-[10px] overflow-hidden h-28 border border-border/40 shadow-sm hover:shadow-md transition-all"
+                        draggable={!isSubmitting}
+                        onDragStart={(e) => handleDragStart(e, index)}
+                        onDragOver={(e) => handleDragOver(e, index)}
+                        onDragLeave={(e) => handleDragLeave(e, index)}
+                        onDrop={(e) => handleDrop(e, index)}
+                        onDragEnd={handleDragEnd}
+                        className="relative h-28 cursor-move group"
                       >
-                        <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
-                          #{index + 1}
-                        </span>
-                        <Image
-                          src={preview}
-                          alt={`Xem trước ${index + 1}`}
-                          fill
-                          className="object-cover transition-transform duration-300 group-hover:scale-105"
-                        />
-                        <button
-                          type="button"
-                          onClick={() => removeImage(index)}
-                          title="Xóa ảnh này"
-                          aria-label="Xóa ảnh"
-                          className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center"
-                        >
-                          <X className="h-3.5 w-3.5 stroke-[2.5]" />
-                        </button>
+                        <div className={cn(
+                          "w-full h-full overflow-hidden rounded-[10px] border bg-slate-100 shadow-sm dark:bg-slate-800 relative transition-all",
+                          draggedIdx === index ? "opacity-60 scale-[0.98] border-primary" : "border-border/40",
+                          "group-hover:shadow-md"
+                        )}>
+                          <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md backdrop-blur-sm z-10 border border-white/20 select-none shadow">
+                            #{index + 1}
+                          </span>
+                          <Image
+                            src={preview}
+                            alt={`Xem trước ${index + 1}`}
+                            fill
+                            className="object-cover transition-transform duration-300 group-hover:scale-105"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => removeImage(index)}
+                            title="Xóa ảnh này"
+                            aria-label="Xóa ảnh"
+                            className="absolute top-1.5 right-1.5 bg-rose-600 hover:bg-rose-700 active:scale-90 text-white p-1.5 rounded-full shadow-md hover:shadow-rose-500/30 transition-all cursor-pointer z-10 border border-white/40 flex items-center justify-center"
+                          >
+                            <X className="h-3.5 w-3.5 stroke-[2.5]" />
+                          </button>
+                        </div>
+                        {dragOverIdx === index && dragOverPosition && (
+                          <div
+                            className={cn(
+                              "absolute top-0 bottom-0 w-[4px] bg-primary z-30 pointer-events-none transition-all duration-75",
+                              dragOverPosition === 'before' ? "-left-[9px] rounded-full" : "-right-[9px] rounded-full"
+                            )}
+                            style={{ boxShadow: '0 0 10px hsl(var(--primary))' }}
+                          />
+                        )}
                       </div>
                     ))}
                   </div>

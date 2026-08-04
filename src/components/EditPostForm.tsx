@@ -287,8 +287,13 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   };
 
   const handleDragLeave = (e: DragEvent<HTMLDivElement>, targetId: string) => {
-    setDragOverImageId((current) => (current === targetId ? null : current));
-    setDragOverPosition((current) => (current === targetId ? null : current));
+    setDragOverImageId((current) => {
+      if (current === targetId) {
+        setDragOverPosition(null);
+        return null;
+      }
+      return current;
+    });
   };
 
   const handleDrop = (e: DragEvent<HTMLDivElement>, targetId: string) => {
