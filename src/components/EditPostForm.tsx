@@ -530,53 +530,58 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
           onDragEnd={handleDragEnd}
           style={expanded ? { contentVisibility: 'auto', containIntrinsicSize: '160px 240px' } : undefined}
           className={cn(
-            "relative aspect-[2/3] cursor-move overflow-hidden rounded-[10px] border bg-slate-100 shadow-sm dark:bg-slate-800",
-            expanded ? "contain-layout contain-paint" : "group transition-shadow hover:shadow-md",
-            draggedImageId === img.id ? "opacity-60 scale-[0.98] border-primary" : "border-border/40",
-            img.isNew && "ring-2 ring-primary/50"
+            "relative aspect-[2/3] cursor-move",
+            expanded ? "contain-layout contain-paint" : "group"
           )}
         >
-          <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md z-10 border border-white/20 select-none shadow">
-            #{idx + 1}
-          </span>
-          {img.isNew && (
-            <span className="absolute bottom-1.5 left-1.5 bg-blue-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md z-10 select-none">
-              MỚI
+          <div className={cn(
+            "w-full h-full overflow-hidden rounded-[10px] border bg-slate-100 shadow-sm dark:bg-slate-800 relative",
+            expanded ? "" : "transition-shadow group-hover:shadow-md",
+            draggedImageId === img.id ? "opacity-60 scale-[0.98] border-primary" : "border-border/40",
+            img.isNew && "ring-2 ring-primary/50"
+          )}>
+            <span className="absolute top-1.5 left-1.5 bg-black/75 text-white text-[11px] font-bold px-1.5 py-0.5 rounded-md z-10 border border-white/20 select-none shadow">
+              #{idx + 1}
             </span>
-          )}
-          {expanded ? (
-            <img
-              src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
-              alt={`Ảnh ${idx + 1}`}
-              loading="lazy"
-              decoding="async"
-              draggable={false}
-              className="h-full w-full object-cover"
-            />
-          ) : (
-            <Image
-              src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
-              alt={`Ảnh ${idx + 1}`}
-              fill
-              sizes="(max-width: 420px) 45vw, (max-width: 768px) 28vw, 160px"
-              className="object-cover transition-transform duration-150 group-hover:scale-[1.02]"
-              unoptimized={!img.isNew}
-            />
-          )}
-          <button
-            type="button"
-            onClick={() => removeImage(img.id)}
-            title="Xóa ảnh"
-            aria-label="Xóa ảnh"
-            className="absolute top-1.5 right-1.5 z-10 flex items-center justify-center rounded-full border border-white/40 bg-rose-600 p-1.5 text-white shadow-md transition-colors hover:bg-rose-700 active:scale-95"
-          >
-            <X className="h-3.5 w-3.5 stroke-[2.5]" />
-          </button>
+            {img.isNew && (
+              <span className="absolute bottom-1.5 left-1.5 bg-blue-500/90 text-white text-[9px] font-bold px-1.5 py-0.5 rounded-md z-10 select-none">
+                MỚI
+              </span>
+            )}
+            {expanded ? (
+              <img
+                src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
+                alt={`Ảnh ${idx + 1}`}
+                loading="lazy"
+                decoding="async"
+                draggable={false}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <Image
+                src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
+                alt={`Ảnh ${idx + 1}`}
+                fill
+                sizes="(max-width: 420px) 45vw, (max-width: 768px) 28vw, 160px"
+                className="object-cover transition-transform duration-150 group-hover:scale-[1.02]"
+                unoptimized={!img.isNew}
+              />
+            )}
+            <button
+              type="button"
+              onClick={() => removeImage(img.id)}
+              title="Xóa ảnh"
+              aria-label="Xóa ảnh"
+              className="absolute top-1.5 right-1.5 z-10 flex items-center justify-center rounded-full border border-white/40 bg-rose-600 p-1.5 text-white shadow-md transition-colors hover:bg-rose-700 active:scale-95"
+            >
+              <X className="h-3.5 w-3.5 stroke-[2.5]" />
+            </button>
+          </div>
           {dragOverImageId === img.id && dragOverPosition && (
             <div
               className={cn(
-                "absolute top-0 bottom-0 w-[5px] bg-primary z-30 pointer-events-none transition-all duration-75",
-                dragOverPosition === 'before' ? "left-0 rounded-r-md" : "right-0 rounded-l-md"
+                "absolute top-0 bottom-0 w-[4px] bg-primary z-30 pointer-events-none transition-all duration-75",
+                dragOverPosition === 'before' ? "-left-[9px] rounded-full" : "-right-[9px] rounded-full"
               )}
               style={{ boxShadow: '0 0 10px hsl(var(--primary))' }}
             />
