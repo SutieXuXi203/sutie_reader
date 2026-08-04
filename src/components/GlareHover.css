@@ -10,46 +10,38 @@
   place-items: center;
 }
 
-.glare-hover::before {
-  content: '';
+.glare-hover-glow {
   position: absolute;
-  inset: 0;
+  top: -50%;
+  left: -50%;
+  width: 200%;
+  height: 200%;
   background: linear-gradient(
     var(--gh-angle),
-    hsla(0, 0%, 0%, 0) 60%,
-    var(--gh-rgba) 70%,
-    hsla(0, 0%, 0%, 0),
-    hsla(0, 0%, 0%, 0) 100%
+    hsla(0, 0%, 0%, 0) 35%,
+    var(--gh-rgba) 50%,
+    hsla(0, 0%, 0%, 0) 65%
   );
-  transition: var(--gh-duration) ease;
-  background-size:
-    var(--gh-size) var(--gh-size),
-    100% 100%;
-  background-repeat: no-repeat;
-  background-position:
-    -100% -100%,
-    0 0;
   pointer-events: none;
   z-index: 10;
+  will-change: transform;
+  transform: translate3d(-50%, -50%, 0);
+  transition: transform var(--gh-duration) ease;
 }
 
 .glare-hover:hover {
   cursor: pointer;
 }
 
-.glare-hover:hover::before {
-  background-position:
-    100% 100%,
-    0 0;
+.glare-hover:hover .glare-hover-glow {
+  transform: translate3d(50%, 50%, 0);
 }
 
-.glare-hover--play-once::before {
+.glare-hover--play-once .glare-hover-glow {
   transition: none;
 }
 
-.glare-hover--play-once:hover::before {
-  transition: var(--gh-duration) ease;
-  background-position:
-    100% 100%,
-    0 0;
+.glare-hover--play-once:hover .glare-hover-glow {
+  transition: transform var(--gh-duration) ease;
+  transform: translate3d(50%, 50%, 0);
 }

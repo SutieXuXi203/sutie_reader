@@ -65,6 +65,7 @@ export const GlareHover: React.FC<GlareHoverProps> = ({
       className={`glare-hover ${playOnce ? 'glare-hover--play-once' : ''} ${className}`}
       style={{ ...vars, ...style }}
     >
+      <div className="glare-hover-glow" />
       {children}
     </div>
   );
