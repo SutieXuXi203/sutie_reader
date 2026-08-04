@@ -90,6 +90,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const [chapters, setChapters] = useState<ChapterEditState[]>([]);
   const [selectedChapterIndex, setSelectedChapterIndex] = useState<number>(0);
   const [draggedImageId, setDraggedImageId] = useState<string | null>(null);
+  const [dragOverImageId, setDragOverImageId] = useState<string | null>(null);
+  const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after' | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedImageLimit, setExpandedImageLimit] = useState(0);
   const chaptersRef = useRef<ChapterEditState[]>([]);
@@ -261,37 +263,67 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     setIsExpanded(false);
   };
 
-  const handleDragStart = (e: DragEvent, id: string) => {
+  const handleDragStart = (e: DragEvent<HTMLDivElement>, id: string) => {
     e.dataTransfer.effectAllowed = 'move';
     setDraggedImageId(id);
   };
 
-  const handleDragOver = (e: DragEvent) => {
+  const handleDragOver = (e: DragEvent<HTMLDivElement>, targetId: string) => {
     e.preventDefault();
+    if (!draggedImageId || draggedImageId === targetId) {
+      setDragOverImageId(null);
+      setDragOverPosition(null);
+      return;
+    }
+
+    const rect = e.currentTarget.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const isBefore = mouseX < rect.width / 2;
+    const position = isBefore ? 'before' : 'after';
+
+    setDragOverImageId(targetId);
+    setDragOverPosition(position);
     e.dataTransfer.dropEffect = 'move';
   };
 
-  const handleDrop = (e: DragEvent, targetId: string) => {
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>, targetId: string) => {
+    setDragOverImageId((current) => (current === targetId ? null : current));
+    setDragOverPosition((current) => (current === targetId ? null : current));
+  };
+
+  const handleDrop = (e: DragEvent<HTMLDivElement>, targetId: string) => {
     e.preventDefault();
-    if (!draggedImageId || draggedImageId === targetId) return;
+    if (!draggedImageId) return;
 
-    updateActiveChapter((ch) => {
-      const newImages = [...ch.images];
-      const draggedIdx = newImages.findIndex((img) => img.id === draggedImageId);
-      const targetIdx = newImages.findIndex((img) => img.id === targetId);
+    if (draggedImageId !== targetId) {
+      updateActiveChapter((ch) => {
+        const newImages = [...ch.images];
+        const draggedIdx = newImages.findIndex((img) => img.id === draggedImageId);
+        if (draggedIdx === -1) return ch;
 
-      if (draggedIdx === -1 || targetIdx === -1) return ch;
+        const [draggedItem] = newImages.splice(draggedIdx, 1);
+        
+        let targetIdx = newImages.findIndex((img) => img.id === targetId);
+        if (targetIdx === -1) return ch;
 
-      const [draggedItem] = newImages.splice(draggedIdx, 1);
-      newImages.splice(targetIdx, 0, draggedItem);
+        if (dragOverPosition === 'after') {
+          targetIdx += 1;
+        }
 
-      return { ...ch, images: newImages };
-    });
+        newImages.splice(targetIdx, 0, draggedItem);
+        return { ...ch, images: newImages };
+      });
+    }
+
     setDraggedImageId(null);
+    setDragOverImageId(null);
+    setDragOverPosition(null);
   };
 
   const handleDragEnd = () => {
     setDraggedImageId(null);
+    setDragOverImageId(null);
+    setDragOverPosition(null);
   };
 
   const handleAddChapter = () => {
@@ -492,7 +524,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
           key={img.id}
           draggable={!isSubmitting}
           onDragStart={(e) => handleDragStart(e, img.id)}
-          onDragOver={handleDragOver}
+          onDragOver={(e) => handleDragOver(e, img.id)}
+          onDragLeave={(e) => handleDragLeave(e, img.id)}
           onDrop={(e) => handleDrop(e, img.id)}
           onDragEnd={handleDragEnd}
           style={expanded ? { contentVisibility: 'auto', containIntrinsicSize: '160px 240px' } : undefined}
@@ -539,6 +572,15 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
           >
             <X className="h-3.5 w-3.5 stroke-[2.5]" />
           </button>
+          {dragOverImageId === img.id && dragOverPosition && (
+            <div
+              className={cn(
+                "absolute top-0 bottom-0 w-[5px] bg-primary z-30 pointer-events-none transition-all duration-75",
+                dragOverPosition === 'before' ? "left-0 rounded-r-md" : "right-0 rounded-l-md"
+              )}
+              style={{ boxShadow: '0 0 10px hsl(var(--primary))' }}
+            />
+          )}
         </div>
         ))}
       </div>
