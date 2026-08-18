@@ -12,12 +12,12 @@ import {
   AnimatedLock,
 } from '@/components/animate-ui/icons/AnimateIcon';
 import { Loader2, ChevronDown } from 'lucide-react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthContext';
-import { cn, getOptimizedImageUrl } from '@/lib/utils';
+import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
+import { ReaderImage } from '@/components/ReaderImage';
 
 interface Chapter {
   _id?: string;
@@ -523,13 +523,13 @@ export default function PostDetailPage() {
                 }}
                 className="w-full max-w-5xl relative scroll-mt-16 md:scroll-mt-24"
               >
-                <Image
-                  src={getOptimizedImageUrl(img)}
+                <ReaderImage
+                  src={img}
                   alt={`Trang ${idx + 1}`}
+                  idx={idx}
                   width={1200}
                   height={1800}
                   className="w-full h-auto block select-none"
-                  unoptimized
                   priority={idx < 2}
                 />
               </div>
@@ -571,8 +571,9 @@ export default function PostDetailPage() {
       </main>
 
       <div
-        className={`fixed bottom-0 left-0 right-0 z-50 transition-opacity duration-500 ${showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'
-          }`}
+        className={`fixed bottom-0 left-0 right-0 z-50 transition-opacity duration-500 ${
+          showUI ? 'opacity-100' : 'opacity-0 pointer-events-none'
+        }`}
       >
         <div className="h-1.5 bg-white/5">
           <div

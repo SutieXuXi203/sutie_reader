@@ -1,8 +1,8 @@
 'use client';
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { X, BookOpen } from 'lucide-react';
-import Image from 'next/image';
-import { getOptimizedImageUrl } from '@/lib/utils';
+import { ReaderImage } from '@/components/ReaderImage';
+
 interface Post {
     _id: string;
     title: string;
@@ -12,28 +12,33 @@ interface Post {
     author: string;
     createdAt: string;
 }
+
 interface PostDetailProps {
     post: Post;
     open: boolean;
     onOpenChange: (open: boolean) => void;
 }
+
 export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
     const [showUI, setShowUI] = useState(true);
     const [currentPage, setCurrentPage] = useState(0);
     const uiTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
     const scrollRef = useRef<HTMLDivElement>(null);
     const imageRefs = useRef<(HTMLDivElement | null)[]>([]);
+
     const resetUiTimer = useCallback(() => {
         setShowUI(true);
         if (uiTimer.current) clearTimeout(uiTimer.current);
         uiTimer.current = setTimeout(() => setShowUI(false), 3000);
     }, []);
+
     const closeDetail = useCallback(() => {
         setCurrentPage(0);
         setShowUI(true);
         if (uiTimer.current) clearTimeout(uiTimer.current);
         onOpenChange(false);
     }, [onOpenChange]);
+
     useEffect(() => {
         if (uiTimer.current) clearTimeout(uiTimer.current);
 
@@ -52,6 +57,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
             if (uiTimer.current) clearTimeout(uiTimer.current);
         };
     }, [open, post._id]);
+
     useEffect(() => {
         if (!open) return;
         const handleKey = (e: KeyboardEvent) => {
@@ -60,6 +66,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
         window.addEventListener('keydown', handleKey);
         return () => window.removeEventListener('keydown', handleKey);
     }, [open, closeDetail]);
+
     useEffect(() => {
         if (!open) return;
         const container = scrollRef.current;
@@ -78,9 +85,11 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
         imageRefs.current.forEach((ref) => { if (ref) observer.observe(ref); });
         return () => observer.disconnect();
     }, [open, post.images.length]);
+
     if (!open) return null;
     const total = post.images.length;
     const progress = total > 1 ? (currentPage / (total - 1)) * 100 : 100;
+
     return (
         <div className="fixed inset-0 z-50 bg-[#0a0000] flex flex-col" onMouseMove={resetUiTimer}>
             <div
@@ -124,13 +133,13 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                             ref={(el) => { imageRefs.current[idx] = el; }}
                             className="w-full max-w-5xl relative"
                         >
-                            <Image
-                                src={getOptimizedImageUrl(img)}
+                            <ReaderImage
+                                src={img}
                                 alt={`Trang ${idx + 1}`}
+                                idx={idx}
                                 width={800}
                                 height={1200}
                                 className="w-full h-auto block"
-                                unoptimized
                                 priority={idx === 0}
                             />
                         </div>

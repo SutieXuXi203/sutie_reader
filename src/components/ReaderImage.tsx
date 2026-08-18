@@ -1,0 +1,144 @@
+'use client';
+
+import { useState, useCallback, useRef, useEffect } from 'react';
+import Image from 'next/image';
+import { RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
+import { extractDriveImageId, getOptimizedImageUrl } from '@/lib/utils';
+
+interface ReaderImageProps {
+  src: string;
+  alt: string;
+  idx: number;
+  priority?: boolean;
+  className?: string;
+  width?: number;
+  height?: number;
+  onLoad?: () => void;
+}
+
+export function ReaderImage({
+  src,
+  alt,
+  idx,
+  priority = false,
+  className = 'w-full h-auto block select-none',
+  width = 1200,
+  height = 1800,
+  onLoad,
+}: ReaderImageProps) {
+  const [prevSrc, setPrevSrc] = useState(src);
+  const [currentSrc, setCurrentSrc] = useState<string>(() => getOptimizedImageUrl(src));
+  const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
+  const [retryCount, setRetryCount] = useState(0);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Synchronize when src prop changes (React recommended pattern: adjust state during rendering)
+  if (prevSrc !== src) {
+    setPrevSrc(src);
+    setCurrentSrc(getOptimizedImageUrl(src));
+    setStatus('loading');
+    setRetryCount(0);
+    setIsRetrying(false);
+  }
+
+  useEffect(() => {
+    return () => {
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+    };
+  }, []);
+
+  const handleAutoFallback = useCallback(() => {
+    const fileId = extractDriveImageId(src);
+
+    if (retryCount === 0 && fileId) {
+      // First retry: switch to internal proxy endpoint which generates fresh server signature on the fly
+      setRetryCount(1);
+      setCurrentSrc(`/api/image/${encodeURIComponent(fileId)}?v=2&retry=1&t=${Date.now()}`);
+      setStatus('loading');
+    } else if (retryCount < 3 && fileId) {
+      // Subsequent auto retries with slight delay for network jitter
+      setIsRetrying(true);
+      if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
+      retryTimeoutRef.current = setTimeout(() => {
+        setRetryCount((prev) => prev + 1);
+        setCurrentSrc(`/api/image/${encodeURIComponent(fileId)}?v=2&retry=${retryCount + 1}&t=${Date.now()}`);
+        setIsRetrying(false);
+        setStatus('loading');
+      }, 1000);
+    } else {
+      // Exhausted automatic retries, show manual retry UI
+      setStatus('error');
+    }
+  }, [src, retryCount]);
+
+  const handleManualRetry = () => {
+    const fileId = extractDriveImageId(src);
+    setStatus('loading');
+    setIsRetrying(true);
+    setRetryCount(1);
+
+    if (fileId) {
+      setCurrentSrc(`/api/image/${encodeURIComponent(fileId)}?v=2&manual=1&t=${Date.now()}`);
+    } else {
+      setCurrentSrc(`${src}${src.includes('?') ? '&' : '?'}t=${Date.now()}`);
+    }
+    setTimeout(() => setIsRetrying(false), 500);
+  };
+
+  return (
+    <div className="relative w-full overflow-hidden bg-muted/10 min-h-[350px] sm:min-h-[500px] md:min-h-[700px] flex items-center justify-center">
+      {/* Loading Skeleton & Indicator */}
+      {status === 'loading' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-card/40 backdrop-blur-xs text-muted-foreground animate-pulse z-10">
+          <ImageIcon className="w-8 h-8 opacity-40 animate-bounce" />
+          <span className="text-xs font-medium opacity-60">Đang tải trang {idx + 1}...</span>
+        </div>
+      )}
+
+      {/* Error state */}
+      {status === 'error' && (
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/90 border border-destructive/20 p-6 text-center z-20">
+          <div className="w-12 h-12 rounded-full bg-destructive/10 text-destructive flex items-center justify-center">
+            <AlertCircle className="w-6 h-6" />
+          </div>
+          <div>
+            <p className="text-sm font-semibold text-foreground">Không thể tải trang {idx + 1}</p>
+            <p className="text-xs text-muted-foreground mt-0.5">
+              Đường truyền chập chờn hoặc link ảnh đã hết hạn
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={handleManualRetry}
+            disabled={isRetrying}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-[8px] bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 active:scale-95 transition-all shadow-sm cursor-pointer disabled:opacity-50"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 ${isRetrying ? 'animate-spin' : ''}`} />
+            <span>{isRetrying ? 'Đang tải lại...' : 'Tải lại trang này'}</span>
+          </button>
+        </div>
+      )}
+
+      {/* Main Image */}
+      {currentSrc && (
+        <Image
+          src={currentSrc}
+          alt={alt}
+          width={width}
+          height={height}
+          className={`${className} transition-opacity duration-300 ${
+            status === 'loaded' ? 'opacity-100' : 'opacity-0'
+          }`}
+          unoptimized
+          priority={priority}
+          onLoad={() => {
+            setStatus('loaded');
+            onLoad?.();
+          }}
+          onError={handleAutoFallback}
+        />
+      )}
+    </div>
+  );
+}
