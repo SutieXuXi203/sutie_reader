@@ -3,8 +3,8 @@ const MAX_FILES_PER_REQUEST = 10;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const IMAGE_SIGNATURE_VERSION = 'v1';
 const IMAGE_SIGNATURE_MAX_FUTURE_SECONDS = 3600;
-const CLIENT_IMAGE_CACHE_SECONDS = 120;
-const EDGE_IMAGE_CACHE_SECONDS = 31536000;
+const CLIENT_IMAGE_CACHE_SECONDS = 2592000; // 30 ngày
+const EDGE_IMAGE_CACHE_SECONDS = 31536000; // 1 năm
 
 let cachedAccessToken = null;
 let tokenExpiry = 0;
@@ -169,8 +169,9 @@ function imageResponseForClient(response, corsHeaders) {
   for (const [key, value] of Object.entries(corsHeaders)) {
     headers.set(key, value);
   }
-  headers.set('Cache-Control', `private, max-age=${CLIENT_IMAGE_CACHE_SECONDS}`);
-  headers.set('Vary', 'Cookie');
+  headers.set('Cache-Control', `public, max-age=${CLIENT_IMAGE_CACHE_SECONDS}, immutable`);
+  headers.set('ETag', `"${response.headers.get('ETag') || 'static-image'}"`);
+  headers.delete('Vary');
 
   return new Response(response.body, {
     status: response.status,
@@ -517,20 +518,22 @@ const worker = {
         }
 
         const accessToken = await getAccessToken(env);
-        const rootFolderId = getRootFolderId(env);
-        const metadata = await assertImageCanBeServed(accessToken, rootFolderId, fileId);
-        const driveRes = await fetch(`https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`, {
-          headers: { Authorization: `Bearer ${accessToken}` },
-        });
+        const driveRes = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
 
         if (!driveRes.ok) {
           throw httpError('Image not found', driveRes.status);
         }
 
         const edgeHeaders = new Headers(corsHeaders);
-        edgeHeaders.set('Content-Type', metadata.mimeType || driveRes.headers.get('content-type') || 'image/jpeg');
+        const contentType = driveRes.headers.get('content-type') || 'image/jpeg';
+        edgeHeaders.set('Content-Type', contentType);
         edgeHeaders.set('Cache-Control', `public, max-age=${EDGE_IMAGE_CACHE_SECONDS}, immutable`);
-        edgeHeaders.set('Content-Disposition', `inline; filename="${encodeURIComponent(metadata.name || 'image')}"`);
+        edgeHeaders.set('Content-Disposition', 'inline; filename="image"');
 
         const response = new Response(driveRes.body, { status: 200, headers: edgeHeaders });
         ctx.waitUntil(cache.put(cacheKey, response.clone()));

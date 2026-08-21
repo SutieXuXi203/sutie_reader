@@ -31,16 +31,56 @@ export function ReaderImage({
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
+  const [isInViewportOrNear, setIsInViewportOrNear] = useState(
+    () => priority || (typeof window !== 'undefined' && typeof IntersectionObserver === 'undefined')
+  );
+  const containerRef = useRef<HTMLDivElement | null>(null);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Synchronize when src prop changes (React recommended pattern: adjust state during rendering)
+  // Synchronize when src prop changes
   if (prevSrc !== src) {
     setPrevSrc(src);
     setCurrentSrc(getOptimizedImageUrl(src));
     setStatus('loading');
     setRetryCount(0);
     setIsRetrying(false);
+    if (priority) {
+      setIsInViewportOrNear(true);
+    }
   }
+
+  // Smart Preload Observer: Preload when image is within 1200px (approx 2-3 screen heights) of viewport
+  useEffect(() => {
+    if (priority || isInViewportOrNear) return;
+
+    const el = containerRef.current;
+    if (!el) return;
+
+    if (typeof IntersectionObserver === 'undefined') {
+      const timer = setTimeout(() => setIsInViewportOrNear(true), 0);
+      return () => clearTimeout(timer);
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const entry = entries[0];
+        if (entry && (entry.isIntersecting || entry.intersectionRatio > 0)) {
+          setIsInViewportOrNear(true);
+          observer.disconnect();
+        }
+      },
+      {
+        rootMargin: '1200px 0px 1200px 0px',
+        threshold: 0.01,
+      }
+    );
+
+    observer.observe(el);
+
+    return () => {
+      observer.disconnect();
+    };
+  }, [priority, isInViewportOrNear]);
 
   useEffect(() => {
     return () => {
@@ -87,7 +127,10 @@ export function ReaderImage({
   };
 
   return (
-    <div className="relative w-full overflow-hidden bg-muted/10 min-h-[350px] sm:min-h-[500px] md:min-h-[700px] flex items-center justify-center">
+    <div
+      ref={containerRef}
+      className="relative w-full overflow-hidden bg-muted/10 min-h-[350px] sm:min-h-[500px] md:min-h-[700px] flex items-center justify-center"
+    >
       {/* Loading Skeleton & Indicator */}
       {status === 'loading' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-card/40 backdrop-blur-xs text-muted-foreground animate-pulse z-10">
@@ -120,8 +163,8 @@ export function ReaderImage({
         </div>
       )}
 
-      {/* Main Image */}
-      {currentSrc && (
+      {/* Main Image - Smart Loaded */}
+      {isInViewportOrNear && currentSrc && (
         <Image
           src={currentSrc}
           alt={alt}

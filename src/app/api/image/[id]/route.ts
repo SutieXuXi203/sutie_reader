@@ -151,8 +151,7 @@ export async function GET(
     if (contentDisposition) responseHeaders.set('Content-Disposition', contentDisposition);
     if (etag) responseHeaders.set('ETag', etag);
     if (lastModified) responseHeaders.set('Last-Modified', lastModified);
-    responseHeaders.set('Cache-Control', 'private, max-age=120');
-    responseHeaders.set('Vary', 'Cookie');
+    responseHeaders.set('Cache-Control', 'public, max-age=604800, stale-while-revalidate=86400');
     responseHeaders.set('X-Content-Type-Options', 'nosniff');
 
     return new NextResponse(upstream.body, {

@@ -264,7 +264,7 @@ export async function GET(
         serialized.images = signImageUrls(serialized.images, user.id);
       }
       if (Array.isArray(serialized.chapters)) {
-        serialized.chapters = serialized.chapters.map((chapter: any) => ({
+        serialized.chapters = serialized.chapters.map((chapter: NormalizedPostChapter) => ({
           ...chapter,
           images: signImageUrls(chapter.images || [], user.id),
         }));

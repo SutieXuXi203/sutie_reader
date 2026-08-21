@@ -157,10 +157,22 @@ const serializePost = (postDoc: unknown) => {
 
 import { signImageUrls } from '@/lib/image-signing';
 
+type PostListItem = {
+  _id: string;
+  title: string;
+  description: string;
+  tags: string[];
+  author: string;
+  createdAt: string | Date;
+  updatedAt?: string | Date;
+  chapterCount: number;
+  images: string[];
+};
+
 export async function GET(request: NextRequest) {
   try {
-    const cachedPosts = getApiCache<any[]>(POSTS_LIST_CACHE_KEY);
-    let postsList: any[];
+    const cachedPosts = getApiCache<PostListItem[]>(POSTS_LIST_CACHE_KEY);
+    let postsList: PostListItem[];
 
     if (cachedPosts) {
       postsList = cachedPosts;

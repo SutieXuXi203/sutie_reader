@@ -31,15 +31,23 @@ export const uploadImages = async (
 
     const compressedBatch = await Promise.all(
       batchFiles.map(async (file) => {
-        if (file.size <= 500 * 1024) return file;
         try {
-          return await imageCompression(file, {
-            maxSizeMB: 1,
-            maxWidthOrHeight: 1920,
+          const isAlreadySmallWebp = file.type === 'image/webp' && file.size <= 400 * 1024;
+          if (isAlreadySmallWebp) return file;
+
+          const compressedBlob = await imageCompression(file, {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 2048,
+            fileType: 'image/webp',
+            initialQuality: 0.85,
             useWebWorker: true,
           });
+
+          const baseName = file.name.replace(/\.[^.]+$/, '');
+          const webpFileName = `${baseName}.webp`;
+          return new File([compressedBlob], webpFileName, { type: 'image/webp' });
         } catch (error) {
-          console.error('Lỗi khi nén ảnh:', error);
+          console.error('Lỗi khi nén ảnh sang WebP:', error);
           return file;
         }
       })
@@ -48,8 +56,8 @@ export const uploadImages = async (
     const formData = new FormData();
     formData.append('title', uploadTitle);
     if (postId) formData.append('postId', postId);
-    compressedBatch.forEach((compressed, idx) =>
-      formData.append('files', compressed, batchFiles[idx].name)
+    compressedBatch.forEach((compressed) =>
+      formData.append('files', compressed, compressed.name)
     );
 
     const res = await fetch(`${workerUrl}/upload`, {
