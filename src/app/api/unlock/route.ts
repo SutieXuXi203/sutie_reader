@@ -25,8 +25,6 @@ export async function POST(request: Request) {
       );
     }
 
-    await new Promise(resolve => setTimeout(resolve, 1000));
-
     if (pin === SECRET_TOKEN) {
       if (rateLimit) {
         await RateLimit.deleteOne({ ip });

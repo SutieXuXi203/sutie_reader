@@ -2,7 +2,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Unlock, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
+import { Lock, Unlock, ArrowRight, ShieldCheck, Loader2, Delete } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { gooeyToast } from 'goey-toast';
 
@@ -19,74 +19,62 @@ export default function UnlockPage() {
 }
 
 function UnlockForm() {
-  const [pin, setPin] = useState(['', '', '', '', '', '']);
+  const [pin, setPin] = useState('');
+  const [isFocused, setIsFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isError, setIsError] = useState(false);
-  const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
   
+  const inputRef = useRef<HTMLInputElement | null>(null);
   const router = useRouter();
   const searchParams = useSearchParams();
   
   const callbackUrl = searchParams.get('callbackUrl') || '/';
 
+  // Auto focus input on mount for rapid typing
   useEffect(() => {
-    if (inputRefs.current[0]) {
-      inputRefs.current[0].focus();
-    }
+    const timer = setTimeout(() => {
+      inputRef.current?.focus();
+    }, 50);
+    return () => clearTimeout(timer);
   }, []);
 
-  const handleChange = (index: number, value: string) => {
-    if (!/^\d*$/.test(value)) return;
-
-    const newPin = [...pin];
-    newPin[index] = value;
-    setPin(newPin);
+  const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const rawValue = e.target.value.replace(/\D/g, '').slice(0, 6);
+    setPin(rawValue);
     setIsError(false);
 
-    if (value && index < 5 && inputRefs.current[index + 1]) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    if (newPin.every(d => d !== '')) {
-      handleSubmit(newPin.join(''));
+    if (rawValue.length === 6) {
+      handleSubmit(rawValue);
     }
   };
 
-  const handleKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
-    if (e.key === 'Backspace') {
-      if (!pin[index] && index > 0 && inputRefs.current[index - 1]) {
-        const newPin = [...pin];
-        newPin[index - 1] = '';
-        setPin(newPin);
-        inputRefs.current[index - 1]?.focus();
-      } else {
-        const newPin = [...pin];
-        newPin[index] = '';
-        setPin(newPin);
-      }
+  const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Enter' && pin.length === 6) {
+      handleSubmit(pin);
+    }
+  };
+
+  const handleContainerClick = () => {
+    inputRef.current?.focus();
+  };
+
+  const handleKeyPress = (digit: string) => {
+    if (isLoading || isSuccess) return;
+    if (pin.length < 6) {
+      const nextPin = pin + digit;
+      setPin(nextPin);
       setIsError(false);
+      if (nextPin.length === 6) {
+        handleSubmit(nextPin);
+      }
     }
   };
 
-  const handlePaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (!pastedData) return;
-    
-    const newPin = [...pin];
-    for (let i = 0; i < pastedData.length; i++) {
-      newPin[i] = pastedData[i];
-    }
-    setPin(newPin);
+  const handleDelete = () => {
+    if (isLoading || isSuccess || pin.length === 0) return;
+    setPin((prev) => prev.slice(0, -1));
     setIsError(false);
-
-    if (pastedData.length === 6) {
-      inputRefs.current[5]?.focus();
-      handleSubmit(newPin.join(''));
-    } else {
-      inputRefs.current[pastedData.length]?.focus();
-    }
   };
 
   const handleSubmit = async (fullPin: string) => {
@@ -111,16 +99,18 @@ function UnlockForm() {
           description: 'Chào mừng bạn quay lại Sutie Reader!',
         });
         setTimeout(() => {
-          window.location.href = callbackUrl;
-        }, 500);
+          window.location.replace(callbackUrl);
+        }, 150);
       } else {
         setIsError(true);
         setIsLoading(false);
         gooeyToast.error('Lỗi xác thực', {
           description: data.error || 'Mã PIN không chính xác',
         });
-        setPin(['', '', '', '', '', '']);
-        inputRefs.current[0]?.focus();
+        setPin('');
+        setTimeout(() => {
+          inputRef.current?.focus();
+        }, 100);
       }
     } catch (error) {
       setIsError(true);
@@ -128,29 +118,33 @@ function UnlockForm() {
       gooeyToast.error('Đã xảy ra lỗi', {
         description: 'Vui lòng thử lại sau',
       });
+      setPin('');
+      setTimeout(() => {
+        inputRef.current?.focus();
+      }, 100);
     }
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden p-4">
-      {/* Ambient background glows */}
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] bg-primary/10 rounded-full blur-[100px] pointer-events-none" />
-      <div className="absolute top-0 right-0 w-[300px] h-[300px] bg-blue-500/10 rounded-full blur-[80px] pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-purple-500/10 rounded-full blur-[90px] pointer-events-none" />
+    <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden p-4 select-none touch-manipulation">
+      {/* Ambient background glows - hardware accelerated for smooth 60/120fps */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[500px] h-[400px] sm:h-[500px] bg-primary/10 rounded-full blur-[80px] pointer-events-none transform-gpu" />
+      <div className="absolute top-0 right-0 w-[250px] sm:w-[300px] h-[250px] sm:h-[300px] bg-blue-500/10 rounded-full blur-[60px] pointer-events-none transform-gpu" />
+      <div className="absolute bottom-0 left-0 w-[300px] sm:w-[400px] h-[300px] sm:h-[400px] bg-purple-500/10 rounded-full blur-[70px] pointer-events-none transform-gpu" />
 
       <motion.div 
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 15 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
-        className="relative z-10 w-full max-w-md"
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="relative z-10 w-full max-w-md transform-gpu"
       >
-        <div className="bg-card/40 backdrop-blur-xl border border-border rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl text-center">
+        <div className="bg-card/70 backdrop-blur-xl border border-border rounded-3xl p-6 sm:p-8 md:p-10 shadow-2xl text-center">
           
           <motion.div 
             initial={{ scale: 0.8 }}
             animate={{ scale: 1 }}
-            transition={{ type: 'spring', damping: 15, stiffness: 300, delay: 0.1 }}
-            className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl mx-auto flex items-center justify-center mb-6 text-primary shadow-[0_0_30px_rgba(var(--primary),0.2)]"
+            transition={{ type: 'spring', damping: 15, stiffness: 300, delay: 0.05 }}
+            className="w-16 h-16 bg-primary/10 border border-primary/20 rounded-2xl mx-auto flex items-center justify-center mb-5 text-primary shadow-[0_0_30px_rgba(var(--primary),0.2)]"
           >
             {isLoading ? (
               <Loader2 className="w-8 h-8 animate-spin" />
@@ -163,44 +157,73 @@ function UnlockForm() {
             )}
           </motion.div>
 
-          <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-3">
+          <h1 className="text-2xl md:text-3xl font-bold bg-gradient-to-r from-foreground to-foreground/70 bg-clip-text text-transparent mb-2">
             Khu vực giới hạn
           </h1>
-          <p className="text-muted-foreground text-sm mb-8">
+          <p className="text-muted-foreground text-sm mb-6 max-w-xs mx-auto">
             Vui lòng nhập mã PIN bảo mật 6 số để truy cập vào hệ thống nội bộ của Sutie Reader.
           </p>
 
+          {/* Unified Fast PIN Input Container */}
           <motion.div 
-            animate={isError ? { x: [-10, 10, -10, 10, -5, 5, 0] } : {}}
-            transition={{ duration: 0.4 }}
-            className="flex justify-center gap-1.5 sm:gap-2 md:gap-3 mb-8"
+            animate={isError ? { x: [-10, 10, -10, 10, -4, 4, 0] } : {}}
+            transition={{ duration: 0.35 }}
+            onClick={handleContainerClick}
+            className="relative flex justify-center gap-2 sm:gap-2.5 md:gap-3 mb-6 cursor-text py-1"
           >
-            {pin.map((digit, i) => (
-              <input
-                key={i}
-                ref={(el) => { inputRefs.current[i] = el; }}
-                type="text"
-                inputMode="numeric"
-                maxLength={1}
-                value={digit}
-                onChange={(e) => handleChange(i, e.target.value)}
-                onKeyDown={(e) => handleKeyDown(i, e)}
-                onPaste={handlePaste}
-                disabled={isLoading}
-                className={`w-10 h-12 sm:w-12 sm:h-14 md:w-14 md:h-16 text-center text-lg sm:text-xl md:text-2xl font-bold bg-background/50 border-2 rounded-xl outline-none transition-all duration-200 
-                  ${digit ? 'border-primary shadow-[0_0_15px_rgba(var(--primary),0.15)] text-primary' : 'border-border text-foreground focus:border-primary/50 focus:bg-background'}
-                  ${isError ? 'border-destructive text-destructive bg-destructive/5' : ''}
-                  ${isLoading ? 'opacity-50 cursor-not-allowed' : ''}
-                `}
-              />
-            ))}
+            {/* Real invisible input capturing all typing without focus hopping */}
+            <input
+              ref={inputRef}
+              type="text"
+              inputMode="numeric"
+              pattern="[0-9]*"
+              maxLength={6}
+              autoComplete="one-time-code"
+              autoCapitalize="off"
+              autoCorrect="off"
+              spellCheck={false}
+              value={pin}
+              onChange={handleChange}
+              onKeyDown={handleKeyDown}
+              onFocus={() => setIsFocused(true)}
+              onBlur={() => setIsFocused(false)}
+              disabled={isLoading || isSuccess}
+              className="absolute inset-0 w-full h-full opacity-0 z-30 cursor-pointer caret-transparent"
+              aria-label="Nhập mã PIN"
+            />
+
+            {/* 6 Visual Digit Slots */}
+            {[0, 1, 2, 3, 4, 5].map((i) => {
+              const digit = pin[i];
+              const isActive = isFocused && (pin.length === i || (pin.length === 6 && i === 5));
+              return (
+                <div
+                  key={i}
+                  className={`w-11 h-13 sm:w-12 sm:h-15 md:w-14 md:h-16 flex items-center justify-center text-xl sm:text-2xl md:text-3xl font-bold rounded-2xl border-2 transition-all duration-150 transform-gpu
+                    ${digit 
+                      ? 'border-primary bg-primary/10 text-primary shadow-[0_0_15px_rgba(var(--primary),0.2)] scale-[1.03]' 
+                      : isActive 
+                        ? 'border-primary ring-2 ring-primary/30 bg-background/80 shadow-[0_0_10px_rgba(var(--primary),0.15)]' 
+                        : 'border-border/80 bg-background/40 text-foreground/40'}
+                    ${isError ? 'border-destructive text-destructive bg-destructive/10' : ''}
+                    ${isLoading ? 'opacity-60' : ''}
+                  `}
+                >
+                  {digit ? (
+                    <span className="animate-in fade-in zoom-in-75 duration-100">{digit}</span>
+                  ) : isActive && !isLoading && !isSuccess ? (
+                    <span className="w-0.5 h-6 bg-primary animate-pulse rounded-full" />
+                  ) : null}
+                </div>
+              );
+            })}
           </motion.div>
 
-          <div className="flex flex-col gap-4 mt-6">
+          <div className="flex flex-col gap-3 mt-4">
             <button
-              onClick={() => handleSubmit(pin.join(''))}
-              disabled={isLoading || isSuccess || pin.join('').length !== 6}
-              className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-3.5 rounded-xl font-medium transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100"
+              onClick={() => handleSubmit(pin)}
+              disabled={isLoading || isSuccess || pin.length !== 6}
+              className="w-full flex items-center justify-center gap-2 bg-primary hover:bg-primary/90 text-primary-foreground py-3.5 rounded-xl font-medium transition-all active:scale-[0.98] disabled:opacity-50 disabled:pointer-events-none disabled:active:scale-100 cursor-pointer shadow-lg shadow-primary/20"
             >
               {isLoading ? (
                 <span>Đang kiểm tra...</span>
