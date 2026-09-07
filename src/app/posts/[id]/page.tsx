@@ -94,6 +94,7 @@ export default function PostDetailPage() {
   const [isAutoPlaying, setIsAutoPlaying] = useState(false);
   const [autoMode, setAutoMode] = useState<'scroll' | 'flip'>('scroll');
   const [autoSpeed, setAutoSpeed] = useState<number>(1);
+  const [isEyeCareMode, setIsEyeCareMode] = useState(false);
   const [scrollBtnPos, setScrollBtnPos] = useState({ x: 20, y: 100 });
   const [isAutoScrollSettingsOpen, setIsAutoScrollSettingsOpen] = useState(false);
   const dragRef = useRef<{ startX: number; startY: number; initialX: number; initialY: number; currentX?: number; currentY?: number } | null>(null);
@@ -113,6 +114,21 @@ export default function PostDetailPage() {
   const showUIRef = useRef(showUI);
   const scrollRafRef = useRef<number | null>(null);
   const chapters = useMemo(() => normalizeChapters(post), [post]);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedEyeCare = localStorage.getItem('eyeCareMode');
+      if (savedEyeCare === 'true') setIsEyeCareMode(true);
+    }
+  }, []);
+
+  const toggleEyeCareMode = () => {
+    setIsEyeCareMode((prev) => {
+      const next = !prev;
+      localStorage.setItem('eyeCareMode', String(next));
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -238,6 +254,23 @@ export default function PostDetailPage() {
     },
     [activeChapterIndex, chapters]
   );
+
+  useEffect(() => {
+    const handleGlobalKeyDown = (e: KeyboardEvent) => {
+      if (e.target instanceof HTMLInputElement || e.target instanceof HTMLTextAreaElement) return;
+
+      if (e.code === 'Space') {
+        e.preventDefault();
+        setIsAutoPlaying((prev) => !prev);
+      } else if (e.code === 'ArrowLeft') {
+        goToChapter(activeChapterIndex - 1);
+      } else if (e.code === 'ArrowRight') {
+        goToChapter(activeChapterIndex + 1);
+      }
+    };
+    window.addEventListener('keydown', handleGlobalKeyDown);
+    return () => window.removeEventListener('keydown', handleGlobalKeyDown);
+  }, [activeChapterIndex, goToChapter]);
 
   useEffect(() => {
     const fetchPost = async () => {
@@ -582,6 +615,9 @@ export default function PostDetailPage() {
       onMouseMove={resetUiTimer}
       onClick={resetUiTimer}
     >
+      {isEyeCareMode && (
+        <div className="fixed inset-0 z-[9998] pointer-events-none bg-[#f4ecd8] opacity-50 mix-blend-multiply transition-opacity duration-500" />
+      )}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 to-transparent pointer-events-none" />
 
       {createPortal(
@@ -870,6 +906,16 @@ export default function PostDetailPage() {
                   className="px-2 py-1 rounded-[6px] bg-secondary hover:bg-muted text-foreground text-[11px] font-bold transition-colors min-w-[42px] text-center select-none"
                 >
                   x{autoSpeed}
+                </button>
+              </div>
+              <div className="w-full h-[1px] bg-border my-0.5"></div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[11px] font-semibold text-muted-foreground">Bảo vệ mắt</span>
+                <button
+                  onClick={toggleEyeCareMode}
+                  className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${isEyeCareMode ? 'bg-primary' : 'bg-muted'}`}
+                >
+                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition duration-200 ease-in-out ${isEyeCareMode ? 'translate-x-1.5' : '-translate-x-1.5'}`} />
                 </button>
               </div>
             </div>
