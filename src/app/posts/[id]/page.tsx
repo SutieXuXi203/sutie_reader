@@ -11,7 +11,7 @@ import {
   AnimatedShieldAlert,
   AnimatedLock,
 } from '@/components/animate-ui/icons/AnimateIcon';
-import { Loader2, ChevronDown } from 'lucide-react';
+import { Loader2, ChevronDown, Play, Pause, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import { useAuth } from '@/providers/AuthContext';
@@ -91,6 +91,15 @@ export default function PostDetailPage() {
   const [nsfwAccepted, setNsfwAccepted] = useState(false);
   const [hasBookmark, setHasBookmark] = useState(false);
   const [isChapterMenuOpen, setIsChapterMenuOpen] = useState(false);
+  const [isAutoPlaying, setIsAutoPlaying] = useState(false);
+  const [autoMode, setAutoMode] = useState<'scroll' | 'flip'>('scroll');
+  const [autoSpeed, setAutoSpeed] = useState<number>(1);
+  const [scrollBtnPos, setScrollBtnPos] = useState({ x: 20, y: 100 });
+  const [isAutoScrollSettingsOpen, setIsAutoScrollSettingsOpen] = useState(false);
+  const dragRef = useRef<{ startX: number; startY: number; initialX: number; initialY: number; currentX?: number; currentY?: number } | null>(null);
+  const isDraggedRef = useRef(false);
+  const autoScrollMenuRef = useRef<HTMLDivElement | null>(null);
+
   const [pendingResume, setPendingResume] = useState<{
     chapterIndex: number;
     page: number;
@@ -106,8 +115,91 @@ export default function PostDetailPage() {
   const chapters = useMemo(() => normalizeChapters(post), [post]);
 
   useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setScrollBtnPos({ x: window.innerWidth - 70, y: window.innerHeight / 2 - 18 });
+      
+      const handleResize = () => {
+        setScrollBtnPos((prev) => ({
+          x: Math.max(0, Math.min(prev.x, window.innerWidth - 65)),
+          y: Math.max(0, Math.min(prev.y, window.innerHeight - 40)),
+        }));
+      };
+      
+      window.addEventListener('resize', handleResize);
+      return () => window.removeEventListener('resize', handleResize);
+    }
+  }, []);
+
+  const handleScrollBtnPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    if (e.button !== 0) return;
+    
+    dragRef.current = {
+      startX: e.clientX,
+      startY: e.clientY,
+      initialX: scrollBtnPos.x,
+      initialY: scrollBtnPos.y,
+    };
+    isDraggedRef.current = false;
+
+    const handleMove = (ev: PointerEvent) => {
+      if (!dragRef.current) return;
+      const dx = ev.clientX - dragRef.current.startX;
+      const dy = ev.clientY - dragRef.current.startY;
+      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
+        isDraggedRef.current = true;
+      }
+      
+      const clampX = Math.max(0, Math.min(dragRef.current.initialX + dx, window.innerWidth - 65));
+      const clampY = Math.max(0, Math.min(dragRef.current.initialY + dy, window.innerHeight - 40));
+      
+      dragRef.current.currentX = clampX;
+      dragRef.current.currentY = clampY;
+      
+      if (autoScrollMenuRef.current) {
+        autoScrollMenuRef.current.style.transform = `translate3d(${clampX}px, ${clampY}px, 0)`;
+      }
+    };
+
+    const handleUp = () => {
+      if (dragRef.current) {
+        if (dragRef.current.currentX !== undefined && dragRef.current.currentY !== undefined) {
+          setScrollBtnPos({ x: dragRef.current.currentX, y: dragRef.current.currentY });
+        }
+        dragRef.current = null;
+      }
+      window.removeEventListener('pointermove', handleMove);
+      window.removeEventListener('pointerup', handleUp);
+    };
+
+    window.addEventListener('pointermove', handleMove);
+    window.addEventListener('pointerup', handleUp);
+  };
+
+  const handleScrollBtnClick = (e: React.MouseEvent) => {
+    if (isDraggedRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      return;
+    }
+    setIsAutoPlaying(!isAutoPlaying);
+  };
+
+  useEffect(() => {
     showUIRef.current = showUI;
   }, [showUI]);
+
+  useEffect(() => {
+    if (!isAutoScrollSettingsOpen) return;
+    const handleOutsideClick = (e: PointerEvent) => {
+      if (!autoScrollMenuRef.current?.contains(e.target as Node)) {
+        setIsAutoScrollSettingsOpen(false);
+      }
+    };
+    document.addEventListener('pointerdown', handleOutsideClick);
+    return () => {
+      document.removeEventListener('pointerdown', handleOutsideClick);
+    };
+  }, [isAutoScrollSettingsOpen]);
 
   const resetUiTimer = useCallback(() => {
     if (!showUIRef.current) {
@@ -351,6 +443,56 @@ export default function PostDetailPage() {
       }
     };
   }, [post, activeChapterIndex, resetUiTimer, chapters]);
+
+  useEffect(() => {
+    let scrollRafId: number;
+
+    const performAutoScroll = () => {
+      if (isAutoPlaying && autoMode === 'scroll') {
+        window.scrollBy(0, autoSpeed);
+        if (Math.ceil(window.innerHeight + window.scrollY) >= document.body.offsetHeight) {
+           setIsAutoPlaying(false);
+        } else {
+           scrollRafId = requestAnimationFrame(performAutoScroll);
+        }
+      }
+    };
+
+    if (isAutoPlaying && autoMode === 'scroll') {
+      scrollRafId = requestAnimationFrame(performAutoScroll);
+    }
+
+    return () => {
+      if (scrollRafId) {
+        cancelAnimationFrame(scrollRafId);
+      }
+    };
+  }, [isAutoPlaying, autoMode, autoSpeed]);
+
+  useEffect(() => {
+    let intervalId: ReturnType<typeof setInterval>;
+    if (isAutoPlaying && autoMode === 'flip') {
+      const delay = 4000 / autoSpeed;
+      intervalId = setInterval(() => {
+        setCurrentPage((prev) => {
+          const activeChapter = chapters[activeChapterIndex];
+          if (!activeChapter) return prev;
+          if (prev < activeChapter.images.length - 1) {
+            const nextIdx = prev + 1;
+            const targetRef = imageRefs.current[nextIdx];
+            if (targetRef) {
+              targetRef.scrollIntoView({ behavior: 'smooth', block: 'start' });
+            }
+            return nextIdx;
+          } else {
+            setIsAutoPlaying(false);
+            return prev;
+          }
+        });
+      }, delay);
+    }
+    return () => clearInterval(intervalId);
+  }, [isAutoPlaying, autoMode, autoSpeed, activeChapterIndex, chapters]);
 
   if (isLoading || isAuthLoading) {
     return (
@@ -652,8 +794,88 @@ export default function PostDetailPage() {
             <span className="hidden sm:inline">Chương sau</span>
             <AnimatedArrowRight className="w-3.5 h-3.5" />
           </button>
+
         </div>
       </div>
+
+      {createPortal(
+        <div
+          ref={autoScrollMenuRef}
+          className="fixed top-0 left-0 z-[99999] flex flex-col gap-1 select-none"
+          style={{
+            transform: `translate3d(${scrollBtnPos.x}px, ${scrollBtnPos.y}px, 0)`,
+            willChange: 'transform'
+          }}
+        >
+          <div
+            className={`flex items-center rounded-full border shadow-[0_0_15px_rgba(0,0,0,0.2)] transition-colors cursor-grab active:cursor-grabbing touch-none ${
+              isAutoPlaying ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-foreground border-border'
+            }`}
+            onPointerDown={handleScrollBtnPointerDown}
+          >
+            <button
+              className="w-9 h-9 flex items-center justify-center rounded-l-full group"
+              onClick={handleScrollBtnClick}
+              title="Bật/Tắt tự động cuộn (Kéo để di chuyển)"
+            >
+              <div className="transition-transform duration-300 group-hover:scale-110 group-active:scale-75">
+                {isAutoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
+              </div>
+            </button>
+            <div className={`w-[1px] h-5 ${isAutoPlaying ? 'bg-primary-foreground/30' : 'bg-border'}`}></div>
+            <button
+              className={`w-7 h-9 flex items-center justify-center rounded-r-full transition-colors group ${
+                isAutoPlaying ? 'hover:bg-primary-foreground/10' : 'hover:bg-muted'
+              }`}
+              onClick={(e) => {
+                if (isDraggedRef.current) {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  return;
+                }
+                setIsAutoScrollSettingsOpen(!isAutoScrollSettingsOpen);
+              }}
+              title="Cài đặt cuộn"
+            >
+              <Settings className={`w-3.5 h-3.5 transition-transform duration-500 ease-out group-hover:rotate-90 group-active:scale-75 ${isAutoScrollSettingsOpen ? 'rotate-90' : ''}`} />
+            </button>
+          </div>
+          
+          <div
+            className={`absolute top-full mt-2 right-0 bg-background border border-border rounded-[12px] p-2 shadow-xl flex flex-col gap-2 min-w-[120px] origin-top-right transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${
+              isAutoScrollSettingsOpen
+                ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
+                : 'opacity-0 scale-90 -translate-y-2 pointer-events-none'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-3">
+              <span className="text-[11px] font-semibold text-muted-foreground">Chế độ</span>
+                <button
+                  onClick={() => setAutoMode(m => m === 'scroll' ? 'flip' : 'scroll')}
+                  className="px-2 py-1 rounded-[6px] bg-secondary hover:bg-muted text-foreground text-[11px] font-bold transition-colors"
+                >
+                  {autoMode === 'scroll' ? 'Cuộn' : 'Nhảy'}
+                </button>
+              </div>
+              <div className="flex items-center justify-between gap-3">
+                <span className="text-[11px] font-semibold text-muted-foreground">Tốc độ</span>
+                <button
+                  onClick={() => {
+                    const speeds = [0.25, 0.5, 1, 1.25, 1.5, 2];
+                    setAutoSpeed(s => {
+                      const nextIndex = (speeds.indexOf(s) + 1) % speeds.length;
+                      return speeds[nextIndex];
+                    });
+                  }}
+                  className="px-2 py-1 rounded-[6px] bg-secondary hover:bg-muted text-foreground text-[11px] font-bold transition-colors min-w-[42px] text-center select-none"
+                >
+                  x{autoSpeed}
+                </button>
+              </div>
+            </div>
+        </div>,
+        document.body
+      )}
     </div>
   );
 }
