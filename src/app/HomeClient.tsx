@@ -97,13 +97,16 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   const [posts, setPosts] = useState<Post[]>(initialPostState);
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string; name: string }[]>(initialTagState);
   const [searchTerm, setSearchTerm] = useState('');
-  const [currentPage, _setCurrentPage] = useState(() => {
+  const [currentPage, _setCurrentPage] = useState(1);
+
+  useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = sessionStorage.getItem('homePage');
-      return saved ? parseInt(saved, 10) : 1;
+      if (saved) {
+        _setCurrentPage(parseInt(saved, 10));
+      }
     }
-    return 1;
-  });
+  }, []);
 
   const setCurrentPage = useCallback((page: number | ((prev: number) => number)) => {
     _setCurrentPage(prev => {
@@ -424,7 +427,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                 </div>
               ) : (
                 <>
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4">
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 auto-rows-max content-start">
                     {paginatedPosts.map((post) => (
                       <PostCard
                         key={post._id}
