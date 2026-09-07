@@ -41,7 +41,7 @@ export default function ContactPage() {
   }, [user]);
 
   return (
-    <div className="min-h-screen bg-background text-foreground transition-colors pt-24 pb-0 flex flex-col justify-between relative">
+    <div className="min-h-screen text-foreground transition-colors pt-24 pb-0 flex flex-col justify-between relative">
       <div className="fixed inset-0 pointer-events-none bg-[radial-gradient(theme(colors.primary)_1px,transparent_1px)] opacity-[0.05] z-0 mix-blend-screen" />
       
       {/* Decorative Orbs */}

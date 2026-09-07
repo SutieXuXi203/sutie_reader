@@ -392,13 +392,13 @@ export default function AdminDashboard() {
 
     if (isAuthLoading || !user || user.role !== 'admin') {
         return (
-            <div className="min-h-screen flex items-center justify-center bg-background text-foreground">
+            <div className="min-h-screen flex items-center justify-center text-foreground">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />
             </div>
         );
     }
     return (
-        <div className="min-h-screen pt-16 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 [scrollbar-gutter:stable] bg-background font-sans selection:bg-primary/20">
+        <div className="min-h-screen pt-16 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 [scrollbar-gutter:stable] font-sans selection:bg-primary/20">
             <div className="mx-auto flex w-full max-w-[1600px] gap-4 px-2 py-2 sm:px-4 sm:py-4">
             <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto rounded-[8px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
                 <div className="p-6">

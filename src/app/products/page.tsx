@@ -152,14 +152,14 @@ export default function ProductsPage() {
 
     if (isAuthLoading || !isAdmin) {
         return (
-            <div className="min-h-screen bg-background text-foreground flex items-center justify-center">
+            <div className="min-h-screen text-foreground flex items-center justify-center">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
         );
     }
 
     return (
-        <div className="min-h-screen bg-background text-foreground transition-colors pt-20 pb-0 flex flex-col justify-between">
+        <div className="min-h-screen text-foreground transition-colors pt-20 pb-0 flex flex-col justify-between">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1">
                 
                 {/* Posts Card Wrapper */}

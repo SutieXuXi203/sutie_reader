@@ -9,7 +9,7 @@ import { gooeyToast } from 'goey-toast';
 export default function UnlockPage() {
   return (
     <React.Suspense fallback={
-      <div className="min-h-screen bg-background flex items-center justify-center">
+      <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     }>
@@ -126,7 +126,7 @@ function UnlockForm() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex flex-col items-center justify-center relative overflow-hidden p-4 select-none touch-manipulation">
+    <div className="min-h-screen flex flex-col items-center justify-center relative overflow-hidden p-4 select-none touch-manipulation">
       {/* Ambient background glows - hardware accelerated for smooth 60/120fps */}
       <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] sm:w-[500px] h-[400px] sm:h-[500px] bg-primary/10 rounded-full blur-[80px] pointer-events-none transform-gpu" />
       <div className="absolute top-0 right-0 w-[250px] sm:w-[300px] h-[250px] sm:h-[300px] bg-blue-500/10 rounded-full blur-[60px] pointer-events-none transform-gpu" />

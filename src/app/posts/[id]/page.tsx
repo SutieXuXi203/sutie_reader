@@ -363,7 +363,7 @@ export default function PostDetailPage() {
 
   if (!user) {
     return (
-      <div className="min-h-screen bg-background flex flex-col items-center justify-center text-foreground px-6 text-center">
+      <div className="min-h-screen flex flex-col items-center justify-center text-foreground px-6 text-center">
         <div className="w-20 h-20 bg-card rounded-[8px] flex items-center justify-center mb-8 border border-border shadow-lg">
           <AnimatedLock className="w-10 h-10 text-muted-foreground" />
         </div>
@@ -436,7 +436,7 @@ export default function PostDetailPage() {
 
   return (
     <div
-      className="min-h-screen bg-background flex flex-col relative"
+      className="min-h-screen flex flex-col relative"
       onMouseMove={resetUiTimer}
       onClick={resetUiTimer}
     >
@@ -513,7 +513,7 @@ export default function PostDetailPage() {
       )}
 
       <main className="w-full flex-1 flex flex-col items-center pt-14 md:pt-20 pb-16 md:pb-20">
-        <div className="flex flex-col items-center w-full gap-0">
+        <div className="flex flex-col items-center w-full gap-[4px]">
           {chapterImages.length > 0 ? (
             chapterImages.map((img, idx) => (
               <div
