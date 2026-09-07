@@ -18,7 +18,7 @@ export const uploadImages = async (
 
   const workerUrl = (
     process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
-    'https://sutie-images.manhdinh0410.workers.dev'
+    ''
   ).replace(/\/+$/, '');
 
   const sortedFiles = [...files];
@@ -145,7 +145,7 @@ export const syncDriveImages = async (
 
   const workerUrl = (
     process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
-    'https://sutie-images.manhdinh0410.workers.dev'
+    ''
   ).replace(/\/+$/, '');
 
   const queryParams = new URLSearchParams();

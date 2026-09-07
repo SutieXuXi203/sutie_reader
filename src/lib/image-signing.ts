@@ -85,7 +85,7 @@ export function signImageUrls(urls: string[], userId: string): string[] {
   const workerBaseUrl =
     process.env.CLOUDFLARE_WORKER_URL ||
     process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
-    'https://sutie-images.manhdinh0410.workers.dev';
+    '';
 
   return urls.map((url) => {
     const fileId = extractDriveImageId(url);
