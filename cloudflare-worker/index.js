@@ -368,20 +368,18 @@ async function uploadFileToDrive(accessToken, folderId, postId, file, index, tot
   return fileData.id;
 }
 
-async function fileIsInAllowedFolder(accessToken, rootFolderId, metadata) {
+async function fileIsInAllowedFolder(accessToken, rootFolderId, metadata, maxDepth = 3, currentDepth = 1) {
   const parents = Array.isArray(metadata.parents) ? metadata.parents : [];
   if (parents.includes(rootFolderId)) return true;
 
+  if (currentDepth >= maxDepth) return false;
+
   for (const parentId of parents) {
     const parent = await getFileMetadata(accessToken, parentId, 'id,mimeType,parents,trashed').catch(() => null);
-    if (
-      parent &&
-      !parent.trashed &&
-      parent.mimeType === DRIVE_FOLDER_MIME_TYPE &&
-      Array.isArray(parent.parents) &&
-      parent.parents.includes(rootFolderId)
-    ) {
-      return true;
+    if (parent && !parent.trashed && parent.mimeType === DRIVE_FOLDER_MIME_TYPE) {
+      if (await fileIsInAllowedFolder(accessToken, rootFolderId, parent, maxDepth, currentDepth + 1)) {
+        return true;
+      }
     }
   }
 
