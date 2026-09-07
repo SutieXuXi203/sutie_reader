@@ -528,10 +528,24 @@ export default function PostDetailPage() {
   }, [isAutoPlaying, autoMode, autoSpeed, activeChapterIndex, chapters]);
 
   if (isLoading || isAuthLoading) {
+    const loadingText = "Đang chuẩn bị...";
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center text-white">
+      <div className="min-h-screen flex flex-col items-center justify-center text-foreground font-semibold">
         <Loader2 className="w-10 h-10 animate-spin text-slate-500 mb-4" />
-        <p>Đang chuẩn bị...</p>
+        <div className="flex items-center text-muted-foreground text-lg">
+          {loadingText.split("").map((char, index) => (
+            <span
+              key={index}
+              className="inline-block animate-bounce"
+              style={{
+                animationDelay: `${index * 0.07}s`,
+                animationDuration: '1.5s',
+              }}
+            >
+              {char === " " ? "\u00A0" : char}
+            </span>
+          ))}
+        </div>
       </div>
     );
   }
