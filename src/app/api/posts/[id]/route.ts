@@ -432,13 +432,17 @@ export async function DELETE(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
     
-    await Bookmark.deleteMany({ postId: id }).catch(err => {
+    try {
+      await Bookmark.deleteMany({ postId: id });
+    } catch (err) {
       console.error('Lỗi khi xóa bookmark liên quan:', err);
-    });
+    }
 
-    deleteDriveFolder(id, deletedPost.title).catch((err) =>
-      console.warn('Lỗi khi xóa folder Drive:', err)
-    );
+    try {
+      await deleteDriveFolder(id, deletedPost.title);
+    } catch (err) {
+      console.warn('Lỗi khi xóa folder Drive:', err);
+    }
     invalidateApiCache('posts:');
     return NextResponse.json({ message: 'Bài viết đã được xóa thành công' });
   } catch (error) {
