@@ -59,6 +59,18 @@ export function normalizeSearchText(value: string): string {
     .replace(/\s+/g, ' ');
 }
 
+export function sanitizeFileName(name: string): string {
+  return name
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\u0111/g, 'd')
+    .replace(/\u0110/g, 'D')
+    .toLowerCase()
+    .replace(/[^a-z0-9]/g, '_')
+    .replace(/_+/g, '_')
+    .replace(/^_|_$/g, '');
+}
+
 export type NormalizedPostChapter = {
   title: string;
   chapterNumber: number;

@@ -5,7 +5,8 @@ export const uploadImages = async (
   files: File[],
   uploadTitle: string,
   postId: string,
-  onProgress?: (completed: number, total: number) => void
+  onProgress?: (completed: number, total: number) => void,
+  chapter?: string
 ): Promise<string[]> => {
   if (!files.length) return [];
 
@@ -33,7 +34,7 @@ export const uploadImages = async (
       batchFiles.map(async (file) => {
         try {
           const isAlreadySmallWebp = file.type === 'image/webp' && file.size <= 400 * 1024;
-          if (isAlreadySmallWebp) return file;
+          if (isAlreadySmallWebp || (file as any).skipCompression) return file;
 
           const compressedBlob = await imageCompression(file, {
             maxSizeMB: 0.8,
@@ -56,6 +57,7 @@ export const uploadImages = async (
     const formData = new FormData();
     formData.append('title', uploadTitle);
     if (postId) formData.append('postId', postId);
+    if (chapter) formData.append('chapter', chapter);
     compressedBatch.forEach((compressed) =>
       formData.append('files', compressed, compressed.name)
     );
@@ -99,9 +101,10 @@ export const processBackgroundChapterSave = async (
   const taskId = showProgress(`${upTitle} - ${chapTitle} (${files.length} ảnh)`, files.length);
 
   try {
+    const chapterName = `Chương ${chapNum}`;
     const imageUrls = await uploadImages(files, upTitle, postId, (completed, total) => {
       updateProgress(taskId, completed, total, 'uploading');
-    });
+    }, chapterName);
 
     updateProgress(taskId, files.length, files.length, 'saving');
 
@@ -134,7 +137,8 @@ export const processBackgroundChapterSave = async (
 
 export const syncDriveImages = async (
   uploadTitle: string,
-  postId: string
+  postId: string,
+  chapter?: string
 ): Promise<string[]> => {
   const tokenRes = await fetch('/api/auth/token');
   if (!tokenRes.ok) {
@@ -151,6 +155,7 @@ export const syncDriveImages = async (
   const queryParams = new URLSearchParams();
   if (uploadTitle) queryParams.set('title', uploadTitle);
   if (postId) queryParams.set('postId', postId);
+  if (chapter) queryParams.set('chapter', chapter);
 
   const res = await fetch(`${workerUrl}/sync?${queryParams.toString()}`, {
     method: 'GET',

@@ -578,8 +578,10 @@ const worker = {
         const files = entries.filter((entry) => entry instanceof File);
         const rawTitle = formData.get('title');
         const rawPostId = formData.get('postId');
+        const rawChapter = formData.get('chapter');
         const title = typeof rawTitle === 'string' && rawTitle.trim() ? rawTitle.trim() : 'Untitled';
         const postId = typeof rawPostId === 'string' ? rawPostId.trim() : '';
+        const chapter = typeof rawChapter === 'string' ? rawChapter.trim() : '';
 
         if (files.length !== entries.length) {
           return jsonResponse({ error: 'Invalid file payload' }, 400, corsHeaders);
@@ -593,7 +595,13 @@ const worker = {
 
         const accessToken = await getAccessToken(env);
         const parentFolderId = getRootFolderId(env);
-        const targetFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
+        const storyFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
+        
+        let targetFolderId = storyFolderId;
+        if (chapter) {
+          targetFolderId = await getOrCreateFolder(accessToken, storyFolderId, chapter, null);
+        }
+
         const imageBaseUrl = (env.PUBLIC_IMAGE_BASE_URL || url.origin).replace(/\/+$/, '');
 
         const uploadPromises = files.map(async (file, i) => {
@@ -642,6 +650,7 @@ const worker = {
       try {
         const title = url.searchParams.get('title') || 'Untitled';
         const postId = url.searchParams.get('postId') || '';
+        const chapter = url.searchParams.get('chapter') || '';
 
         if (postId && !isValidPostId(postId)) {
           return jsonResponse({ error: 'Invalid postId' }, 400, corsHeaders);
@@ -649,7 +658,13 @@ const worker = {
 
         const accessToken = await getAccessToken(env);
         const parentFolderId = getRootFolderId(env);
-        const targetFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
+        const storyFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
+        
+        let targetFolderId = storyFolderId;
+        if (chapter) {
+          targetFolderId = await getOrCreateFolder(accessToken, storyFolderId, chapter, null);
+        }
+
         const imageBaseUrl = (env.PUBLIC_IMAGE_BASE_URL || url.origin).replace(/\/+$/, '');
 
         const q = [

@@ -18,7 +18,7 @@ import { TagPicker } from '@/components/TagPicker';
 import { notify } from '@/lib/notify';
 import { useUploadProgress } from '@/providers/UploadProgressProvider';
 import { uploadImages, syncDriveImages } from '@/lib/uploadService';
-import { cn, getOptimizedImageUrl } from '@/lib/utils';
+import { cn, getOptimizedImageUrl, sanitizeFileName } from '@/lib/utils';
 
 export interface ChapterImage {
   id: string;
@@ -94,6 +94,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const [dragOverPosition, setDragOverPosition] = useState<'before' | 'after' | null>(null);
   const [isExpanded, setIsExpanded] = useState(false);
   const [expandedImageLimit, setExpandedImageLimit] = useState(0);
+  const [reuploadingState, setReuploadingState] = useState<{ current: number, total: number } | null>(null);
   const chaptersRef = useRef<ChapterEditState[]>([]);
 
   useEffect(() => {
@@ -358,7 +359,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const handleSyncDrive = async () => {
     try {
       setIsSyncing(true);
-      const syncedUrls = await syncDriveImages(title, post._id);
+      const chapterName = `Chương ${activeChapter.chapterNumber}`;
+      const syncedUrls = await syncDriveImages(title, post._id, chapterName);
 
       const newSyncedImages: ChapterImage[] = syncedUrls.map(url => ({
         id: generateId(),
@@ -379,6 +381,64 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       notify.error('Đồng bộ thất bại', msg);
     } finally {
       setIsSyncing(false);
+    }
+  };
+
+  const handleReuploadChapterImages = async () => {
+    const imagesToProcess = activeChapter.images.filter(img => !img.isNew);
+    if (imagesToProcess.length === 0) {
+      notify.info('Không có ảnh cũ nào cần chuẩn hoá trong chương này.');
+      return;
+    }
+
+    setReuploadingState({ current: 0, total: imagesToProcess.length });
+    
+    try {
+      const processedImages: ChapterImage[] = [];
+      const sanitizedTitle = sanitizeFileName(title || 'truyen');
+      const chapNum = activeChapter.chapterNumber;
+
+      for (let i = 0; i < activeChapter.images.length; i++) {
+        const img = activeChapter.images[i];
+        if (img.isNew) {
+          processedImages.push(img);
+          continue;
+        }
+
+        const formattedIndex = String(i + 1).padStart(3, '0');
+        const fileName = `${sanitizedTitle}_chap_${chapNum}_${formattedIndex}.webp`;
+
+        const url = getOptimizedImageUrl(img.url);
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Lỗi khi tải ảnh ${i + 1}`);
+        const blob = await response.blob();
+        const file = new File([blob], fileName, { type: blob.type || 'image/webp' });
+        (file as any).skipCompression = true;
+
+        processedImages.push({
+          id: generateId(),
+          isNew: true,
+          url: URL.createObjectURL(file),
+          file
+        });
+
+        setReuploadingState(prev => prev ? { ...prev, current: prev.current + 1 } : null);
+      }
+
+      updateActiveChapter((ch) => {
+        ch.images.forEach(revokeImagePreview);
+        return {
+          ...ch,
+          images: processedImages,
+        };
+      });
+
+      notify.success(`Đã chuẩn hoá tên ${imagesToProcess.length} ảnh. Vui lòng bấm "Lưu thay đổi" để upload.`);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Lỗi không xác định';
+      notify.error('Lỗi khi chuẩn hoá ảnh', msg);
+    } finally {
+      setReuploadingState(null);
     }
   };
 
@@ -419,18 +479,34 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       for (let i = 0; i < chapters.length; i++) {
         const ch = chapters[i];
 
-        const newImagesInOrder = ch.images.filter(img => img.isNew);
-        const newFiles = newImagesInOrder.map(img => img.file!);
+        const sanitizedTitle = sanitizeFileName(currentTitle || 'truyen');
+        const newFiles: File[] = [];
+        
+        ch.images.forEach((img, idx) => {
+          if (img.isNew && img.file) {
+            const ext = img.file.name.split('.').pop() || 'webp';
+            const formattedIndex = String(idx + 1).padStart(3, '0');
+            const fileName = `${sanitizedTitle}_chap_${ch.chapterNumber}_${formattedIndex}.${ext}`;
+            const newFile = new File([img.file], fileName, { type: img.file.type });
+            if ((img.file as any).skipCompression) {
+              (newFile as any).skipCompression = true;
+            }
+            newFiles.push(newFile);
+          }
+        });
+
         let uploadedUrls: string[] = [];
 
         if (newFiles.length > 0) {
+          const chapterName = `Chương ${ch.chapterNumber}`;
           uploadedUrls = await uploadImages(
             newFiles,
             currentTitle,
             post._id,
             (completed) => {
               if (taskId) updateProgress(taskId, uploadedCount + completed, totalNewFiles, 'uploading');
-            }
+            },
+            chapterName
           );
           uploadedCount += newFiles.length;
         }
@@ -748,11 +824,25 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     <div className="grid w-full grid-cols-2 gap-1.5 min-[480px]:flex min-[480px]:w-auto min-[480px]:flex-wrap min-[480px]:justify-end min-[480px]:gap-2">
                       <Button
                         type="button"
+                        variant="secondary"
+                        size="sm"
+                        className="h-7 min-w-0 px-2 text-[11px] leading-none text-blue-600 bg-blue-50 hover:bg-blue-100 dark:bg-blue-900/30 dark:hover:bg-blue-900/50 dark:text-blue-400"
+                        onClick={handleReuploadChapterImages}
+                        disabled={isSubmitting || !!reuploadingState}
+                      >
+                        {reuploadingState ? (
+                          <><RefreshCw className="h-3 w-3 mr-1 animate-spin" /> {reuploadingState.current}/{reuploadingState.total}</>
+                        ) : (
+                          <><RefreshCw className="h-3 w-3 mr-1" /> Chuẩn hoá & Tải lại</>
+                        )}
+                      </Button>
+                      <Button
+                        type="button"
                         variant="outline"
                         size="sm"
                         className="h-7 min-w-0 px-2 text-[11px] leading-none"
                         onClick={openImagePopup}
-                        disabled={isSubmitting}
+                        disabled={isSubmitting || !!reuploadingState}
                       >
                         <Maximize2 className="h-3 w-3 mr-1" /> Phóng to
                       </Button>
@@ -766,7 +856,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                             clearActiveChapterImages();
                           }
                         }}
-                        disabled={isSubmitting || isSyncing}
+                        disabled={isSubmitting || isSyncing || !!reuploadingState}
                       >
                         <Trash2 className="h-3 w-3 mr-1" />
                         Xóa tất cả
@@ -793,7 +883,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     size="sm"
                     className="h-8 self-start px-2.5 text-xs min-[480px]:self-auto"
                     onClick={handleSyncDrive}
-                    disabled={isSyncing || isSubmitting}
+                    disabled={isSyncing || isSubmitting || !!reuploadingState}
                   >
                     <RefreshCw className={cn("h-3 w-3 mr-1.5", isSyncing && "animate-spin")} />
                     {isSyncing ? 'Đang đồng bộ...' : 'Đồng bộ từ Drive'}
