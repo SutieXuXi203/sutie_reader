@@ -12,6 +12,6 @@ const RateLimitSchema = new Schema<IRateLimit>({
   attempts: { type: Number, default: 1 },
   lockUntil: { type: Date },
   createdAt: { type: Date, default: Date.now, expires: 86400 } // Auto-delete after 24 hours
-});
+}, { collection: 'api_rate_limits' });
 
 export const RateLimit = mongoose.models.RateLimit || mongoose.model<IRateLimit>('RateLimit', RateLimitSchema);

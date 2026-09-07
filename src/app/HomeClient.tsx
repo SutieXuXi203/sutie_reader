@@ -422,7 +422,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
               ) : filteredPosts.length === 0 ? (
                 <div className="text-center py-20 px-6 bg-card/30 backdrop-blur-sm border border-border rounded-[8px]">
                   <p className="text-muted-foreground text-sm">
-                    Không tìm thấy truyện phù hợp với từ khóa này.
+                    Danh sách đang trống.
                   </p>
                 </div>
               ) : (

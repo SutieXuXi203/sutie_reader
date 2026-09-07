@@ -13,5 +13,5 @@ const TagSchema: Schema = new Schema({
         set: (v: string) => v.toLowerCase()
     },
     createdAt: { type: Date, default: Date.now }
-});
+}, { collection: 'genres' });
 export const Tag = mongoose.models.Tag || mongoose.model<ITag>('Tag', TagSchema);

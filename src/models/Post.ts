@@ -78,7 +78,7 @@ const PostSchema = new Schema<IPost>(
       default: 'Không rõ tác giả',
     },
   },
-  { timestamps: true }
+  { timestamps: true, collection: 'comics' }
 );
 
 PostSchema.index({ createdAt: -1 });

@@ -62,6 +62,7 @@ const DeletedAccountSchema = new Schema<IDeletedAccount>(
   },
   {
     timestamps: true,
+    collection: 'deleted_users'
   }
 );
 
