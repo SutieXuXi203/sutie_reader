@@ -1,4 +1,12 @@
 import mongoose from 'mongoose';
+import dns from 'dns';
+
+// Fix for Node.js failing to resolve MongoDB SRV records on some Windows setups
+try {
+  dns.setServers(['8.8.8.8', '8.8.4.4']);
+} catch (error) {
+  console.warn('Could not set custom DNS servers:', error);
+}
 
 interface MongooseCache {
   conn: typeof mongoose | null;

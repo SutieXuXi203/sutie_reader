@@ -359,7 +359,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const handleSyncDrive = async () => {
     try {
       setIsSyncing(true);
-      const chapterName = `Chương ${activeChapter.chapterNumber}`;
+      const chapterName = activeChapter.title || `Chương ${activeChapter.chapterNumber}`;
       const syncedUrls = await syncDriveImages(title, post._id, chapterName);
 
       const newSyncedImages: ChapterImage[] = syncedUrls.map(url => ({
@@ -498,7 +498,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         let uploadedUrls: string[] = [];
 
         if (newFiles.length > 0) {
-          const chapterName = `Chương ${ch.chapterNumber}`;
+          const chapterName = ch.title || `Chương ${ch.chapterNumber}`;
           uploadedUrls = await uploadImages(
             newFiles,
             currentTitle,

@@ -101,7 +101,7 @@ export const processBackgroundChapterSave = async (
   const taskId = showProgress(`${upTitle} - ${chapTitle} (${files.length} ảnh)`, files.length);
 
   try {
-    const chapterName = `Chương ${chapNum}`;
+    const chapterName = chapTitle || `Chương ${chapNum}`;
     const imageUrls = await uploadImages(files, upTitle, postId, (completed, total) => {
       updateProgress(taskId, completed, total, 'uploading');
     }, chapterName);
