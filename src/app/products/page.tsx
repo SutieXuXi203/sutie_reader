@@ -63,7 +63,7 @@ export default function ProductsPage() {
     }, [isAuthLoading, isAdmin, router]);
 
 
-    
+
     const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
 
     const fetchTags = useCallback(async () => {
@@ -122,7 +122,7 @@ export default function ProductsPage() {
 
     const deferredSearchTerm = useDeferredValue(searchTerm);
     const normalizedSearch = normalizeSearchText(isSearchComposing ? '' : deferredSearchTerm);
-    
+
     const searchablePosts = useMemo(
         () => posts.map((post) => ({
             post,
@@ -164,16 +164,16 @@ export default function ProductsPage() {
     return (
         <div className="min-h-screen text-foreground transition-colors pt-20 pb-0 flex flex-col justify-between">
             <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1">
-                
+
                 {/* Posts Card Wrapper */}
                 <div className="border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm mt-8">
-                    
+
                     <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4 border-b border-border/50 pb-4">
                         <div>
                             <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Danh mục</h3>
                             <h2 className="text-base sm:text-lg font-extrabold text-foreground">Quản lý danh sách</h2>
                         </div>
-                        
+
                         <div className="flex flex-col sm:flex-row items-center gap-4 w-full sm:w-auto">
                             {user && (
                                 <div className="w-full sm:w-[240px] shrink-0">
@@ -238,7 +238,7 @@ export default function ProductsPage() {
                     ) : filteredPosts.length === 0 ? (
                         <div className="text-center py-20 px-6 bg-card/30 backdrop-blur-sm border border-border rounded-[8px]">
                             <p className="text-muted-foreground text-sm">
-                                Không tìm thấy bài viết phù hợp với từ khóa này.
+                                Danh sách đang trống.
                             </p>
                         </div>
                     ) : (
@@ -255,7 +255,7 @@ export default function ProductsPage() {
                                     />
                                 ))}
                             </div>
-                            
+
                             {totalPages > 1 && (
                                 <div className="flex items-center justify-center mt-8 gap-4">
                                     <Button
@@ -283,14 +283,14 @@ export default function ProductsPage() {
                     )}
                 </div>
             </div>
-            
+
             {isAuthDialogOpen && (
                 <AuthDialog
                     open={isAuthDialogOpen}
                     onOpenChange={setIsAuthDialogOpen}
                 />
             )}
-            
+
             {isCreateDialogOpen && (
                 <CreatePostForm
                     open={isCreateDialogOpen}
