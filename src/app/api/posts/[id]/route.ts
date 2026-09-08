@@ -243,7 +243,7 @@ async function renameDriveFolder(postId: string, oldTitle: string, newTitle: str
   }
 }
 
-async function renameDriveChapterFolder(postId: string, postTitle: string, oldChapterTitle: string, newChapterTitle: string) {
+async function renameDriveChapterFolder(postId: string, postTitle: string, oldChapterTitle: string, newChapterTitle: string, chapterNumber: number) {
   try {
     const drive = await getDriveService();
     if (!drive) return;
@@ -256,7 +256,7 @@ async function renameDriveChapterFolder(postId: string, postTitle: string, oldCh
       return;
     }
 
-    const byTitle = await drive.files.list({
+    let byTitle = await drive.files.list({
       q: [
         "mimeType='application/vnd.google-apps.folder'",
         `name='${escapeDriveQueryValue(oldChapterTitle)}'`,
@@ -270,7 +270,26 @@ async function renameDriveChapterFolder(postId: string, postTitle: string, oldCh
       includeItemsFromAllDrives: true,
     });
 
-    const targetFolderId = byTitle.data.files?.[0]?.id;
+    let targetFolderId = byTitle.data.files?.[0]?.id;
+
+    if (!targetFolderId) {
+      const fallbackTitle = `Chương ${chapterNumber}`;
+      console.log(`Could not find Drive chapter folder ${oldChapterTitle}, falling back to ${fallbackTitle}`);
+      byTitle = await drive.files.list({
+        q: [
+          "mimeType='application/vnd.google-apps.folder'",
+          `name='${escapeDriveQueryValue(fallbackTitle)}'`,
+          `'${escapeDriveQueryValue(postFolderId)}' in parents`,
+          'trashed=false',
+        ].join(' and '),
+        fields: 'files(id, name)',
+        spaces: 'drive',
+        pageSize: 1,
+        supportsAllDrives: true,
+        includeItemsFromAllDrives: true,
+      });
+      targetFolderId = byTitle.data.files?.[0]?.id;
+    }
 
     if (targetFolderId) {
       await drive.files.update({
@@ -280,9 +299,9 @@ async function renameDriveChapterFolder(postId: string, postTitle: string, oldCh
         },
         supportsAllDrives: true,
       });
-      console.log(`Renamed Drive chapter folder from ${oldChapterTitle} to ${newChapterTitle}`);
+      console.log(`Renamed Drive chapter folder to ${newChapterTitle}`);
     } else {
-      console.log(`Could not find Drive chapter folder ${oldChapterTitle}`);
+      console.log(`Could not find Drive chapter folder ${oldChapterTitle} or Chương ${chapterNumber}`);
     }
   } catch (err) {
     console.warn(`Could not rename Drive chapter folder ${oldChapterTitle}:`, err);
@@ -408,11 +427,11 @@ export async function PUT(
     const firstChapter = nextChapters[0];
     const titleChanged = existingPost.title !== title;
 
-    const chapterTitleChanges: { oldTitle: string; newTitle: string }[] = [];
+    const chapterTitleChanges: { chapterNumber: number; oldTitle: string; newTitle: string }[] = [];
     for (const nextChap of nextChapters) {
       const currChap = currentChapters.find((c: NormalizedPostChapter) => c.chapterNumber === nextChap.chapterNumber);
       if (currChap && currChap.title !== nextChap.title) {
-        chapterTitleChanges.push({ oldTitle: currChap.title, newTitle: nextChap.title });
+        chapterTitleChanges.push({ chapterNumber: currChap.chapterNumber, oldTitle: currChap.title, newTitle: nextChap.title });
       }
     }
 
@@ -458,7 +477,7 @@ export async function PUT(
     for (const change of chapterTitleChanges) {
       console.log(`Bắt đầu đổi tên thư mục chương từ "${change.oldTitle}" sang "${change.newTitle}"...`);
       try {
-        await renameDriveChapterFolder(id, title, change.oldTitle, change.newTitle);
+        await renameDriveChapterFolder(id, title, change.oldTitle, change.newTitle, change.chapterNumber);
       } catch (err) {
         console.warn('Lỗi khi đổi tên thư mục chương Drive:', err);
       }
