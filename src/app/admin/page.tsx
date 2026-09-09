@@ -317,6 +317,10 @@ export default function AdminDashboard() {
         return Array.from(new Set([...postTags, ...standaloneNames]))
             .sort((a, b) => a.localeCompare(b, 'vi'));
     }, [posts, standaloneTags]);
+    const availableAuthors = useMemo(() => {
+        const authors = posts.map(post => post.author?.trim()).filter(Boolean);
+        return Array.from(new Set(authors)).sort((a, b) => a.localeCompare(b, 'vi'));
+    }, [posts]);
     const tagCounts = useMemo(() => {
         const counts: Record<string, number> = {};
         posts.forEach(post => {
@@ -1353,6 +1357,7 @@ export default function AdminDashboard() {
                 onOpenChange={setIsCreateDialogOpen}
                 onPostCreated={fetchPosts}
                 availableTags={availablePostTags}
+                availableAuthors={availableAuthors}
             />
             )}
             {selectedPost && isEditOpen && (

@@ -23,6 +23,7 @@ interface CreatePostFormProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   availableTags?: string[];
+  availableAuthors?: string[];
 }
 
 type CreateStep = 'story' | 'chapter';
@@ -32,6 +33,7 @@ export function CreatePostForm({
   open,
   onOpenChange,
   availableTags = [],
+  availableAuthors = [],
 }: CreatePostFormProps) {
   const { showProgress, updateProgress } = useUploadProgress();
   const [step, setStep] = useState<CreateStep>('story');
@@ -348,7 +350,14 @@ export function CreatePostForm({
                 placeholder="Tên của bạn"
                 disabled={isSubmitting}
                 className="rounded-[8px]"
+                list="author-suggestions"
+                autoComplete="off"
               />
+              <datalist id="author-suggestions">
+                {availableAuthors.map((auth, idx) => (
+                  <option key={idx} value={auth} />
+                ))}
+              </datalist>
             </div>
 
             <div className="pt-3 border-t border-border/40 flex gap-2 justify-end">

@@ -152,6 +152,11 @@ export default function ProductsPage() {
         const standaloneNames = standaloneTags.map(t => t.name);
         return Array.from(new Set([...postTags, ...standaloneNames])).filter(Boolean);
     }, [posts, standaloneTags]);
+    
+    const availableAuthors = useMemo(() => {
+        const authors = posts.map(post => post.author?.trim()).filter(Boolean);
+        return Array.from(new Set(authors)).sort((a, b) => a.localeCompare(b, 'vi'));
+    }, [posts]);
 
     if (isAuthLoading || !isAdmin) {
         return (
@@ -297,6 +302,7 @@ export default function ProductsPage() {
                     onOpenChange={setIsCreateDialogOpen}
                     onPostCreated={fetchPosts}
                     availableTags={availableTags}
+                    availableAuthors={availableAuthors}
                 />
             )}
 
