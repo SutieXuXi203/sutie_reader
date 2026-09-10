@@ -427,15 +427,45 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           {/* Stories List Section */}
           {user && (
             <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
-              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-6 gap-4 border-b border-border/50 pb-4">
+              <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-3.5 sm:gap-4 border-b border-border/50 pb-4">
                 <div>
                   <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
                   <h2 className="text-base sm:text-lg font-extrabold text-foreground font-sans">Danh sách truyện</h2>
                 </div>
 
                 {/* Search Bar & Filter */}
-                <div className="w-full sm:w-auto shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
-                  <div className="w-full sm:w-[160px]">
+                <div className="w-full md:w-auto flex flex-row items-center gap-2 sm:gap-2.5">
+                  <div className="relative group flex-1 sm:w-[220px] md:w-[240px] sm:flex-initial min-w-0">
+                    <span className="pointer-events-none absolute left-2.5 sm:left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80 transition-colors group-focus-within:text-primary">
+                      <Search className="w-3.5 h-3.5" />
+                    </span>
+                    <Input
+                      id="post-search"
+                      type="text"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      onCompositionStart={() => setIsSearchComposing(true)}
+                      onCompositionEnd={() => setIsSearchComposing(false)}
+                      spellCheck={false}
+                      autoCorrect="off"
+                      autoCapitalize="none"
+                      autoComplete="off"
+                      placeholder="Tìm theo tiêu đề, mô tả..."
+                      className="h-8 rounded-[8px] pl-8 sm:pl-9 pr-7 sm:pr-8 text-xs border-border/80 bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 hover:bg-card/80 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all w-full"
+                    />
+                    {searchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded-full hover:bg-muted/50 cursor-pointer"
+                        title="Xóa tìm kiếm"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="w-[130px] sm:w-[150px] md:w-[160px] shrink-0">
                     <Select
                       value={sortOption}
                       onValueChange={(val: SortOption | null) => {
@@ -447,16 +477,16 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                     >
                       <SelectTrigger
                         size="sm"
-                        className="!h-8 h-8 w-full rounded-[8px] bg-card/60 hover:bg-card/90 backdrop-blur-md border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all px-2.5 py-0 flex items-center justify-between gap-1.5 cursor-pointer [&_svg]:size-3.5"
+                        className="!h-8 h-8 w-full rounded-[8px] bg-card/60 hover:bg-card/90 backdrop-blur-md border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all px-2 sm:px-2.5 py-0 flex items-center justify-between gap-1 cursor-pointer [&_svg]:size-3.5"
                       >
-                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                           {(() => {
                             const ActiveIcon = SORT_CONFIG[sortOption]?.icon || Sparkles;
                             return <ActiveIcon className="w-3.5 h-3.5 text-primary shrink-0" />;
                           })()}
                           <SelectValue placeholder="Sắp xếp">
                             {(val: SortOption | null) => (
-                              <span className="truncate text-xs font-normal text-foreground">
+                              <span className="truncate text-xs font-normal text-foreground block">
                                 {val && SORT_CONFIG[val] ? SORT_CONFIG[val].label : 'Mới nhất'}
                               </span>
                             )}
@@ -466,7 +496,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                       <SelectContent
                         align="end"
                         alignItemWithTrigger={false}
-                        className="rounded-[10px] border border-border/80 bg-popover/95 backdrop-blur-xl p-1 min-w-[170px] shadow-xl z-50"
+                        className="rounded-[10px] border border-border/80 bg-popover/95 backdrop-blur-xl p-1 w-[160px] sm:w-[170px] max-w-[calc(100vw-2rem)] shadow-xl z-50"
                       >
                         <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
                           Sắp xếp theo
@@ -487,42 +517,12 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                               )}
                             >
                               <ItemIcon className={cn("w-3.5 h-3.5 shrink-0", isSelected ? "text-primary" : "text-muted-foreground")} />
-                              <span>{item.label}</span>
+                              <span className="truncate">{item.label}</span>
                             </SelectItem>
                           );
                         })}
                       </SelectContent>
                     </Select>
-                  </div>
-
-                  <div className="relative group w-full sm:w-[240px]">
-                    <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80 transition-colors group-focus-within:text-primary">
-                      <Search className="w-3.5 h-3.5" />
-                    </span>
-                    <Input
-                      id="post-search"
-                      type="text"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                      onCompositionStart={() => setIsSearchComposing(true)}
-                      onCompositionEnd={() => setIsSearchComposing(false)}
-                      spellCheck={false}
-                      autoCorrect="off"
-                      autoCapitalize="none"
-                      autoComplete="off"
-                      placeholder="Tìm theo tiêu đề, mô tả..."
-                      className="h-8 rounded-[8px] pl-9 pr-8 text-xs border-border/80 bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 hover:bg-card/80 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all"
-                    />
-                    {searchTerm && (
-                      <button
-                        type="button"
-                        onClick={() => setSearchTerm('')}
-                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded-full hover:bg-muted/50 cursor-pointer"
-                        title="Xóa tìm kiếm"
-                      >
-                        <X className="w-3.5 h-3.5" />
-                      </button>
-                    )}
                   </div>
                 </div>
               </div>
