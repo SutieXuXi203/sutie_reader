@@ -4,7 +4,16 @@ import dynamic from 'next/dynamic';
 import {
   AnimatedBookOpen, AnimatedBookmarkCheck, AnimatedLock
 } from '@/components/animate-ui/icons/AnimateIcon';
-import { ChevronRight, Search, X } from 'lucide-react';
+import { 
+  ChevronRight, 
+  Search, 
+  X, 
+  Sparkles, 
+  Calendar, 
+  Clock, 
+  ArrowDownAZ, 
+  ArrowUpAZ 
+} from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import { useThumbnailBlur } from '@/providers/ThumbnailBlurProvider';
 import Link from 'next/link';
@@ -15,8 +24,25 @@ import { PostCard } from '@/components/PostCard';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSearchParams } from 'next/navigation';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
+
+type SortOption = 'newest' | 'oldest' | 'recently' | 'a-z' | 'z-a';
+
+const SORT_CONFIG: Record<SortOption, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
+  'newest': { label: 'Mới nhất', icon: Sparkles },
+  'recently': { label: 'Cập nhật gần đây', icon: Clock },
+  'oldest': { label: 'Cũ nhất', icon: Calendar },
+  'a-z': { label: 'Tên: A - Z', icon: ArrowDownAZ },
+  'z-a': { label: 'Tên: Z - A', icon: ArrowUpAZ },
+};
 
 interface Post {
   _id: string;
@@ -97,6 +123,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   const [posts, setPosts] = useState<Post[]>(initialPostState);
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string; name: string }[]>(initialTagState);
   const [searchTerm, setSearchTerm] = useState('');
+  const [sortOption, setSortOption] = useState<SortOption>('newest');
   const [currentPage, _setCurrentPage] = useState(1);
 
   useEffect(() => {
@@ -269,13 +296,30 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     [posts]
   );
 
-  const filteredPosts = useMemo(() => normalizedSearch
-    ? searchablePosts
-      .filter((item) => item.searchText.includes(normalizedSearch))
-      .map((item) => item.post)
-    : posts,
-    [normalizedSearch, posts, searchablePosts]
-  );
+  const filteredPosts = useMemo(() => {
+    const basePosts = normalizedSearch
+      ? searchablePosts
+          .filter((item) => item.searchText.includes(normalizedSearch))
+          .map((item) => item.post)
+      : [...posts];
+
+    return basePosts.sort((a, b) => {
+      switch (sortOption) {
+        case 'newest':
+          return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+        case 'oldest':
+          return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        case 'recently':
+          return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+        case 'a-z':
+          return a.title.localeCompare(b.title);
+        case 'z-a':
+          return b.title.localeCompare(a.title);
+        default:
+          return 0;
+      }
+    });
+  }, [normalizedSearch, posts, searchablePosts, sortOption]);
 
   const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
   const paginatedPosts = filteredPosts.slice(
@@ -389,11 +433,71 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                   <h2 className="text-base sm:text-lg font-extrabold text-foreground font-sans">Danh sách truyện</h2>
                 </div>
 
-                {/* Search Bar */}
-                <div className="w-full sm:w-[240px] shrink-0">
-                  <div className="relative group">
-                    <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/90 transition-colors group-focus-within:text-primary">
-                      <Search className="w-4 h-4" />
+                {/* Search Bar & Filter */}
+                <div className="w-full sm:w-auto shrink-0 flex flex-col sm:flex-row items-stretch sm:items-center gap-2.5">
+                  <div className="w-full sm:w-[160px]">
+                    <Select
+                      value={sortOption}
+                      onValueChange={(val: SortOption | null) => {
+                        if (val) {
+                          setSortOption(val);
+                          setCurrentPage(1);
+                        }
+                      }}
+                    >
+                      <SelectTrigger
+                        size="sm"
+                        className="!h-8 h-8 w-full rounded-[8px] bg-card/60 hover:bg-card/90 backdrop-blur-md border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all px-2.5 py-0 flex items-center justify-between gap-1.5 cursor-pointer [&_svg]:size-3.5"
+                      >
+                        <div className="flex items-center gap-1.5 min-w-0 flex-1">
+                          {(() => {
+                            const ActiveIcon = SORT_CONFIG[sortOption]?.icon || Sparkles;
+                            return <ActiveIcon className="w-3.5 h-3.5 text-primary shrink-0" />;
+                          })()}
+                          <SelectValue placeholder="Sắp xếp">
+                            {(val: SortOption | null) => (
+                              <span className="truncate text-xs font-normal text-foreground">
+                                {val && SORT_CONFIG[val] ? SORT_CONFIG[val].label : 'Mới nhất'}
+                              </span>
+                            )}
+                          </SelectValue>
+                        </div>
+                      </SelectTrigger>
+                      <SelectContent
+                        align="end"
+                        alignItemWithTrigger={false}
+                        className="rounded-[10px] border border-border/80 bg-popover/95 backdrop-blur-xl p-1 min-w-[170px] shadow-xl z-50"
+                      >
+                        <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
+                          Sắp xếp theo
+                        </div>
+                        {(Object.keys(SORT_CONFIG) as SortOption[]).map((key) => {
+                          const item = SORT_CONFIG[key];
+                          const ItemIcon = item.icon;
+                          const isSelected = sortOption === key;
+                          return (
+                            <SelectItem
+                              key={key}
+                              value={key}
+                              className={cn(
+                                "flex items-center gap-2.5 rounded-[6px] py-1.5 px-2.5 text-xs cursor-pointer transition-colors my-0.5 font-medium",
+                                isSelected
+                                  ? "bg-primary/15 text-primary"
+                                  : "text-foreground hover:bg-accent hover:text-accent-foreground"
+                              )}
+                            >
+                              <ItemIcon className={cn("w-3.5 h-3.5 shrink-0", isSelected ? "text-primary" : "text-muted-foreground")} />
+                              <span>{item.label}</span>
+                            </SelectItem>
+                          );
+                        })}
+                      </SelectContent>
+                    </Select>
+                  </div>
+
+                  <div className="relative group w-full sm:w-[240px]">
+                    <span className="pointer-events-none absolute left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80 transition-colors group-focus-within:text-primary">
+                      <Search className="w-3.5 h-3.5" />
                     </span>
                     <Input
                       id="post-search"
@@ -407,8 +511,18 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                       autoCapitalize="none"
                       autoComplete="off"
                       placeholder="Tìm theo tiêu đề, mô tả..."
-                      className="h-8 rounded-[8px] pl-10 pr-3 text-xs border-border bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all"
+                      className="h-8 rounded-[8px] pl-9 pr-8 text-xs border-border/80 bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 hover:bg-card/80 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all"
                     />
+                    {searchTerm && (
+                      <button
+                        type="button"
+                        onClick={() => setSearchTerm('')}
+                        className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors p-0.5 rounded-full hover:bg-muted/50 cursor-pointer"
+                        title="Xóa tìm kiếm"
+                      >
+                        <X className="w-3.5 h-3.5" />
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
