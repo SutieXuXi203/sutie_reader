@@ -343,6 +343,106 @@ export async function GET(
   }
 }
 
+function computeStoryUpdateDiff(
+  existingPost: {
+    title: string;
+    author?: string;
+    description?: string;
+    tags?: string[];
+  },
+  currentChapters: NormalizedPostChapter[],
+  updatePayload: {
+    title: string;
+    author: string;
+    description?: string;
+    tags: string[];
+  },
+  nextChapters: NormalizedPostChapter[]
+): string[] {
+  const changes: string[] = [];
+
+  // Title change
+  if (existingPost.title !== updatePayload.title) {
+    changes.push(`Đổi tiêu đề: "${existingPost.title}" -> "${updatePayload.title}"`);
+  }
+
+  // Author change
+  const oldAuthor = (existingPost.author || '').trim();
+  const newAuthor = (updatePayload.author || '').trim();
+  if (oldAuthor && newAuthor && oldAuthor !== newAuthor) {
+    changes.push(`Đổi tác giả: "${oldAuthor}" -> "${newAuthor}"`);
+  }
+
+  // Description change
+  if (typeof updatePayload.description === 'string') {
+    const oldDesc = (existingPost.description || '').trim();
+    const newDesc = updatePayload.description.trim();
+    if (oldDesc !== newDesc) {
+      changes.push('Cập nhật mô tả truyện');
+    }
+  }
+
+  // Tags change
+  const oldTagsSorted = Array.isArray(existingPost.tags)
+    ? [...existingPost.tags].map((t) => t.toLowerCase()).sort().join(',')
+    : '';
+  const newTagsSorted = Array.isArray(updatePayload.tags)
+    ? [...updatePayload.tags].map((t) => t.toLowerCase()).sort().join(',')
+    : '';
+  if (oldTagsSorted !== newTagsSorted) {
+    changes.push(`Cập nhật thể loại: ${updatePayload.tags.join(', ') || 'Không có'}`);
+  }
+
+  // Chapter count change
+  if (currentChapters.length !== nextChapters.length) {
+    const diff = nextChapters.length - currentChapters.length;
+    if (diff > 0) {
+      changes.push(`Thêm mới ${diff} chương (tổng ${nextChapters.length} chương)`);
+    } else {
+      changes.push(`Xóa ${Math.abs(diff)} chương (còn ${nextChapters.length} chương)`);
+    }
+  }
+
+  // Detailed chapter changes
+  for (const nextChap of nextChapters) {
+    const currChap = currentChapters.find((c) => c.chapterNumber === nextChap.chapterNumber);
+    if (!currChap) continue;
+
+    if (currChap.title.trim() !== nextChap.title.trim()) {
+      changes.push(`Đổi tên Chương ${currChap.chapterNumber}: "${currChap.title}" -> "${nextChap.title}"`);
+    }
+
+    if ((currChap.content || '').trim() !== (nextChap.content || '').trim()) {
+      changes.push(`Cập nhật nội dung chữ Chương ${currChap.chapterNumber}`);
+    }
+
+    const currImgs = Array.isArray(currChap.images) ? currChap.images : [];
+    const nextImgs = Array.isArray(nextChap.images) ? nextChap.images : [];
+    if (currImgs.length !== nextImgs.length || JSON.stringify(currImgs) !== JSON.stringify(nextImgs)) {
+      const imgDiff = nextImgs.length - currImgs.length;
+      if (imgDiff > 0) {
+        changes.push(`Thêm ${imgDiff} ảnh vào Chương ${currChap.chapterNumber} (tổng ${nextImgs.length} ảnh)`);
+      } else if (imgDiff < 0) {
+        changes.push(`Xóa ${Math.abs(imgDiff)} ảnh khỏi Chương ${currChap.chapterNumber} (còn ${nextImgs.length} ảnh)`);
+      } else {
+        changes.push(`Sắp xếp lại ảnh Chương ${currChap.chapterNumber}`);
+      }
+    }
+  }
+
+  if (changes.length === 0) {
+    changes.push('Cập nhật thông tin truyện');
+  }
+
+  if (changes.length > 8) {
+    const trimmed = changes.slice(0, 8);
+    trimmed.push(`... và ${changes.length - 8} thay đổi khác`);
+    return trimmed;
+  }
+
+  return changes;
+}
+
 export async function PUT(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -481,6 +581,24 @@ export async function PUT(
         await renameDriveChapterFolder(id, title, change.oldTitle, change.newTitle, change.chapterNumber);
       } catch (err) {
         console.warn('Lỗi khi đổi tên thư mục chương Drive:', err);
+      }
+    }
+
+    // Send Telegram notification if client doesn't already have an active upload task tracking this update
+    const hasUploadTask = payload?.hasUploadTask === true;
+    if (!hasUploadTask) {
+      try {
+        const changes = computeStoryUpdateDiff(
+          existingPost,
+          currentChapters,
+          updatePayload,
+          nextChapters
+        );
+        await sendTelegramMessage(
+          formatters.update(updated.title, changes, updated.author)
+        );
+      } catch (telegramErr) {
+        console.warn('Lỗi khi gửi thông báo cập nhật truyện qua Telegram:', telegramErr);
       }
     }
 

@@ -9,13 +9,15 @@ import {
 export const dynamic = 'force-dynamic';
 
 interface ProgressPayload {
-  action: 'start' | 'progress' | 'success' | 'error';
+  action: 'start' | 'progress' | 'success' | 'error' | 'update';
   messageId?: number;
   title: string;
   completed?: number;
   total?: number;
   status?: 'uploading' | 'saving' | 'success' | 'error';
   errorMessage?: string;
+  details?: string[] | string;
+  author?: string;
 }
 
 export async function POST(req: NextRequest) {
@@ -29,7 +31,7 @@ export async function POST(req: NextRequest) {
     }
 
     const body: ProgressPayload = await req.json();
-    const { action, messageId, title, completed = 0, total = 0, status = 'uploading', errorMessage } = body;
+    const { action, messageId, title, completed = 0, total = 0, status = 'uploading', errorMessage, details, author } = body;
 
     const safeTitle = (title || 'Chương truyện').trim();
 
@@ -60,6 +62,17 @@ export async function POST(req: NextRequest) {
 
     if (action === 'success') {
       const text = formatters.success(safeTitle, total || completed);
+      if (messageId) {
+        const res = await editTelegramMessage(messageId, text);
+        return NextResponse.json({ success: res.success, error: res.error });
+      } else {
+        const res = await sendTelegramMessage(text);
+        return NextResponse.json({ success: res.success, messageId: res.messageId, error: res.error });
+      }
+    }
+
+    if (action === 'update') {
+      const text = formatters.update(safeTitle, details, author);
       if (messageId) {
         const res = await editTelegramMessage(messageId, text);
         return NextResponse.json({ success: res.success, error: res.error });

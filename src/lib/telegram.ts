@@ -146,17 +146,20 @@ export const editTelegramMessage = async (
   }
 };
 
-// Formatter helpers (Chỉ 1 icon nhận biết chức năng ở dòng đầu: Tải lên 📤, Cập nhật 🔄, Xóa 🗑️)
 export const formatters = {
   start: (title: string, total: number) => {
     const isUpdate = title.toLowerCase().includes('cập nhật');
     const header = isUpdate ? '🔄 [BẮT ĐẦU CẬP NHẬT]' : '📤 [BẮT ĐẦU TẢI LÊN]';
-    return [
+    const cleanTitle = title.replace(/^Đang cập nhật ["“']?([^"”']+)["”']?$/i, '$1').trim();
+    const lines = [
       header,
-      `Tiêu đề: ${title}`,
-      `Tổng số ảnh: ${total} ảnh`,
-      'Trạng thái: Bắt đầu xử lý...',
-    ].join('\n');
+      `Tiêu đề: ${cleanTitle}`,
+    ];
+    if (total > 0) {
+      lines.push(`Tổng số ảnh: ${total} ảnh`);
+    }
+    lines.push('Trạng thái: Bắt đầu xử lý...');
+    return lines.join('\n');
   },
 
   progress: (
@@ -169,16 +172,20 @@ export const formatters = {
     const isSaving = status === 'saving';
     const isUpdate = title.toLowerCase().includes('cập nhật') || isSaving;
     const header = isUpdate ? '🔄 [ĐANG CẬP NHẬT]' : '📤 [ĐANG TẢI LÊN]';
+    const cleanTitle = title.replace(/^Đang cập nhật ["“']?([^"”']+)["”']?$/i, '$1').trim();
     const statusText = isSaving
       ? 'Đang lưu nội dung chương vào hệ thống...'
       : `Đang tải lên ảnh (${completed}/${total})...`;
 
-    return [
+    const lines = [
       header,
-      `Tiêu đề: ${title}`,
-      `Tiến trình: ${completed}/${total} ảnh (${percent}%)`,
-      `Trạng thái: ${statusText}`,
-    ].join('\n');
+      `Tiêu đề: ${cleanTitle}`,
+    ];
+    if (total > 0) {
+      lines.push(`Tiến trình: ${completed}/${total} ảnh (${percent}%)`);
+    }
+    lines.push(`Trạng thái: ${statusText}`);
+    return lines.join('\n');
   },
 
   success: (title: string, total: number) => {
@@ -187,14 +194,51 @@ export const formatters = {
     const dateStr = now.toLocaleDateString('vi-VN');
     const isUpdate = title.toLowerCase().includes('cập nhật');
     const header = isUpdate ? '🔄 [CẬP NHẬT THÀNH CÔNG]' : '📤 [TẢI LÊN THÀNH CÔNG]';
+    const cleanTitle = title.replace(/^Đang cập nhật ["“']?([^"”']+)["”']?$/i, '$1').trim();
 
-    return [
+    const lines = [
       header,
-      `Tiêu đề: ${title}`,
-      `Tổng số ảnh: ${total}/${total} ảnh`,
-      'Trạng thái: Tải lên & Lưu thành công!',
-      `Thời gian: ${timeStr} ngày ${dateStr}`,
-    ].join('\n');
+      `Tiêu đề: ${cleanTitle}`,
+    ];
+    if (total > 0) {
+      lines.push(`Tổng số ảnh: ${total}/${total} ảnh`);
+    }
+    lines.push(isUpdate ? 'Trạng thái: Cập nhật thành công!' : 'Trạng thái: Tải lên & Lưu thành công!');
+    lines.push(`Thời gian: ${timeStr} ngày ${dateStr}`);
+
+    return lines.join('\n');
+  },
+
+  update: (title: string, details?: string[] | string, author?: string) => {
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
+    const dateStr = now.toLocaleDateString('vi-VN');
+    const cleanTitle = title.replace(/^Đang cập nhật ["“']?([^"”']+)["”']?$/i, '$1').trim();
+
+    const lines = [
+      '🔄 [CẬP NHẬT TRUYỆN]',
+      `Tiêu đề: ${cleanTitle}`,
+    ];
+
+    if (author) {
+      lines.push(`Tác giả: ${author}`);
+    }
+
+    if (Array.isArray(details) && details.length > 0) {
+      lines.push('Nội dung thay đổi:');
+      details.forEach((item) => {
+        lines.push(`- ${item}`);
+      });
+    } else if (typeof details === 'string' && details.trim()) {
+      lines.push(`Nội dung thay đổi: ${details.trim()}`);
+    } else {
+      lines.push('Nội dung thay đổi: Cập nhật thông tin truyện');
+    }
+
+    lines.push('Trạng thái: Cập nhật thành công!');
+    lines.push(`Thời gian: ${timeStr} ngày ${dateStr}`);
+
+    return lines.join('\n');
   },
 
   delete: (title: string, author?: string, chapterCount?: number) => {
@@ -222,9 +266,10 @@ export const formatters = {
   },
 
   error: (title: string, errorMessage?: string) => {
+    const cleanTitle = title.replace(/^Đang cập nhật ["“']?([^"”']+)["”']?$/i, '$1').trim();
     return [
       '❌ [TẢI LÊN THẤT BẠI]',
-      `Tiêu đề: ${title}`,
+      `Tiêu đề: ${cleanTitle}`,
       `Lỗi: ${errorMessage || 'Không rõ nguyên nhân'}`,
     ].join('\n');
   },

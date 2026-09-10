@@ -541,6 +541,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
           chapters: updatedChaptersPayload,
           content: updatedChaptersPayload[0]?.content || '',
           images: updatedChaptersPayload[0]?.images || [],
+          hasUploadTask: totalNewFiles > 0 && Boolean(taskId),
         }),
       });
 
