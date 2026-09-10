@@ -2,6 +2,7 @@
 
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { UploadProgressWidget, UploadProgressState } from '@/components/UploadProgressWidget';
+import { notifyTelegramStart, notifyTelegramProgress, clearTelegramTask } from '@/lib/telegramClient';
 
 let globalTasks: UploadProgressState[] = [];
 let listeners: ((tasks: UploadProgressState[]) => void)[] = [];
@@ -43,6 +44,7 @@ export function UploadProgressProvider({ children }: { children: ReactNode }) {
       },
     ];
     notifyListeners();
+    notifyTelegramStart(id, title, total);
     return id;
   }, []);
 
@@ -53,23 +55,28 @@ export function UploadProgressProvider({ children }: { children: ReactNode }) {
     status: UploadProgressState['status'] = 'uploading',
     errorMessage?: string
   ) => {
-    globalTasks = globalTasks.map((task) =>
-      task.id === id
-        ? {
-            ...task,
-            completed,
-            total,
-            status,
-            errorMessage: errorMessage || task.errorMessage,
-          }
-        : task
-    );
+    let taskTitle = '';
+    globalTasks = globalTasks.map((task) => {
+      if (task.id === id) {
+        taskTitle = task.title;
+        return {
+          ...task,
+          completed,
+          total,
+          status,
+          errorMessage: errorMessage || task.errorMessage,
+        };
+      }
+      return task;
+    });
     notifyListeners();
+    void notifyTelegramProgress(id, taskTitle, completed, total, status, errorMessage);
   }, []);
 
   const hideProgress = useCallback((id: string) => {
     globalTasks = globalTasks.filter((task) => task.id !== id);
     notifyListeners();
+    clearTelegramTask(id);
   }, []);
 
   const value = useMemo(
