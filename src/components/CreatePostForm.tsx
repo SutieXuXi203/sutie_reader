@@ -98,7 +98,10 @@ export function CreatePostForm({
     }
   };
 
-  const handleDialogOpenChange = (nextOpen: boolean) => {
+  const handleDialogOpenChange = (nextOpen: boolean, eventDetails?: any) => {
+    if (!nextOpen && (eventDetails?.reason === 'outsidePress' || eventDetails?.reason === 'outside-press')) {
+      return;
+    }
     if (!nextOpen) {
       if (!isSavingChapterRef.current) {
         void cleanupDraftPost();
@@ -297,7 +300,7 @@ export function CreatePostForm({
   };
 
   return (
-    <Dialog open={open} onOpenChange={handleDialogOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange} disablePointerDismissal>
       <DialogContent className="max-w-2xl max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-6 space-y-5">
         <DialogHeader>
           <DialogTitle className="text-xl font-medium">

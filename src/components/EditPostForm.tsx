@@ -683,8 +683,15 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     setExpandedImageLimit(0);
   };
 
+  const handleDialogOpenChange = (nextOpen: boolean, eventDetails?: any) => {
+    if (!nextOpen && (eventDetails?.reason === 'outsidePress' || eventDetails?.reason === 'outside-press')) {
+      return;
+    }
+    onOpenChange(nextOpen);
+  };
+
   return (
-    <Dialog open={open} onOpenChange={onOpenChange}>
+    <Dialog open={open} onOpenChange={handleDialogOpenChange} disablePointerDismissal>
       <DialogContent className={cn(
         "overflow-y-auto overscroll-contain custom-scrollbar rounded-[12px] border border-border shadow-2xl dark:shadow-primary/20 bg-popover text-popover-foreground p-5 duration-75 flex flex-col sm:p-6 data-open:fade-in-0 data-closed:fade-out-0",
         "!max-w-[min(720px,calc(100vw-2rem))] w-[min(720px,calc(100vw-2rem))] max-h-[92vh] space-y-5"
