@@ -146,14 +146,16 @@ export const editTelegramMessage = async (
   }
 };
 
-// Formatter helpers (Bổ sung icon trực quan, sinh động theo yêu cầu người dùng)
+// Formatter helpers (Chỉ 1 icon nhận biết chức năng ở dòng đầu: Tải lên 📤, Cập nhật 🔄, Xóa 🗑️)
 export const formatters = {
   start: (title: string, total: number) => {
+    const isUpdate = title.toLowerCase().includes('cập nhật');
+    const header = isUpdate ? '🔄 [BẮT ĐẦU CẬP NHẬT]' : '📤 [BẮT ĐẦU TẢI LÊN]';
     return [
-      '📤 [BẮT ĐẦU TẢI LÊN]',
-      `📖 Tiêu đề: ${title}`,
-      `🖼️ Tổng số ảnh: ${total} ảnh`,
-      '⏳ Trạng thái: Bắt đầu xử lý...',
+      header,
+      `Tiêu đề: ${title}`,
+      `Tổng số ảnh: ${total} ảnh`,
+      'Trạng thái: Bắt đầu xử lý...',
     ].join('\n');
   },
 
@@ -165,16 +167,17 @@ export const formatters = {
   ) => {
     const percent = total > 0 ? Math.min(100, Math.round((completed / total) * 100)) : 0;
     const isSaving = status === 'saving';
-    const header = isSaving ? '🔄 [ĐANG CẬP NHẬT]' : '📤 [ĐANG TẢI LÊN]';
+    const isUpdate = title.toLowerCase().includes('cập nhật') || isSaving;
+    const header = isUpdate ? '🔄 [ĐANG CẬP NHẬT]' : '📤 [ĐANG TẢI LÊN]';
     const statusText = isSaving
       ? 'Đang lưu nội dung chương vào hệ thống...'
       : `Đang tải lên ảnh (${completed}/${total})...`;
 
     return [
       header,
-      `📖 Tiêu đề: ${title}`,
-      `📊 Tiến trình: ${completed}/${total} ảnh (${percent}%)`,
-      `⏳ Trạng thái: ${statusText}`,
+      `Tiêu đề: ${title}`,
+      `Tiến trình: ${completed}/${total} ảnh (${percent}%)`,
+      `Trạng thái: ${statusText}`,
     ].join('\n');
   },
 
@@ -182,13 +185,15 @@ export const formatters = {
     const now = new Date();
     const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
     const dateStr = now.toLocaleDateString('vi-VN');
+    const isUpdate = title.toLowerCase().includes('cập nhật');
+    const header = isUpdate ? '🔄 [CẬP NHẬT THÀNH CÔNG]' : '📤 [TẢI LÊN THÀNH CÔNG]';
 
     return [
-      '✅ [TẢI LÊN & LƯU THÀNH CÔNG]',
-      `📖 Tiêu đề: ${title}`,
-      `🖼️ Tổng số ảnh: ${total}/${total} ảnh`,
-      '🎉 Trạng thái: Tải lên & Lưu thành công!',
-      `⏰ Thời gian: ${timeStr} ngày ${dateStr}`,
+      header,
+      `Tiêu đề: ${title}`,
+      `Tổng số ảnh: ${total}/${total} ảnh`,
+      'Trạng thái: Tải lên & Lưu thành công!',
+      `Thời gian: ${timeStr} ngày ${dateStr}`,
     ].join('\n');
   },
 
@@ -199,19 +204,19 @@ export const formatters = {
 
     const lines = [
       '🗑️ [XÓA BỘ TRUYỆN]',
-      `📖 Tiêu đề: ${title}`,
+      `Tiêu đề: ${title}`,
     ];
 
     if (author) {
-      lines.push(`👤 Tác giả: ${author}`);
+      lines.push(`Tác giả: ${author}`);
     }
 
     if (typeof chapterCount === 'number') {
-      lines.push(`📑 Quy mô: ${chapterCount} chương`);
+      lines.push(`Quy mô: ${chapterCount} chương`);
     }
 
-    lines.push('⚠️ Trạng thái: Đã xóa hoàn toàn khỏi hệ thống!');
-    lines.push(`⏰ Thời gian: ${timeStr} ngày ${dateStr}`);
+    lines.push('Trạng thái: Đã xóa hoàn toàn khỏi hệ thống!');
+    lines.push(`Thời gian: ${timeStr} ngày ${dateStr}`);
 
     return lines.join('\n');
   },
@@ -219,8 +224,8 @@ export const formatters = {
   error: (title: string, errorMessage?: string) => {
     return [
       '❌ [TẢI LÊN THẤT BẠI]',
-      `📖 Tiêu đề: ${title}`,
-      `⚠️ Lỗi: ${errorMessage || 'Không rõ nguyên nhân'}`,
+      `Tiêu đề: ${title}`,
+      `Lỗi: ${errorMessage || 'Không rõ nguyên nhân'}`,
     ].join('\n');
   },
 };
