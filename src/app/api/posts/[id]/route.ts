@@ -7,6 +7,7 @@ import { isAdmin, getAuthUser } from '@/lib/auth';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
+import { sendTelegramMessage, formatters } from '@/lib/telegram';
 
 export const maxDuration = 60;
 
@@ -525,6 +526,19 @@ export async function DELETE(
     } catch (err) {
       console.warn('Lỗi khi xóa folder Drive:', err);
     }
+
+    const isDraft = request.nextUrl.searchParams.get('isDraft') === 'true';
+    if (!isDraft) {
+      try {
+        const chapterCount = Array.isArray(deletedPost.chapters) ? deletedPost.chapters.length : 0;
+        await sendTelegramMessage(
+          formatters.delete(deletedPost.title, deletedPost.author, chapterCount)
+        );
+      } catch (telegramErr) {
+        console.warn('Lỗi khi gửi thông báo xóa truyện qua Telegram:', telegramErr);
+      }
+    }
+
     invalidateApiCache('posts:');
     return NextResponse.json({ message: 'Bài viết đã được xóa thành công' });
   } catch (error) {

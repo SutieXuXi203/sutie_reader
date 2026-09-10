@@ -92,7 +92,7 @@ export function CreatePostForm({
     const draftId = draftPostIdRef.current;
     if (!draftId || createdChapterCountRef.current > 0 || isSavingChapterRef.current) return;
     try {
-      await fetch(`/api/posts/${draftId}`, { method: 'DELETE' });
+      await fetch(`/api/posts/${draftId}?isDraft=true`, { method: 'DELETE' });
     } catch (cleanupError) {
       console.warn('Không thể xóa truyện nháp:', cleanupError);
     }
