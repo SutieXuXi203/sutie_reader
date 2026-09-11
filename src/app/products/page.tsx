@@ -49,6 +49,22 @@ export default function ProductsPage() {
             return next;
         });
     }, []);
+
+    const isFirstPageMount = useRef(true);
+    useEffect(() => {
+        if (isFirstPageMount.current) {
+            isFirstPageMount.current = false;
+            return;
+        }
+        if (typeof window !== 'undefined') {
+            try {
+                window.scrollTo({ top: 0, behavior: 'smooth' });
+            } catch {
+                window.scrollTo(0, 0);
+            }
+        }
+    }, [currentPage]);
+
     const itemsPerPage = 12;
     const [isSearchComposing, setIsSearchComposing] = useState(false);
     const [isLoading, setIsLoading] = useState(true);

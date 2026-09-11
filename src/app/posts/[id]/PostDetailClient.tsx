@@ -245,6 +245,17 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
     }
   }, [post]);
 
+  const isFirstChapterMount = useRef(true);
+  useEffect(() => {
+    if (isFirstChapterMount.current) {
+      isFirstChapterMount.current = false;
+      return;
+    }
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.body.scrollTop = 0;
+  }, [activeChapterIndex]);
+
   const goToChapter = useCallback(
     (index: number) => {
       setIsChapterMenuOpen(false);
@@ -254,9 +265,9 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
       imageRefs.current = [];
       showUIRef.current = true;
       setShowUI(true);
-      setTimeout(() => {
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-      }, 50);
+      window.scrollTo(0, 0);
+      document.documentElement.scrollTop = 0;
+      document.body.scrollTop = 0;
     },
     [activeChapterIndex, chapters]
   );
