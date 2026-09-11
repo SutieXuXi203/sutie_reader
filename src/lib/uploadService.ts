@@ -1,6 +1,5 @@
 import imageCompression from 'browser-image-compression';
 import { getOptimizedImageUrl } from '@/lib/utils';
-import { scrambleImageFile } from '@/lib/scramble';
 
 export const uploadImages = async (
   files: File[],
@@ -31,37 +30,26 @@ export const uploadImages = async (
   for (let i = 0; i < sortedFiles.length; i += BATCH_SIZE) {
     const batchFiles = sortedFiles.slice(i, i + BATCH_SIZE);
 
-    const processedBatch = await Promise.all(
-      batchFiles.map(async (file, batchIndex) => {
+    const compressedBatch = await Promise.all(
+      batchFiles.map(async (file) => {
         try {
           const isAlreadySmallWebp = file.type === 'image/webp' && file.size <= 400 * 1024;
-          let webpFile: File = file;
+          if (isAlreadySmallWebp || (file as any).skipCompression) return file;
 
-          if (!isAlreadySmallWebp && !(file as any).skipCompression) {
-            const compressedBlob = await imageCompression(file, {
-              maxSizeMB: 0.8,
-              maxWidthOrHeight: 2048,
-              fileType: 'image/webp',
-              initialQuality: 0.85,
-              useWebWorker: true,
-            });
+          const compressedBlob = await imageCompression(file, {
+            maxSizeMB: 0.8,
+            maxWidthOrHeight: 2048,
+            fileType: 'image/webp',
+            initialQuality: 0.85,
+            useWebWorker: true,
+          });
 
-            const baseName = file.name.replace(/\.[^.]+$/, '');
-            const webpFileName = `${baseName}.webp`;
-            webpFile = new File([compressedBlob], webpFileName, { type: 'image/webp' });
-          }
-
-          // Generate a unique seed for this specific page
-          const globalIdx = i + batchIndex;
-          const seed = `${postId || 'post'}_c${chapter || '1'}_p${globalIdx + 1}_${Math.random().toString(36).substring(2, 8)}`;
-
-          // Scramble image into 64 pieces (8x8 grid)
-          const scrambledFile = await scrambleImageFile(webpFile, seed, 8, 8);
-
-          return { file: scrambledFile, seed };
+          const baseName = file.name.replace(/\.[^.]+$/, '');
+          const webpFileName = `${baseName}.webp`;
+          return new File([compressedBlob], webpFileName, { type: 'image/webp' });
         } catch (error) {
-          console.error('Lỗi khi nén & xáo trộn ảnh sang WebP:', error);
-          return { file, seed: '' };
+          console.error('Lỗi khi nén ảnh sang WebP:', error);
+          return file;
         }
       })
     );
@@ -70,7 +58,7 @@ export const uploadImages = async (
     formData.append('title', uploadTitle);
     if (postId) formData.append('postId', postId);
     if (chapter) formData.append('chapter', chapter);
-    processedBatch.forEach(({ file }) =>
+    compressedBatch.forEach((file) =>
       formData.append('files', file, file.name)
     );
 
@@ -90,17 +78,7 @@ export const uploadImages = async (
     }
 
     const { urls } = await res.json();
-    const batchUrls = (urls as string[]).map((rawUrl, idx) => {
-      const seed = processedBatch[idx]?.seed;
-      if (!seed) {
-        return getOptimizedImageUrl(rawUrl);
-      }
-      const sep = rawUrl.includes('?') ? '&' : '?';
-      const scrambledUrl = `${rawUrl}${sep}scramble=1&seed=${encodeURIComponent(seed)}&rows=8&cols=8`;
-      return getOptimizedImageUrl(scrambledUrl);
-    });
-
-    allUrls.push(...batchUrls);
+    allUrls.push(...(urls as string[]).map(getOptimizedImageUrl));
 
     onProgress?.(allUrls.length, sortedFiles.length);
   }

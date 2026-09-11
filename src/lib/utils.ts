@@ -41,13 +41,25 @@ export function getOptimizedImageUrl(url: string): string {
     return url;
   }
 
+  if (url.startsWith('/api/image/')) {
+    if (!url.includes('thumb=1') && !url.includes('scramble=1')) {
+      return `${url}${url.includes('?') ? '&' : '?'}thumb=1`;
+    }
+    return url;
+  }
+
+  if (url.startsWith('/')) return url;
+
   const imageId = extractDriveImageId(url);
   if (imageId) {
-    let extraParams = '';
+    let extraParams = '&thumb=1';
     if (url.includes('?')) {
       try {
         const u = new URL(url, 'http://localhost');
         u.searchParams.delete('v');
+        u.searchParams.delete('id');
+        u.searchParams.delete('export');
+        u.searchParams.set('thumb', '1');
         const qs = u.searchParams.toString();
         if (qs) {
           extraParams = `&${qs}`;
@@ -70,6 +82,7 @@ export function ensureScrambledImageUrl(url: string): string {
         const u = new URL(url);
         const search = u.searchParams;
         search.delete('v');
+        search.delete('thumb');
         const qs = search.toString();
         return `/api/image/${encodeURIComponent(fileId)}?v=${PROTECTED_IMAGE_URL_VERSION}&pre_scrambled=1${qs ? `&${qs}` : ''}`;
       } catch {}
@@ -77,8 +90,8 @@ export function ensureScrambledImageUrl(url: string): string {
     return url;
   }
 
-  // Clean URL: seed and scramble params are kept secret on server & client
-  return `/api/image/${encodeURIComponent(fileId)}?v=${PROTECTED_IMAGE_URL_VERSION}`;
+  // Comic chapter reader: full-resolution scrambled image
+  return `/api/image/${encodeURIComponent(fileId)}?v=${PROTECTED_IMAGE_URL_VERSION}&scramble=1`;
 }
 
 export function normalizeSearchText(value: string): string {

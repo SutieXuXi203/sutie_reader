@@ -3,6 +3,7 @@ import { createSignedWorkerImageUrl } from '@/lib/image-signing';
 import { getSessionUserFromToken } from '@/lib/server-auth';
 import { scrambleImageBuffer } from '@/lib/scramble-server';
 import { deriveScrambleSeed } from '@/lib/scramble';
+import sharp from 'sharp';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -143,9 +144,36 @@ export async function GET(
       });
     }
 
+    const isThumb = request.nextUrl.searchParams.get('thumb') === '1' || request.nextUrl.searchParams.get('type') === 'thumb';
     const isPreScrambled = request.nextUrl.searchParams.get('pre_scrambled') === '1';
     const isRaw = request.nextUrl.searchParams.get('raw') === '1';
-    const shouldScramble = !isPreScrambled && !isRaw;
+
+    // 1. Thumbnail mode: Fast, crisp downscaled WebP cover (max 480px width), completely unscrambled
+    if (isThumb && !isRaw) {
+      try {
+        const rawArrayBuffer = await upstream.arrayBuffer();
+        const rawBuffer = Buffer.from(rawArrayBuffer);
+        const thumbBuffer = await sharp(rawBuffer)
+          .resize({ width: 480, withoutEnlargement: true })
+          .webp({ quality: 85 })
+          .toBuffer();
+
+        const responseHeaders = new Headers();
+        responseHeaders.set('Content-Type', 'image/webp');
+        responseHeaders.set('Cache-Control', 'public, max-age=2592000, immutable');
+        responseHeaders.set('X-Content-Type-Options', 'nosniff');
+
+        return new NextResponse(new Uint8Array(thumbBuffer), {
+          status: 200,
+          headers: responseHeaders,
+        });
+      } catch (thumbErr) {
+        console.error('Error generating thumbnail in image route:', thumbErr);
+      }
+    }
+
+    // 2. Comic reader mode: Scramble on-the-fly into 64 tiles for anti-piracy
+    const shouldScramble = !isPreScrambled && !isRaw && !isThumb;
 
     if (shouldScramble) {
       const seed = request.nextUrl.searchParams.get('seed') || deriveScrambleSeed(id);

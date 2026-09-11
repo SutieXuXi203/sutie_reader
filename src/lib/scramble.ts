@@ -71,6 +71,16 @@ export function parseScrambleParams(url: string): ScrambleParams {
 
   try {
     const parsed = new URL(url, 'http://localhost');
+    const isThumb = parsed.searchParams.get('thumb') === '1' || parsed.searchParams.get('type') === 'thumb';
+    if (isThumb) {
+      return {
+        isScrambled: false,
+        seed: '',
+        rows: DEFAULT_SCRAMBLE_ROWS,
+        cols: DEFAULT_SCRAMBLE_COLS,
+      };
+    }
+
     const hasExplicitScramble = parsed.searchParams.get('scramble') === '1' || parsed.searchParams.has('scrambled');
     const explicitSeed = parsed.searchParams.get('seed');
     const rows = parseInt(parsed.searchParams.get('rows') || '', 10) || DEFAULT_SCRAMBLE_ROWS;
@@ -86,6 +96,16 @@ export function parseScrambleParams(url: string): ScrambleParams {
       cols: cols > 0 ? cols : DEFAULT_SCRAMBLE_COLS,
     };
   } catch {
+    const isThumb = url.includes('thumb=1') || url.includes('type=thumb');
+    if (isThumb) {
+      return {
+        isScrambled: false,
+        seed: '',
+        rows: DEFAULT_SCRAMBLE_ROWS,
+        cols: DEFAULT_SCRAMBLE_COLS,
+      };
+    }
+
     const isScrambled = url.includes('scramble=1') || Boolean(fileId);
     const seed = fileId ? deriveScrambleSeed(fileId) : 'default_seed';
 
