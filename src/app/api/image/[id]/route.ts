@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSignedWorkerImageUrl } from '@/lib/image-signing';
 import { getSessionUserFromToken } from '@/lib/server-auth';
+import { scrambleImageBuffer } from '@/lib/scramble-server';
+import { deriveScrambleSeed } from '@/lib/scramble';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -9,7 +11,7 @@ export const maxDuration = 60;
 const DEFAULT_IMAGE_WORKER_URL = process.env.CLOUDFLARE_WORKER_URL || process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL || '';
 const DRIVE_FILE_ID_PATTERN = /^[a-zA-Z0-9_-]{10,}$/;
 const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
-const DEFAULT_RATE_LIMIT_MAX = 360;
+const DEFAULT_RATE_LIMIT_MAX = 120;
 
 type RateLimitBucket = {
   count: number;
@@ -139,6 +141,45 @@ export async function GET(
           'X-Content-Type-Options': 'nosniff',
         },
       });
+    }
+
+    const isPreScrambled = request.nextUrl.searchParams.get('pre_scrambled') === '1';
+    const isRaw = request.nextUrl.searchParams.get('raw') === '1';
+    const shouldScramble = !isPreScrambled && !isRaw;
+
+    if (shouldScramble) {
+      const seed = request.nextUrl.searchParams.get('seed') || deriveScrambleSeed(id);
+      const rows = parseInt(request.nextUrl.searchParams.get('rows') || '8', 10) || 8;
+      const cols = parseInt(request.nextUrl.searchParams.get('cols') || '8', 10) || 8;
+
+      let rawBuffer: Buffer | null = null;
+      try {
+        const rawArrayBuffer = await upstream.arrayBuffer();
+        rawBuffer = Buffer.from(rawArrayBuffer);
+        const scrambledBuffer = await scrambleImageBuffer(rawBuffer, { seed, rows, cols, quality: 85 });
+
+        const responseHeaders = new Headers();
+        responseHeaders.set('Content-Type', 'image/webp');
+        responseHeaders.set('Cache-Control', 'public, max-age=2592000, immutable');
+        responseHeaders.set('X-Content-Type-Options', 'nosniff');
+
+        return new NextResponse(new Uint8Array(scrambledBuffer), {
+          status: 200,
+          headers: responseHeaders,
+        });
+      } catch (scrambleErr) {
+        console.error('Lỗi khi xáo trộn ảnh trên server:', scrambleErr);
+        if (rawBuffer) {
+          const fallbackHeaders = new Headers();
+          fallbackHeaders.set('Content-Type', upstream.headers.get('content-type') || 'image/jpeg');
+          fallbackHeaders.set('Cache-Control', 'public, max-age=86400');
+          fallbackHeaders.set('X-Content-Type-Options', 'nosniff');
+          return new NextResponse(new Uint8Array(rawBuffer), {
+            status: 200,
+            headers: fallbackHeaders,
+          });
+        }
+      }
     }
 
     const responseHeaders = new Headers();

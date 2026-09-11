@@ -4,6 +4,8 @@ import { useState, useCallback, useRef, useEffect } from 'react';
 import Image from 'next/image';
 import { RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { extractDriveImageId, getOptimizedImageUrl } from '@/lib/utils';
+import { parseScrambleParams } from '@/lib/scramble';
+import { ScrambledCanvas } from './ScrambledCanvas';
 
 interface ReaderImageProps {
   src: string;
@@ -163,24 +165,48 @@ export function ReaderImage({
         </div>
       )}
 
-      {/* Main Image - Smart Loaded */}
+      {/* Main Image - Smart Loaded (ScrambledCanvas for anti-scrape, Image for regular) */}
       {isInViewportOrNear && currentSrc && (
-        <Image
-          src={currentSrc}
-          alt={alt}
-          width={width}
-          height={height}
-          className={`${className} transition-opacity duration-300 ${
-            status === 'loaded' ? 'opacity-100' : 'opacity-0'
-          }`}
-          unoptimized
-          priority={priority}
-          onLoad={() => {
-            setStatus('loaded');
-            onLoad?.();
-          }}
-          onError={handleAutoFallback}
-        />
+        (() => {
+          const scrambleMeta = parseScrambleParams(currentSrc);
+          if (scrambleMeta.isScrambled) {
+            return (
+              <ScrambledCanvas
+                src={currentSrc}
+                seedKey={scrambleMeta.seed}
+                rows={scrambleMeta.rows}
+                cols={scrambleMeta.cols}
+                alt={alt}
+                idx={idx}
+                className={className}
+                onLoad={() => {
+                  setStatus('loaded');
+                  onLoad?.();
+                }}
+                onError={handleAutoFallback}
+              />
+            );
+          }
+
+          return (
+            <Image
+              src={currentSrc}
+              alt={alt}
+              width={width}
+              height={height}
+              className={`${className} transition-opacity duration-300 ${
+                status === 'loaded' ? 'opacity-100' : 'opacity-0'
+              }`}
+              unoptimized
+              priority={priority}
+              onLoad={() => {
+                setStatus('loaded');
+                onLoad?.();
+              }}
+              onError={handleAutoFallback}
+            />
+          );
+        })()
       )}
     </div>
   );

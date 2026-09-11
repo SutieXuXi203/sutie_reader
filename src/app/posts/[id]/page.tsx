@@ -1,8 +1,7 @@
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { ObjectId } from 'mongodb';
-import { getPostChapters } from '@/lib/utils';
-import { signImageUrls } from '@/lib/image-signing';
+import { getPostChapters, ensureScrambledImageUrl } from '@/lib/utils';
 import { cookies } from 'next/headers';
 import { getCurrentUserFromToken } from '@/lib/server-auth';
 import PostDetailClient from './PostDetailClient';
@@ -65,16 +64,14 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     user = await getCurrentUserFromToken(token);
   }
 
-  if (user) {
-    if (serialized.images) {
-      serialized.images = signImageUrls(serialized.images, user.id);
-    }
-    if (Array.isArray(serialized.chapters)) {
-      serialized.chapters = serialized.chapters.map((chapter: any) => ({
-        ...chapter,
-        images: signImageUrls(chapter.images || [], user.id),
-      }));
-    }
+  if (serialized.images) {
+    serialized.images = serialized.images.map(ensureScrambledImageUrl);
+  }
+  if (Array.isArray(serialized.chapters)) {
+    serialized.chapters = serialized.chapters.map((chapter: any) => ({
+      ...chapter,
+      images: (chapter.images || []).map(ensureScrambledImageUrl),
+    }));
   }
 
   return <PostDetailClient initialPost={serialized as any} />;

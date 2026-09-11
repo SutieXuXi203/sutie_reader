@@ -91,11 +91,28 @@ export function signImageUrls(urls: string[], userId: string): string[] {
     const fileId = extractDriveImageId(url);
     if (!fileId) return url;
     try {
-      return createSignedWorkerImageUrl({
+      const signed = createSignedWorkerImageUrl({
         workerBaseUrl,
         fileId,
         subject: userId,
       });
+
+      if (url.includes('?')) {
+        try {
+          const originalUrl = new URL(url, 'http://localhost');
+          const signedUrl = new URL(signed);
+          originalUrl.searchParams.forEach((val, key) => {
+            if (!signedUrl.searchParams.has(key)) {
+              signedUrl.searchParams.set(key, val);
+            }
+          });
+          return signedUrl.toString();
+        } catch {
+          return signed;
+        }
+      }
+
+      return signed;
     } catch (e) {
       console.error('Error signing image URL:', e);
       return url;

@@ -98,6 +98,11 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
   const [isEyeCareMode, setIsEyeCareMode] = useState(false);
   const [scrollBtnPos, setScrollBtnPos] = useState({ x: 20, y: 100 });
   const [isAutoScrollSettingsOpen, setIsAutoScrollSettingsOpen] = useState(false);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
   const dragRef = useRef<{ startX: number; startY: number; initialX: number; initialY: number; currentX?: number; currentY?: number } | null>(null);
   const isDraggedRef = useRef(false);
   const autoScrollMenuRef = useRef<HTMLDivElement | null>(null);
@@ -613,7 +618,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
       )}
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_var(--tw-gradient-stops))] from-primary/10 to-transparent pointer-events-none" />
 
-      {createPortal(
+      {mounted && typeof document !== 'undefined' && createPortal(
         <div
           style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 99999 }}
           className="flex items-center justify-between gap-2 px-3 py-3 md:px-6 md:py-4 bg-card/60 backdrop-blur-md border-b border-border shadow-sm"
@@ -827,7 +832,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
         </div>
       </div>
 
-      {createPortal(
+      {mounted && typeof document !== 'undefined' && createPortal(
         <div
           ref={autoScrollMenuRef}
           className="fixed top-0 left-0 z-[99999] flex flex-col gap-1 select-none"
