@@ -341,7 +341,30 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     setPosts(newPosts);
   }, [posts]);
 
-  const handlePostUpdated = useCallback(() => {
+  const handlePostUpdated = useCallback((updatedPost?: any) => {
+    if (updatedPost && updatedPost._id) {
+      setPosts((prev) => {
+        const next = prev.map((p) => {
+          if (p._id !== updatedPost._id) return p;
+          return {
+            ...p,
+            title: updatedPost.title ?? p.title,
+            description: updatedPost.description ?? p.description,
+            tags: updatedPost.tags ?? p.tags,
+            author: updatedPost.author ?? p.author,
+            translator: updatedPost.translator ?? p.translator,
+            updatedAt: updatedPost.updatedAt ?? new Date().toISOString(),
+            chapterCount: updatedPost.chapterCount ?? p.chapterCount,
+            images:
+              Array.isArray(updatedPost.images) && updatedPost.images.length > 0
+                ? [updatedPost.images[0]]
+                : p.images,
+          };
+        });
+        cachedPosts = next;
+        return next;
+      });
+    }
     void fetchPosts(true);
   }, [fetchPosts]);
 
@@ -381,7 +404,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                         <X className="w-2.5 h-2.5" />
                       </button>
 
-                      <Link href={`/posts/${bm.postId}`} prefetch={false} className="block">
+                      <Link href={`/posts/${bm.postId}`} prefetch={true} className="block">
                         <div className="relative h-32 bg-secondary/30 overflow-hidden">
                           {bm.post.images[0] && (
                             <Image

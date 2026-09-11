@@ -51,7 +51,7 @@ interface EditPostFormProps {
   post: Post;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPostUpdated: () => void;
+  onPostUpdated: (updatedPost?: any) => void;
   availableTags?: string[];
 }
 
@@ -555,13 +555,15 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         throw new Error(data?.details || data?.error || `Server error ${response.status}`);
       }
 
+      const updatedPost = await response.json().catch(() => null);
+
       if (totalNewFiles > 0 && taskId) {
         updateProgress(taskId, totalNewFiles, totalNewFiles, 'success');
       } else {
         notify.success('Cập nhật bài viết thành công');
       }
 
-      onPostUpdated();
+      onPostUpdated(updatedPost);
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unknown error';
       notify.error(`Lỗi: ${message}`);

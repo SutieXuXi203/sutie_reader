@@ -30,7 +30,7 @@ interface Post {
 interface PostCardProps {
   post: Post;
   onDelete: (id: string) => void;
-  onUpdate: () => void;
+  onUpdate: (updatedPost?: any) => void;
   availableTags?: string[];
   compact?: boolean;
 }
@@ -119,7 +119,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
     <>
       <Link
         href={`/posts/${post._id}`}
-        prefetch={false}
+        prefetch={true}
         className="group/card flex flex-col h-full bg-card/60 backdrop-blur-md border border-border rounded-[8px] overflow-hidden hover:shadow-[0_8px_30px_rgba(140,47,57,0.18)] hover:-translate-y-1 transition-all duration-500 cursor-pointer relative"
       >
         <div
@@ -313,7 +313,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             post={post}
             open={isEditOpen}
             onOpenChange={setIsEditOpen}
-            onPostUpdated={() => { setIsEditOpen(false); onUpdate(); }}
+            onPostUpdated={(updated) => { setIsEditOpen(false); onUpdate(updated); }}
             availableTags={availableTags}
           />
           )}

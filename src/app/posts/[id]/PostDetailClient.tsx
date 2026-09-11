@@ -624,13 +624,20 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
           className="flex items-center justify-between gap-2 px-3 py-3 md:px-6 md:py-4 bg-card/60 backdrop-blur-md border-b border-border shadow-sm"
         >
           <div className="flex min-w-0 flex-1 items-center gap-2 md:gap-4">
-            <Link
-              href="/#posts"
-              className="inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] bg-transparent text-foreground/80 transition-colors hover:text-foreground"
+            <button
+              type="button"
+              onClick={() => {
+                if (typeof window !== 'undefined' && window.history.length > 1) {
+                  router.back();
+                } else {
+                  router.push('/#posts');
+                }
+              }}
+              className="inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] bg-transparent text-foreground/80 transition-colors hover:text-foreground cursor-pointer"
               aria-label="Quay lại danh sách truyện"
             >
               <AnimatedArrowLeft className="block w-4 h-4 md:w-5 md:h-5" />
-            </Link>
+            </button>
             <div className="flex min-w-0 items-center gap-2 md:gap-3">
               <AnimatedBookOpen className="w-4 h-4 md:w-5 md:h-5 text-muted-foreground flex-shrink-0" />
               <div className="min-w-0">
@@ -735,12 +742,19 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
                   Xóa đánh dấu
                 </button>
               )}
-              <Link
-                href="/#posts"
-                className="px-8 py-3 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-primary/20 border border-primary/20"
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window !== 'undefined' && window.history.length > 1) {
+                    router.back();
+                  } else {
+                    router.push('/#posts');
+                  }
+                }}
+                className="px-8 py-3 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-primary/20 border border-primary/20 cursor-pointer"
               >
                 Quay lại trang chủ
-              </Link>
+              </button>
             </div>
           </div>
         </div>

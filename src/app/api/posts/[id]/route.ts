@@ -5,9 +5,10 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
-import { invalidateApiCache } from '@/lib/api-cache';
+import { getApiCache, setApiCache, invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
 import { sendTelegramMessage, formatters } from '@/lib/telegram';
+import { revalidatePath } from 'next/cache';
 
 export const maxDuration = 60;
 
@@ -314,29 +315,39 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    await connectDB();
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'ID bài viết không hợp lệ' }, { status: 400 });
     }
-    const post = await Post.findById(id);
-    if (!post) {
-      return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
+
+    const cacheKey = `posts:detail:${id}`;
+    let serialized = getApiCache<any>(cacheKey);
+
+    if (!serialized) {
+      await connectDB();
+      const post = await Post.findById(id).lean();
+      if (!post) {
+        return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
+      }
+      serialized = serializePost(post);
+      setApiCache(cacheKey, serialized, 300_000);
     }
-    const serialized = serializePost(post);
+
     const user = await getAuthUser(request);
+    let result = serialized;
     if (user) {
-      if (serialized.images) {
-        serialized.images = signImageUrls(serialized.images, user.id);
-      }
-      if (Array.isArray(serialized.chapters)) {
-        serialized.chapters = serialized.chapters.map((chapter: NormalizedPostChapter) => ({
-          ...chapter,
-          images: signImageUrls(chapter.images || [], user.id),
-        }));
-      }
+      result = {
+        ...serialized,
+        images: serialized.images ? signImageUrls(serialized.images, user.id) : [],
+        chapters: Array.isArray(serialized.chapters)
+          ? serialized.chapters.map((chapter: NormalizedPostChapter) => ({
+              ...chapter,
+              images: signImageUrls(chapter.images || [], user.id),
+            }))
+          : [],
+      };
     }
-    return NextResponse.json(serialized);
+    return NextResponse.json(result);
   } catch (error) {
     console.error('Lỗi khi tải bài viết:', error);
     return NextResponse.json({ error: 'Tải bài viết không thành công' }, { status: 500 });
@@ -572,43 +583,54 @@ export async function PUT(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
-    if (titleChanged) {
-      console.log(`Bắt đầu đổi tên folder Drive từ "${existingPost.title}" sang "${title}"...`);
-      try {
-        await renameDriveFolder(id, existingPost.title, title);
-      } catch (err) {
-        console.warn('Lỗi khi đổi tên folder Drive:', err);
-      }
-    }
-
-    for (const change of chapterTitleChanges) {
-      console.log(`Bắt đầu đổi tên thư mục chương từ "${change.oldTitle}" sang "${change.newTitle}"...`);
-      try {
-        await renameDriveChapterFolder(id, title, change.oldTitle, change.newTitle, change.chapterNumber);
-      } catch (err) {
-        console.warn('Lỗi khi đổi tên thư mục chương Drive:', err);
-      }
-    }
-
-    // Send Telegram notification if client doesn't already have an active upload task tracking this update
+    // Chạy các tác vụ I/O chậm (Google Drive folder rename, Telegram notification) ở background không block response
     const hasUploadTask = payload?.hasUploadTask === true;
-    if (!hasUploadTask) {
-      try {
-        const changes = computeStoryUpdateDiff(
-          existingPost,
-          currentChapters,
-          updatePayload,
-          nextChapters
-        );
-        await sendTelegramMessage(
-          formatters.update(updated.title, changes, updated.author)
-        );
-      } catch (telegramErr) {
-        console.warn('Lỗi khi gửi thông báo cập nhật truyện qua Telegram:', telegramErr);
+    void (async () => {
+      if (titleChanged) {
+        console.log(`Bắt đầu đổi tên folder Drive từ "${existingPost.title}" sang "${title}"...`);
+        try {
+          await renameDriveFolder(id, existingPost.title, title);
+        } catch (err) {
+          console.warn('Lỗi khi đổi tên folder Drive:', err);
+        }
       }
-    }
+
+      for (const change of chapterTitleChanges) {
+        console.log(`Bắt đầu đổi tên thư mục chương từ "${change.oldTitle}" sang "${change.newTitle}"...`);
+        try {
+          await renameDriveChapterFolder(id, title, change.oldTitle, change.newTitle, change.chapterNumber);
+        } catch (err) {
+          console.warn('Lỗi khi đổi tên thư mục chương Drive:', err);
+        }
+      }
+
+      if (!hasUploadTask) {
+        try {
+          const changes = computeStoryUpdateDiff(
+            existingPost,
+            currentChapters,
+            updatePayload,
+            nextChapters
+          );
+          await sendTelegramMessage(
+            formatters.update(updated.title, changes, updated.author)
+          );
+        } catch (telegramErr) {
+          console.warn('Lỗi khi gửi thông báo cập nhật truyện qua Telegram:', telegramErr);
+        }
+      }
+    })().catch((bgErr) => {
+      console.warn('Lỗi xử lý tác vụ nền sau khi cập nhật bài viết:', bgErr);
+    });
 
     invalidateApiCache('posts:');
+    try {
+      revalidatePath(`/posts/${id}`);
+      revalidatePath('/');
+      revalidatePath('/products');
+    } catch {
+      // ignore
+    }
     return NextResponse.json(serializePost(updated));
   } catch (error) {
     console.error('Lỗi khi cập nhật bài viết:', error);
@@ -645,26 +667,39 @@ export async function DELETE(
       console.error('Lỗi khi xóa bookmark liên quan:', err);
     }
 
-    try {
-      await deleteDriveFolder(id, deletedPost.title);
-    } catch (err) {
-      console.warn('Lỗi khi xóa folder Drive:', err);
-    }
-
     const isDraft = request.nextUrl.searchParams.get('isDraft') === 'true';
-    if (!isDraft) {
+
+    // Run Drive deletion and Telegram notification in the background
+    void (async () => {
       try {
-        const chapterCount = Array.isArray(deletedPost.chapters) ? deletedPost.chapters.length : 0;
-        await sendTelegramMessage(
-          formatters.delete(deletedPost.title, deletedPost.author, chapterCount)
-        );
-      } catch (telegramErr) {
-        console.warn('Lỗi khi gửi thông báo xóa truyện qua Telegram:', telegramErr);
+        await deleteDriveFolder(id, deletedPost.title);
+      } catch (err) {
+        console.warn('Lỗi khi xóa folder Drive:', err);
       }
-    }
+
+      if (!isDraft) {
+        try {
+          const chapterCount = Array.isArray(deletedPost.chapters) ? deletedPost.chapters.length : 0;
+          await sendTelegramMessage(
+            formatters.delete(deletedPost.title, deletedPost.author, chapterCount)
+          );
+        } catch (telegramErr) {
+          console.warn('Lỗi khi gửi thông báo xóa truyện qua Telegram:', telegramErr);
+        }
+      }
+    })().catch((bgErr) => {
+      console.warn('Lỗi xử lý tác vụ nền sau khi xóa bài viết:', bgErr);
+    });
 
     invalidateApiCache('posts:');
-    return NextResponse.json({ message: 'Bài viết đã được xóa thành công' });
+    try {
+      revalidatePath(`/posts/${id}`);
+      revalidatePath('/');
+      revalidatePath('/products');
+    } catch {
+      // ignore
+    }
+    return NextResponse.json({ message: 'Đã xóa bài viết thành công' });
   } catch (error) {
     console.error('Lỗi khi xóa bài viết:', error);
     return NextResponse.json({ error: 'Xóa bài viết không thành công' }, { status: 500 });

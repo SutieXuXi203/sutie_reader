@@ -2,13 +2,12 @@ import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { ObjectId } from 'mongodb';
 import { getPostChapters, ensureScrambledImageUrl } from '@/lib/utils';
-import { cookies } from 'next/headers';
-import { getCurrentUserFromToken } from '@/lib/server-auth';
+import { getApiCache, setApiCache } from '@/lib/api-cache';
 import PostDetailClient from './PostDetailClient';
 import { notFound } from 'next/navigation';
 
 export const maxDuration = 60;
-export const dynamic = 'force-dynamic';
+export const revalidate = 60;
 
 function toPlainPost(postDoc: any) {
   if (postDoc && typeof postDoc === 'object') {
@@ -43,35 +42,35 @@ function serializePost(postDoc: any) {
 }
 
 export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
-  await connectDB();
   const { id } = await params;
   
   if (!ObjectId.isValid(id)) {
     return notFound();
   }
-  
-  const post = await Post.findById(id);
-  if (!post) {
-    return notFound();
-  }
 
-  const serialized = serializePost(post);
-  
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
-  let user = null;
-  if (token) {
-    user = await getCurrentUserFromToken(token);
-  }
+  const cacheKey = `posts:detail:${id}`;
+  let serialized = getApiCache<any>(cacheKey);
 
-  if (serialized.images) {
-    serialized.images = serialized.images.map(ensureScrambledImageUrl);
-  }
-  if (Array.isArray(serialized.chapters)) {
-    serialized.chapters = serialized.chapters.map((chapter: any) => ({
-      ...chapter,
-      images: (chapter.images || []).map(ensureScrambledImageUrl),
-    }));
+  if (!serialized) {
+    await connectDB();
+    const post = await Post.findById(id).lean();
+    if (!post) {
+      return notFound();
+    }
+
+    serialized = serializePost(post);
+
+    if (serialized.images) {
+      serialized.images = serialized.images.map(ensureScrambledImageUrl);
+    }
+    if (Array.isArray(serialized.chapters)) {
+      serialized.chapters = serialized.chapters.map((chapter: any) => ({
+        ...chapter,
+        images: (chapter.images || []).map(ensureScrambledImageUrl),
+      }));
+    }
+
+    setApiCache(cacheKey, serialized, 300_000);
   }
 
   return <PostDetailClient initialPost={serialized as any} />;
