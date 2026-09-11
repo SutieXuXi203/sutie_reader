@@ -53,14 +53,13 @@ export function ScrambledCanvas({
     canvas.width = renderW;
     canvas.height = renderH;
 
-    // Enable high-quality smoothing for crystal clear artwork
-    ctx.imageSmoothingEnabled = true;
-    ctx.imageSmoothingQuality = 'high';
+    // Disable smoothing so GPU doesn't bleed adjacent scrambled tiles into edges
+    ctx.imageSmoothingEnabled = false;
 
     // Generate tile mapping based on secret seed
     const permutation = generateTilePermutation(totalTiles, seedKey);
 
-    // 1. Reconstruct each tile into its original position with seamless 1px sub-pixel overlap
+    // 1. Reconstruct each tile into its exact original position (bit-for-bit 1:1 transfer)
     for (let scramIndex = 0; scramIndex < totalTiles; scramIndex++) {
       const origIndex = permutation[scramIndex];
 
@@ -69,16 +68,10 @@ export function ScrambledCanvas({
       const sy = Math.floor(scramIndex / cols) * tileH;
 
       // Destination coordinate on reconstructed canvas
-      const origCol = origIndex % cols;
-      const origRow = Math.floor(origIndex / cols);
-      const dx = origCol * tileW;
-      const dy = origRow * tileH;
+      const dx = (origIndex % cols) * tileW;
+      const dy = Math.floor(origIndex / cols) * tileH;
 
-      // 1px sub-pixel bleed covers hairline gaps between tiles completely
-      const dw = origCol < cols - 1 ? tileW + 1 : tileW;
-      const dh = origRow < rows - 1 ? tileH + 1 : tileH;
-
-      ctx.drawImage(img, sx, sy, tileW, tileH, dx, dy, dw, dh);
+      ctx.drawImage(img, sx, sy, tileW, tileH, dx, dy, tileW, tileH);
     }
 
     // 2. Tamper-proof canvas export APIs: return scrambled image to scraper tools

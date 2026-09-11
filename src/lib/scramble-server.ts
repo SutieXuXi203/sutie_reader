@@ -31,9 +31,9 @@ export async function scrambleImageBuffer(
   const cleanW = tileW * cols;
   const cleanH = tileH * rows;
 
-  // Single pass decompression into raw RGBA buffer
+  // Extract clean grid bounds directly without destructive resampling
   const { data: srcData } = await sharp(inputBuffer)
-    .resize(cleanW, cleanH, { fit: 'cover' })
+    .extract({ left: 0, top: 0, width: cleanW, height: cleanH })
     .ensureAlpha()
     .raw()
     .toBuffer({ resolveWithObject: true });
@@ -71,6 +71,6 @@ export async function scrambleImageBuffer(
       channels: 4,
     },
   })
-    .webp({ quality })
+    .webp({ lossless: true, effort: 0 })
     .toBuffer();
 }
