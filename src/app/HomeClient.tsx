@@ -498,7 +498,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                       <SelectContent
                         align="end"
                         alignItemWithTrigger={false}
-                        className="rounded-[10px] border border-border/80 bg-popover/95 backdrop-blur-xl p-1 w-[160px] sm:w-[170px] max-w-[calc(100vw-2rem)] shadow-xl z-50"
+                        className="rounded-[10px] border border-border bg-popover p-1 w-[160px] sm:w-[170px] max-w-[calc(100vw-2rem)] shadow-2xl z-50"
                       >
                         <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
                           Sắp xếp theo

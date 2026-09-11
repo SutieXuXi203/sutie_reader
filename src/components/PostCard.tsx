@@ -2,6 +2,7 @@
 import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimatedLanguages, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
 import { CalendarDays, ShieldAlert, Eye } from 'lucide-react';
 import React, { useEffect, useState, useMemo } from 'react';
+import { HoverCard } from 'radix-ui';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -97,8 +98,23 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       year: 'numeric',
     })
   ), [post.createdAt]);
-  const visibleTags = useMemo(() => post.tags?.slice(0, compact ? 2 : 4) || [], [compact, post.tags]);
-  const remainingTags = Math.max(0, (post.tags?.length || 0) - visibleTags.length);
+  const normalizedTags = useMemo(
+    () => (post.tags || []).map(t => t.trim()).filter(Boolean),
+    [post.tags]
+  );
+  const firstTag = normalizedTags[0];
+  const secondTag = normalizedTags[1];
+  const hasSecondTag = Boolean(secondTag);
+  const mobileRemainingTags = useMemo(
+    () => normalizedTags.slice(1),
+    [normalizedTags]
+  );
+  const desktopRemainingTags = useMemo(
+    () => normalizedTags.slice(2),
+    [normalizedTags]
+  );
+  const mobileRemainingCount = mobileRemainingTags.length;
+  const desktopRemainingCount = desktopRemainingTags.length;
   return (
     <>
       <Link
@@ -153,54 +169,110 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
           </GlareHover>
         </div>
-        <div className={cn("flex flex-col flex-grow text-left", compact ? "p-2.5 sm:p-3" : "p-5 md:p-6")}>
-          <h3 className={cn("font-bold text-foreground group-hover/card:text-primary transition-colors line-clamp-2 leading-tight", compact ? "mb-2 text-xs sm:text-sm" : "mb-3 text-lg")}>
+        <div className={cn("flex flex-col flex-grow text-left min-w-0", compact ? "p-2.5 sm:p-3" : "p-5 md:p-6")}>
+          <h3
+            title={post.title}
+            className={cn(
+              "font-bold text-foreground group-hover/card:text-primary transition-colors line-clamp-2",
+              compact ? "mb-2 text-xs sm:text-sm leading-[1.35] h-[2.7em]" : "mb-3 text-lg leading-[1.4] h-[2.8em]"
+            )}
+          >
             {post.title}
           </h3>
-          {post.tags && post.tags.length > 0 ? (
-            <div className={cn("flex flex-wrap", compact ? "mb-3 gap-1 min-h-[22px]" : "mb-4 gap-1.5 min-h-[28px]")}>
-              {visibleTags.map((tag) => (
-                <button
-                  type="button"
-                  onClick={(e) => handleTagClick(e, tag)}
-                  key={`${post._id}-${tag}`}
-                  className={cn(
-                    "inline-flex items-center rounded-[8px] border border-primary/20 bg-primary/10 font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer",
-                    compact ? "px-1 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px] sm:text-[11px]"
-                  )}
-                >
-                  #{tag.toLowerCase()}
-                </button>
-              ))}
-              {remainingTags > 0 && (
-                <span className={cn(
-                  "inline-flex items-center rounded-[8px] border border-primary/20 bg-primary/10 font-semibold text-primary",
-                  compact ? "px-1 py-0.5 text-[9px]" : "px-1.5 py-0.5 text-[10px] sm:text-[11px]"
-                )}>
-                  +{remainingTags}
-                </span>
+
+          <div className={cn("flex items-center flex-nowrap w-full min-w-0 overflow-hidden", compact ? "mb-2.5 gap-1 h-[22px] min-h-[22px]" : "mb-4 gap-1.5 h-[28px] min-h-[28px]")}>
+            {normalizedTags.length > 0 ? (
+              <>
+                {firstTag && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleTagClick(e, firstTag)}
+                    key={`${post._id}-${firstTag}`}
+                    title={`#${firstTag.toLowerCase()}`}
+                    className={cn(
+                      "inline-flex items-center min-w-0 shrink rounded-[8px] border border-primary/20 bg-primary/10 font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer",
+                      compact ? "px-1.5 py-0.5 text-[9px] sm:text-[10px]" : "px-1.5 py-0.5 text-[10px] sm:text-[11px]",
+                      compact
+                        ? (desktopRemainingCount > 0 ? "max-w-[120px] sm:max-w-[76px]" : hasSecondTag ? "max-w-[120px] sm:max-w-[95px]" : "max-w-full")
+                        : (desktopRemainingCount > 0 ? "max-w-[140px] sm:max-w-[100px]" : hasSecondTag ? "max-w-[140px] sm:max-w-[130px]" : "max-w-full")
+                    )}
+                  >
+                    <span className="truncate min-w-0">#{firstTag.toLowerCase()}</span>
+                  </button>
+                )}
+
+                {secondTag && (
+                  <button
+                    type="button"
+                    onClick={(e) => handleTagClick(e, secondTag)}
+                    key={`${post._id}-${secondTag}`}
+                    title={`#${secondTag.toLowerCase()}`}
+                    className={cn(
+                      "hidden sm:inline-flex items-center min-w-0 shrink rounded-[8px] border border-primary/20 bg-primary/10 font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-colors cursor-pointer",
+                      compact ? "px-1.5 py-0.5 text-[9px] sm:text-[10px]" : "px-1.5 py-0.5 text-[10px] sm:text-[11px]",
+                      compact
+                        ? (desktopRemainingCount > 0 ? "sm:max-w-[76px]" : "sm:max-w-[95px]")
+                        : (desktopRemainingCount > 0 ? "sm:max-w-[100px]" : "sm:max-w-[130px]")
+                    )}
+                  >
+                    <span className="truncate min-w-0">#{secondTag.toLowerCase()}</span>
+                  </button>
+                )}
+
+                {mobileRemainingTags.length > 0 && (
+                  <RemainingTagsBadge
+                    remainingTags={mobileRemainingTags}
+                    compact={compact}
+                    className="inline-flex sm:hidden"
+                    onTagClick={handleTagClick}
+                  />
+                )}
+
+                {desktopRemainingTags.length > 0 && (
+                  <RemainingTagsBadge
+                    remainingTags={desktopRemainingTags}
+                    compact={compact}
+                    className="hidden sm:inline-flex"
+                    onTagClick={handleTagClick}
+                  />
+                )}
+              </>
+            ) : (
+              <span className={cn("text-muted-foreground/60 italic truncate select-none", compact ? "text-[10px]" : "text-xs")}>
+                Chưa gắn tag
+              </span>
+            )}
+          </div>
+
+          <div className={cn("flex flex-col max-w-full min-w-0", compact ? "gap-1 mb-2.5" : "gap-1.5 mb-4")}>
+            <div
+              className={cn(
+                "flex items-center text-foreground/80 font-semibold min-w-0 w-full",
+                compact ? "gap-1.5 h-5" : "gap-2 h-6"
               )}
-            </div>
-          ) : (
-            <p className={cn("text-muted-foreground leading-relaxed flex-grow", compact ? "mb-3 line-clamp-2 text-xs" : "mb-4 line-clamp-3 text-sm")}>
-              {post.description || 'Chưa gắn tag'}
-            </p>
-          )}
-          <div className={cn("flex flex-col max-w-full", compact ? "gap-1 mb-3" : "gap-1.5 mb-4")}>
-            <div className={cn("flex items-center text-foreground/80 font-semibold max-w-full", compact ? "gap-1.5" : "gap-2")}>
+              title={`Tác giả: ${post.author}`}
+            >
               <AnimatedUser className={cn("shrink-0", compact ? "w-3.5 h-3.5" : "w-4 h-4")} />
-              <span className={cn("truncate", compact ? "text-[11px] sm:text-xs" : "text-sm")}>{post.author}</span>
+              <span className={cn("truncate min-w-0 flex-1", compact ? "text-[11px] sm:text-xs" : "text-sm")}>
+                {post.author}
+              </span>
             </div>
             <div
               className={cn(
-                "flex items-center max-w-full",
+                "flex items-center min-w-0 w-full",
                 post.translator ? "text-foreground/80 font-semibold" : "text-muted-foreground/80 font-medium",
-                compact ? "gap-1.5" : "gap-2"
+                compact ? "gap-1.5 h-5" : "gap-2 h-6"
               )}
               title={post.translator ? `Dịch giả: ${post.translator}` : 'Chưa có dịch giả'}
             >
-              <AnimatedLanguages className={cn("shrink-0", post.translator ? "text-primary/90" : "text-muted-foreground/70", compact ? "w-3.5 h-3.5" : "w-4 h-4")} />
-              <span className={cn("truncate", compact ? "text-[11px] sm:text-xs" : "text-sm")}>
+              <AnimatedLanguages
+                className={cn(
+                  "shrink-0",
+                  post.translator ? "text-primary/90" : "text-muted-foreground/70",
+                  compact ? "w-3.5 h-3.5" : "w-4 h-4"
+                )}
+              />
+              <span className={cn("truncate min-w-0 flex-1", compact ? "text-[11px] sm:text-xs" : "text-sm")}>
                 {post.translator || 'Chưa có dịch giả'}
               </span>
             </div>
@@ -302,3 +374,85 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
     </>
   );
 });
+
+interface RemainingTagsBadgeProps {
+  remainingTags: string[];
+  compact?: boolean;
+  className?: string;
+  onTagClick: (e: React.MouseEvent, tag: string) => void;
+}
+
+function RemainingTagsBadge({
+  remainingTags,
+  compact = false,
+  className,
+  onTagClick,
+}: RemainingTagsBadgeProps) {
+  const [open, setOpen] = useState(false);
+
+  if (remainingTags.length === 0) return null;
+
+  return (
+    <HoverCard.Root open={open} onOpenChange={setOpen} openDelay={80} closeDelay={150}>
+      <HoverCard.Trigger asChild>
+        <button
+          type="button"
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+            setOpen((prev) => !prev);
+          }}
+          className={cn(
+            "inline-flex items-center justify-center shrink-0 rounded-[8px] border border-primary/20 bg-primary/10 font-semibold text-primary tabular-nums cursor-pointer hover:bg-primary/20 hover:border-primary/40 transition-colors select-none",
+            compact ? "px-1.5 py-0.5 text-[9px] sm:text-[10px]" : "px-1.5 py-0.5 text-[10px] sm:text-[11px]",
+            className
+          )}
+          aria-label={`Còn ${remainingTags.length} tag khác`}
+        >
+          +{remainingTags.length}
+        </button>
+      </HoverCard.Trigger>
+      <HoverCard.Portal>
+        <HoverCard.Content
+          side="top"
+          align="center"
+          sideOffset={6}
+          avoidCollisions
+          onClick={(e) => {
+            e.preventDefault();
+            e.stopPropagation();
+          }}
+          className="z-50 w-auto min-w-[160px] max-w-[260px] rounded-[10px] border border-border/80 bg-popover/95 backdrop-blur-xl p-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.45)] outline-none animate-in fade-in-0 zoom-in-95 data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=closed]:zoom-out-95 duration-200"
+        >
+          <div className="flex items-center justify-between gap-2 mb-2 pb-1.5 border-b border-border/50 select-none">
+            <span className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wider">
+              Tag khác
+            </span>
+            <span className="inline-flex items-center justify-center text-[10px] font-bold text-primary bg-primary/15 border border-primary/20 px-1.5 py-0.5 rounded-full tabular-nums">
+              +{remainingTags.length}
+            </span>
+          </div>
+          <div className="flex flex-wrap gap-1.5 max-h-[160px] overflow-y-auto pr-0.5">
+            {remainingTags.map((tag) => (
+              <button
+                key={tag}
+                type="button"
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  setOpen(false);
+                  onTagClick(e, tag);
+                }}
+                title={`Lọc theo #${tag.toLowerCase()}`}
+                className="inline-flex items-center rounded-[6px] border border-primary/25 bg-primary/10 px-2 py-0.5 text-[11px] font-semibold text-primary hover:bg-primary hover:text-primary-foreground transition-all duration-200 cursor-pointer active:scale-95 shrink-0"
+              >
+                #{tag.toLowerCase()}
+              </button>
+            ))}
+          </div>
+          <HoverCard.Arrow className="fill-popover drop-shadow-[0_1px_2px_rgba(0,0,0,0.3)]" style={{ fill: 'var(--popover)' }} />
+        </HoverCard.Content>
+      </HoverCard.Portal>
+    </HoverCard.Root>
+  );
+}
