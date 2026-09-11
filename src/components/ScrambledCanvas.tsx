@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { generateTilePermutation } from '@/lib/scramble';
-import { ShieldCheck, RefreshCw } from 'lucide-react';
+import { ImageIcon, RefreshCw } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 
 interface ScrambledCanvasProps {
@@ -181,9 +181,9 @@ export function ScrambledCanvas({
       {/* Loading Skeleton */}
       {status === 'loading' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-2 bg-card/40 backdrop-blur-xs text-muted-foreground animate-pulse z-10">
-          <ShieldCheck className="w-8 h-8 text-primary opacity-60 animate-bounce" />
-          <span className="text-xs font-medium opacity-70">
-            Đang tải &amp; giải mã ảnh chống cào (Trang {idx + 1})...
+          <ImageIcon className="w-8 h-8 opacity-40 animate-bounce" />
+          <span className="text-xs font-medium opacity-60">
+            Đang tải trang {idx + 1}...
           </span>
         </div>
       )}
@@ -191,7 +191,7 @@ export function ScrambledCanvas({
       {/* Error state */}
       {status === 'error' && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-card/90 border border-destructive/20 p-6 text-center z-20">
-          <p className="text-sm font-semibold text-foreground">Không thể giải mã trang {idx + 1}</p>
+          <p className="text-sm font-semibold text-foreground">Không thể tải trang {idx + 1}</p>
           <button
             type="button"
             onClick={handleRetry}
