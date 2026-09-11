@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { generateTilePermutation } from '@/lib/scramble';
 import { ImageIcon, RefreshCw } from 'lucide-react';
-import { useAuth } from '@/providers/AuthContext';
 
 interface ScrambledCanvasProps {
   src: string;
@@ -28,7 +27,6 @@ export function ScrambledCanvas({
   onLoad,
   onError,
 }: ScrambledCanvasProps) {
-  const { user } = useAuth();
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const rawImgRef = useRef<HTMLImageElement | null>(null);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
@@ -55,10 +53,14 @@ export function ScrambledCanvas({
     canvas.width = renderW;
     canvas.height = renderH;
 
+    // Enable high-quality smoothing for crystal clear artwork
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
+
     // Generate tile mapping based on secret seed
     const permutation = generateTilePermutation(totalTiles, seedKey);
 
-    // 1. Reconstruct each tile into its original position
+    // 1. Reconstruct each tile into its original position with seamless 1px sub-pixel overlap
     for (let scramIndex = 0; scramIndex < totalTiles; scramIndex++) {
       const origIndex = permutation[scramIndex];
 
@@ -67,45 +69,24 @@ export function ScrambledCanvas({
       const sy = Math.floor(scramIndex / cols) * tileH;
 
       // Destination coordinate on reconstructed canvas
-      const dx = (origIndex % cols) * tileW;
-      const dy = Math.floor(origIndex / cols) * tileH;
+      const origCol = origIndex % cols;
+      const origRow = Math.floor(origIndex / cols);
+      const dx = origCol * tileW;
+      const dy = origRow * tileH;
 
-      ctx.drawImage(img, sx, sy, tileW, tileH, dx, dy, tileW, tileH);
+      // 1px sub-pixel bleed covers hairline gaps between tiles completely
+      const dw = origCol < cols - 1 ? tileW + 1 : tileW;
+      const dh = origRow < rows - 1 ? tileH + 1 : tileH;
+
+      ctx.drawImage(img, sx, sy, tileW, tileH, dx, dy, dw, dh);
     }
 
-    // 2. Burn subtle traceable watermark onto canvas pixels
-    try {
-      ctx.save();
-      const watermarkText = user?.email
-        ? `${user.email} • Sutie Reader`
-        : 'Sutie Reader • Protected Comic';
-
-      ctx.fillStyle = 'rgba(128, 128, 128, 0.08)';
-      ctx.font = '600 15px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-
-      ctx.rotate((-25 * Math.PI) / 180);
-      const diag = Math.sqrt(renderW * renderW + renderH * renderH);
-      const stepX = 280;
-      const stepY = 180;
-
-      for (let x = -diag; x < diag * 1.5; x += stepX) {
-        for (let y = -diag; y < diag * 1.5; y += stepY) {
-          ctx.fillText(watermarkText, x, y);
-        }
-      }
-      ctx.restore();
-    } catch {
-      // Watermark fail-safe
-    }
-
-    // 3. Tamper-proof canvas export APIs against automated scrapers
+    // 2. Tamper-proof canvas export APIs: return scrambled image to scraper tools
     try {
       Object.defineProperty(canvas, 'toDataURL', {
         value: () => {
-          console.warn('[Security] Canvas export is disabled.');
-          return 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
+          console.warn('[Security] Canvas export is protected.');
+          return rawImgRef.current?.src || 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg==';
         },
         configurable: true,
         writable: true,
@@ -113,7 +94,7 @@ export function ScrambledCanvas({
 
       Object.defineProperty(canvas, 'toBlob', {
         value: (cb: BlobCallback) => {
-          console.warn('[Security] Canvas export is disabled.');
+          console.warn('[Security] Canvas export is protected.');
           cb?.(new Blob([], { type: 'image/png' }));
         },
         configurable: true,
@@ -125,7 +106,7 @@ export function ScrambledCanvas({
 
     setStatus('loaded');
     onLoad?.();
-  }, [rows, cols, seedKey, onLoad, user]);
+  }, [rows, cols, seedKey, onLoad]);
 
   useEffect(() => {
     setStatus('loading');

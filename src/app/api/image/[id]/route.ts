@@ -184,7 +184,7 @@ export async function GET(
       try {
         const rawArrayBuffer = await upstream.arrayBuffer();
         rawBuffer = Buffer.from(rawArrayBuffer);
-        const scrambledBuffer = await scrambleImageBuffer(rawBuffer, { seed, rows, cols, quality: 85 });
+        const scrambledBuffer = await scrambleImageBuffer(rawBuffer, { seed, rows, cols, quality: 95 });
 
         const responseHeaders = new Headers();
         responseHeaders.set('Content-Type', 'image/webp');

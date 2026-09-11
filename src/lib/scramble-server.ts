@@ -19,7 +19,7 @@ export async function scrambleImageBuffer(
   const rows = options.rows || DEFAULT_SCRAMBLE_ROWS;
   const cols = options.cols || DEFAULT_SCRAMBLE_COLS;
   const totalTiles = rows * cols;
-  const quality = options.quality ?? 85;
+  const quality = options.quality ?? 95;
 
   const metadata = await sharp(inputBuffer).metadata();
   if (!metadata.width || !metadata.height) {
