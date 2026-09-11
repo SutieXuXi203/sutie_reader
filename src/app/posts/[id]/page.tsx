@@ -32,6 +32,7 @@ function serializePost(postDoc: any) {
     title: post.title || '',
     description: post.description || '',
     author: post.author || '',
+    translator: post.translator || '',
     tags: post.tags || [],
     chapters,
     chapterCount: chapters.length,

@@ -499,6 +499,49 @@ const worker = {
       return new Response(null, { headers: corsHeaders });
     }
 
+    if (request.method === 'GET' && url.pathname.startsWith('/avatar/')) {
+      const fileId = url.pathname.slice('/avatar/'.length).trim();
+      if (!isValidDriveFileId(fileId)) {
+        return new Response('Invalid avatar id', { status: 400, headers: corsHeaders });
+      }
+
+      try {
+        const cache = caches.default;
+        const cacheKey = createImageCacheKey(request);
+        const cachedResponse = await cache.match(cacheKey);
+        if (cachedResponse) {
+          return imageResponseForClient(cachedResponse, corsHeaders);
+        }
+
+        const accessToken = await getAccessToken(env);
+        const driveRes = await fetch(
+          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+          }
+        );
+
+        if (!driveRes.ok) {
+          throw httpError('Avatar not found', driveRes.status);
+        }
+
+        const edgeHeaders = new Headers(corsHeaders);
+        const contentType = driveRes.headers.get('content-type') || 'image/webp';
+        edgeHeaders.set('Content-Type', contentType);
+        edgeHeaders.set('Cache-Control', `public, max-age=${EDGE_IMAGE_CACHE_SECONDS}, immutable`);
+        edgeHeaders.set('Content-Disposition', 'inline; filename="avatar.webp"');
+
+        const response = new Response(driveRes.body, { status: 200, headers: edgeHeaders });
+        ctx.waitUntil(cache.put(cacheKey, response.clone()));
+        return imageResponseForClient(response, corsHeaders);
+      } catch (error) {
+        const status = getErrorStatus(error);
+        const message = status === 404 ? 'Avatar not found' : 'Error loading avatar';
+        console.error('[CF WORKER] Avatar request failed:', getErrorMessage(error));
+        return new Response(message, { status, headers: corsHeaders });
+      }
+    }
+
     if (request.method === 'GET' && url.pathname.startsWith('/image/')) {
       const fileId = url.pathname.slice('/image/'.length);
       if (!isValidDriveFileId(fileId)) {
@@ -580,6 +623,7 @@ const worker = {
         const title = typeof rawTitle === 'string' && rawTitle.trim() ? rawTitle.trim() : 'Untitled';
         const postId = typeof rawPostId === 'string' ? rawPostId.trim() : '';
         const chapter = typeof rawChapter === 'string' ? rawChapter.trim() : '';
+        const isAvatar = formData.get('isAvatar') === 'true' || title.toLowerCase() === 'avatars';
 
         if (files.length !== entries.length) {
           return jsonResponse({ error: 'Invalid file payload' }, 400, corsHeaders);
@@ -604,8 +648,10 @@ const worker = {
 
         const uploadPromises = files.map(async (file, i) => {
           const fileId = await uploadFileToDrive(accessToken, targetFolderId, postId, file, i, files.length);
-          await assertImageCanBeServed(accessToken, parentFolderId, fileId);
-          return `${imageBaseUrl}/image/${fileId}`;
+          if (!isAvatar) {
+            await assertImageCanBeServed(accessToken, parentFolderId, fileId);
+          }
+          return isAvatar ? `${imageBaseUrl}/avatar/${fileId}` : `${imageBaseUrl}/image/${fileId}`;
         });
         const uploadedUrls = await Promise.all(uploadPromises);
 

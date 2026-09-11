@@ -16,6 +16,57 @@ function getDataUrlByteSize(dataUrl: string): number {
   return Math.ceil((base64.length * 3) / 4) - padding;
 }
 
+async function uploadAvatarToCloudflareWorker(dataUrl: string, userId: string): Promise<string> {
+  const workerUrl = (
+    process.env.CLOUDFLARE_WORKER_URL ||
+    process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
+    ''
+  ).replace(/\/+$/, '');
+  const uploadSecret = process.env.CLOUDFLARE_UPLOAD_SECRET;
+
+  if (!workerUrl || !uploadSecret) {
+    console.warn('[AVATAR UPLOAD] Worker URL or upload secret not configured, fallback to dataUrl');
+    return dataUrl;
+  }
+
+  const matches = dataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
+  if (!matches || matches.length !== 3) {
+    return dataUrl;
+  }
+
+  const mimeType = matches[1];
+  const buffer = Buffer.from(matches[2], 'base64');
+  const extension = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+  const fileName = `avatar-${userId}-${Date.now()}.${extension}`;
+
+  const blob = new Blob([buffer], { type: mimeType });
+  const formData = new FormData();
+  formData.append('title', 'Avatars');
+  formData.append('isAvatar', 'true');
+  formData.append('files', blob, fileName);
+
+  const res = await fetch(`${workerUrl}/upload`, {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${uploadSecret}`,
+    },
+    body: formData,
+  });
+
+  if (!res.ok) {
+    const errData = await res.json().catch(() => ({}));
+    console.error('[AVATAR UPLOAD] Worker upload error:', errData);
+    throw new Error(errData?.error || 'Lỗi khi tải ảnh đại diện lên Cloudflare');
+  }
+
+  const data = await res.json();
+  if (Array.isArray(data.urls) && data.urls.length > 0) {
+    return data.urls[0];
+  }
+
+  throw new Error('Không nhận được URL ảnh từ máy chủ');
+}
+
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get('token')?.value;
@@ -41,7 +92,7 @@ export async function PUT(request: NextRequest) {
 
     await connectDB();
 
-    const body = (await request.json()) as {
+    const body = (await request.json().catch(() => ({}))) as {
       name?: unknown;
       avatar?: unknown;
     };
@@ -82,7 +133,19 @@ export async function PUT(request: NextRequest) {
     user.name = body.name.trim();
 
     if (body.avatar !== undefined) {
-      user.avatar = typeof body.avatar === 'string' ? body.avatar : '';
+      if (typeof body.avatar === 'string' && body.avatar.startsWith('data:image')) {
+        try {
+          user.avatar = await uploadAvatarToCloudflareWorker(body.avatar, user._id.toString());
+        } catch (uploadError) {
+          console.error('Lỗi upload avatar lên Cloudflare Worker:', uploadError);
+          return NextResponse.json(
+            { error: uploadError instanceof Error ? uploadError.message : 'Không thể tải ảnh lên Cloudflare' },
+            { status: 500 }
+          );
+        }
+      } else {
+        user.avatar = typeof body.avatar === 'string' ? body.avatar : '';
+      }
     }
 
     await user.save();

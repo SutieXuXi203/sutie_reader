@@ -1,5 +1,5 @@
 'use client';
-import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
+import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimatedLanguages, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
 import { CalendarDays, ShieldAlert, Eye } from 'lucide-react';
 import React, { useEffect, useState, useMemo } from 'react';
 import Image from 'next/image';
@@ -22,6 +22,7 @@ interface Post {
   content?: string;
   images: string[];
   author: string;
+  translator?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -185,9 +186,24 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               {post.description || 'Chưa gắn tag'}
             </p>
           )}
-          <div className={cn("flex items-center text-foreground/80 font-semibold max-w-full", compact ? "gap-1.5 mb-3" : "gap-2 mb-6 w-fit")}>
-            <AnimatedUser className={cn("shrink-0", compact ? "w-3.5 h-3.5" : "w-4 h-4")} />
-            <span className={cn("truncate", compact ? "text-[11px] sm:text-xs" : "text-sm")}>{post.author}</span>
+          <div className={cn("flex flex-col max-w-full", compact ? "gap-1 mb-3" : "gap-1.5 mb-4")}>
+            <div className={cn("flex items-center text-foreground/80 font-semibold max-w-full", compact ? "gap-1.5" : "gap-2")}>
+              <AnimatedUser className={cn("shrink-0", compact ? "w-3.5 h-3.5" : "w-4 h-4")} />
+              <span className={cn("truncate", compact ? "text-[11px] sm:text-xs" : "text-sm")}>{post.author}</span>
+            </div>
+            <div
+              className={cn(
+                "flex items-center max-w-full",
+                post.translator ? "text-foreground/80 font-semibold" : "text-muted-foreground/80 font-medium",
+                compact ? "gap-1.5" : "gap-2"
+              )}
+              title={post.translator ? `Dịch giả: ${post.translator}` : 'Chưa có dịch giả'}
+            >
+              <AnimatedLanguages className={cn("shrink-0", post.translator ? "text-primary/90" : "text-muted-foreground/70", compact ? "w-3.5 h-3.5" : "w-4 h-4")} />
+              <span className={cn("truncate", compact ? "text-[11px] sm:text-xs" : "text-sm")}>
+                {post.translator || 'Chưa có dịch giả'}
+              </span>
+            </div>
           </div>
           <div className={cn("flex flex-wrap items-center justify-between border-t border-border mt-auto", compact ? "gap-y-2 pt-2 text-[10px]" : "gap-y-3 pt-4 text-[12px] sm:text-[13px]")}>
             <div className={cn("flex flex-wrap items-center gap-y-1 text-muted-foreground font-medium", compact ? "gap-x-2" : "gap-x-3")}>

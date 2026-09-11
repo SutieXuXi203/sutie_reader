@@ -18,6 +18,7 @@ type PostLean = {
     title?: string;
     coverImage?: string;
     author?: string;
+    translator?: string;
     tags?: string[];
 };
 
@@ -66,6 +67,7 @@ export async function GET(request: NextRequest) {
                     $project: {
                         title: 1,
                         author: 1,
+                        translator: 1,
                         tags: 1,
                         coverImage: {
                             $ifNull: [
@@ -101,6 +103,7 @@ export async function GET(request: NextRequest) {
                         title: post.title,
                         images: coverImages,
                         author: post.author,
+                        translator: post.translator || '',
                         tags: post.tags,
                     },
                 };

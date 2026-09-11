@@ -24,6 +24,7 @@ interface CreatePostFormProps {
   onOpenChange: (open: boolean) => void;
   availableTags?: string[];
   availableAuthors?: string[];
+  availableTranslators?: string[];
 }
 
 type CreateStep = 'story' | 'chapter';
@@ -34,6 +35,7 @@ export function CreatePostForm({
   onOpenChange,
   availableTags = [],
   availableAuthors = [],
+  availableTranslators = [],
 }: CreatePostFormProps) {
   const { showProgress, updateProgress } = useUploadProgress();
   const [step, setStep] = useState<CreateStep>('story');
@@ -42,6 +44,7 @@ export function CreatePostForm({
   const [title, setTitle] = useState('');
   const [tags, setTags] = useState<string[]>([]);
   const [author, setAuthor] = useState('');
+  const [translator, setTranslator] = useState('');
 
   const [createdPostId, setCreatedPostId] = useState<string | null>(null);
   const [createdPostTitle, setCreatedPostTitle] = useState('');
@@ -64,6 +67,7 @@ export function CreatePostForm({
     setTitle('');
     setTags([]);
     setAuthor('');
+    setTranslator('');
   };
 
   const resetChapterFields = () => {
@@ -229,6 +233,7 @@ export function CreatePostForm({
           title: title.trim(),
           tags,
           author: author || 'Không rõ tác giả',
+          translator: translator.trim(),
         }),
       });
 
@@ -361,6 +366,28 @@ export function CreatePostForm({
                   <option key={idx} value={auth} />
                 ))}
               </datalist>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                Dịch giả (không bắt buộc)
+              </label>
+              <Input
+                value={translator}
+                onChange={(e) => setTranslator(e.target.value)}
+                placeholder="Tên dịch giả"
+                disabled={isSubmitting}
+                className="rounded-[8px]"
+                list="translator-suggestions"
+                autoComplete="off"
+              />
+              {availableTranslators.length > 0 && (
+                <datalist id="translator-suggestions">
+                  {availableTranslators.map((trans, idx) => (
+                    <option key={idx} value={trans} />
+                  ))}
+                </datalist>
+              )}
             </div>
 
             <div className="pt-3 border-t border-border/40 flex gap-2 justify-end">

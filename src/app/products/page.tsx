@@ -21,6 +21,7 @@ interface Post {
     content?: string;
     images: string[];
     author: string;
+    translator?: string;
     createdAt: string;
     updatedAt: string;
 }
@@ -127,7 +128,7 @@ export default function ProductsPage() {
         () => posts.map((post) => ({
             post,
             searchText: normalizeSearchText(
-                [post.title, post.description || '', post.author, ...(post.tags || [])].join(' ')
+                [post.title, post.description || '', post.author, post.translator || '', ...(post.tags || [])].join(' ')
             ),
         })),
         [posts]
@@ -156,6 +157,11 @@ export default function ProductsPage() {
     const availableAuthors = useMemo(() => {
         const authors = posts.map(post => post.author?.trim()).filter(Boolean);
         return Array.from(new Set(authors)).sort((a, b) => a.localeCompare(b, 'vi'));
+    }, [posts]);
+
+    const availableTranslators = useMemo(() => {
+        const translators = posts.map(post => post.translator?.trim()).filter(Boolean) as string[];
+        return Array.from(new Set(translators)).sort((a, b) => a.localeCompare(b, 'vi'));
     }, [posts]);
 
     if (isAuthLoading || !isAdmin) {
@@ -303,6 +309,7 @@ export default function ProductsPage() {
                     onPostCreated={fetchPosts}
                     availableTags={availableTags}
                     availableAuthors={availableAuthors}
+                    availableTranslators={availableTranslators}
                 />
             )}
 

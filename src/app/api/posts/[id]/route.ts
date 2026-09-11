@@ -475,6 +475,10 @@ export async function PUT(
       typeof payload?.author === 'string' && payload.author.trim()
         ? payload.author.trim()
         : 'Không rõ tác giả';
+    const normalizedTranslator =
+      typeof payload?.translator === 'string'
+        ? payload.translator.trim().slice(0, 100)
+        : (typeof existingPost.translator === 'string' ? existingPost.translator : '');
     const currentChapters = getPostChapters(existingPost.toObject());
     let nextChapters = [...currentChapters];
 
@@ -540,6 +544,7 @@ export async function PUT(
       title: string;
       tags: string[];
       author: string;
+      translator: string;
       chapters: NormalizedPostChapter[];
       content: string;
       images: string[];
@@ -548,6 +553,7 @@ export async function PUT(
       title,
       tags: normalizedTags,
       author: normalizedAuthor,
+      translator: normalizedTranslator,
       chapters: nextChapters,
       content: firstChapter?.content || '',
       images: firstChapter?.images || [],

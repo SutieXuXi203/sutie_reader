@@ -36,6 +36,7 @@ interface Post {
   images: string[];
   chapters?: Chapter[];
   author: string;
+  translator?: string;
   createdAt: string;
 }
 
@@ -632,7 +633,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
                   {post.title}
                 </h1>
                 <p className="text-muted-foreground text-[10px] md:text-xs line-clamp-1">
-                  {activeChapter?.title || `Chuong ${activeChapterIndex + 1}`} - {post.author}
+                  {activeChapter?.title || `Chuong ${activeChapterIndex + 1}`} - {post.author}{post.translator ? ` (Dịch: ${post.translator})` : ''}
                 </p>
               </div>
             </div>

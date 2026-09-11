@@ -18,6 +18,7 @@ export const postSchema = z.object({
   description: z.string().max(300, 'Mô tả không được vượt quá 300 ký tự').optional().or(z.literal('')),
   tags: z.array(z.string()).optional(),
   author: z.string().optional().or(z.literal('')),
+  translator: z.string().max(100, 'Tên dịch giả không được vượt quá 100 ký tự').optional().or(z.literal('')),
   content: z.string().optional().or(z.literal('')),
   images: z.array(z.string()).optional(),
   chapters: z.array(

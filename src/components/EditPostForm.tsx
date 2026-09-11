@@ -44,6 +44,7 @@ interface Post {
   images: string[];
   chapters?: Chapter[];
   author: string;
+  translator?: string;
 }
 
 interface EditPostFormProps {
@@ -86,6 +87,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const [title, setTitle] = useState(post.title);
   const [tags, setTags] = useState<string[]>(post.tags || []);
   const [author, setAuthor] = useState(post.author);
+  const [translator, setTranslator] = useState(post.translator || '');
 
   const [chapters, setChapters] = useState<ChapterEditState[]>([]);
   const [selectedChapterIndex, setSelectedChapterIndex] = useState<number>(0);
@@ -104,6 +106,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     setTitle(post.title);
     setTags(post.tags || []);
     setAuthor(post.author);
+    setTranslator(post.translator || '');
 
     const mapToChapterImage = (url: string): ChapterImage => ({
       id: generateId(),
@@ -460,6 +463,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
     const currentTitle = title.trim();
     const currentAuthor = author.trim();
+    const currentTranslator = translator.trim();
     const currentTags = tags;
 
     const totalNewFiles = chapters.reduce((sum, ch) => sum + ch.images.filter(img => img.isNew).length, 0);
@@ -538,6 +542,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
           title: currentTitle,
           tags: currentTags,
           author: currentAuthor,
+          translator: currentTranslator,
           chapters: updatedChaptersPayload,
           content: updatedChaptersPayload[0]?.content || '',
           images: updatedChaptersPayload[0]?.images || [],
@@ -735,6 +740,19 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               value={author}
               onChange={(e) => setAuthor(e.target.value)}
               placeholder="Tên tác giả"
+              disabled={isSubmitting}
+              className="rounded-[8px]"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+              Dịch giả (tuỳ chọn)
+            </label>
+            <Input
+              value={translator}
+              onChange={(e) => setTranslator(e.target.value)}
+              placeholder="Tên dịch giả"
               disabled={isSubmitting}
               className="rounded-[8px]"
             />

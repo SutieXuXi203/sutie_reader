@@ -17,6 +17,7 @@ export interface IPost extends Document {
   images: string[];
   chapters: IPostChapter[];
   author: string;
+  translator?: string;
   createdAt: Date;
   updatedAt: Date;
 }
@@ -76,6 +77,11 @@ const PostSchema = new Schema<IPost>(
     author: {
       type: String,
       default: 'Không rõ tác giả',
+    },
+    translator: {
+      type: String,
+      default: '',
+      maxlength: 100,
     },
   },
   { timestamps: true, collection: 'comics' }

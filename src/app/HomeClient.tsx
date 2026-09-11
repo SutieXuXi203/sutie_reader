@@ -59,6 +59,7 @@ interface Post {
   }>;
   chapterCount?: number;
   author: string;
+  translator?: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -75,6 +76,7 @@ interface BookmarkItem {
     title: string;
     images: string[];
     author: string;
+    translator?: string;
     tags?: string[];
   };
 }
@@ -290,7 +292,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     () => posts.map((post) => ({
       post,
       searchText: normalizeSearchText(
-        [post.title, post.description || '', post.author, ...(post.tags || [])].join(' ')
+        [post.title, post.description || '', post.author, post.translator || '', ...(post.tags || [])].join(' ')
       ),
     })),
     [posts]

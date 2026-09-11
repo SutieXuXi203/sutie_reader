@@ -10,6 +10,7 @@ interface Post {
     content: string;
     images: string[];
     author: string;
+    translator?: string;
     createdAt: string;
 }
 
@@ -103,7 +104,7 @@ export function PostDetail({ post, open, onOpenChange }: PostDetailProps) {
                     </div>
                     <div className="min-w-0">
                         <p className="text-white font-bold text-sm leading-tight line-clamp-1 tracking-tight">{post.title}</p>
-                        <p className="text-primary-foreground/75 text-xs font-medium">{post.author}</p>
+                        <p className="text-primary-foreground/75 text-xs font-medium">{post.author}{post.translator ? ` • Dịch: ${post.translator}` : ''}</p>
                     </div>
                 </div>
                 <div className="flex items-center gap-3 flex-shrink-0">

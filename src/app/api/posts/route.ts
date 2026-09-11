@@ -163,6 +163,7 @@ type PostListItem = {
   description: string;
   tags: string[];
   author: string;
+  translator?: string;
   createdAt: string | Date;
   updatedAt?: string | Date;
   chapterCount: number;
@@ -186,6 +187,7 @@ export async function GET(request: NextRequest) {
             description: 1,
             tags: 1,
             author: 1,
+            translator: 1,
             createdAt: 1,
             updatedAt: 1,
             coverImage: {
@@ -210,6 +212,7 @@ export async function GET(request: NextRequest) {
           description: post.description || '',
           tags: post.tags || [],
           author: post.author || 'Ẩn danh',
+          translator: post.translator || '',
           createdAt: post.createdAt instanceof Date ? post.createdAt.toISOString() : post.createdAt,
           updatedAt: post.updatedAt instanceof Date ? post.updatedAt.toISOString() : post.updatedAt,
           chapterCount: post.chapterCount,
@@ -267,6 +270,10 @@ export async function POST(request: NextRequest) {
       typeof payload?.author === 'string' && payload.author.trim()
         ? payload.author.trim()
         : 'Ẩn danh';
+    const normalizedTranslator =
+      typeof payload?.translator === 'string'
+        ? payload.translator.trim().slice(0, 100)
+        : '';
     const normalizedChapters = normalizeIncomingChapters(
       payload?.chapters,
       payload?.content,
@@ -279,6 +286,7 @@ export async function POST(request: NextRequest) {
       description: normalizedDescription,
       tags: normalizedTags,
       author: normalizedAuthor,
+      translator: normalizedTranslator,
       chapters: normalizedChapters,
       content: firstChapter?.content || '',
       images: firstChapter?.images || [],

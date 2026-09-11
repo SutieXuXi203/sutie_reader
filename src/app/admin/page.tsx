@@ -18,6 +18,7 @@ interface Post {
     content: string;
     images: string[];
     author: string;
+    translator?: string;
     createdAt: string;
 }
 interface AdminUser {
@@ -321,6 +322,10 @@ export default function AdminDashboard() {
         const authors = posts.map(post => post.author?.trim()).filter(Boolean);
         return Array.from(new Set(authors)).sort((a, b) => a.localeCompare(b, 'vi'));
     }, [posts]);
+    const availableTranslators = useMemo(() => {
+        const translators = posts.map(post => post.translator?.trim()).filter(Boolean) as string[];
+        return Array.from(new Set(translators)).sort((a, b) => a.localeCompare(b, 'vi'));
+    }, [posts]);
     const tagCounts = useMemo(() => {
         const counts: Record<string, number> = {};
         posts.forEach(post => {
@@ -337,6 +342,7 @@ export default function AdminDashboard() {
     const filteredPosts = useMemo(() => posts.filter(post =>
         post.title.toLowerCase().includes(lowercaseSearchQuery) ||
         post.author.toLowerCase().includes(lowercaseSearchQuery) ||
+        (post.translator && post.translator.toLowerCase().includes(lowercaseSearchQuery)) ||
         (post.tags || []).some((tag) => tag.toLowerCase().includes(lowercaseSearchQuery))
     ), [posts, lowercaseSearchQuery]);
     const filteredUsers = useMemo(() => usersList.filter(u => {
@@ -1358,6 +1364,7 @@ export default function AdminDashboard() {
                 onPostCreated={fetchPosts}
                 availableTags={availablePostTags}
                 availableAuthors={availableAuthors}
+                availableTranslators={availableTranslators}
             />
             )}
             {selectedPost && isEditOpen && (

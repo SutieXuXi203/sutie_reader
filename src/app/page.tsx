@@ -12,6 +12,7 @@ type InitialPost = {
   description: string;
   tags: string[];
   author: string;
+  translator?: string;
   createdAt: string;
   updatedAt: string;
   chapterCount: number;
@@ -29,6 +30,7 @@ type CatalogPostAggregate = {
   description?: string;
   tags?: string[];
   author?: string;
+  translator?: string;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   chapterCount?: number;
@@ -60,6 +62,7 @@ async function getInitialCatalog(): Promise<{
           description: 1,
           tags: 1,
           author: 1,
+          translator: 1,
           createdAt: 1,
           updatedAt: 1,
           coverImage: {
@@ -88,6 +91,7 @@ async function getInitialCatalog(): Promise<{
         description: post.description || '',
         tags: post.tags || [],
         author: post.author || 'Không rõ tác giả',
+        translator: post.translator || '',
         createdAt: serializeDate(post.createdAt),
         updatedAt: serializeDate(post.updatedAt),
         chapterCount: post.chapterCount || 0,
