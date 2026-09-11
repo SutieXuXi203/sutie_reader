@@ -138,8 +138,9 @@ export const ReaderImage = React.memo(function ReaderImage({
   return (
     <div
       ref={containerRef}
-      style={{ aspectRatio: `${width} / ${height}` }}
-      className="relative w-full overflow-hidden bg-muted/10 flex items-center justify-center"
+      className={`relative w-full overflow-hidden flex items-center justify-center ${
+        status === 'loaded' ? '' : 'min-h-[300px] bg-muted/10'
+      }`}
     >
       {/* Loading Skeleton & Indicator */}
       {status === 'loading' && (

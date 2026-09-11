@@ -158,7 +158,9 @@ export const ScrambledCanvas = React.memo(function ScrambledCanvas({
 
   return (
     <div
-      className="relative w-full h-full overflow-hidden bg-muted/10 flex items-center justify-center group"
+      className={`relative w-full overflow-hidden flex items-center justify-center group ${
+        status === 'loaded' ? '' : 'min-h-[300px] bg-muted/10'
+      }`}
       onContextMenu={(e) => e.preventDefault()}
     >
       {/* Loading Skeleton */}
