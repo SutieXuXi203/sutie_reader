@@ -24,24 +24,27 @@
   );
   pointer-events: none;
   z-index: 10;
-  will-change: transform;
   transform: translate3d(-50%, -50%, 0);
   transition: transform var(--gh-duration) ease;
 }
 
-.glare-hover:hover {
-  cursor: pointer;
-}
+@media (hover: hover) {
+  .glare-hover:hover {
+    cursor: pointer;
+  }
 
-.glare-hover:hover .glare-hover-glow {
-  transform: translate3d(50%, 50%, 0);
-}
+  .glare-hover:hover .glare-hover-glow {
+    will-change: transform;
+    transform: translate3d(50%, 50%, 0);
+  }
 
-.glare-hover--play-once .glare-hover-glow {
-  transition: none;
-}
+  .glare-hover--play-once .glare-hover-glow {
+    transition: none;
+  }
 
-.glare-hover--play-once:hover .glare-hover-glow {
-  transition: transform var(--gh-duration) ease;
-  transform: translate3d(50%, 50%, 0);
+  .glare-hover--play-once:hover .glare-hover-glow {
+    will-change: transform;
+    transition: transform var(--gh-duration) ease;
+    transform: translate3d(50%, 50%, 0);
+  }
 }

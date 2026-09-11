@@ -3,11 +3,9 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import type Lenis from 'lenis';
-import type Snap from 'lenis/snap';
 
 export function SmoothScrollProvider({ children }: { children: React.ReactNode }) {
   const lenisRef = useRef<Lenis | null>(null);
-  const snapRef = useRef<Snap | null>(null);
   const rafIdRef = useRef<number | null>(null);
   const pathname = usePathname();
 
@@ -15,11 +13,6 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
     if (rafIdRef.current !== null) {
       cancelAnimationFrame(rafIdRef.current);
       rafIdRef.current = null;
-    }
-
-    if (snapRef.current) {
-      snapRef.current.destroy();
-      snapRef.current = null;
     }
 
     if (lenisRef.current) {
@@ -33,18 +26,56 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
 
     if (pathname.startsWith('/posts/')) return;
 
+    // Detect touch / mobile devices or reduced motion preference
+    const isTouchDevice =
+      typeof window !== 'undefined' &&
+      ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches);
+
+    const prefersReducedMotion =
+      typeof window !== 'undefined' &&
+      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+
     let cancelled = false;
-    let snapTimer: ReturnType<typeof setTimeout> | null = null;
-    let handleClick: ((e: MouseEvent) => void) | null = null;
+
+    // Smooth scroll for anchor clicks (works on both mobile and desktop)
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement;
+      const anchor = target.closest('a[href^="#"]');
+      if (anchor) {
+        const href = anchor.getAttribute('href');
+        if (href && href.startsWith('#') && href.length > 1) {
+          const el = document.getElementById(href.slice(1));
+          if (el) {
+            e.preventDefault();
+            if (lenisRef.current) {
+              lenisRef.current.scrollTo(el, { offset: -20 });
+            } else {
+              el.scrollIntoView({ behavior: 'smooth' });
+            }
+          }
+        }
+      }
+    };
+
+    document.addEventListener('click', handleClick);
+
+    // On mobile or if reduced motion is requested, use native high-performance scrolling
+    if (isTouchDevice || prefersReducedMotion) {
+      return () => {
+        document.removeEventListener('click', handleClick);
+      };
+    }
 
     const setupSmoothScroll = async () => {
       const { default: LenisCtor } = await import('lenis');
       if (cancelled) return;
 
       const lenis = new LenisCtor({
-        duration: 1.2,
+        duration: 0.8,
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        touchMultiplier: 1.5,
+        smoothWheel: true,
+        syncTouch: false,
+        touchMultiplier: 0,
         infinite: false,
       });
 
@@ -56,63 +87,13 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
       }
 
       rafIdRef.current = requestAnimationFrame(raf);
-
-      handleClick = (e: MouseEvent) => {
-        const target = e.target as HTMLElement;
-        const anchor = target.closest('a[href^="#"]');
-        if (anchor) {
-          const href = anchor.getAttribute('href');
-          if (href && href.startsWith('#')) {
-            const el = document.getElementById(href.slice(1));
-            if (el) {
-              e.preventDefault();
-              lenis.scrollTo(el, { offset: 0 });
-            }
-          }
-        }
-      };
-
-      document.addEventListener('click', handleClick);
-
-      if (pathname === '/') {
-        snapTimer = setTimeout(() => {
-          void import('lenis/snap').then(({ default: SnapCtor }) => {
-            if (cancelled || lenisRef.current !== lenis) return;
-
-            const snap = new SnapCtor(lenis, {
-              type: 'proximity',
-              lerp: 0.08,
-              duration: 1.2,
-              easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-            });
-
-            const sections = document.querySelectorAll('[data-section]');
-            sections.forEach((section) => {
-              snap.addElement(section as HTMLElement, {
-                align: ['start'],
-              });
-            });
-
-            snapRef.current = snap;
-          });
-        }, 300);
-      }
     };
 
     void setupSmoothScroll();
 
     return () => {
       cancelled = true;
-      if (handleClick) {
-        document.removeEventListener('click', handleClick);
-      }
-      if (snapTimer) {
-        clearTimeout(snapTimer);
-      }
-      if (snapRef.current) {
-        snapRef.current.destroy();
-        snapRef.current = null;
-      }
+      document.removeEventListener('click', handleClick);
       if (rafIdRef.current !== null) {
         cancelAnimationFrame(rafIdRef.current);
         rafIdRef.current = null;
@@ -127,3 +108,4 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
 
   return <>{children}</>;
 }
+

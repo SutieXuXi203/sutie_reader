@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
 import { extractDriveImageId, getOptimizedImageUrl } from '@/lib/utils';
@@ -18,7 +18,7 @@ interface ReaderImageProps {
   onLoad?: () => void;
 }
 
-export function ReaderImage({
+export const ReaderImage = React.memo(function ReaderImage({
   src,
   alt,
   idx,
@@ -128,10 +128,18 @@ export function ReaderImage({
     setTimeout(() => setIsRetrying(false), 500);
   };
 
+  const handleLoaded = useCallback(() => {
+    setStatus('loaded');
+    onLoad?.();
+  }, [onLoad]);
+
+  const scrambleMeta = useMemo(() => parseScrambleParams(currentSrc), [currentSrc]);
+
   return (
     <div
       ref={containerRef}
-      className="relative w-full overflow-hidden bg-muted/10 min-h-[350px] sm:min-h-[500px] md:min-h-[700px] flex items-center justify-center"
+      style={{ aspectRatio: `${width} / ${height}` }}
+      className="relative w-full overflow-hidden bg-muted/10 flex items-center justify-center"
     >
       {/* Loading Skeleton & Indicator */}
       {status === 'loading' && (
@@ -167,47 +175,34 @@ export function ReaderImage({
 
       {/* Main Image - Smart Loaded (ScrambledCanvas for anti-scrape, Image for regular) */}
       {isInViewportOrNear && currentSrc && (
-        (() => {
-          const scrambleMeta = parseScrambleParams(currentSrc);
-          if (scrambleMeta.isScrambled) {
-            return (
-              <ScrambledCanvas
-                src={currentSrc}
-                seedKey={scrambleMeta.seed}
-                rows={scrambleMeta.rows}
-                cols={scrambleMeta.cols}
-                alt={alt}
-                idx={idx}
-                className={className}
-                onLoad={() => {
-                  setStatus('loaded');
-                  onLoad?.();
-                }}
-                onError={handleAutoFallback}
-              />
-            );
-          }
-
-          return (
-            <Image
-              src={currentSrc}
-              alt={alt}
-              width={width}
-              height={height}
-              className={`${className} transition-opacity duration-300 ${
-                status === 'loaded' ? 'opacity-100' : 'opacity-0'
-              }`}
-              unoptimized
-              priority={priority}
-              onLoad={() => {
-                setStatus('loaded');
-                onLoad?.();
-              }}
-              onError={handleAutoFallback}
-            />
-          );
-        })()
+        scrambleMeta.isScrambled ? (
+          <ScrambledCanvas
+            src={currentSrc}
+            seedKey={scrambleMeta.seed}
+            rows={scrambleMeta.rows}
+            cols={scrambleMeta.cols}
+            alt={alt}
+            idx={idx}
+            className={className}
+            onLoad={handleLoaded}
+            onError={handleAutoFallback}
+          />
+        ) : (
+          <Image
+            src={currentSrc}
+            alt={alt}
+            width={width}
+            height={height}
+            className={`${className} transition-opacity duration-300 ${
+              status === 'loaded' ? 'opacity-100' : 'opacity-0'
+            }`}
+            unoptimized
+            priority={priority}
+            onLoad={handleLoaded}
+            onError={handleAutoFallback}
+          />
+        )
       )}
     </div>
   );
-}
+});

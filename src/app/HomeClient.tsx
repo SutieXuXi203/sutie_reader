@@ -274,7 +274,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           }
         });
       },
-      { threshold: 0.12 }
+      { threshold: 0.01, rootMargin: '60px 0px 60px 0px' }
     );
     const observeAll = () => {
       document.querySelectorAll('.reveal:not(.reveal-visible)').forEach((el) => observer.observe(el));

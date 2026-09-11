@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState, useCallback } from 'react';
+import React, { useEffect, useRef, useState, useCallback } from 'react';
 import { generateTilePermutation } from '@/lib/scramble';
 import { ImageIcon, RefreshCw } from 'lucide-react';
 
@@ -16,7 +16,7 @@ interface ScrambledCanvasProps {
   onError?: () => void;
 }
 
-export function ScrambledCanvas({
+export const ScrambledCanvas = React.memo(function ScrambledCanvas({
   src,
   seedKey,
   rows = 8,
@@ -31,6 +31,11 @@ export function ScrambledCanvas({
   const rawImgRef = useRef<HTMLImageElement | null>(null);
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [isRetrying, setIsRetrying] = useState(false);
+
+  const onLoadRef = useRef(onLoad);
+  onLoadRef.current = onLoad;
+  const onErrorRef = useRef(onError);
+  onErrorRef.current = onError;
 
   const drawReconstructedImage = useCallback(() => {
     const img = rawImgRef.current;
@@ -98,10 +103,11 @@ export function ScrambledCanvas({
     }
 
     setStatus('loaded');
-    onLoad?.();
-  }, [rows, cols, seedKey, onLoad]);
+    onLoadRef.current?.();
+  }, [rows, cols, seedKey]);
 
   useEffect(() => {
+    let cancelled = false;
     setStatus('loading');
     const img = new window.Image();
     if (!src.startsWith('/') && !src.startsWith('data:')) {
@@ -110,21 +116,24 @@ export function ScrambledCanvas({
     rawImgRef.current = img;
 
     img.onload = () => {
+      if (cancelled) return;
       drawReconstructedImage();
     };
 
     img.onerror = () => {
+      if (cancelled) return;
       setStatus('error');
-      onError?.();
+      onErrorRef.current?.();
     };
 
     img.src = src;
 
     return () => {
+      cancelled = true;
       img.onload = null;
       img.onerror = null;
     };
-  }, [src, drawReconstructedImage, onError]);
+  }, [src, drawReconstructedImage]);
 
   const handleRetry = () => {
     setIsRetrying(true);
@@ -149,7 +158,7 @@ export function ScrambledCanvas({
 
   return (
     <div
-      className="relative w-full overflow-hidden bg-muted/10 min-h-[350px] sm:min-h-[500px] flex items-center justify-center group"
+      className="relative w-full h-full overflow-hidden bg-muted/10 flex items-center justify-center group"
       onContextMenu={(e) => e.preventDefault()}
     >
       {/* Loading Skeleton */}
@@ -196,4 +205,4 @@ export function ScrambledCanvas({
       />
     </div>
   );
-}
+});

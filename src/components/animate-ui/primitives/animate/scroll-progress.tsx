@@ -50,7 +50,8 @@ function ScrollProgressProvider({
   const scale = useSpring(progress, transition);
 
   React.useEffect(() => {
-    const updateProgress = () => {
+    // Only check on resize to calibrate container boundaries without thrashing layout during active scroll
+    const updateProgressOnResize = () => {
       if (global) {
         const scrollTop = typeof window !== 'undefined' ? (window.scrollY || document.documentElement.scrollTop || 0) : 0;
         const maxScroll = typeof document !== 'undefined' 
@@ -62,43 +63,15 @@ function ScrollProgressProvider({
         } else if (maxScroll > 0) {
           progress.set(Math.min(Math.max(scrollTop / maxScroll, 0), 1));
         }
-      } else if (containerRef.current) {
-        const container = containerRef.current;
-        const scrollTop = container.scrollTop || 0;
-        const maxScroll = container.scrollHeight - container.clientHeight;
-
-        if (scrollTop <= 0) {
-          progress.set(0);
-        } else if (maxScroll > 0) {
-          progress.set(Math.min(Math.max(scrollTop / maxScroll, 0), 1));
-        }
       }
     };
 
-    updateProgress();
-    const timer1 = requestAnimationFrame(updateProgress);
-    const timer2 = setTimeout(updateProgress, 100);
-    const timer3 = setTimeout(updateProgress, 400);
-
-    window.addEventListener('scroll', updateProgress, { passive: true });
-    window.addEventListener('resize', updateProgress, { passive: true });
-
-    let observer: ResizeObserver | null = null;
-    if (global && typeof document !== 'undefined' && document.body) {
-      observer = new ResizeObserver(updateProgress);
-      observer.observe(document.body);
-    } else if (containerRef.current) {
-      observer = new ResizeObserver(updateProgress);
-      observer.observe(containerRef.current);
-    }
+    const timer = setTimeout(updateProgressOnResize, 150);
+    window.addEventListener('resize', updateProgressOnResize, { passive: true });
 
     return () => {
-      cancelAnimationFrame(timer1);
-      clearTimeout(timer2);
-      clearTimeout(timer3);
-      window.removeEventListener('scroll', updateProgress);
-      window.removeEventListener('resize', updateProgress);
-      if (observer) observer.disconnect();
+      clearTimeout(timer);
+      window.removeEventListener('resize', updateProgressOnResize);
     };
   }, [global, progress]);
 
@@ -131,7 +104,10 @@ function ScrollProgress({
   ...props
 }: ScrollProgressProps) {
   const { scale, direction, global } = useScrollProgress();
-  const scaleValue = useMotionValueState(scale);
+  const isTransformScale = mode === 'scaleX' || mode === 'scaleY';
+  
+  // Only subscribe to React state updates if using width/height mode
+  const widthOrHeightValue = useMotionValueState(scale);
   const { children, ...motionProps } = props;
 
   const progressProps = {
@@ -140,12 +116,12 @@ function ScrollProgress({
     'data-mode': mode,
     'data-global': global,
     style: {
-      ...(mode === 'width' || mode === 'height'
+      ...(isTransformScale
         ? {
-            [mode]: scaleValue * 100 + '%',
+            [mode]: scale,
           }
         : {
-            [mode]: scale,
+            [mode]: widthOrHeightValue * 100 + '%',
           }),
       ...style,
     },

@@ -426,32 +426,63 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
       return;
     }
 
+    if (typeof IntersectionObserver !== 'undefined') {
+      const observer = new IntersectionObserver(
+        (entries) => {
+          let bestIdx: number | null = null;
+          let bestRatio = 0;
+          for (const entry of entries) {
+            if (entry.isIntersecting && entry.intersectionRatio > bestRatio) {
+              bestRatio = entry.intersectionRatio;
+              const idxAttr = entry.target.getAttribute('data-page-index');
+              if (idxAttr !== null) {
+                bestIdx = parseInt(idxAttr, 10);
+              }
+            }
+          }
+          if (bestIdx !== null && !Number.isNaN(bestIdx)) {
+            setCurrentPage((prev) => (prev === bestIdx ? prev : bestIdx));
+          }
+        },
+        {
+          rootMargin: '-15% 0px -40% 0px',
+          threshold: [0.05, 0.25, 0.5],
+        }
+      );
+
+      imageRefs.current.forEach((el) => {
+        if (el) observer.observe(el);
+      });
+
+      return () => {
+        observer.disconnect();
+      };
+    }
+
+    // High-performance fallback without getBoundingClientRect thrashing
     const handleScroll = () => {
       if (scrollRafRef.current !== null) return;
 
       scrollRafRef.current = window.requestAnimationFrame(() => {
         scrollRafRef.current = null;
-        resetUiTimer();
-
         const viewportCenter = window.scrollY + window.innerHeight * 0.35;
         let closestIdx = 0;
         let closestDist = Infinity;
-        imageRefs.current.forEach((ref, idx) => {
-          if (!ref) return;
-          const rect = ref.getBoundingClientRect();
-          const absTop = rect.top + window.scrollY;
+        for (let idx = 0; idx < imageRefs.current.length; idx++) {
+          const ref = imageRefs.current[idx];
+          if (!ref) continue;
+          const absTop = ref.offsetTop;
           const dist = Math.abs(absTop - viewportCenter);
           if (dist < closestDist) {
             closestDist = dist;
             closestIdx = idx;
           }
-        });
+        }
         setCurrentPage((prev) => (prev === closestIdx ? prev : closestIdx));
       });
     };
 
     window.addEventListener('scroll', handleScroll, { passive: true });
-    handleScroll();
     return () => {
       window.removeEventListener('scroll', handleScroll);
       if (scrollRafRef.current !== null) {
@@ -459,7 +490,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
         scrollRafRef.current = null;
       }
     };
-  }, [post, activeChapterIndex, resetUiTimer, chapters]);
+  }, [post, activeChapterIndex, chapters]);
 
   useEffect(() => {
     let scrollRafId: number;
@@ -704,6 +735,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
                 ref={(el) => {
                   imageRefs.current[idx] = el;
                 }}
+                data-page-index={idx}
                 className="w-full max-w-5xl relative scroll-mt-16 md:scroll-mt-24"
               >
                 <ReaderImage
