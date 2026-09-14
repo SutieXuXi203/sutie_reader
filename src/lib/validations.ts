@@ -4,6 +4,7 @@ export const loginSchema = z.object({
   email: z.string().email('Email không hợp lệ'),
   password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
   rememberMe: z.boolean().optional(),
+  pin: z.string().optional(),
 });
 
 export const registerSchema = z.object({

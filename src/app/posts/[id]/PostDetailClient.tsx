@@ -10,14 +10,19 @@ import {
   AnimatedBookmarkCheck,
   AnimatedShieldAlert,
   AnimatedLock,
+  AnimatedShare,
 } from '@/components/animate-ui/icons/AnimateIcon';
 import { Loader2, ChevronDown, Play, Pause, Settings } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
+import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { ReaderImage } from '@/components/ReaderImage';
+
+const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
+const ShareDialog = dynamic(() => import('@/components/ShareDialog').then(m => ({ default: m.ShareDialog })), { ssr: false });
 
 interface Chapter {
   _id?: string;
@@ -37,6 +42,16 @@ interface Post {
   chapters?: Chapter[];
   author: string;
   translator?: string;
+  accessType?: 'restricted' | 'public';
+  sharedWith?: Array<{ email: string; userId?: string; role?: string }>;
+  accessedUsers?: Array<{
+    userId?: string;
+    email: string;
+    name: string;
+    avatar?: string;
+    role?: string;
+    lastAccessedAt: string | Date;
+  }>;
   createdAt: string;
 }
 
@@ -84,7 +99,10 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
   const params = useParams();
   const router = useRouter();
   const [post, setPost] = useState<Post | null>(initialPost);
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading, logout } = useAuth();
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
+  const [accessedUsers, setAccessedUsers] = useState<any[]>(initialPost?.accessedUsers || []);
   const [isLoading, setIsLoading] = useState(false);
   const [showUI, setShowUI] = useState(true);
   const [activeChapterIndex, setActiveChapterIndex] = useState(0);
@@ -127,6 +145,26 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
       if (savedEyeCare === 'true') setIsEyeCareMode(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!post?._id || !user?.email) return;
+    const trackAccess = async () => {
+      try {
+        const res = await fetch(`/api/posts/${post._id}/access`, {
+          method: 'POST',
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (Array.isArray(data.accessedUsers)) {
+            setAccessedUsers(data.accessedUsers);
+          }
+        }
+      } catch (err) {
+        console.warn('Lỗi ghi nhận truy cập:', err);
+      }
+    };
+    trackAccess();
+  }, [post?._id, user?.email]);
 
   const toggleEyeCareMode = () => {
     setIsEyeCareMode((prev) => {
@@ -576,27 +614,87 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
     );
   }
 
-  if (!user) {
+  if (!post) return null;
+
+  const accessType = post.accessType || 'restricted';
+
+  // 1. Truyện Hạn chế + Chưa đăng nhập -> Chặn và yêu cầu đăng nhập
+  if (accessType === 'restricted' && !user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-foreground px-6 text-center">
-        <div className="w-20 h-20 bg-card rounded-[8px] flex items-center justify-center mb-8 border border-border shadow-lg">
-          <AnimatedLock className="w-10 h-10 text-muted-foreground" />
+        <div className="w-20 h-20 bg-card rounded-[12px] flex items-center justify-center mb-6 border border-border shadow-lg">
+          <AnimatedLock className="w-10 h-10 text-primary" />
         </div>
-        <h1 className="text-3xl font-bold mb-4">Quyền truy cập bị giới hạn</h1>
-        <p className="text-muted-foreground max-w-md mb-10 leading-relaxed">
-          Trang này chỉ dành cho thành viên đã đăng ký. Vui lòng quay lại trang chủ và đăng nhập để tiếp tục xem nội dung này.
+        <h1 className="text-2xl sm:text-3xl font-bold mb-3">Yêu cầu đăng nhập</h1>
+        <p className="text-muted-foreground max-w-md mb-8 leading-relaxed text-xs sm:text-sm">
+          Truyện này đang ở chế độ hạn chế và yêu cầu bạn đăng nhập để đọc. Nếu bạn đã được cấp quyền truy cập qua email, vui lòng đăng nhập bằng đúng email đó để tiếp tục.
         </p>
-        <Link
-          href="/#posts"
-          className="px-10 py-4 rounded-[8px] bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all active:scale-95 shadow-xl shadow-primary/20"
-        >
-          Về trang chủ đăng nhập
-        </Link>
+        <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center justify-center">
+          <button
+            onClick={() => setIsAuthDialogOpen(true)}
+            className="w-full sm:w-auto px-8 py-3.5 rounded-[8px] bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all active:scale-95 shadow-xl shadow-primary/20 text-xs sm:text-sm cursor-pointer"
+          >
+            Đăng nhập / Đăng ký ngay
+          </button>
+          <Link
+            href="/"
+            className="w-full sm:w-auto px-6 py-3.5 rounded-[8px] bg-secondary hover:bg-muted text-foreground font-bold transition-all active:scale-95 text-xs sm:text-sm text-center border border-border cursor-pointer"
+          >
+            Về trang chủ
+          </Link>
+        </div>
+        {isAuthDialogOpen && (
+          <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
+        )}
       </div>
     );
   }
 
-  if (!post) return null;
+  // 2. Truyện Hạn chế + Đã đăng nhập -> Kiểm tra xem có phải Admin hoặc nằm trong sharedWith không
+  if (accessType === 'restricted' && user) {
+    const isFullAccessUser = user.role === 'admin' || user.role === 'user';
+    const userEmail = user.email.toLowerCase();
+    const isAllowed =
+      isFullAccessUser ||
+      (Array.isArray(post.sharedWith) &&
+        post.sharedWith.some(
+          (s) => s.email?.toLowerCase() === userEmail || (s.userId && s.userId === user.id)
+        ));
+
+    if (!isAllowed) {
+      return (
+        <div className="min-h-screen flex flex-col items-center justify-center text-foreground px-6 text-center">
+          <div className="w-20 h-20 bg-card rounded-[12px] flex items-center justify-center mb-6 border border-border shadow-lg">
+            <AnimatedShieldAlert className="w-10 h-10 text-amber-500" />
+          </div>
+          <h1 className="text-2xl sm:text-3xl font-bold mb-3">Bạn chưa được cấp quyền truy cập</h1>
+          <p className="text-muted-foreground max-w-md mb-8 leading-relaxed text-xs sm:text-sm">
+            Truyện này đang ở chế độ hạn chế và chưa được chia sẻ với tài khoản <span className="font-semibold text-foreground">{user.email}</span>. Vui lòng liên hệ quản trị viên để được cấp quyền hoặc đổi tài khoản khác.
+          </p>
+          <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center justify-center">
+            <button
+              onClick={() => {
+                logout();
+                setIsAuthDialogOpen(true);
+              }}
+              className="w-full sm:w-auto px-6 py-3.5 rounded-[8px] bg-secondary hover:bg-muted text-foreground font-bold transition-all active:scale-95 text-xs sm:text-sm text-center border border-border cursor-pointer"
+            >
+              Đổi tài khoản khác
+            </button>
+            <Link
+              href="/"
+              className="w-full sm:w-auto px-8 py-3.5 rounded-[8px] bg-primary text-primary-foreground font-bold hover:bg-primary/90 transition-all active:scale-95 shadow-md text-xs sm:text-sm text-center"
+            >
+              Về trang chủ
+            </Link>
+          </div>
+          {isAuthDialogOpen && (
+            <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
+          )}
+        </div>
+      );
+    }
+  }
 
   const activeChapter = chapters[activeChapterIndex] || chapters[0];
   const chapterImages = activeChapter?.images || [];
@@ -693,7 +791,47 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
             </div>
           </div>
 
-          <div className="flex shrink-0 items-center gap-2 md:gap-4">
+          <div className="flex shrink-0 items-center gap-2 md:gap-3">
+            {/* Viewer Avatars Stack (Google Docs style) */}
+            {accessedUsers.length > 0 && (
+              <div
+                onClick={() => setIsShareOpen(true)}
+                className="flex items-center -space-x-2 cursor-pointer hover:opacity-90 transition-opacity mr-1"
+                title={`Đã có ${accessedUsers.length} tài khoản truy cập link này. Nhấn để xem chi tiết.`}
+              >
+                {accessedUsers.slice(0, 3).map((u, i) => (
+                  <div
+                    key={u.email || i}
+                    className="relative w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-card bg-secondary flex items-center justify-center font-bold text-[10px] text-foreground overflow-hidden shadow-sm shrink-0 ring-1 ring-border/50"
+                    title={`${u.name || u.email} (${u.role === 'admin' ? 'Quản trị viên' : u.role === 'user' ? 'Thành viên' : 'Khách'})`}
+                  >
+                    {u.avatar ? (
+                      <img
+                        src={u.avatar}
+                        alt={u.name || u.email}
+                        className="w-full h-full object-cover"
+                      />
+                    ) : (
+                      <span>{(u.name || u.email || '?').charAt(0).toUpperCase()}</span>
+                    )}
+                  </div>
+                ))}
+                {accessedUsers.length > 3 && (
+                  <div className="relative w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-card bg-muted flex items-center justify-center font-bold text-[9px] md:text-[10px] text-muted-foreground shadow-sm shrink-0">
+                    +{accessedUsers.length - 3}
+                  </div>
+                )}
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={() => setIsShareOpen(true)}
+              title="Chia sẻ truyện"
+              className="inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] bg-transparent p-0 transition-colors text-foreground/60 hover:text-foreground cursor-pointer"
+            >
+              <AnimatedShare className="block w-4 h-4 md:w-5 md:h-5" />
+            </button>
             <button
               onClick={async () => {
                 if (hasBookmark) {
@@ -976,6 +1114,19 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
             </div>
         </div>,
         document.body
+      )}
+
+      {isShareOpen && post && (
+        <ShareDialog
+          open={isShareOpen}
+          onOpenChange={setIsShareOpen}
+          postId={post._id}
+          postTitle={post.title}
+        />
+      )}
+
+      {isAuthDialogOpen && (
+        <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
       )}
     </div>
   );

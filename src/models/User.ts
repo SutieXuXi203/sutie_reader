@@ -4,7 +4,7 @@ export interface IUser extends Document {
     password?: string;
     name: string;
     avatar?: string;
-    role: 'user' | 'admin';
+    role: 'guest' | 'user' | 'admin';
     isVerified: boolean;
     verificationCode?: string;
     verificationExpiresAt?: Date;
@@ -37,8 +37,8 @@ const UserSchema = new Schema<IUser>(
         },
         role: {
             type: String,
-            enum: ['user', 'admin'],
-            default: 'user',
+            enum: ['guest', 'user', 'admin'],
+            default: 'guest',
         },
         isVerified: {
             type: Boolean,
@@ -78,5 +78,9 @@ UserSchema.index(
         },
     }
 );
+
+if (mongoose.models.User) {
+    delete (mongoose.models as any).User;
+}
 
 export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

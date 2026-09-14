@@ -1,5 +1,5 @@
 'use client';
-import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimatedLanguages, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
+import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimatedLanguages, AnimatedShare, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
 import { CalendarDays, ShieldAlert, Eye } from 'lucide-react';
 import React, { useEffect, useState, useMemo } from 'react';
 import { HoverCard } from 'radix-ui';
@@ -15,6 +15,7 @@ import { notify } from '@/lib/notify';
 import { GlareHover } from '@/components/GlareHover';
 const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
 const DeleteConfirmDialog = dynamic(() => import('@/components/DeleteConfirmDialog').then(m => ({ default: m.DeleteConfirmDialog })), { ssr: false });
+const ShareDialog = dynamic(() => import('@/components/ShareDialog').then(m => ({ default: m.ShareDialog })), { ssr: false });
 interface Post {
   _id: string;
   title: string;
@@ -30,7 +31,7 @@ interface Post {
 interface PostCardProps {
   post: Post;
   onDelete: (id: string) => void;
-  onUpdate: (updatedPost?: any) => void;
+  onUpdate?: (updatedPost?: any) => void;
   availableTags?: string[];
   compact?: boolean;
 }
@@ -39,6 +40,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [nsfwRevealed, setNsfwRevealed] = useState(false);
   const [showNsfwConfirm, setShowNsfwConfirm] = useState(false);
   const { isAdmin } = useAuth();
@@ -82,6 +84,12 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       setIsDeleting(false);
     }
   };
+  const handleShare = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsShareOpen(true);
+  };
+
   const formattedCreatedAt = useMemo(() => {
     return new Date(post.createdAt).toLocaleDateString('vi-VN', {
       hour: '2-digit',
@@ -180,7 +188,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
           </GlareHover>
         </div>
-        <div className={cn("flex flex-col flex-grow text-left min-w-0", compact ? "p-2.5 sm:p-3" : "p-5 md:p-6")}>
+        <div className={cn("flex flex-col flex-grow text-left min-w-0", compact ? "p-2 sm:p-2.5 md:p-3" : "p-5 md:p-6")}>
           <h3
             title={post.title}
             className={cn(
@@ -288,32 +296,45 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               </span>
             </div>
           </div>
-          <div className={cn("flex flex-wrap items-center justify-between border-t border-border mt-auto", compact ? "gap-y-2 pt-2 text-[10px]" : "gap-y-3 pt-4 text-[12px] sm:text-[13px]")}>
-            <div className={cn("flex flex-wrap items-center gap-y-1 text-muted-foreground font-medium", compact ? "gap-x-2" : "gap-x-3")}>
+          <div className={cn("flex items-center justify-between border-t border-border mt-auto w-full min-w-0", compact ? "pt-1.5 text-[9.5px] sm:text-[10.5px] gap-x-1 gap-y-1 flex-wrap sm:flex-nowrap" : "pt-3.5 text-[12px] sm:text-[13px] flex-nowrap")}>
+            <div className="flex items-center text-muted-foreground font-medium shrink min-w-0">
               <span className={cn("flex items-center whitespace-nowrap", compact ? "gap-1" : "gap-1.5")}>
-                <AnimateIcon icon={CalendarDays} animation="scale" className={cn(compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
-                {compact ? formattedCompactCreatedAt : formattedCreatedAt}
+                <AnimateIcon icon={CalendarDays} animation="scale" className={cn("shrink-0", compact ? "w-2.5 h-2.5 sm:w-3 sm:h-3" : "w-3.5 h-3.5")} />
+                <span className="tabular-nums tracking-tight">{compact ? formattedCompactCreatedAt : formattedCreatedAt}</span>
               </span>
             </div>
-            {isAdmin && (
-              <div className={cn("flex items-center gap-1 ml-auto", compact && "mt-1")}>
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditOpen(true); }}
-                  className={cn("text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-[8px] transition-all cursor-pointer", compact ? "p-1" : "p-1.5 sm:p-2")}
-                  title="Chỉnh sửa"
-                >
-                  <AnimatedEdit className={cn(compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
-                </button>
-                <button
-                  onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDeleteConfirmOpen(true); }}
-                  disabled={isDeleting}
-                  className={cn("text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-[8px] transition-all disabled:opacity-50 cursor-pointer", compact ? "p-1" : "p-1.5 sm:p-2")}
-                  title="Xóa"
-                >
-                  <AnimatedTrash className={cn(compact ? "h-3.5 w-3.5" : "h-4 w-4")} />
-                </button>
-              </div>
-            )}
+            <div className={cn("flex items-center shrink-0 ml-auto", compact ? "gap-0.5" : "gap-1")}>
+              <button
+                type="button"
+                onClick={handleShare}
+                className={cn("text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-[6px] sm:rounded-[8px] transition-all cursor-pointer", compact ? "p-0.5 sm:p-1" : "p-1.5 sm:p-2")}
+                title="Chia sẻ"
+                aria-label="Chia sẻ"
+              >
+                <AnimatedShare className={cn(compact ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-4 w-4")} />
+              </button>
+              {isAdmin && (
+                <>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsEditOpen(true); }}
+                    className={cn("text-muted-foreground hover:text-primary hover:bg-primary/10 rounded-[6px] sm:rounded-[8px] transition-all cursor-pointer", compact ? "p-0.5 sm:p-1" : "p-1.5 sm:p-2")}
+                    title="Chỉnh sửa"
+                  >
+                    <AnimatedEdit className={cn(compact ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-4 w-4")} />
+                  </button>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.preventDefault(); e.stopPropagation(); setIsDeleteConfirmOpen(true); }}
+                    disabled={isDeleting}
+                    className={cn("text-muted-foreground hover:text-destructive hover:bg-destructive/10 rounded-[6px] sm:rounded-[8px] transition-all disabled:opacity-50 cursor-pointer", compact ? "p-0.5 sm:p-1" : "p-1.5 sm:p-2")}
+                    title="Xóa"
+                  >
+                    <AnimatedTrash className={cn(compact ? "h-3 w-3 sm:h-3.5 sm:w-3.5" : "h-4 w-4")} />
+                  </button>
+                </>
+              )}
+            </div>
           </div>
         </div>
       </Link >
@@ -324,7 +345,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             post={post}
             open={isEditOpen}
             onOpenChange={setIsEditOpen}
-            onPostUpdated={(updated) => { setIsEditOpen(false); onUpdate(updated); }}
+            onPostUpdated={(updated) => { setIsEditOpen(false); onUpdate?.(updated); }}
             availableTags={availableTags}
           />
           )}
@@ -345,7 +366,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
         showNsfwConfirm && typeof document !== 'undefined' && createPortal(
           <div
             className="fixed inset-0 z-[10000] bg-background/92 dark:bg-background/92 backdrop-blur-md flex flex-col items-center justify-center px-6 text-center"
-            onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/20 filter blur-[100px] rounded-full pointer-events-none" />
             <div
@@ -382,6 +403,14 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           document.body
         )
       }
+      {isShareOpen && (
+        <ShareDialog
+          open={isShareOpen}
+          onOpenChange={setIsShareOpen}
+          postId={post._id}
+          postTitle={post.title}
+        />
+      )}
     </>
   );
 });

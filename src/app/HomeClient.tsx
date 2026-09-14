@@ -39,7 +39,7 @@ type SortOption = 'newest' | 'oldest' | 'recently' | 'a-z' | 'z-a';
 
 const SORT_CONFIG: Record<SortOption, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
   'newest': { label: 'Mới nhất', icon: Sparkles },
-  'recently': { label: 'Cập nhật gần đây', icon: Clock },
+  'recently': { label: 'Gần đây', icon: Clock },
   'oldest': { label: 'Cũ nhất', icon: Calendar },
   'a-z': { label: 'Tên: A - Z', icon: ArrowDownAZ },
   'z-a': { label: 'Tên: Z - A', icon: ArrowUpAZ },
@@ -118,7 +118,7 @@ interface HomeContentProps {
 
 function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading, isAdmin } = useAuth();
   const { blurMode } = useThumbnailBlur();
   const initialPostState = cachedPosts.length > 0 ? cachedPosts : initialPosts;
   const initialTagState = cachedTags.length > 0 ? cachedTags : initialTags;
@@ -213,7 +213,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
       if (cachedPosts.length === 0) setIsLoading(true);
       const requestOptions: RequestInit = {
         cache: 'no-store',
-        credentials: 'omit',
+        credentials: 'same-origin',
         headers: { Accept: 'application/json' },
       };
       let data: Post[];
@@ -245,7 +245,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
         `/api/tags?ts=${Date.now()}`,
         {
           cache: 'no-store',
-          credentials: 'omit',
+          credentials: 'same-origin',
           headers: { Accept: 'application/json' },
         }
       );
@@ -258,10 +258,16 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
 
   useEffect(() => {
     if (userId) {
+      cachedPosts = [];
+      cachedBookmarks = [];
+      lastFetchTime = 0;
       fetchBookmarks();
-      fetchPosts();
+      fetchPosts(true);
       fetchTags();
     } else {
+      cachedPosts = [];
+      cachedBookmarks = [];
+      lastFetchTime = 0;
       setBookmarks([]);
       setPosts([]);
       setStandaloneTags([]);
@@ -480,27 +486,15 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           {/* Stories List Section */}
           {user && (
             <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
-              <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-3.5 sm:gap-4 border-b border-border/50 pb-4">
-                <div className="flex items-center justify-between w-full md:w-auto">
-                  <div>
-                    <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
-                    <h2 className="text-base sm:text-lg font-extrabold text-foreground font-sans">Danh sách truyện</h2>
-                  </div>
-
-                  {/* Thumbnail Blur Toggle on Mobile */}
-                  <div className="md:hidden w-[140px] sm:w-[150px] shrink-0">
-                    <ThumbnailBlurToggle />
-                  </div>
+              <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-3.5 sm:gap-4 border-b border-border/50 pb-4">
+                <div className="shrink-0">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
+                  <h2 className="text-base sm:text-lg font-extrabold text-foreground font-sans">Danh sách truyện</h2>
                 </div>
 
-                {/* Search Bar & Filter */}
-                <div className="w-full md:w-auto flex flex-row items-center gap-2 sm:gap-2.5">
-                  {/* Thumbnail Blur Toggle on Desktop (to the left of search bar) */}
-                  <div className="hidden md:block w-[140px] sm:w-[150px] md:w-[160px] shrink-0">
-                    <ThumbnailBlurToggle />
-                  </div>
-
-                  <div className="relative group flex-1 sm:w-[220px] md:w-[240px] sm:flex-initial min-w-0">
+                {/* Search Bar & Filters */}
+                <div className="w-full lg:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5">
+                  <div className="relative group flex-1 sm:w-auto lg:w-[210px] xl:w-[240px] lg:flex-initial min-w-0">
                     <span className="pointer-events-none absolute left-2.5 sm:left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80 transition-colors group-focus-within:text-primary">
                       <Search className="w-3.5 h-3.5" />
                     </span>
@@ -530,8 +524,13 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                     )}
                   </div>
 
-                  <div className="w-[140px] sm:w-[150px] md:w-[160px] shrink-0">
-                    <Select
+                  <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5 shrink-0">
+                    <div className="w-full sm:w-[130px] md:w-[140px]">
+                      <ThumbnailBlurToggle />
+                    </div>
+
+                    <div className="w-full sm:w-[130px] md:w-[140px]">
+                      <Select
                       value={sortOption}
                       onValueChange={(val: SortOption | null) => {
                         if (val) {
@@ -591,6 +590,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                   </div>
                 </div>
               </div>
+            </div>
 
               {isLoading ? (
                 <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 animate-pulse">
@@ -601,7 +601,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
               ) : filteredPosts.length === 0 ? (
                 <div className="text-center py-20 px-6 bg-card/30 backdrop-blur-sm border border-border rounded-[8px]">
                   <p className="text-muted-foreground text-sm">
-                    Danh sách đang trống.
+                    {!isAdmin ? 'Chưa có truyện nào được chia sẻ với bạn.' : 'Danh sách đang trống.'}
                   </p>
                 </div>
               ) : (

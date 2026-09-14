@@ -40,6 +40,7 @@ export async function POST(request: NextRequest) {
                 password: hashedPassword,
                 name,
                 avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+                role: 'guest',
                 isVerified: false,
                 verificationCode,
                 verificationExpiresAt,

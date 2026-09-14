@@ -15,7 +15,7 @@ export async function POST(request: NextRequest) {
     if (!parseResult.success) {
       return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
     }
-    const { email, password, rememberMe } = parseResult.data;
+    const { email, password, rememberMe, pin } = parseResult.data;
 
     const isAdminInput =
       email === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD;
@@ -76,6 +76,26 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
     }
 
+    // Kiểm tra yêu cầu mã PIN đối với role admin và user
+    const SECRET_PIN = process.env.UNLOCK_PIN;
+    const isFullAccessRole = user.role === 'admin' || user.role === 'user';
+
+    if (isFullAccessRole && SECRET_PIN) {
+      if (!pin) {
+        return NextResponse.json({
+          requirePin: true,
+          message: 'Tài khoản của bạn yêu cầu mã PIN bảo mật để hoàn tất đăng nhập',
+        });
+      }
+
+      if (pin !== SECRET_PIN) {
+        return NextResponse.json(
+          { error: 'Mã PIN bảo mật không chính xác' },
+          { status: 401 }
+        );
+      }
+    }
+
     const token = await new SignJWT({
       id: user._id.toString(),
       email: user.email,
@@ -116,6 +136,12 @@ export async function POST(request: NextRequest) {
     }
 
     response.cookies.set('token', token, cookieOptions);
+
+    // Cấp quyền mở khóa site toàn diện nếu là admin/user đã nhập đúng PIN
+    if (isFullAccessRole && SECRET_PIN) {
+      response.cookies.set('site_access_token', SECRET_PIN, cookieOptions);
+    }
+
     return response;
   } catch (error) {
     console.error('Lỗi đăng nhập:', error);
