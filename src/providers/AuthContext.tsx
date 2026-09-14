@@ -6,7 +6,7 @@ export interface User {
     email: string;
     name: string;
     avatar?: string;
-    role: 'user' | 'admin';
+    role: 'guest' | 'user' | 'admin';
 }
 interface AuthContextType {
     user: User | null;

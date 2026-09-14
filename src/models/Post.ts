@@ -9,6 +9,22 @@ export interface IPostChapter {
   updatedAt?: Date;
 }
 
+export interface IPostShareUser {
+  userId?: mongoose.Types.ObjectId;
+  email: string;
+  role: 'viewer';
+  addedAt: Date;
+}
+
+export interface IPostAccessedUser {
+  userId?: mongoose.Types.ObjectId;
+  email: string;
+  name: string;
+  avatar?: string;
+  role?: string;
+  lastAccessedAt: Date;
+}
+
 export interface IPost extends Document {
   title: string;
   description: string;
@@ -18,6 +34,9 @@ export interface IPost extends Document {
   chapters: IPostChapter[];
   author: string;
   translator?: string;
+  accessType: 'restricted' | 'public';
+  sharedWith: IPostShareUser[];
+  accessedUsers: IPostAccessedUser[];
   createdAt: Date;
   updatedAt: Date;
 }
@@ -83,12 +102,54 @@ const PostSchema = new Schema<IPost>(
       default: '',
       maxlength: 100,
     },
+    accessType: {
+      type: String,
+      enum: ['restricted', 'public'],
+      default: 'restricted',
+    },
+    sharedWith: {
+      type: [
+        new Schema<IPostShareUser>(
+          {
+            userId: { type: Schema.Types.ObjectId, ref: 'User' },
+            email: { type: String, required: true, lowercase: true, trim: true },
+            role: { type: String, enum: ['viewer'], default: 'viewer' },
+            addedAt: { type: Date, default: Date.now },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
+    accessedUsers: {
+      type: [
+        new Schema<IPostAccessedUser>(
+          {
+            userId: { type: Schema.Types.ObjectId, ref: 'User' },
+            email: { type: String, required: true, lowercase: true, trim: true },
+            name: { type: String, default: '' },
+            avatar: { type: String, default: '' },
+            role: { type: String, default: 'guest' },
+            lastAccessedAt: { type: Date, default: Date.now },
+          },
+          { _id: false }
+        ),
+      ],
+      default: [],
+    },
   },
   { timestamps: true, collection: 'comics' }
 );
 
 PostSchema.index({ createdAt: -1 });
 PostSchema.index({ tags: 1 });
+PostSchema.index({ accessType: 1 });
+PostSchema.index({ 'sharedWith.email': 1 });
+PostSchema.index({ 'accessedUsers.email': 1 });
+
+if (process.env.NODE_ENV !== 'production' && mongoose.models && mongoose.models.Post) {
+  delete (mongoose.models as Record<string, unknown>).Post;
+}
 
 export const Post =
   (mongoose.models.Post as mongoose.Model<IPost> | undefined) ||

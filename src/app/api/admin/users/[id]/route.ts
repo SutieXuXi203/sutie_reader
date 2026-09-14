@@ -32,3 +32,43 @@ export async function DELETE(
         return NextResponse.json({ error: 'Không thể xóa người dùng' }, { status: 500 });
     }
 }
+
+export async function PATCH(
+    request: NextRequest,
+    { params }: { params: Promise<{ id: string }> }
+) {
+    try {
+        const token = request.cookies.get('token')?.value;
+        if (!token) {
+            return NextResponse.json({ error: 'Chưa xác thực' }, { status: 401 });
+        }
+        const { payload } = await jwtVerify(token, getJwtSecret());
+        if (!payload || payload.role !== 'admin') {
+            return NextResponse.json({ error: 'Không có quyền truy cập' }, { status: 403 });
+        }
+        await connectDB();
+        const { id } = await params;
+        const body = await request.json();
+        const { role } = body;
+
+        if (!['guest', 'user', 'admin'].includes(role)) {
+            return NextResponse.json({ error: 'Vai trò không hợp lệ' }, { status: 400 });
+        }
+
+        const targetUser = await User.findById(id);
+        if (!targetUser) {
+            return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
+        }
+        if (targetUser.email === process.env.ADMIN_USERNAME && role !== 'admin') {
+            return NextResponse.json({ error: 'Không thể hạ quyền tài khoản quản trị viên gốc' }, { status: 403 });
+        }
+
+        targetUser.role = role;
+        await targetUser.save();
+
+        return NextResponse.json({ message: 'Đã cập nhật vai trò thành công', user: targetUser });
+    } catch (error) {
+        console.error('Lỗi cập nhật vai trò:', error);
+        return NextResponse.json({ error: 'Không thể cập nhật vai trò' }, { status: 500 });
+    }
+}

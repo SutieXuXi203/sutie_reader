@@ -32,6 +32,24 @@ function serializePost(postDoc: any) {
     author: post.author || '',
     translator: post.translator || '',
     tags: post.tags || [],
+    accessType: post.accessType || 'restricted',
+    sharedWith: Array.isArray(post.sharedWith)
+      ? post.sharedWith.map((s: any) => ({
+          email: s.email,
+          userId: s.userId ? s.userId.toString() : undefined,
+          role: s.role || 'viewer',
+        }))
+      : [],
+    accessedUsers: Array.isArray(post.accessedUsers)
+      ? post.accessedUsers.map((u: any) => ({
+          userId: u.userId ? u.userId.toString() : undefined,
+          email: u.email,
+          name: u.name || u.email.split('@')[0],
+          avatar: u.avatar || '',
+          role: u.role || 'guest',
+          lastAccessedAt: u.lastAccessedAt instanceof Date ? u.lastAccessedAt.toISOString() : u.lastAccessedAt,
+        }))
+      : [],
     chapters,
     chapterCount: chapters.length,
     content: firstChapter?.content || '',

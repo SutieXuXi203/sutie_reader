@@ -15,6 +15,7 @@ import { notify } from '@/lib/notify';
 import { GlareHover } from '@/components/GlareHover';
 const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
 const DeleteConfirmDialog = dynamic(() => import('@/components/DeleteConfirmDialog').then(m => ({ default: m.DeleteConfirmDialog })), { ssr: false });
+const ShareDialog = dynamic(() => import('@/components/ShareDialog').then(m => ({ default: m.ShareDialog })), { ssr: false });
 interface Post {
   _id: string;
   title: string;
@@ -30,7 +31,7 @@ interface Post {
 interface PostCardProps {
   post: Post;
   onDelete: (id: string) => void;
-  onUpdate: (updatedPost?: any) => void;
+  onUpdate?: (updatedPost?: any) => void;
   availableTags?: string[];
   compact?: boolean;
 }
@@ -39,6 +40,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+  const [isShareOpen, setIsShareOpen] = useState(false);
   const [nsfwRevealed, setNsfwRevealed] = useState(false);
   const [showNsfwConfirm, setShowNsfwConfirm] = useState(false);
   const { isAdmin } = useAuth();
@@ -82,45 +84,10 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       setIsDeleting(false);
     }
   };
-  const handleShare = async (e: React.MouseEvent) => {
+  const handleShare = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    const shareUrl = typeof window !== 'undefined'
-      ? `${window.location.origin}/posts/${post._id}`
-      : `/posts/${post._id}`;
-
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: post.title,
-          url: shareUrl,
-        });
-        return;
-      } catch (error: any) {
-        if (error?.name === 'AbortError') return;
-      }
-    }
-
-    try {
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(shareUrl);
-        notify.success('Đã sao chép liên kết');
-      } else {
-        const textArea = document.createElement('textarea');
-        textArea.value = shareUrl;
-        textArea.style.position = 'fixed';
-        textArea.style.opacity = '0';
-        document.body.appendChild(textArea);
-        textArea.focus();
-        textArea.select();
-        document.execCommand('copy');
-        document.body.removeChild(textArea);
-        notify.success('Đã sao chép liên kết');
-      }
-    } catch (err) {
-      console.error('Lỗi khi sao chép liên kết:', err);
-      notify.error('Không thể sao chép liên kết');
-    }
+    setIsShareOpen(true);
   };
 
   const formattedCreatedAt = useMemo(() => {
@@ -378,7 +345,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             post={post}
             open={isEditOpen}
             onOpenChange={setIsEditOpen}
-            onPostUpdated={(updated) => { setIsEditOpen(false); onUpdate(updated); }}
+            onPostUpdated={(updated) => { setIsEditOpen(false); onUpdate?.(updated); }}
             availableTags={availableTags}
           />
           )}
@@ -399,7 +366,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
         showNsfwConfirm && typeof document !== 'undefined' && createPortal(
           <div
             className="fixed inset-0 z-[10000] bg-background/92 dark:bg-background/92 backdrop-blur-md flex flex-col items-center justify-center px-6 text-center"
-            onClick={(e) => { e.stopPropagation(); setShowNsfwConfirm(false); }}
+            onClick={(e) => e.stopPropagation()}
           >
             <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/20 filter blur-[100px] rounded-full pointer-events-none" />
             <div
@@ -436,6 +403,14 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           document.body
         )
       }
+      {isShareOpen && (
+        <ShareDialog
+          open={isShareOpen}
+          onOpenChange={setIsShareOpen}
+          postId={post._id}
+          postTitle={post.title}
+        />
+      )}
     </>
   );
 });

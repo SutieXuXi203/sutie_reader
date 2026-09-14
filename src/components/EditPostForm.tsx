@@ -952,7 +952,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             role="dialog"
             aria-modal="true"
             aria-label="Ảnh hiện tại của chương"
-            onClick={closeImagePopup}
+            onClick={(event) => event.stopPropagation()}
           >
             <div
               data-lenis-prevent=""

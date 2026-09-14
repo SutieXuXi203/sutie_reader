@@ -10,7 +10,7 @@ export interface AuthUser {
   email: string;
   name: string;
   avatar?: string;
-  role: 'user' | 'admin';
+  role: 'guest' | 'user' | 'admin';
 }
 
 export function getJwtSecret(): Uint8Array {
@@ -26,7 +26,7 @@ type LeanAuthUser = {
   email?: string;
   name?: string;
   avatar?: string;
-  role?: 'user' | 'admin';
+  role?: 'guest' | 'user' | 'admin';
   isVerified?: boolean;
 };
 
@@ -35,7 +35,7 @@ type SessionPayload = {
   email?: string;
   name?: string;
   avatar?: string;
-  role?: 'user' | 'admin';
+  role?: 'guest' | 'user' | 'admin';
 };
 
 async function getSessionPayload(token?: string | null): Promise<SessionPayload | null> {
@@ -55,7 +55,9 @@ async function getSessionPayload(token?: string | null): Promise<SessionPayload 
     const name = typeof payload.name === 'string' ? payload.name : undefined;
     const avatar = typeof payload.avatar === 'string' ? payload.avatar : undefined;
     const role =
-      payload.role === 'admin' || payload.role === 'user' ? payload.role : undefined;
+      payload.role === 'admin' || payload.role === 'user' || payload.role === 'guest'
+        ? payload.role
+        : undefined;
 
     if (!id) return null;
 
@@ -74,7 +76,7 @@ export async function getSessionUserFromToken(token?: string | null): Promise<Au
     email: payload.email,
     name: payload.name || payload.email.split('@')[0] || payload.email,
     avatar: payload.avatar || '',
-    role: payload.role || 'user',
+    role: payload.role || 'guest',
   };
 }
 

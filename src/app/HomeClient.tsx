@@ -118,7 +118,7 @@ interface HomeContentProps {
 
 function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
-  const { user, isLoading: isAuthLoading } = useAuth();
+  const { user, isLoading: isAuthLoading, isAdmin } = useAuth();
   const { blurMode } = useThumbnailBlur();
   const initialPostState = cachedPosts.length > 0 ? cachedPosts : initialPosts;
   const initialTagState = cachedTags.length > 0 ? cachedTags : initialTags;
@@ -213,7 +213,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
       if (cachedPosts.length === 0) setIsLoading(true);
       const requestOptions: RequestInit = {
         cache: 'no-store',
-        credentials: 'omit',
+        credentials: 'same-origin',
         headers: { Accept: 'application/json' },
       };
       let data: Post[];
@@ -245,7 +245,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
         `/api/tags?ts=${Date.now()}`,
         {
           cache: 'no-store',
-          credentials: 'omit',
+          credentials: 'same-origin',
           headers: { Accept: 'application/json' },
         }
       );
@@ -258,10 +258,16 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
 
   useEffect(() => {
     if (userId) {
+      cachedPosts = [];
+      cachedBookmarks = [];
+      lastFetchTime = 0;
       fetchBookmarks();
-      fetchPosts();
+      fetchPosts(true);
       fetchTags();
     } else {
+      cachedPosts = [];
+      cachedBookmarks = [];
+      lastFetchTime = 0;
       setBookmarks([]);
       setPosts([]);
       setStandaloneTags([]);
@@ -595,7 +601,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
               ) : filteredPosts.length === 0 ? (
                 <div className="text-center py-20 px-6 bg-card/30 backdrop-blur-sm border border-border rounded-[8px]">
                   <p className="text-muted-foreground text-sm">
-                    Danh sách đang trống.
+                    {!isAdmin ? 'Chưa có truyện nào được chia sẻ với bạn.' : 'Danh sách đang trống.'}
                   </p>
                 </div>
               ) : (

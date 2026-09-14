@@ -208,6 +208,30 @@ export default function AdminDashboard() {
             email: targetUser.email,
         });
     };
+    const handleChangeRole = async (targetUser: AdminUser, newRole: 'guest' | 'user' | 'admin') => {
+        if (targetUser.email === user?.email) {
+            notify.warning('Không thể thay đổi vai trò của chính mình.');
+            return;
+        }
+        try {
+            const res = await fetch(`/api/admin/users/${targetUser._id}`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ role: newRole }),
+            });
+            if (res.ok) {
+                setUsersList((prev) =>
+                    prev.map((u) => (u._id === targetUser._id ? { ...u, role: newRole } : u))
+                );
+                notify.success(`Đã đổi vai trò của ${targetUser.email} thành ${newRole === 'admin' ? 'Quản trị' : newRole === 'user' ? 'Thành viên' : 'Khách'}`);
+            } else {
+                const data = await res.json();
+                notify.error(data.error || 'Cập nhật vai trò thất bại');
+            }
+        } catch {
+            notify.error('Lỗi kết nối khi cập nhật vai trò');
+        }
+    };
     const handleConfirmDelete = async () => {
         if (!deleteTarget) return;
         setIsDeletingTarget(true);
@@ -797,16 +821,17 @@ export default function AdminDashboard() {
                                                             <div className="min-w-0 flex-1">
                                                                 <p className="truncate text-sm font-semibold text-foreground">{u.name || 'Ẩn danh'}</p>
                                                                 <p className="mt-0.5 break-all text-xs text-muted-foreground">{u.email}</p>
-                                                                <div className="mt-2 flex flex-wrap gap-1.5">
-                                                                    {isAdminUser ? (
-                                                                        <span className="inline-flex items-center gap-1.5 rounded-[8px] bg-secondary px-2 py-1 text-[11px] font-medium text-primary">
-                                                                            <ShieldAlert className="w-3 h-3" /> Quản trị
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="inline-flex rounded-[8px] bg-neutral-100 px-2 py-1 text-[11px] font-medium text-muted-foreground dark:bg-neutral-800/50">
-                                                                            Người dùng
-                                                                        </span>
-                                                                    )}
+                                                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
+                                                                    <select
+                                                                        value={u.role || 'guest'}
+                                                                        disabled={u.email === user?.email}
+                                                                        onChange={(e) => handleChangeRole(u, e.target.value as 'guest' | 'user' | 'admin')}
+                                                                        className="text-[11px] font-semibold px-2 py-0.5 rounded-[6px] bg-secondary border border-border text-foreground cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
+                                                                    >
+                                                                        <option value="guest">Khách (Guest)</option>
+                                                                        <option value="user">Thành viên (User)</option>
+                                                                        <option value="admin">Quản trị (Admin)</option>
+                                                                    </select>
                                                                     {isAdminUser ? (
                                                                         <span className="inline-flex rounded-[8px] border border-sky-300/60 bg-sky-100/70 px-2 py-1 text-[11px] font-medium text-sky-700 dark:border-sky-700/60 dark:bg-sky-900/30 dark:text-sky-300">
                                                                             Miễn xác thực
@@ -916,15 +941,16 @@ export default function AdminDashboard() {
                                                                 </td>
                                                                 <td className="px-5 py-4 text-sm text-foreground/90 text-left border-r border-border/40 last:border-r-0">{u.email}</td>
                                                                 <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
-                                                                    {u.role === 'admin' ? (
-                                                                        <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[8px] text-xs font-medium bg-secondary text-primary">
-                                                                            <ShieldAlert className="w-3 h-3" /> Quản trị
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="inline-flex px-2.5 py-1 rounded-[8px] text-xs font-medium bg-neutral-100 dark:bg-neutral-800/50 text-muted-foreground">
-                                                                            Người dùng
-                                                                        </span>
-                                                                    )}
+                                                                    <select
+                                                                        value={u.role || 'guest'}
+                                                                        disabled={u.email === user?.email}
+                                                                        onChange={(e) => handleChangeRole(u, e.target.value as 'guest' | 'user' | 'admin')}
+                                                                        className="text-xs font-semibold px-2 py-1 rounded-[6px] bg-secondary/80 border border-border/70 text-foreground cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-primary"
+                                                                    >
+                                                                        <option value="guest">Khách (Guest)</option>
+                                                                        <option value="user">Thành viên (User)</option>
+                                                                        <option value="admin">Quản trị (Admin)</option>
+                                                                    </select>
                                                                 </td>
                                                                 <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
                                                                     {isAdminUser ? (

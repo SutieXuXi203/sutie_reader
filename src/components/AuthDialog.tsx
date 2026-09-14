@@ -26,7 +26,7 @@ interface AuthUser {
     email: string;
     name: string;
     avatar?: string;
-    role: 'user' | 'admin';
+    role: 'guest' | 'user' | 'admin';
 }
 
 interface AuthResponse {
@@ -34,6 +34,7 @@ interface AuthResponse {
     message?: string;
     user?: AuthUser;
     requireVerification?: boolean;
+    requirePin?: boolean;
     email?: string;
 }
 
@@ -44,11 +45,11 @@ type ApiError = Error & {
 interface AuthDialogProps {
     open: boolean;
     onOpenChange: (open: boolean) => void;
-    initialMode?: 'login' | 'register' | 'forgot-password' | 'verify';
+    initialMode?: 'login' | 'register' | 'forgot-password' | 'verify' | 'pin';
 }
 
 export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDialogProps) {
-    const [mode, setMode] = useState<'login' | 'register' | 'forgot-password' | 'verify'>(initialMode);
+    const [mode, setMode] = useState<'login' | 'register' | 'forgot-password' | 'verify' | 'pin'>(initialMode);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
     const [success, setSuccess] = useState('');
@@ -60,6 +61,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
     const [name, setName] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
+    const [pin, setPin] = useState('');
     const [rememberMe, setRememberMe] = useState(true);
 
     const resetState = () => {
@@ -72,6 +74,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         setShowConfirmPassword(false);
         setName('');
         setVerificationCode('');
+        setPin('');
     };
 
     useEffect(() => {
@@ -91,9 +94,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             let url = '/api/auth/login';
             let payload = {};
 
-            if (mode === 'login') {
+            if (mode === 'login' || mode === 'pin') {
                 url = '/api/auth/login';
-                payload = { email, password, rememberMe };
+                payload = { email, password, rememberMe, pin: mode === 'pin' ? pin : undefined };
             } else if (mode === 'register') {
                 if (password !== confirmPassword) {
                     setError('Mật khẩu xác nhận không khớp.');
@@ -131,7 +134,17 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 throw apiError;
             }
 
-            if (mode === 'login') {
+            if (data.requirePin) {
+                setMode('pin');
+                setSuccess(data.message || 'Vui lòng nhập mã PIN bảo mật để hoàn tất đăng nhập');
+                setIsLoading(false);
+                setTimeout(() => {
+                    document.getElementById('pin-input-0')?.focus();
+                }, 100);
+                return;
+            }
+
+            if (mode === 'login' || mode === 'pin') {
                 if (!data.user) {
                     throw new Error('Thiếu dữ liệu người dùng từ máy chủ');
                 }
@@ -174,7 +187,17 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     };
 
     return (
-        <Dialog open={open} onOpenChange={(val) => { onOpenChange(val); if (!val) resetState(); }}>
+        <Dialog
+            open={open}
+            disablePointerDismissal={true}
+            onOpenChange={(val, eventDetails) => {
+                if (!val && eventDetails?.reason === 'outside-press') {
+                    return;
+                }
+                onOpenChange(val);
+                if (!val) resetState();
+            }}
+        >
             <DialogContent className="sm:max-w-md max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar bg-card border-border">
                 <DialogHeader>
                     <DialogTitle className="text-2xl font-bold text-center text-foreground mb-2">
@@ -182,12 +205,14 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         {mode === 'register' && 'Tạo tài khoản mới'}
                         {mode === 'forgot-password' && 'Khôi phục mật khẩu'}
                         {mode === 'verify' && 'Xác thực tài khoản'}
+                        {mode === 'pin' && 'Mã PIN bảo mật'}
                     </DialogTitle>
                     <DialogDescription className="text-center text-neutral-500 dark:text-neutral-100">
                         {mode === 'login' && 'Đăng nhập để tiếp tục trải nghiệm của bạn'}
-                        {mode === 'register' && 'Tham gia cộng đồng và chia sẻ ý tưởng của bạn'}
+                        {mode === 'register' && ''}
                         {mode === 'forgot-password' && 'Nhập email để nhận liên kết đặt lại mật khẩu'}
                         {mode === 'verify' && 'Nhập mã gồm 6 chữ số được gửi đến email của bạn'}
+                        {mode === 'pin' && 'Tài khoản yêu cầu mã PIN bảo mật để hoàn tất đăng nhập'}
                     </DialogDescription>
                 </DialogHeader>
 
@@ -217,19 +242,21 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         </div>
                     )}
 
-                    <div className="relative">
-                        <Mail className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
-                        <Input
-                            type="text"
-                            placeholder="Email hoặc tên đăng nhập"
-                            value={email}
-                            onChange={(e) => setEmail(e.target.value)}
-                            className="pl-10"
-                            required
-                        />
-                    </div>
+                    {mode !== 'pin' && mode !== 'verify' && (
+                        <div className="relative">
+                            <Mail className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
+                            <Input
+                                type="text"
+                                placeholder="Email hoặc tên đăng nhập"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                className="pl-10"
+                                required
+                            />
+                        </div>
+                    )}
 
-                    {mode !== 'forgot-password' && mode !== 'verify' && (
+                    {mode !== 'forgot-password' && mode !== 'verify' && mode !== 'pin' && (
                         <div className="space-y-4">
                             <div className="relative">
                                 <Lock className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
@@ -369,6 +396,54 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         </div>
                     )}
 
+                    {mode === 'pin' && (
+                        <div className="flex flex-col gap-3 items-center w-full">
+                            <span className="text-sm text-neutral-500 font-medium">Nhập mã PIN 6 chữ số</span>
+                            <div className="flex gap-2 sm:gap-3 justify-center w-full">
+                                {[...Array(6)].map((_, index) => (
+                                    <input
+                                        key={index}
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        maxLength={1}
+                                        value={pin[index] || ''}
+                                        onChange={(e) => {
+                                            const value = e.target.value;
+                                            if (!/^[0-9]*$/.test(value)) return;
+                                            const newPin = pin.split('');
+                                            newPin[index] = value;
+                                            const finalPin = newPin.join('');
+                                            setPin(finalPin);
+                                            if (value && index < 5) {
+                                                const nextInput = document.getElementById(`pin-input-${index + 1}`);
+                                                nextInput?.focus();
+                                            }
+                                        }}
+                                        onKeyDown={(e) => {
+                                            if (e.key === 'Backspace' && !pin[index] && index > 0) {
+                                                const prevInput = document.getElementById(`pin-input-${index - 1}`);
+                                                prevInput?.focus();
+                                            }
+                                        }}
+                                        onPaste={(e) => {
+                                            e.preventDefault();
+                                            const pastedData = e.clipboardData.getData('text').slice(0, 6).replace(/\D/g, '');
+                                            if (pastedData) {
+                                                setPin(pastedData);
+                                                const nextFocusIndex = Math.min(pastedData.length, 5);
+                                                document.getElementById(`pin-input-${nextFocusIndex}`)?.focus();
+                                            }
+                                        }}
+                                        id={`pin-input-${index}`}
+                                        className="w-10 h-12 sm:w-12 sm:h-14 text-center text-xl font-bold bg-white dark:bg-secondary border-2 border-border/50 rounded-[8px] focus:outline-none focus:border-primary dark:focus:border-primary transition-colors shadow-sm text-foreground"
+                                        required={index === 0}
+                                    />
+                                ))}
+                            </div>
+                        </div>
+                    )}
+
                     {mode === 'login' && (
                         <div className="flex items-center justify-end">
                             <button
@@ -383,7 +458,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
                     <Button
                         type="submit"
-                        disabled={isLoading}
+                        disabled={isLoading || (mode === 'pin' && pin.length !== 6)}
                         className="rounded-[8px] w-full shadow-lg"
                     >
                         {isLoading ? (
@@ -394,6 +469,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 {mode === 'register' && 'Đăng ký'}
                                 {mode === 'forgot-password' && 'Gửi liên kết'}
                                 {mode === 'verify' && 'Xác thực'}
+                                {mode === 'pin' && 'Xác nhận mã PIN'}
                             </>
                         )}
                     </Button>
@@ -405,6 +481,14 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                             Chưa có tài khoản?{' '}
                             <button onClick={() => setMode('register')} className="text-primary font-semibold hover:underline decoration-2">
                                 Đăng ký ngay
+                            </button>
+                        </p>
+                    )}
+                    {mode === 'pin' && (
+                        <p>
+                            Muốn đăng nhập tài khoản khác?{' '}
+                            <button type="button" onClick={() => { setMode('login'); setPin(''); }} className="text-primary font-semibold hover:underline decoration-2">
+                                Quay lại
                             </button>
                         </p>
                     )}

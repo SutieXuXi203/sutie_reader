@@ -164,6 +164,8 @@ type PostListItem = {
   tags: string[];
   author: string;
   translator?: string;
+  accessType?: 'restricted' | 'public';
+  sharedWith?: Array<{ email: string; userId?: string | any }>;
   createdAt: string | Date;
   updatedAt?: string | Date;
   chapterCount: number;
@@ -173,10 +175,10 @@ type PostListItem = {
 export async function GET(request: NextRequest) {
   try {
     const cachedPosts = getApiCache<PostListItem[]>(POSTS_LIST_CACHE_KEY);
-    let postsList: PostListItem[];
+    let allPosts: PostListItem[];
 
     if (cachedPosts) {
-      postsList = cachedPosts;
+      allPosts = cachedPosts;
     } else {
       await connectDB();
       const posts = await Post.aggregate([
@@ -188,6 +190,8 @@ export async function GET(request: NextRequest) {
             tags: 1,
             author: 1,
             translator: 1,
+            accessType: 1,
+            sharedWith: 1,
             createdAt: 1,
             updatedAt: 1,
             coverImage: {
@@ -201,7 +205,7 @@ export async function GET(request: NextRequest) {
         },
       ]);
 
-      postsList = posts.map((post) => {
+      allPosts = posts.map((post) => {
         const coverImage = typeof post.coverImage === 'string' && post.coverImage.trim()
           ? post.coverImage
           : '';
@@ -213,6 +217,13 @@ export async function GET(request: NextRequest) {
           tags: post.tags || [],
           author: post.author || 'Ẩn danh',
           translator: post.translator || '',
+          accessType: post.accessType || 'restricted',
+          sharedWith: Array.isArray(post.sharedWith)
+            ? post.sharedWith.map((s: any) => ({
+                email: s.email,
+                userId: s.userId ? s.userId.toString() : undefined,
+              }))
+            : [],
           createdAt: post.createdAt instanceof Date ? post.createdAt.toISOString() : post.createdAt,
           updatedAt: post.updatedAt instanceof Date ? post.updatedAt.toISOString() : post.updatedAt,
           chapterCount: post.chapterCount,
@@ -220,16 +231,37 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      setApiCache(POSTS_LIST_CACHE_KEY, postsList, POSTS_LIST_CACHE_TTL_MS);
+      setApiCache(POSTS_LIST_CACHE_KEY, allPosts, POSTS_LIST_CACHE_TTL_MS);
     }
 
     const user = await getAuthUser(request);
-    const finalPosts = user
-      ? postsList.map((post) => ({
-          ...post,
-          images: signImageUrls(post.images || [], user.id),
-        }))
-      : postsList;
+    let filteredPosts: PostListItem[];
+
+    if (user?.role === 'admin' || user?.role === 'user') {
+      // role admin và role user được nhìn thấy toàn bộ items
+      filteredPosts = allPosts;
+    } else if (user?.role === 'guest') {
+      // role Guest chỉ nhìn thấy items công khai hoặc items được cấp quyền qua email
+      const userEmail = user.email.toLowerCase();
+      filteredPosts = allPosts.filter((post) => {
+        if (post.accessType === 'public') return true;
+        return (post.sharedWith || []).some(
+          (s) => s.email?.toLowerCase() === userEmail || (s.userId && s.userId === user.id)
+        );
+      });
+    } else {
+      // Khách vãng lai chỉ nhìn thấy items công khai
+      filteredPosts = allPosts.filter((post) => post.accessType === 'public');
+    }
+
+    const finalPosts = filteredPosts.map((post) => {
+      // Ẩn sharedWith trước khi gửi về client
+      const { sharedWith: _, ...rest } = post;
+      return {
+        ...rest,
+        images: user ? signImageUrls(post.images || [], user.id) : post.images,
+      };
+    });
 
     return NextResponse.json(finalPosts, {
       headers: {

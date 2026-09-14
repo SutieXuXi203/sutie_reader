@@ -334,10 +334,48 @@ export async function GET(
     }
 
     const user = await getAuthUser(request);
-    let result = serialized;
+    const accessType = serialized.accessType || 'restricted';
+
+    if (accessType === 'restricted') {
+      if (!user) {
+        return NextResponse.json(
+          { error: 'unauthorized', code: 'REQUIRE_LOGIN', message: 'Vui lòng đăng nhập để đọc truyện này' },
+          { status: 401 }
+        );
+      }
+
+      const isFullAccess = user.role === 'admin' || user.role === 'user';
+      const userEmail = user.email.toLowerCase();
+      const isAllowed =
+        isFullAccess ||
+        (Array.isArray(serialized.sharedWith) &&
+          serialized.sharedWith.some(
+            (s: any) =>
+              s.email?.toLowerCase() === userEmail ||
+              (s.userId && s.userId.toString() === user.id)
+          ));
+
+      if (!isAllowed) {
+        return NextResponse.json(
+          {
+            error: 'forbidden',
+            code: 'ACCESS_DENIED',
+            message: 'Bạn không có quyền truy cập truyện này. Vui lòng liên hệ quản trị viên để được cấp quyền.',
+          },
+          { status: 403 }
+        );
+      }
+    }
+
+    let result = {
+      ...serialized,
+      // Ẩn danh sách sharedWith với người dùng thường để bảo vệ quyền riêng tư
+      sharedWith: user?.role === 'admin' ? serialized.sharedWith : undefined,
+    };
+
     if (user) {
       result = {
-        ...serialized,
+        ...result,
         images: serialized.images ? signImageUrls(serialized.images, user.id) : [],
         chapters: Array.isArray(serialized.chapters)
           ? serialized.chapters.map((chapter: NormalizedPostChapter) => ({

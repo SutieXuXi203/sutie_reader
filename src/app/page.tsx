@@ -2,6 +2,8 @@ import HomeClient from './HomeClient';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
+import { cookies } from 'next/headers';
+import { getCurrentUserFromToken, type AuthUser } from '@/lib/server-auth';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -31,6 +33,8 @@ type CatalogPostAggregate = {
   tags?: string[];
   author?: string;
   translator?: string;
+  accessType?: 'restricted' | 'public';
+  sharedWith?: Array<{ email: string; userId?: string | any }>;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   chapterCount?: number;
@@ -47,7 +51,7 @@ function serializeDate(value: Date | string | undefined): string {
   return typeof value === 'string' ? value : '';
 }
 
-async function getInitialCatalog(): Promise<{
+async function getInitialCatalog(user: AuthUser | null): Promise<{
   initialPosts: InitialPost[];
   initialTags: InitialTag[];
 }> {
@@ -63,6 +67,8 @@ async function getInitialCatalog(): Promise<{
           tags: 1,
           author: 1,
           translator: 1,
+          accessType: 1,
+          sharedWith: 1,
           createdAt: 1,
           updatedAt: 1,
           coverImage: {
@@ -78,8 +84,23 @@ async function getInitialCatalog(): Promise<{
     Tag.find({}).sort({ name: 1 }).lean<TagLean[]>(),
   ]);
 
+  let visiblePosts = posts;
+  if (user?.role !== 'admin' && user?.role !== 'user') {
+    if (user?.role === 'guest') {
+      const userEmail = user.email.toLowerCase();
+      visiblePosts = posts.filter((post) => {
+        if (post.accessType === 'public') return true;
+        return (post.sharedWith || []).some(
+          (s) => s.email?.toLowerCase() === userEmail || (s.userId && s.userId.toString() === user.id)
+        );
+      });
+    } else {
+      visiblePosts = posts.filter((post) => post.accessType === 'public');
+    }
+  }
+
   return {
-    initialPosts: posts.map((post) => {
+    initialPosts: visiblePosts.map((post) => {
       const coverImage =
         typeof post.coverImage === 'string' && post.coverImage.trim()
           ? post.coverImage
@@ -108,7 +129,10 @@ async function getInitialCatalog(): Promise<{
 }
 
 export default async function HomePage() {
-  const catalog = await getInitialCatalog();
+  const cookieStore = await cookies();
+  const token = cookieStore.get('token')?.value;
+  const user = token ? ((await getCurrentUserFromToken(token)) as AuthUser | null) : null;
+  const catalog = await getInitialCatalog(user);
 
   return <HomeClient {...catalog} />;
 }
