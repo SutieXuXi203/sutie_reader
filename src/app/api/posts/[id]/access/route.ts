@@ -3,7 +3,6 @@ import { ObjectId } from 'mongodb';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { getAuthUser } from '@/lib/auth';
-import { invalidateApiCache } from '@/lib/api-cache';
 
 export async function POST(
   request: NextRequest,
@@ -21,7 +20,7 @@ export async function POST(
     }
 
     await connectDB();
-    const post = await Post.findById(id);
+    const post = await Post.findById(id).select('accessedUsers');
     if (!post) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
@@ -71,7 +70,6 @@ export async function POST(
     }
 
     await post.save();
-    invalidateApiCache(`posts:detail:${id}`);
 
     const mappedAccessedUsers = post.accessedUsers.map((u) => ({
       userId: u.userId ? u.userId.toString() : undefined,

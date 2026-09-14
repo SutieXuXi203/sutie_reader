@@ -2,6 +2,7 @@ import 'server-only';
 
 import { cookies } from 'next/headers';
 import { jwtVerify } from 'jose';
+import { cache } from 'react';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 
@@ -38,7 +39,7 @@ type SessionPayload = {
   role?: 'guest' | 'user' | 'admin';
 };
 
-async function getSessionPayload(token?: string | null): Promise<SessionPayload | null> {
+const getSessionPayload = cache(async (token?: string | null): Promise<SessionPayload | null> => {
   if (!token) return null;
 
   try {
@@ -65,7 +66,7 @@ async function getSessionPayload(token?: string | null): Promise<SessionPayload 
   } catch {
     return null;
   }
-}
+});
 
 export async function getSessionUserFromToken(token?: string | null): Promise<AuthUser | null> {
   const payload = await getSessionPayload(token);
@@ -80,7 +81,7 @@ export async function getSessionUserFromToken(token?: string | null): Promise<Au
   };
 }
 
-export async function getCurrentUserFromToken(token?: string | null): Promise<AuthUser | null> {
+export const getCurrentUserFromToken = cache(async (token?: string | null): Promise<AuthUser | null> => {
   const payload = await getSessionPayload(token);
   if (!payload) return null;
 
@@ -103,7 +104,7 @@ export async function getCurrentUserFromToken(token?: string | null): Promise<Au
   } catch {
     return null;
   }
-}
+});
 
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();

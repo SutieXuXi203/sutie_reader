@@ -124,9 +124,23 @@ export async function POST(
     const { action } = body;
 
     await connectDB();
-    const post = await Post.findById(id);
-    if (!post) {
-      return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
+
+    if (action === 'update_access') {
+      const accessType = body.accessType;
+      if (accessType !== 'restricted' && accessType !== 'public') {
+        return NextResponse.json({ error: 'Quyền truy cập không hợp lệ' }, { status: 400 });
+      }
+
+      const updated = await Post.findByIdAndUpdate(id, { accessType }, { new: true }).select('accessType');
+      if (!updated) {
+        return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
+      }
+      invalidateApiCache('posts:');
+
+      return NextResponse.json({
+        message: 'Đã cập nhật quyền truy cập chung',
+        accessType: updated.accessType,
+      });
     }
 
     if (action === 'add_user') {
@@ -135,6 +149,11 @@ export async function POST(
         return NextResponse.json({ error: 'Địa chỉ email không đúng định dạng' }, { status: 400 });
       }
       const targetEmail = emailParse.data;
+
+      const post = await Post.findById(id).select('sharedWith');
+      if (!post) {
+        return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
+      }
 
       if (!Array.isArray(post.sharedWith)) {
         post.sharedWith = [];
@@ -167,22 +186,6 @@ export async function POST(
           isRegistered: Boolean(existingUser),
           addedAt: new Date().toISOString(),
         },
-      });
-    }
-
-    if (action === 'update_access') {
-      const accessType = body.accessType;
-      if (accessType !== 'restricted' && accessType !== 'public') {
-        return NextResponse.json({ error: 'Quyền truy cập không hợp lệ' }, { status: 400 });
-      }
-
-      post.accessType = accessType;
-      await post.save();
-      invalidateApiCache('posts:');
-
-      return NextResponse.json({
-        message: 'Đã cập nhật quyền truy cập chung',
-        accessType: post.accessType,
       });
     }
 
@@ -226,20 +229,21 @@ export async function DELETE(
     const normalizedEmail = targetEmail.trim().toLowerCase();
 
     await connectDB();
-    const post = await Post.findById(id);
-    if (!post) {
+    const result = await Post.findByIdAndUpdate(
+      id,
+      {
+        $pull: {
+          sharedWith: { email: normalizedEmail },
+          accessedUsers: { email: normalizedEmail },
+        },
+      },
+      { new: true }
+    ).select('_id');
+
+    if (!result) {
       return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
     }
 
-    if (Array.isArray(post.sharedWith)) {
-      post.sharedWith = post.sharedWith.filter((s) => (s.email || '').toLowerCase() !== normalizedEmail);
-    }
-
-    if (Array.isArray(post.accessedUsers)) {
-      post.accessedUsers = post.accessedUsers.filter((u) => (u.email || '').toLowerCase() !== normalizedEmail);
-    }
-
-    await post.save();
     invalidateApiCache('posts:');
 
     return NextResponse.json({

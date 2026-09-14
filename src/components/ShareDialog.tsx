@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, useDeferredValue } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -83,6 +83,26 @@ interface ShareDialogProps {
   postTitle: string;
 }
 
+const getInitials = (name?: string, email?: string) => {
+  const target = name?.trim() || email?.trim() || '?';
+  return target.charAt(0).toUpperCase();
+};
+
+const formatRelativeTime = (isoString?: string | Date) => {
+  if (!isoString) return '';
+  const date = new Date(isoString);
+  const now = new Date();
+  const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
+  if (diffSec < 60) return 'Vừa xong';
+  const diffMin = Math.floor(diffSec / 60);
+  if (diffMin < 60) return `${diffMin} phút trước`;
+  const diffHours = Math.floor(diffMin / 60);
+  if (diffHours < 24) return `${diffHours} giờ trước`;
+  const diffDays = Math.floor(diffHours / 24);
+  if (diffDays < 7) return `${diffDays} ngày trước`;
+  return date.toLocaleDateString('vi-VN');
+};
+
 export function ShareDialog({
   open,
   onOpenChange,
@@ -103,18 +123,22 @@ export function ShareDialog({
   const [selectedVisitor, setSelectedVisitor] = useState<AccessedUserItem | null>(null);
   const [isRevokingVisitor, setIsRevokingVisitor] = useState(false);
 
+  const deferredSearch = useDeferredValue(visitorSearch);
+
   useEffect(() => {
-    const checkMobile = () => setIsMobile(window.innerWidth < 768);
-    checkMobile();
-    window.addEventListener('resize', checkMobile);
-    return () => window.removeEventListener('resize', checkMobile);
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(max-width: 767px)');
+    setIsMobile(mediaQuery.matches);
+    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
+    mediaQuery.addEventListener('change', handler);
+    return () => mediaQuery.removeEventListener('change', handler);
   }, []);
 
-  const fetchShareData = useCallback(async () => {
+  const fetchShareData = useCallback(async (signal?: AbortSignal) => {
     if (!postId) return;
     try {
       setIsLoading(true);
-      const res = await fetch(`/api/posts/${postId}/share`);
+      const res = await fetch(`/api/posts/${postId}/share`, { signal });
       if (res.ok) {
         const data = await res.json();
         setShareData(data);
@@ -122,7 +146,8 @@ export function ShareDialog({
         const err = await res.json().catch(() => ({}));
         notify.error(err.error || 'Không thể tải thông tin chia sẻ');
       }
-    } catch (err) {
+    } catch (err: any) {
+      if (err?.name === 'AbortError') return;
       console.error('Lỗi khi tải thông tin chia sẻ:', err);
       notify.error('Lỗi kết nối máy chủ');
     } finally {
@@ -131,14 +156,15 @@ export function ShareDialog({
   }, [postId]);
 
   useEffect(() => {
-    if (open) {
-      setEmailInput('');
-      setHasCopied(false);
-      setIsSidebarOpen(false);
-      setVisitorSearch('');
-      setSelectedVisitor(null);
-      fetchShareData();
-    }
+    if (!open) return;
+    const controller = new AbortController();
+    setEmailInput('');
+    setHasCopied(false);
+    setIsSidebarOpen(false);
+    setVisitorSearch('');
+    setSelectedVisitor(null);
+    fetchShareData(controller.signal);
+    return () => controller.abort();
   }, [open, fetchShareData]);
 
   const linkVisitors = useMemo(() => {
@@ -152,14 +178,14 @@ export function ShareDialog({
   }, [shareData]);
 
   const filteredVisitors = useMemo(() => {
-    if (!visitorSearch.trim()) return linkVisitors;
-    const q = visitorSearch.toLowerCase().trim();
+    if (!deferredSearch.trim()) return linkVisitors;
+    const q = deferredSearch.toLowerCase().trim();
     return linkVisitors.filter(
       (v) =>
         v.name.toLowerCase().includes(q) ||
         v.email.toLowerCase().includes(q)
     );
-  }, [linkVisitors, visitorSearch]);
+  }, [linkVisitors, deferredSearch]);
 
   const handleAddUser = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
@@ -341,25 +367,6 @@ export function ShareDialog({
     }
   };
 
-  const getInitials = (name?: string, email?: string) => {
-    const target = name?.trim() || email?.trim() || '?';
-    return target.charAt(0).toUpperCase();
-  };
-
-  const formatRelativeTime = (isoString?: string | Date) => {
-    if (!isoString) return '';
-    const date = new Date(isoString);
-    const now = new Date();
-    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (diffSec < 60) return 'Vừa xong';
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin} phút trước`;
-    const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    return date.toLocaleDateString('vi-VN');
-  };
 
   const renderVisitorList = () => {
     if (filteredVisitors.length === 0) {

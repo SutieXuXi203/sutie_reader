@@ -55,7 +55,7 @@ export async function PATCH(
             return NextResponse.json({ error: 'Vai trò không hợp lệ' }, { status: 400 });
         }
 
-        const targetUser = await User.findById(id);
+        const targetUser = await User.findById(id).select('email role name avatar');
         if (!targetUser) {
             return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
         }
@@ -66,7 +66,16 @@ export async function PATCH(
         targetUser.role = role;
         await targetUser.save();
 
-        return NextResponse.json({ message: 'Đã cập nhật vai trò thành công', user: targetUser });
+        return NextResponse.json({
+            message: 'Đã cập nhật vai trò thành công',
+            user: {
+                _id: targetUser._id,
+                email: targetUser.email,
+                name: targetUser.name,
+                role: targetUser.role,
+                avatar: targetUser.avatar,
+            },
+        });
     } catch (error) {
         console.error('Lỗi cập nhật vai trò:', error);
         return NextResponse.json({ error: 'Không thể cập nhật vai trò' }, { status: 500 });

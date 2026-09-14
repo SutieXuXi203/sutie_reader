@@ -4,9 +4,13 @@ import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
 import { cookies } from 'next/headers';
 import { getCurrentUserFromToken, type AuthUser } from '@/lib/server-auth';
+import { getApiCache, setApiCache } from '@/lib/api-cache';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
+
+const POSTS_CATALOG_CACHE_KEY = 'posts:catalog';
+const POSTS_CATALOG_TTL_MS = 30_000;
 
 type InitialPost = {
   _id: string;
@@ -55,34 +59,44 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
   initialPosts: InitialPost[];
   initialTags: InitialTag[];
 }> {
-  await connectDB();
+  let cached = getApiCache<{ posts: CatalogPostAggregate[]; tags: TagLean[] }>(POSTS_CATALOG_CACHE_KEY);
+  let posts: CatalogPostAggregate[];
+  let tags: TagLean[];
 
-  const [posts, tags] = await Promise.all([
-    Post.aggregate<CatalogPostAggregate>([
-      { $sort: { createdAt: -1 } },
-      {
-        $project: {
-          title: 1,
-          description: 1,
-          tags: 1,
-          author: 1,
-          translator: 1,
-          accessType: 1,
-          sharedWith: 1,
-          createdAt: 1,
-          updatedAt: 1,
-          coverImage: {
-            $ifNull: [
-              { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
-              { $arrayElemAt: ['$images', 0] },
-            ],
+  if (cached) {
+    posts = cached.posts;
+    tags = cached.tags;
+  } else {
+    await connectDB();
+    [posts, tags] = await Promise.all([
+      Post.aggregate<CatalogPostAggregate>([
+        { $sort: { createdAt: -1 } },
+        {
+          $project: {
+            title: 1,
+            description: 1,
+            tags: 1,
+            author: 1,
+            translator: 1,
+            accessType: 1,
+            sharedWith: 1,
+            createdAt: 1,
+            updatedAt: 1,
+            coverImage: {
+              $ifNull: [
+                { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
+                { $arrayElemAt: ['$images', 0] },
+              ],
+            },
+            chapterCount: { $size: { $ifNull: ['$chapters', []] } },
           },
-          chapterCount: { $size: { $ifNull: ['$chapters', []] } },
         },
-      },
-    ]),
-    Tag.find({}).sort({ name: 1 }).lean<TagLean[]>(),
-  ]);
+      ]),
+      Tag.find({}).sort({ name: 1 }).lean<TagLean[]>(),
+    ]);
+
+    setApiCache(POSTS_CATALOG_CACHE_KEY, { posts, tags }, POSTS_CATALOG_TTL_MS);
+  }
 
   let visiblePosts = posts;
   if (user?.role !== 'admin' && user?.role !== 'user') {

@@ -147,7 +147,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
   }, []);
 
   useEffect(() => {
-    if (!post?._id || !user) return;
+    if (!post?._id || !user?.email) return;
     const trackAccess = async () => {
       try {
         const res = await fetch(`/api/posts/${post._id}/access`, {
@@ -164,7 +164,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
       }
     };
     trackAccess();
-  }, [post?._id, user]);
+  }, [post?._id, user?.email]);
 
   const toggleEyeCareMode = () => {
     setIsEyeCareMode((prev) => {

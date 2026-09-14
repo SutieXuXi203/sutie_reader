@@ -84,8 +84,8 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         }
     }, [open, initialMode]);
 
-    const handleSubmit = async (e: React.FormEvent) => {
-        e.preventDefault();
+    const handleSubmit = async (e?: React.FormEvent, overridePin?: string, overrideCode?: string) => {
+        if (e) e.preventDefault();
         setIsLoading(true);
         setError('');
         setSuccess('');
@@ -95,8 +95,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             let payload = {};
 
             if (mode === 'login' || mode === 'pin') {
+                const currentPin = overridePin !== undefined ? overridePin : pin;
                 url = '/api/auth/login';
-                payload = { email, password, rememberMe, pin: mode === 'pin' ? pin : undefined };
+                payload = { email, password, rememberMe, pin: mode === 'pin' ? currentPin : undefined };
             } else if (mode === 'register') {
                 if (password !== confirmPassword) {
                     setError('Mật khẩu xác nhận không khớp.');
@@ -114,8 +115,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 url = '/api/auth/register';
                 payload = { email, password, name };
             } else if (mode === 'verify') {
+                const currentCode = overrideCode !== undefined ? overrideCode : verificationCode;
                 url = '/api/auth/verify';
-                payload = { email, code: verificationCode };
+                payload = { email, code: currentCode };
             } else if (mode === 'forgot-password') {
                 setSuccess('Hướng dẫn khôi phục mật khẩu đã được gửi đến email của bạn.');
                 setIsLoading(false);
@@ -370,6 +372,10 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                             if (value && index < 5) {
                                                 const nextInput = document.getElementById(`otp-${index + 1}`);
                                                 nextInput?.focus();
+                                            } else if (finalCode.length === 6) {
+                                                setTimeout(() => {
+                                                    handleSubmit(undefined, undefined, finalCode);
+                                                }, 50);
                                             }
                                         }}
                                         onKeyDown={(e) => {
@@ -385,6 +391,11 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                                 setVerificationCode(pastedData);
                                                 const nextFocusIndex = Math.min(pastedData.length, 5);
                                                 document.getElementById(`otp-${nextFocusIndex}`)?.focus();
+                                                if (pastedData.length === 6) {
+                                                    setTimeout(() => {
+                                                        handleSubmit(undefined, undefined, pastedData);
+                                                    }, 50);
+                                                }
                                             }
                                         }}
                                         id={`otp-${index}`}
@@ -418,6 +429,10 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                             if (value && index < 5) {
                                                 const nextInput = document.getElementById(`pin-input-${index + 1}`);
                                                 nextInput?.focus();
+                                            } else if (finalPin.length === 6) {
+                                                setTimeout(() => {
+                                                    handleSubmit(undefined, finalPin);
+                                                }, 50);
                                             }
                                         }}
                                         onKeyDown={(e) => {
@@ -433,6 +448,11 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                                 setPin(pastedData);
                                                 const nextFocusIndex = Math.min(pastedData.length, 5);
                                                 document.getElementById(`pin-input-${nextFocusIndex}`)?.focus();
+                                                if (pastedData.length === 6) {
+                                                    setTimeout(() => {
+                                                        handleSubmit(undefined, pastedData);
+                                                    }, 50);
+                                                }
                                             }
                                         }}
                                         id={`pin-input-${index}`}
