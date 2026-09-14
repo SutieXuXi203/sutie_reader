@@ -219,15 +219,15 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 </DialogHeader>
 
                 {error && (
-                    <div className="bg-secondary text-primary p-3 rounded-[8px] text-sm font-medium border border-border">
+                    <p className="text-sm font-medium text-red-500 dark:text-red-400 text-center animate-in fade-in-0 duration-200">
                         {error}
-                    </div>
+                    </p>
                 )}
 
                 {success && (
-                    <div className="bg-green-50 dark:bg-green-900/20 text-green-600 dark:text-green-400 p-3 rounded-[8px] text-sm font-medium border border-green-100 dark:border-green-900/30">
+                    <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400 text-center animate-in fade-in-0 duration-200">
                         {success}
-                    </div>
+                    </p>
                 )}
 
                 <form onSubmit={handleSubmit} className="space-y-4 mt-4">
