@@ -28,6 +28,7 @@ import {
   Plus,
   Tag,
   Languages,
+  Share2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -129,3 +130,4 @@ export const AnimatedEdit = (props: Omit<AnimateIconProps, 'icon'>) => <AnimateI
 export const AnimatedPlus = (props: Omit<AnimateIconProps, 'icon'>) => <AnimateIcon icon={Plus} animation="rotate" {...props} />;
 export const AnimatedTag = (props: Omit<AnimateIconProps, 'icon'>) => <AnimateIcon icon={Tag} animation="scale" {...props} />;
 export const AnimatedLanguages = (props: Omit<AnimateIconProps, 'icon'>) => <AnimateIcon icon={Languages} animation="scale" {...props} />;
+export const AnimatedShare = (props: Omit<AnimateIconProps, 'icon'>) => <AnimateIcon icon={Share2} animation="scale" {...props} />;
