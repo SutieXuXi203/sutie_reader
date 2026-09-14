@@ -10,6 +10,7 @@ import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
+import { UserRoleSelect, UserRole } from '@/components/UserRoleSelect';
 interface Post {
     _id: string;
     title: string;
@@ -103,15 +104,19 @@ export default function AdminDashboard() {
     const [isUpdatingTag, setIsUpdatingTag] = useState(false);
     const [newTagName, setNewTagName] = useState('');
     const [isCreatingTag, setIsCreatingTag] = useState(false);
+    const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+    const [postsPage, setPostsPage] = useState(1);
+    const [postsPerPage, setPostsPerPage] = useState<number | 'all'>(15);
     useEffect(() => {
         if (activeTab === 'users') {
             setUsersPage(1);
             setDeletedAccountsPage(1);
         }
+        setPostsPage(1);
     }, [searchQuery, activeTab]);
     const fetchTags = useCallback(async () => {
         try {
-            const res = await fetch('/api/tags', { credentials: 'omit' });
+            const res = await fetch('/api/tags', { credentials: 'same-origin', cache: 'no-store' });
             if (res.ok) {
                 const data = await res.json();
                 setStandaloneTags(data);
@@ -123,7 +128,7 @@ export default function AdminDashboard() {
     const fetchPosts = useCallback(async () => {
         setIsLoading(true);
         try {
-            const res = await fetch('/api/posts', { credentials: 'omit' });
+            const res = await fetch(`/api/posts?ts=${Date.now()}`, { credentials: 'same-origin', cache: 'no-store' });
             if (res.ok) {
                 const data = await res.json();
                 setPosts(data);
@@ -213,6 +218,7 @@ export default function AdminDashboard() {
             notify.warning('Không thể thay đổi vai trò của chính mình.');
             return;
         }
+        setUpdatingRoleId(targetUser._id);
         try {
             const res = await fetch(`/api/admin/users/${targetUser._id}`, {
                 method: 'PATCH',
@@ -230,6 +236,8 @@ export default function AdminDashboard() {
             }
         } catch {
             notify.error('Lỗi kết nối khi cập nhật vai trò');
+        } finally {
+            setUpdatingRoleId(null);
         }
     };
     const handleConfirmDelete = async () => {
@@ -402,6 +410,10 @@ export default function AdminDashboard() {
 
     const totalUsersPages = Math.max(1, Math.ceil(filteredUsers.length / ROWS_PER_PAGE));
     const totalDeletedAccountsPages = Math.max(1, Math.ceil(filteredDeletedAccounts.length / ROWS_PER_PAGE));
+    const totalPostsPages = useMemo(() => {
+        if (postsPerPage === 'all') return 1;
+        return Math.max(1, Math.ceil(filteredPosts.length / postsPerPage));
+    }, [filteredPosts.length, postsPerPage]);
 
     const paginatedUsers = filteredUsers.slice(
         (usersPage - 1) * ROWS_PER_PAGE,
@@ -411,12 +423,25 @@ export default function AdminDashboard() {
         (deletedAccountsPage - 1) * ROWS_PER_PAGE,
         deletedAccountsPage * ROWS_PER_PAGE
     );
+    const paginatedPosts = useMemo(() => {
+        if (postsPerPage === 'all') return filteredPosts;
+        return filteredPosts.slice(
+            (postsPage - 1) * postsPerPage,
+            postsPage * postsPerPage
+        );
+    }, [filteredPosts, postsPage, postsPerPage]);
 
     useEffect(() => {
         if (usersPage > totalUsersPages) {
             setUsersPage(totalUsersPages);
         }
     }, [usersPage, totalUsersPages]);
+
+    useEffect(() => {
+        if (postsPage > totalPostsPages) {
+            setPostsPage(totalPostsPages);
+        }
+    }, [postsPage, totalPostsPages]);
 
     useEffect(() => {
         if (deletedAccountsPage > totalDeletedAccountsPages) {
@@ -508,13 +533,27 @@ export default function AdminDashboard() {
                     </div>
                     <div className="flex shrink-0 items-center gap-2">
                         {activeTab === 'posts' && (
-                            <Button
-                                onClick={() => setIsCreateDialogOpen(true)}
-                                className="h-9 rounded-[8px] bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 px-3 sm:px-5 text-xs sm:text-sm font-medium transition-colors"
-                            >
-                                <Plus className="w-4 h-4 sm:mr-2" />
-                                <span className="hidden min-[380px]:inline">Tạo bài mới</span>
-                            </Button>
+                            <>
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => { fetchPosts(); fetchTags(); }}
+                                    disabled={isLoading}
+                                    className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
+                                    title="Tải lại danh sách bài viết"
+                                >
+                                    <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''} sm:mr-1.5`} />
+                                    <span className="hidden sm:inline">Làm mới</span>
+                                </Button>
+                                <Button
+                                    onClick={() => setIsCreateDialogOpen(true)}
+                                    className="h-9 rounded-[8px] bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 px-3 sm:px-5 text-xs sm:text-sm font-medium transition-colors"
+                                >
+                                    <Plus className="w-4 h-4 sm:mr-2" />
+                                    <span className="hidden min-[380px]:inline">Tạo bài mới</span>
+                                </Button>
+                            </>
                         )}
                     </div>
                 </header>
@@ -523,7 +562,7 @@ export default function AdminDashboard() {
                         <div className="grid grid-cols-3 gap-2 sm:gap-4">
                             {(activeTab === 'posts' ? [
                                 { label: 'Tổng bài viết', value: posts.length },
-                                { label: 'Tác giả', value: '1' },
+                                { label: 'Tác giả', value: availableAuthors.length },
                                 { label: 'Trạng thái', value: 'Hoạt động' }
                             ] : [
                                 { label: 'Tổng người dùng', value: usersList.length },
@@ -610,7 +649,7 @@ export default function AdminDashboard() {
                                                 <FileText className="w-10 h-10 mb-3 text-primary/80" />
                                                 <p className="text-sm font-medium text-foreground/90">{searchQuery ? 'Không tìm thấy' : 'Chưa có bài viết'}</p>
                                             </div>
-                                        ) : filteredPosts.map((post) => (
+                                        ) : paginatedPosts.map((post) => (
                                             <article key={post._id} className="rounded-[8px] border border-border/70 bg-card/55 p-3 shadow-sm">
                                                 <div className="flex gap-3">
                                                     <div className="relative flex h-20 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-card">
@@ -692,7 +731,7 @@ export default function AdminDashboard() {
                                                     </div>
                                                 </td>
                                             </tr>
-                                        ) : filteredPosts.map((post) => (
+                                        ) : paginatedPosts.map((post) => (
                                             <tr key={post._id} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
                                                 <td className="px-5 py-4 text-left border-r border-border/40 last:border-r-0">
                                                     <div className="flex items-center justify-start gap-4">
@@ -754,6 +793,58 @@ export default function AdminDashboard() {
                                     </tbody>
                                 </table>
                                     </div>
+                                    {filteredPosts.length > 0 && (
+                                        <div className="px-3 sm:px-5 py-3 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                                            <p className="text-xs text-muted-foreground">
+                                                {postsPerPage === 'all'
+                                                    ? `Hiển thị tất cả ${filteredPosts.length} bài viết`
+                                                    : `Trang ${postsPage}/${totalPostsPages} • Hiển thị ${paginatedPosts.length}/${filteredPosts.length} bài viết`}
+                                            </p>
+                                            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
+                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+                                                    <span>Số lượng:</span>
+                                                    <select
+                                                        value={postsPerPage}
+                                                        onChange={(e) => {
+                                                            const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
+                                                            setPostsPerPage(val);
+                                                            setPostsPage(1);
+                                                        }}
+                                                        className="h-8 px-2 text-xs rounded-[8px] bg-secondary/80 border border-border text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
+                                                    >
+                                                        <option value={10}>10 / trang</option>
+                                                        <option value={15}>15 / trang</option>
+                                                        <option value={30}>30 / trang</option>
+                                                        <option value="all">Tất cả ({filteredPosts.length})</option>
+                                                    </select>
+                                                </div>
+                                                {postsPerPage !== 'all' && totalPostsPages > 1 && (
+                                                    <div className="flex items-center gap-1.5">
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-8 rounded-[8px]"
+                                                            onClick={() => setPostsPage((prev) => Math.max(1, prev - 1))}
+                                                            disabled={postsPage === 1}
+                                                        >
+                                                            Trước
+                                                        </Button>
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="outline"
+                                                            className="h-8 rounded-[8px]"
+                                                            onClick={() => setPostsPage((prev) => Math.min(totalPostsPages, prev + 1))}
+                                                            disabled={postsPage === totalPostsPages}
+                                                        >
+                                                            Sau
+                                                        </Button>
+                                                    </div>
+                                                )}
+                                            </div>
+                                        </div>
+                                    )}
                                 </div>
                             ) : activeTab === 'users' ? (
                                 <div className="w-full min-h-[360px] lg:min-h-[680px] space-y-3 sm:space-y-4 pb-4">
@@ -822,16 +913,13 @@ export default function AdminDashboard() {
                                                                 <p className="truncate text-sm font-semibold text-foreground">{u.name || 'Ẩn danh'}</p>
                                                                 <p className="mt-0.5 break-all text-xs text-muted-foreground">{u.email}</p>
                                                                 <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                                                    <select
-                                                                        value={u.role || 'guest'}
+                                                                    <UserRoleSelect
+                                                                        role={u.role || 'guest'}
                                                                         disabled={u.email === user?.email}
-                                                                        onChange={(e) => handleChangeRole(u, e.target.value as 'guest' | 'user' | 'admin')}
-                                                                        className="text-[11px] font-semibold px-2 py-0.5 rounded-[6px] bg-secondary border border-border text-foreground cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed"
-                                                                    >
-                                                                        <option value="guest">Khách (Guest)</option>
-                                                                        <option value="user">Thành viên (User)</option>
-                                                                        <option value="admin">Quản trị (Admin)</option>
-                                                                    </select>
+                                                                        isLoading={updatingRoleId === u._id}
+                                                                        size="sm"
+                                                                        onChange={(newRole) => handleChangeRole(u, newRole)}
+                                                                    />
                                                                     {isAdminUser ? (
                                                                         <span className="inline-flex rounded-[8px] border border-sky-300/60 bg-sky-100/70 px-2 py-1 text-[11px] font-medium text-sky-700 dark:border-sky-700/60 dark:bg-sky-900/30 dark:text-sky-300">
                                                                             Miễn xác thực
@@ -941,16 +1029,14 @@ export default function AdminDashboard() {
                                                                 </td>
                                                                 <td className="px-5 py-4 text-sm text-foreground/90 text-left border-r border-border/40 last:border-r-0">{u.email}</td>
                                                                 <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
-                                                                    <select
-                                                                        value={u.role || 'guest'}
-                                                                        disabled={u.email === user?.email}
-                                                                        onChange={(e) => handleChangeRole(u, e.target.value as 'guest' | 'user' | 'admin')}
-                                                                        className="text-xs font-semibold px-2 py-1 rounded-[6px] bg-secondary/80 border border-border/70 text-foreground cursor-pointer disabled:opacity-60 disabled:cursor-not-allowed focus:outline-none focus:ring-1 focus:ring-primary"
-                                                                    >
-                                                                        <option value="guest">Khách (Guest)</option>
-                                                                        <option value="user">Thành viên (User)</option>
-                                                                        <option value="admin">Quản trị (Admin)</option>
-                                                                    </select>
+                                                                    <div className="flex justify-center">
+                                                                        <UserRoleSelect
+                                                                            role={u.role || 'guest'}
+                                                                            disabled={u.email === user?.email}
+                                                                            isLoading={updatingRoleId === u._id}
+                                                                            onChange={(newRole) => handleChangeRole(u, newRole)}
+                                                                        />
+                                                                    </div>
                                                                 </td>
                                                                 <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
                                                                     {isAdminUser ? (

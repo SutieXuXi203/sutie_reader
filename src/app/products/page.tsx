@@ -85,7 +85,7 @@ export default function ProductsPage() {
 
     const fetchTags = useCallback(async () => {
         try {
-            const response = await fetch('/api/tags', { credentials: 'omit' });
+            const response = await fetch('/api/tags', { credentials: 'same-origin', cache: 'no-store' });
             if (response.ok) {
                 setStandaloneTags(await response.json());
             }
@@ -97,7 +97,7 @@ export default function ProductsPage() {
     const fetchPosts = useCallback(async () => {
         try {
             setIsLoading(true);
-            const response = await fetch('/api/posts', { credentials: 'omit' });
+            const response = await fetch(`/api/posts?ts=${Date.now()}`, { credentials: 'same-origin', cache: 'no-store' });
             if (response.ok) {
                 const data = await response.json();
                 setPosts(data);
