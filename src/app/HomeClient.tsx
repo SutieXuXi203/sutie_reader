@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import { useThumbnailBlur } from '@/providers/ThumbnailBlurProvider';
+import { ThumbnailBlurToggle } from '@/components/ThumbnailBlurToggle';
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn, getOptimizedImageUrl, normalizeSearchText } from '@/lib/utils';
@@ -118,7 +119,7 @@ interface HomeContentProps {
 function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) {
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const { user, isLoading: isAuthLoading } = useAuth();
-  const { isThumbnailBlurred } = useThumbnailBlur();
+  const { blurMode } = useThumbnailBlur();
   const initialPostState = cachedPosts.length > 0 ? cachedPosts : initialPosts;
   const initialTagState = cachedTags.length > 0 ? cachedTags : initialTags;
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>(cachedBookmarks);
@@ -429,10 +430,21 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                               fill
                               className={cn(
                                 "object-cover object-top group-hover:scale-105 transition-[transform,filter] duration-500",
-                                isThumbnailBlurred && "blur-xl scale-110 brightness-90 saturate-75 group-hover:blur-none group-hover:brightness-100 group-hover:saturate-100"
+                                blurMode === 'blur' && "blur-xl scale-110 brightness-90 saturate-75 group-hover:blur-none group-hover:brightness-100 group-hover:saturate-100"
                               )}
                               unoptimized
                             />
+                          )}
+                          {blurMode === 'cover' && bm.post.images[0] && (
+                            <div className="absolute inset-0 z-[4] bg-black pointer-events-none">
+                              <Image
+                                src="/blurImg/blur.png"
+                                alt="Thumbnail obscured"
+                                fill
+                                className="object-cover transition-transform duration-500 group-hover:scale-105"
+                                unoptimized
+                              />
+                            </div>
                           )}
                           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
                           <div className="absolute bottom-2 left-3 flex items-center gap-1 text-white text-[10px] font-bold">
@@ -469,13 +481,25 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           {user && (
             <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
               <div className="flex flex-col md:flex-row items-start md:items-center justify-between mb-6 gap-3.5 sm:gap-4 border-b border-border/50 pb-4">
-                <div>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
-                  <h2 className="text-base sm:text-lg font-extrabold text-foreground font-sans">Danh sách truyện</h2>
+                <div className="flex items-center justify-between w-full md:w-auto">
+                  <div>
+                    <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
+                    <h2 className="text-base sm:text-lg font-extrabold text-foreground font-sans">Danh sách truyện</h2>
+                  </div>
+
+                  {/* Thumbnail Blur Toggle on Mobile */}
+                  <div className="md:hidden w-[140px] sm:w-[150px] shrink-0">
+                    <ThumbnailBlurToggle />
+                  </div>
                 </div>
 
                 {/* Search Bar & Filter */}
                 <div className="w-full md:w-auto flex flex-row items-center gap-2 sm:gap-2.5">
+                  {/* Thumbnail Blur Toggle on Desktop (to the left of search bar) */}
+                  <div className="hidden md:block w-[140px] sm:w-[150px] md:w-[160px] shrink-0">
+                    <ThumbnailBlurToggle />
+                  </div>
+
                   <div className="relative group flex-1 sm:w-[220px] md:w-[240px] sm:flex-initial min-w-0">
                     <span className="pointer-events-none absolute left-2.5 sm:left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80 transition-colors group-focus-within:text-primary">
                       <Search className="w-3.5 h-3.5" />
@@ -506,7 +530,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                     )}
                   </div>
 
-                  <div className="w-[130px] sm:w-[150px] md:w-[160px] shrink-0">
+                  <div className="w-[140px] sm:w-[150px] md:w-[160px] shrink-0">
                     <Select
                       value={sortOption}
                       onValueChange={(val: SortOption | null) => {

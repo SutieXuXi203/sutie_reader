@@ -2,7 +2,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { ThemeToggle } from '@/components/ThemeToggle';
-import { ThumbnailBlurToggle } from '@/components/ThumbnailBlurToggle';
 import {
   AnimatedUser,
   AnimatedLogIn,
@@ -104,9 +103,6 @@ export function SiteNav() {
             
             {/* Theme Toggle */}
             <ThemeToggle />
-
-            {/* Thumbnail Blur Toggle */}
-            <ThumbnailBlurToggle />
 
             {/* Profile / Auth Controls */}
             {user ? (
