@@ -1,101 +1,39 @@
 'use client';
-import { useState, useEffect, useMemo, useCallback } from 'react';
+
+import { useState, useEffect, useMemo, useCallback, useTransition } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
-import { Plus, Pencil, Trash2, FileText, Home, Loader2, Search, Users, ShieldAlert, User, Tag, RefreshCw, Share2, Lock, Globe, ExternalLink, Clock, UserCheck } from 'lucide-react';
+import {
+    Plus,
+    FileText,
+    Home,
+    Loader2,
+    Search,
+    Users,
+    User,
+    Tag,
+    RefreshCw,
+    Share2,
+} from 'lucide-react';
 import Link from 'next/link';
 import Image from 'next/image';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
-import { UserRoleSelect, UserRole } from '@/components/UserRoleSelect';
-interface Post {
-    _id: string;
-    title: string;
-    description?: string;
-    tags?: string[];
-    content: string;
-    images: string[];
-    author: string;
-    translator?: string;
-    createdAt: string;
-}
-interface AdminUser {
-    _id: string;
-    email: string;
-    name?: string;
-    role?: string;
-    avatar?: string;
-    isVerified?: boolean;
-    createdAt: string;
-}
-
-interface DeletedAccountRecord {
-    _id: string;
-    email: string;
-    name?: string;
-    role?: 'user' | 'admin';
-    verificationExpiresAt?: string;
-    deletionReason: 'unverified_expired_24h';
-    deletionTrigger: 'login' | 'verify' | 'system';
-    deletedAt: string;
-}
-
-interface SharedGuestUser {
-    userId?: string;
-    email: string;
-    name: string;
-    avatar?: string;
-    role: 'guest';
-    lastAccessedAt: string;
-}
-
-interface SharedStoryPost {
-    _id: string;
-    title: string;
-    author: string;
-    translator?: string;
-    accessType: 'restricted' | 'public';
-    thumbnail: string;
-    images: string[];
-    tags: string[];
-    createdAt?: string;
-    lastGuestAccess: string;
-    totalGuestVisits: number;
-    guestUsers: SharedGuestUser[];
-}
-
-interface SharesStats {
-    totalStoriesWithGuests: number;
-    totalUniqueGuests: number;
-    totalGuestVisits: number;
-}
-
-const formatGuestAccessTime = (isoString?: string | Date) => {
-    if (!isoString) return 'Chưa ghi nhận';
-    const date = new Date(isoString);
-    if (isNaN(date.getTime())) return 'Chưa ghi nhận';
-    const now = new Date();
-    const diffSec = Math.floor((now.getTime() - date.getTime()) / 1000);
-    if (diffSec < 60) return 'Vừa xong';
-    const diffMin = Math.floor(diffSec / 60);
-    if (diffMin < 60) return `${diffMin} phút trước`;
-    const diffHours = Math.floor(diffMin / 60);
-    if (diffHours < 24) return `${diffHours} giờ trước`;
-    const diffDays = Math.floor(diffHours / 24);
-    if (diffDays < 7) return `${diffDays} ngày trước`;
-    return date.toLocaleDateString('vi-VN', {
-        day: '2-digit',
-        month: '2-digit',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit',
-    });
-};
-
-const ROWS_PER_PAGE = 5;
+import {
+    AdminTabKey,
+    Post,
+    AdminUser,
+    DeletedAccountRecord,
+    SharedStoryPost,
+    SharesStats,
+} from './types';
+import { PostsTab } from './tabs/PostsTab';
+import { SharesTab } from './tabs/SharesTab';
+import { UsersTab } from './tabs/UsersTab';
+import { TagsTab } from './tabs/TagsTab';
 
 const CreatePostForm = dynamic(() => import('@/components/CreatePostForm').then(m => ({ default: m.CreatePostForm })), { ssr: false });
 const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
@@ -131,8 +69,30 @@ function SessionElapsedTime({
 export default function AdminDashboard() {
     const { user, isLoading: isAuthLoading } = useAuth();
     const router = useRouter();
-    const [activeTab, setActiveTab] = useState<'posts' | 'shares' | 'users' | 'tags'>('posts');
+
+    // Tab Navigation with React 19 Transition
+    const [activeTab, setActiveTab] = useState<AdminTabKey>('posts');
+    const [, startTransition] = useTransition();
+
+    // Lazy mount + Keep alive pattern
+    const [visitedTabs, setVisitedTabs] = useState<Record<AdminTabKey, boolean>>({
+        posts: true,
+        shares: false,
+        users: false,
+        tags: false,
+    });
+
+    const handleTabChange = useCallback((newTab: AdminTabKey) => {
+        setVisitedTabs((prev) => (prev[newTab] ? prev : { ...prev, [newTab]: true }));
+        startTransition(() => {
+            setActiveTab(newTab);
+        });
+    }, []);
+
+    // Core Data States
     const [posts, setPosts] = useState<Post[]>([]);
+    const [isLoadingPosts, setIsLoadingPosts] = useState(true);
+
     const [sharedPosts, setSharedPosts] = useState<SharedStoryPost[]>([]);
     const [sharesStats, setSharesStats] = useState<SharesStats>({
         totalStoriesWithGuests: 0,
@@ -140,19 +100,25 @@ export default function AdminDashboard() {
         totalGuestVisits: 0,
     });
     const [isSharesLoading, setIsSharesLoading] = useState(false);
-    const [sharesPage, setSharesPage] = useState(1);
-    const [sharesAccessFilter, setSharesAccessFilter] = useState<'all' | 'restricted' | 'public'>('all');
-    const [selectedSharePost, setSelectedSharePost] = useState<{ id: string; title: string } | null>(null);
-    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+
     const [usersList, setUsersList] = useState<AdminUser[]>([]);
     const [usersLoadError, setUsersLoadError] = useState<string | null>(null);
-    const [deletedAccounts, setDeletedAccounts] = useState<DeletedAccountRecord[]>([]);
-    const [isLoading, setIsLoading] = useState(true);
     const [isUsersLoading, setIsUsersLoading] = useState(false);
+    const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
+
+    const [deletedAccounts, setDeletedAccounts] = useState<DeletedAccountRecord[]>([]);
     const [isDeletedAccountsLoading, setIsDeletedAccountsLoading] = useState(false);
-    const [usersPage, setUsersPage] = useState(1);
-    const [deletedAccountsPage, setDeletedAccountsPage] = useState(1);
+
+    const [standaloneTags, setStandaloneTags] = useState<{ _id: string; name: string }[]>([]);
+    const [editingTag, setEditingTag] = useState<{ oldName: string; newName: string } | null>(null);
+    const [isUpdatingTag, setIsUpdatingTag] = useState(false);
+    const [newTagName, setNewTagName] = useState('');
+    const [isCreatingTag, setIsCreatingTag] = useState(false);
+
+    // Search Query
     const [searchQuery, setSearchQuery] = useState('');
+
+    // Dialog States
     const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
     const [isEditOpen, setIsEditOpen] = useState(false);
     const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -163,14 +129,24 @@ export default function AdminDashboard() {
         | null
     >(null);
     const [isDeletingTarget, setIsDeletingTarget] = useState(false);
-    const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
-    const [editingTag, setEditingTag] = useState<{ oldName: string, newName: string } | null>(null);
-    const [isUpdatingTag, setIsUpdatingTag] = useState(false);
-    const [newTagName, setNewTagName] = useState('');
-    const [isCreatingTag, setIsCreatingTag] = useState(false);
-    const [updatingRoleId, setUpdatingRoleId] = useState<string | null>(null);
-    const [postsPage, setPostsPage] = useState(1);
-    const [postsPerPage, setPostsPerPage] = useState<number | 'all'>(15);
+    const [selectedSharePost, setSelectedSharePost] = useState<{ id: string; title: string } | null>(null);
+    const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
+
+    // Data Fetchers
+    const fetchPosts = useCallback(async () => {
+        setIsLoadingPosts(true);
+        try {
+            const res = await fetch(`/api/posts?ts=${Date.now()}`, { credentials: 'same-origin', cache: 'no-store' });
+            if (res.ok) {
+                const data = await res.json();
+                setPosts(data);
+            }
+        } catch (error) {
+            console.error('Error fetching posts:', error);
+        } finally {
+            setIsLoadingPosts(false);
+        }
+    }, []);
 
     const fetchShares = useCallback(async () => {
         setIsSharesLoading(true);
@@ -192,17 +168,6 @@ export default function AdminDashboard() {
         }
     }, []);
 
-    useEffect(() => {
-        if (activeTab === 'users') {
-            setUsersPage(1);
-            setDeletedAccountsPage(1);
-        }
-        if (activeTab === 'shares') {
-            setSharesPage(1);
-            fetchShares();
-        }
-        setPostsPage(1);
-    }, [searchQuery, activeTab, fetchShares]);
     const fetchTags = useCallback(async () => {
         try {
             const res = await fetch('/api/tags', { credentials: 'same-origin', cache: 'no-store' });
@@ -214,20 +179,7 @@ export default function AdminDashboard() {
             console.error('Error fetching tags:', error);
         }
     }, []);
-    const fetchPosts = useCallback(async () => {
-        setIsLoading(true);
-        try {
-            const res = await fetch(`/api/posts?ts=${Date.now()}`, { credentials: 'same-origin', cache: 'no-store' });
-            if (res.ok) {
-                const data = await res.json();
-                setPosts(data);
-            }
-        } catch (error) {
-            console.error('Error fetching posts:', error);
-        } finally {
-            setIsLoading(false);
-        }
-    }, []);
+
     const fetchUsers = useCallback(async () => {
         setIsUsersLoading(true);
         setUsersLoadError(null);
@@ -238,15 +190,11 @@ export default function AdminDashboard() {
                 setUsersList(data);
                 return;
             }
-
             let errorMessage = 'Không thể tải danh sách người dùng.';
             try {
                 const data = await res.json();
-                if (data?.error) {
-                    errorMessage = data.error;
-                }
+                if (data?.error) errorMessage = data.error;
             } catch { }
-
             setUsersLoadError(errorMessage);
             notify.error(errorMessage);
         } catch (error) {
@@ -257,6 +205,7 @@ export default function AdminDashboard() {
             setIsUsersLoading(false);
         }
     }, []);
+
     const fetchDeletedAccounts = useCallback(async () => {
         setIsDeletedAccountsLoading(true);
         try {
@@ -272,6 +221,7 @@ export default function AdminDashboard() {
         }
     }, []);
 
+    // Initial load
     useEffect(() => {
         if (!isAuthLoading) {
             if (!user || user.role !== 'admin') {
@@ -285,25 +235,51 @@ export default function AdminDashboard() {
             }
         }
     }, [user, isAuthLoading, router, fetchPosts, fetchUsers, fetchDeletedAccounts, fetchTags, fetchShares]);
-    const handleDelete = (post: Post) => {
-        setDeleteTarget({
-            type: 'post',
-            id: post._id,
-            title: post.title,
+
+    // Computed Metadata
+    const availablePostTags = useMemo(() => {
+        const postTags = posts.flatMap((post) => (post.tags || []).map((tag) => tag.trim().toLowerCase()).filter(Boolean));
+        const standaloneNames = standaloneTags.map((t) => t.name.trim().toLowerCase()).filter(Boolean);
+        return Array.from(new Set([...postTags, ...standaloneNames])).sort((a, b) => a.localeCompare(b, 'vi'));
+    }, [posts, standaloneTags]);
+
+    const availableAuthors = useMemo(() => {
+        const authors = posts.map((post) => post.author?.trim()).filter(Boolean);
+        return Array.from(new Set(authors)).sort((a, b) => a.localeCompare(b, 'vi'));
+    }, [posts]);
+
+    const availableTranslators = useMemo(() => {
+        const translators = posts.map((post) => post.translator?.trim()).filter(Boolean) as string[];
+        return Array.from(new Set(translators)).sort((a, b) => a.localeCompare(b, 'vi'));
+    }, [posts]);
+
+    const tagCounts = useMemo(() => {
+        const counts: Record<string, number> = {};
+        posts.forEach((post) => {
+            (post.tags || []).forEach((tag) => {
+                const normalized = tag.trim().toLowerCase();
+                if (normalized) {
+                    counts[normalized] = (counts[normalized] || 0) + 1;
+                }
+            });
         });
-    };
-    const handleDeleteUser = (targetUser: AdminUser) => {
+        return counts;
+    }, [posts]);
+
+    // Handlers
+    const handleDelete = useCallback((post: Post) => {
+        setDeleteTarget({ type: 'post', id: post._id, title: post.title });
+    }, []);
+
+    const handleDeleteUser = useCallback((targetUser: AdminUser) => {
         if (targetUser.email === user?.email) {
             notify.warning('Bạn không thể xóa tài khoản của chính mình.');
             return;
         }
-        setDeleteTarget({
-            type: 'user',
-            id: targetUser._id,
-            email: targetUser.email,
-        });
-    };
-    const handleChangeRole = async (targetUser: AdminUser, newRole: 'guest' | 'user' | 'admin') => {
+        setDeleteTarget({ type: 'user', id: targetUser._id, email: targetUser.email });
+    }, [user?.email]);
+
+    const handleChangeRole = useCallback(async (targetUser: AdminUser, newRole: 'guest' | 'user' | 'admin') => {
         if (targetUser.email === user?.email) {
             notify.warning('Không thể thay đổi vai trò của chính mình.');
             return;
@@ -329,15 +305,14 @@ export default function AdminDashboard() {
         } finally {
             setUpdatingRoleId(null);
         }
-    };
-    const handleConfirmDelete = async () => {
+    }, [user?.email]);
+
+    const handleConfirmDelete = useCallback(async () => {
         if (!deleteTarget) return;
         setIsDeletingTarget(true);
         try {
             if (deleteTarget.type === 'post') {
-                const res = await fetch(`/api/posts/${deleteTarget.id}`, {
-                    method: 'DELETE',
-                });
+                const res = await fetch(`/api/posts/${deleteTarget.id}`, { method: 'DELETE' });
                 if (res.ok) {
                     setPosts((prev) => prev.filter((p) => p._id !== deleteTarget.id));
                     notify.success('Đã xóa bài viết');
@@ -346,9 +321,7 @@ export default function AdminDashboard() {
                     notify.error('Xóa thất bại');
                 }
             } else if (deleteTarget.type === 'user') {
-                const res = await fetch(`/api/admin/users/${deleteTarget.id}`, {
-                    method: 'DELETE',
-                });
+                const res = await fetch(`/api/admin/users/${deleteTarget.id}`, { method: 'DELETE' });
                 if (res.ok) {
                     setUsersList((prev) => prev.filter((u) => u._id !== deleteTarget.id));
                     notify.success('Đã xóa người dùng');
@@ -358,9 +331,7 @@ export default function AdminDashboard() {
                     notify.error(data.error || 'Xóa thất bại');
                 }
             } else if (deleteTarget.type === 'tag') {
-                const res = await fetch(`/api/tags?tag=${encodeURIComponent(deleteTarget.id)}`, {
-                    method: 'DELETE',
-                });
+                const res = await fetch(`/api/tags?tag=${encodeURIComponent(deleteTarget.id)}`, { method: 'DELETE' });
                 if (res.ok) {
                     await fetchPosts();
                     await fetchTags();
@@ -377,8 +348,9 @@ export default function AdminDashboard() {
         } finally {
             setIsDeletingTarget(false);
         }
-    };
-    const handleUpdateTag = async () => {
+    }, [deleteTarget, fetchPosts, fetchTags]);
+
+    const handleUpdateTag = useCallback(async () => {
         if (!editingTag || !editingTag.newName.trim()) return;
         if (editingTag.oldName === editingTag.newName.trim()) {
             setEditingTag(null);
@@ -391,8 +363,8 @@ export default function AdminDashboard() {
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
                     oldTag: editingTag.oldName,
-                    newTag: editingTag.newName.trim()
-                })
+                    newTag: editingTag.newName.trim(),
+                }),
             });
             if (res.ok) {
                 await fetchPosts();
@@ -408,8 +380,9 @@ export default function AdminDashboard() {
         } finally {
             setIsUpdatingTag(false);
         }
-    }
-    const handleCreateTag = async (e: React.FormEvent) => {
+    }, [editingTag, fetchPosts, fetchTags]);
+
+    const handleCreateTag = useCallback(async (e: React.FormEvent) => {
         e.preventDefault();
         const tagValue = newTagName.trim();
         if (!tagValue) return;
@@ -418,7 +391,7 @@ export default function AdminDashboard() {
             const res = await fetch('/api/tags', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name: tagValue })
+                body: JSON.stringify({ name: tagValue }),
             });
             if (res.ok) {
                 setNewTagName('');
@@ -433,140 +406,7 @@ export default function AdminDashboard() {
         } finally {
             setIsCreatingTag(false);
         }
-    };
-    const availablePostTags = useMemo(() => {
-        const postTags = posts.flatMap((post) => (post.tags || []).map((tag) => tag.trim().toLowerCase()).filter(Boolean));
-        const standaloneNames = standaloneTags.map(t => t.name.trim().toLowerCase()).filter(Boolean);
-        return Array.from(new Set([...postTags, ...standaloneNames]))
-            .sort((a, b) => a.localeCompare(b, 'vi'));
-    }, [posts, standaloneTags]);
-    const availableAuthors = useMemo(() => {
-        const authors = posts.map(post => post.author?.trim()).filter(Boolean);
-        return Array.from(new Set(authors)).sort((a, b) => a.localeCompare(b, 'vi'));
-    }, [posts]);
-    const availableTranslators = useMemo(() => {
-        const translators = posts.map(post => post.translator?.trim()).filter(Boolean) as string[];
-        return Array.from(new Set(translators)).sort((a, b) => a.localeCompare(b, 'vi'));
-    }, [posts]);
-    const tagCounts = useMemo(() => {
-        const counts: Record<string, number> = {};
-        posts.forEach(post => {
-            (post.tags || []).forEach(tag => {
-                const normalized = tag.trim().toLowerCase();
-                if (normalized) {
-                    counts[normalized] = (counts[normalized] || 0) + 1;
-                }
-            });
-        });
-        return counts;
-    }, [posts]);
-    const lowercaseSearchQuery = useMemo(() => searchQuery.toLowerCase(), [searchQuery]);
-    const filteredPosts = useMemo(() => posts.filter(post =>
-        post.title.toLowerCase().includes(lowercaseSearchQuery) ||
-        post.author.toLowerCase().includes(lowercaseSearchQuery) ||
-        (post.translator && post.translator.toLowerCase().includes(lowercaseSearchQuery)) ||
-        (post.tags || []).some((tag) => tag.toLowerCase().includes(lowercaseSearchQuery))
-    ), [posts, lowercaseSearchQuery]);
-    const filteredUsers = useMemo(() => usersList.filter(u => {
-        const verificationLabel = u.role === 'admin'
-            ? 'miễn xác thực'
-            : (Boolean(u.isVerified) ? 'đã xác thực' : 'chưa xác thực');
-        return (
-            u.name?.toLowerCase().includes(lowercaseSearchQuery) ||
-            u.email?.toLowerCase().includes(lowercaseSearchQuery) ||
-            verificationLabel.includes(lowercaseSearchQuery)
-        );
-    }), [usersList, lowercaseSearchQuery]);
-    const filteredDeletedAccounts = useMemo(() => deletedAccounts.filter((account) => {
-        const triggerLabel = account.deletionTrigger === 'verify'
-            ? 'xac thuc xác thực'
-            : account.deletionTrigger === 'system'
-                ? 'he thong hệ thống'
-                : 'dang nhap đăng nhập';
-        const reasonLabel = account.deletionReason === 'unverified_expired_24h'
-            ? 'chua xac thuc qua han 24 gio chưa xác thực quá hạn 24 giờ'
-            : account.deletionReason;
-        return (
-            account.name?.toLowerCase().includes(lowercaseSearchQuery) ||
-            account.email?.toLowerCase().includes(lowercaseSearchQuery) ||
-            triggerLabel.includes(lowercaseSearchQuery) ||
-            reasonLabel.includes(lowercaseSearchQuery)
-        );
-    }), [deletedAccounts, lowercaseSearchQuery]);
-    const filteredTagNames = useMemo(
-        () => availablePostTags.filter((tag) => tag.includes(lowercaseSearchQuery)),
-        [availablePostTags, lowercaseSearchQuery]
-    );
-
-    const totalUsersPages = Math.max(1, Math.ceil(filteredUsers.length / ROWS_PER_PAGE));
-    const totalDeletedAccountsPages = Math.max(1, Math.ceil(filteredDeletedAccounts.length / ROWS_PER_PAGE));
-    const totalPostsPages = useMemo(() => {
-        if (postsPerPage === 'all') return 1;
-        return Math.max(1, Math.ceil(filteredPosts.length / postsPerPage));
-    }, [filteredPosts.length, postsPerPage]);
-
-    const paginatedUsers = filteredUsers.slice(
-        (usersPage - 1) * ROWS_PER_PAGE,
-        usersPage * ROWS_PER_PAGE
-    );
-    const paginatedDeletedAccounts = filteredDeletedAccounts.slice(
-        (deletedAccountsPage - 1) * ROWS_PER_PAGE,
-        deletedAccountsPage * ROWS_PER_PAGE
-    );
-    const paginatedPosts = useMemo(() => {
-        if (postsPerPage === 'all') return filteredPosts;
-        return filteredPosts.slice(
-            (postsPage - 1) * postsPerPage,
-            postsPage * postsPerPage
-        );
-    }, [filteredPosts, postsPage, postsPerPage]);
-
-    const filteredSharedPosts = useMemo(() => {
-        return sharedPosts.filter((post) => {
-            const matchesQuery = !searchQuery || (
-                post.title.toLowerCase().includes(lowercaseSearchQuery) ||
-                post.author.toLowerCase().includes(lowercaseSearchQuery) ||
-                (post.translator && post.translator.toLowerCase().includes(lowercaseSearchQuery)) ||
-                post.guestUsers.some((u) =>
-                    u.email.toLowerCase().includes(lowercaseSearchQuery) ||
-                    u.name.toLowerCase().includes(lowercaseSearchQuery)
-                )
-            );
-
-            const matchesFilter = sharesAccessFilter === 'all' || post.accessType === sharesAccessFilter;
-
-            return matchesQuery && matchesFilter;
-        });
-    }, [sharedPosts, lowercaseSearchQuery, searchQuery, sharesAccessFilter]);
-
-    const totalSharesPages = Math.max(1, Math.ceil(filteredSharedPosts.length / 10));
-    const paginatedSharedPosts = useMemo(() => {
-        return filteredSharedPosts.slice((sharesPage - 1) * 10, sharesPage * 10);
-    }, [filteredSharedPosts, sharesPage]);
-
-    useEffect(() => {
-        if (sharesPage > totalSharesPages) {
-            setSharesPage(totalSharesPages);
-        }
-    }, [sharesPage, totalSharesPages]);
-
-    useEffect(() => {
-        if (usersPage > totalUsersPages) {
-            setUsersPage(totalUsersPages);
-        }
-    }, [usersPage, totalUsersPages]);
-
-    useEffect(() => {
-        if (postsPage > totalPostsPages) {
-            setPostsPage(totalPostsPages);
-        }
-    }, [postsPage, totalPostsPages]);
-
-    useEffect(() => {
-        if (deletedAccountsPage > totalDeletedAccountsPages) {
-            setDeletedAccountsPage(totalDeletedAccountsPages);
-        }
-    }, [deletedAccountsPage, totalDeletedAccountsPages]);
+    }, [newTagName, fetchTags]);
 
     if (isAuthLoading || !user || user.role !== 'admin') {
         return (
@@ -575,190 +415,248 @@ export default function AdminDashboard() {
             </div>
         );
     }
+
     return (
         <div className="min-h-screen pt-16 pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-0 [scrollbar-gutter:stable] font-sans selection:bg-primary/20">
             <div className="mx-auto flex w-full max-w-[1600px] gap-4 px-2 py-2 sm:px-4 sm:py-4">
-            <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto rounded-[8px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
-                <div className="p-6">
-                    <h2 className="font-semibold text-lg text-foreground">Quản trị</h2>
-                </div>
-                <nav className="px-3 pb-3 space-y-0.5">
-                    <Link
-                        href="/"
-                        className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-foreground/90 hover:bg-secondary hover:text-primary transition-colors cursor-pointer"
-                    >
-                        <Home className="w-5 h-5" />
-                        <span>Trang chủ</span>
-                    </Link>
-                    <button
-                        onClick={() => setActiveTab('posts')}
-                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'posts' ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'text-foreground/90 hover:bg-secondary hover:text-primary'}`}
-                    >
-                        <FileText className="w-5 h-5" />
-                        <span>Bài viết</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('shares')}
-                        className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'shares' ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'text-foreground/90 hover:bg-secondary hover:text-primary'}`}
-                    >
-                        <div className="flex items-center gap-3">
-                            <Share2 className="w-5 h-5" />
-                            <span>Chia sẻ</span>
-                        </div>
-                        {sharesStats.totalStoriesWithGuests > 0 && (
-                            <span className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${activeTab === 'shares' ? 'bg-primary-foreground text-primary' : 'bg-primary/10 text-primary'}`}>
-                                {sharesStats.totalStoriesWithGuests}
-                            </span>
-                        )}
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('tags')}
-                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'tags' ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'text-foreground/90 hover:bg-secondary hover:text-primary'}`}
-                    >
-                        <Tag className="w-5 h-5" />
-                        <span>Quản lý Tag</span>
-                    </button>
-                    <button
-                        onClick={() => setActiveTab('users')}
-                        className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${activeTab === 'users' ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20' : 'text-foreground/90 hover:bg-secondary hover:text-primary'}`}
-                    >
-                        <Users className="w-5 h-5" />
-                        <span>Người dùng</span>
-                    </button>
-                </nav>
-                <div className="p-4 border-t border-border/70">
-                    <p className="text-xs font-medium text-muted-foreground mb-2">Tài khoản đang hoạt động</p>
-                    <div className="flex items-center gap-3 p-3 rounded-[8px] bg-secondary/70 dark:bg-primary/10">
-                        <div className="relative w-10 h-10 rounded-[8px] overflow-hidden bg-secondary shrink-0">
-                            {user.avatar ? (
-                                <Image src={getOptimizedImageUrl(user.avatar)} alt={user.name || 'Avatar'} fill className="object-cover" unoptimized />
-                            ) : (
-                                <User className="w-5 h-5 m-2.5 text-primary/80" />
-                            )}
-                        </div>
-                        <div className="min-w-0 flex-1">
-                            <p className="text-sm font-medium text-foreground truncate">{user.name || 'Quản trị viên'}</p>
-                            <p className="text-xs text-muted-foreground truncate">{user.email}</p>
-                            <SessionElapsedTime as="p" className="text-xs font-mono text-primary mt-1 tabular-nums" />
-                        </div>
+                {/* Desktop Sidebar */}
+                <aside className="hidden lg:flex w-56 shrink-0 self-start lg:sticky lg:top-24 lg:max-h-[calc(100vh-7rem)] lg:overflow-y-auto rounded-[8px] border border-border/70 bg-card/60 backdrop-blur-md flex-col z-20">
+                    <div className="p-6">
+                        <h2 className="font-semibold text-lg text-foreground">Quản trị</h2>
                     </div>
-                </div>
-            </aside>
-            <main className="flex-1 min-w-0 min-h-[calc(100vh-5rem)] rounded-[8px] border border-border/70 bg-card/35 shadow-sm">
-                <header className="min-h-16 bg-card/80 backdrop-blur-md border-b border-border/70 px-3 py-3 sm:px-8 lg:px-10 flex items-start sm:items-center justify-between gap-3 sticky top-14 z-30 rounded-t-[8px]">
-                    <div className="flex min-w-0 flex-1 items-center gap-6">
-                        <div className="min-w-0 lg:hidden">
-                            <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Quản trị</p>
-                            <h1 className="truncate text-base font-semibold text-foreground">
-                                {activeTab === 'posts' ? 'Quản lý bài viết' : activeTab === 'shares' ? 'Quản lý chia sẻ (Khách truy cập)' : activeTab === 'users' ? 'Quản lý người dùng' : 'Quản lý thẻ Tag'}
-                            </h1>
-                            <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{user.email}</p>
-                        </div>
-                        <div className="hidden lg:flex items-center gap-4">
-                            <h1 className="text-lg font-semibold text-foreground">
-                                {activeTab === 'posts' ? 'Quản lý bài viết' : activeTab === 'shares' ? 'Quản lý chia sẻ (Khách truy cập)' : activeTab === 'users' ? 'Quản lý người dùng' : 'Quản lý thẻ Tag'}
-                            </h1>
-                            <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-card">
-                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                <span className="text-xs font-medium text-muted-foreground">Tài khoản đang hoạt động</span>
+                    <nav className="px-3 pb-3 space-y-0.5">
+                        <Link
+                            href="/"
+                            className="flex items-center gap-3 px-3 py-2.5 rounded-[8px] text-foreground/90 hover:bg-secondary hover:text-primary transition-colors cursor-pointer"
+                        >
+                            <Home className="w-5 h-5" />
+                            <span>Trang chủ</span>
+                        </Link>
+                        <button
+                            type="button"
+                            onClick={() => handleTabChange('posts')}
+                            className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${
+                                activeTab === 'posts'
+                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                                    : 'text-foreground/90 hover:bg-secondary hover:text-primary'
+                            }`}
+                        >
+                            <FileText className="w-5 h-5" />
+                            <span>Bài viết</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleTabChange('shares')}
+                            className={`w-full flex items-center justify-between gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${
+                                activeTab === 'shares'
+                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                                    : 'text-foreground/90 hover:bg-secondary hover:text-primary'
+                            }`}
+                        >
+                            <div className="flex items-center gap-3">
+                                <Share2 className="w-5 h-5" />
+                                <span>Chia sẻ</span>
+                            </div>
+                            {sharesStats.totalStoriesWithGuests > 0 && (
+                                <span
+                                    className={`text-[11px] px-1.5 py-0.5 rounded-full font-semibold ${
+                                        activeTab === 'shares'
+                                            ? 'bg-primary-foreground text-primary'
+                                            : 'bg-primary/10 text-primary'
+                                    }`}
+                                >
+                                    {sharesStats.totalStoriesWithGuests}
+                                </span>
+                            )}
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleTabChange('tags')}
+                            className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${
+                                activeTab === 'tags'
+                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                                    : 'text-foreground/90 hover:bg-secondary hover:text-primary'
+                            }`}
+                        >
+                            <Tag className="w-5 h-5" />
+                            <span>Quản lý Tag</span>
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => handleTabChange('users')}
+                            className={`w-full flex items-center justify-start gap-3 px-3 py-2.5 rounded-[8px] font-medium transition-colors cursor-pointer ${
+                                activeTab === 'users'
+                                    ? 'bg-primary text-primary-foreground shadow-lg shadow-primary/20'
+                                    : 'text-foreground/90 hover:bg-secondary hover:text-primary'
+                            }`}
+                        >
+                            <Users className="w-5 h-5" />
+                            <span>Người dùng</span>
+                        </button>
+                    </nav>
+                    <div className="p-4 border-t border-border/70">
+                        <p className="text-xs font-medium text-muted-foreground mb-2">Tài khoản đang hoạt động</p>
+                        <div className="flex items-center gap-3 p-3 rounded-[8px] bg-secondary/70 dark:bg-primary/10">
+                            <div className="relative w-10 h-10 rounded-[8px] overflow-hidden bg-secondary shrink-0">
+                                {user.avatar ? (
+                                    <Image src={getOptimizedImageUrl(user.avatar)} alt={user.name || 'Avatar'} fill className="object-cover" unoptimized />
+                                ) : (
+                                    <User className="w-5 h-5 m-2.5 text-primary/80" />
+                                )}
+                            </div>
+                            <div className="min-w-0 flex-1">
+                                <p className="text-sm font-medium text-foreground truncate">{user.name || 'Quản trị viên'}</p>
+                                <p className="text-xs text-muted-foreground truncate">{user.email}</p>
+                                <SessionElapsedTime as="p" className="text-xs font-mono text-primary mt-1 tabular-nums" />
                             </div>
                         </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                        {activeTab === 'posts' && (
-                            <>
+                </aside>
+
+                {/* Main Content Area */}
+                <main className="flex-1 min-w-0 min-h-[calc(100vh-5rem)] rounded-[8px] border border-border/70 bg-card/35 shadow-sm">
+                    {/* Header */}
+                    <header className="min-h-16 bg-card/80 backdrop-blur-md border-b border-border/70 px-3 py-3 sm:px-8 lg:px-10 flex items-start sm:items-center justify-between gap-3 sticky top-14 z-30 rounded-t-[8px]">
+                        <div className="flex min-w-0 flex-1 items-center gap-6">
+                            <div className="min-w-0 lg:hidden">
+                                <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">Quản trị</p>
+                                <h1 className="truncate text-base font-semibold text-foreground">
+                                    {activeTab === 'posts'
+                                        ? 'Quản lý bài viết'
+                                        : activeTab === 'shares'
+                                            ? 'Quản lý chia sẻ (Khách truy cập)'
+                                            : activeTab === 'users'
+                                                ? 'Quản lý người dùng'
+                                                : 'Quản lý thẻ Tag'}
+                                </h1>
+                                <p className="mt-0.5 truncate text-[11px] text-muted-foreground">{user.email}</p>
+                            </div>
+                            <div className="hidden lg:flex items-center gap-4">
+                                <h1 className="text-lg font-semibold text-foreground">
+                                    {activeTab === 'posts'
+                                        ? 'Quản lý bài viết'
+                                        : activeTab === 'shares'
+                                            ? 'Quản lý chia sẻ (Khách truy cập)'
+                                            : activeTab === 'users'
+                                                ? 'Quản lý người dùng'
+                                                : 'Quản lý thẻ Tag'}
+                                </h1>
+                                <div className="flex items-center gap-2 px-3 py-1.5 rounded-[8px] bg-card">
+                                    <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                    <span className="text-xs font-medium text-muted-foreground">Tài khoản đang hoạt động</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div className="flex shrink-0 items-center gap-2">
+                            {activeTab === 'posts' && (
+                                <>
+                                    <Button
+                                        type="button"
+                                        variant="outline"
+                                        size="sm"
+                                        onClick={() => { fetchPosts(); fetchTags(); }}
+                                        disabled={isLoadingPosts}
+                                        className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
+                                        title="Tải lại danh sách bài viết"
+                                    >
+                                        <RefreshCw className={`w-3.5 h-3.5 ${isLoadingPosts ? 'animate-spin' : ''} sm:mr-1.5`} />
+                                        <span className="hidden sm:inline">Làm mới</span>
+                                    </Button>
+                                    <Button
+                                        onClick={() => setIsCreateDialogOpen(true)}
+                                        className="h-9 rounded-[8px] bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 px-3 sm:px-5 text-xs sm:text-sm font-medium transition-colors"
+                                    >
+                                        <Plus className="w-4 h-4 sm:mr-2" />
+                                        <span className="hidden min-[380px]:inline">Tạo bài mới</span>
+                                    </Button>
+                                </>
+                            )}
+                            {activeTab === 'shares' && (
                                 <Button
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => { fetchPosts(); fetchTags(); }}
-                                    disabled={isLoading}
+                                    onClick={fetchShares}
+                                    disabled={isSharesLoading}
                                     className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
-                                    title="Tải lại danh sách bài viết"
+                                    title="Tải lại danh sách truyện có khách truy cập"
                                 >
-                                    <RefreshCw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''} sm:mr-1.5`} />
+                                    <RefreshCw className={`w-3.5 h-3.5 ${isSharesLoading ? 'animate-spin' : ''} sm:mr-1.5`} />
                                     <span className="hidden sm:inline">Làm mới</span>
                                 </Button>
+                            )}
+                            {activeTab === 'users' && (
                                 <Button
-                                    onClick={() => setIsCreateDialogOpen(true)}
-                                    className="h-9 rounded-[8px] bg-primary text-primary-foreground shadow-lg shadow-primary/20 hover:bg-primary/90 px-3 sm:px-5 text-xs sm:text-sm font-medium transition-colors"
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => { fetchUsers(); fetchDeletedAccounts(); }}
+                                    disabled={isUsersLoading || isDeletedAccountsLoading}
+                                    className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
+                                    title="Tải lại danh sách người dùng"
                                 >
-                                    <Plus className="w-4 h-4 sm:mr-2" />
-                                    <span className="hidden min-[380px]:inline">Tạo bài mới</span>
+                                    <RefreshCw className={`w-3.5 h-3.5 ${isUsersLoading || isDeletedAccountsLoading ? 'animate-spin' : ''} sm:mr-1.5`} />
+                                    <span className="hidden sm:inline">Làm mới</span>
                                 </Button>
-                            </>
-                        )}
-                        {activeTab === 'shares' && (
-                            <Button
-                                type="button"
-                                variant="outline"
-                                size="sm"
-                                onClick={fetchShares}
-                                disabled={isSharesLoading}
-                                className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
-                                title="Tải lại danh sách truyện có khách truy cập"
-                            >
-                                <RefreshCw className={`w-3.5 h-3.5 ${isSharesLoading ? 'animate-spin' : ''} sm:mr-1.5`} />
-                                <span className="hidden sm:inline">Làm mới</span>
-                            </Button>
-                        )}
-                    </div>
-                </header>
-                <div className="p-3 sm:p-8 lg:p-10 space-y-4 sm:space-y-6">
-                    {activeTab !== 'tags' && (
-                        <div className="grid grid-cols-3 gap-2 sm:gap-4">
-                            {(activeTab === 'posts' ? [
-                                { label: 'Tổng bài viết', value: posts.length },
-                                { label: 'Tác giả', value: availableAuthors.length },
-                                { label: 'Trạng thái', value: 'Hoạt động' }
-                            ] : activeTab === 'shares' ? [
-                                { label: 'Truyện có khách đọc', value: sharesStats.totalStoriesWithGuests },
-                                { label: 'Tài khoản khách', value: sharesStats.totalUniqueGuests },
-                                { label: 'Lượt khách đọc', value: sharesStats.totalGuestVisits }
-                            ] : [
-                                { label: 'Tổng người dùng', value: usersList.length },
-                                { label: 'Quản trị viên', value: usersList.filter(u => u.role === 'admin').length },
-                                { label: 'Người dùng', value: usersList.filter(u => u.role !== 'admin').length },
-                            ]).map((stat, i) => (
-                                <div key={i} className="bg-card/50 backdrop-blur-md p-3 sm:p-5 rounded-[8px] border border-border shadow-md">
-                                    <p className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1.5 sm:mb-2 leading-tight">{stat.label}</p>
-                                    {typeof stat.value === 'number' ? (
-                                        <p className="text-lg sm:text-2xl font-semibold text-foreground">{stat.value}</p>
-                                    ) : (
-                                        <div className="flex items-center gap-1.5 sm:gap-2">
-                                            <div className="w-2 h-2 rounded-full bg-emerald-500" />
-                                            <span className="text-xs sm:text-base font-medium text-foreground">{stat.value}</span>
-                                        </div>
-                                    )}
-                                </div>
-                            ))}
+                            )}
+                            {activeTab === 'tags' && (
+                                <Button
+                                    type="button"
+                                    variant="outline"
+                                    size="sm"
+                                    onClick={() => { fetchTags(); fetchPosts(); }}
+                                    className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
+                                    title="Tải lại danh sách thẻ tag"
+                                >
+                                    <RefreshCw className="w-3.5 h-3.5 sm:mr-1.5" />
+                                    <span className="hidden sm:inline">Làm mới</span>
+                                </Button>
+                            )}
                         </div>
-                    )}
-                    {activeTab === 'posts' && availablePostTags.length > 0 && (
-                        <div className="bg-card/50 backdrop-blur-md p-3 sm:p-5 rounded-[8px] border border-border shadow-md">
-                            <h3 className="text-sm font-semibold text-neutral-800 dark:text-neutral-200 mb-3 flex items-center gap-2">
-                                <Tag className="w-4 h-4 text-primary" />
-                                Danh sách Tag đã sử dụng ({availablePostTags.length})
-                            </h3>
-                            <div className="flex flex-wrap gap-2 mt-3">
-                                {availablePostTags.map((tag) => (
-                                    <button
-                                        key={tag}
-                                        type="button"
-                                        onClick={() => setSearchQuery(tag)}
-                                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-xs font-medium bg-card text-primary border border-border hover:border-primary/60 dark:hover:border-primary/75 hover:text-primary transition-colors cursor-pointer"
-                                        title={`Lọc bài viết theo thẻ: ${tag}`}
-                                    >
-                                        #{tag}
-                                    </button>
+                    </header>
+
+                    {/* Content Body */}
+                    <div className="p-3 sm:p-8 lg:p-10 space-y-4 sm:space-y-6">
+                        {/* Stat Cards */}
+                        {activeTab !== 'tags' && (
+                            <div className="grid grid-cols-3 gap-2 sm:gap-4">
+                                {(activeTab === 'posts'
+                                    ? [
+                                        { label: 'Tổng bài viết', value: posts.length },
+                                        { label: 'Tác giả', value: availableAuthors.length },
+                                        { label: 'Trạng thái', value: 'Hoạt động' },
+                                    ]
+                                    : activeTab === 'shares'
+                                        ? [
+                                            { label: 'Truyện có khách đọc', value: sharesStats.totalStoriesWithGuests },
+                                            { label: 'Tài khoản khách', value: sharesStats.totalUniqueGuests },
+                                            { label: 'Lượt khách đọc', value: sharesStats.totalGuestVisits },
+                                        ]
+                                        : [
+                                            { label: 'Tổng người dùng', value: usersList.length },
+                                            { label: 'Quản trị viên', value: usersList.filter((u) => u.role === 'admin').length },
+                                            { label: 'Người dùng', value: usersList.filter((u) => u.role !== 'admin').length },
+                                        ]
+                                ).map((stat, i) => (
+                                    <div key={i} className="bg-card/50 backdrop-blur-md p-3 sm:p-5 rounded-[8px] border border-border shadow-md">
+                                        <p className="text-[10px] sm:text-xs font-medium text-muted-foreground mb-1.5 sm:mb-2 leading-tight">
+                                            {stat.label}
+                                        </p>
+                                        {typeof stat.value === 'number' ? (
+                                            <p className="text-lg sm:text-2xl font-semibold text-foreground">{stat.value}</p>
+                                        ) : (
+                                            <div className="flex items-center gap-1.5 sm:gap-2">
+                                                <div className="w-2 h-2 rounded-full bg-emerald-500" />
+                                                <span className="text-xs sm:text-base font-medium text-foreground">{stat.value}</span>
+                                            </div>
+                                        )}
+                                    </div>
                                 ))}
                             </div>
-                        </div>
-                    )}
-                    <div className={activeTab === 'users' ? 'space-y-3 sm:space-y-4' : 'bg-card/50 backdrop-blur-md rounded-[8px] border border-border overflow-hidden'}>
-                        <div className={activeTab === 'users'
-                            ? 'p-3 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 rounded-[8px] border border-border bg-card/50 backdrop-blur-md'
-                            : 'p-3 sm:p-5 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-4 border-b border-border'}>
+                        )}
+
+                        {/* Search Input Filter Container */}
+                        <div className="bg-card/50 backdrop-blur-md rounded-[8px] border border-border p-3 sm:p-5">
                             <div className="relative w-full sm:w-[400px]">
                                 <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-foreground/70 dark:text-neutral-300">
                                     <Search className="h-4 w-4" />
@@ -766,1173 +664,98 @@ export default function AdminDashboard() {
                                 <Input
                                     placeholder={
                                         activeTab === 'posts'
-                                            ? "Tìm bài viết, tác giả, tag..."
+                                            ? 'Tìm bài viết, tác giả, tag...'
                                             : activeTab === 'shares'
-                                                ? "Tìm tên truyện, tác giả, email khách..."
+                                                ? 'Tìm tên truyện, tác giả, email khách...'
                                                 : activeTab === 'users'
-                                                    ? "Tìm tên, email..."
-                                                    : "Tìm thẻ tag..."
+                                                    ? 'Tìm tên, email...'
+                                                    : 'Tìm thẻ tag...'
                                     }
                                     className="h-10 pl-10 pr-3 py-0 leading-10 bg-background border border-border rounded-[8px] focus-visible:ring-1 focus-visible:ring-primary text-sm text-foreground placeholder:text-foreground/90 dark:placeholder:text-neutral-300"
                                     value={searchQuery}
                                     onChange={(e) => setSearchQuery(e.target.value)}
                                 />
                             </div>
-                            {activeTab === 'shares' && (
-                                <div className="flex items-center gap-1.5 w-full sm:w-auto">
-                                    <span className="text-xs text-muted-foreground mr-1 hidden sm:inline">Chế độ:</span>
-                                    {(['all', 'restricted', 'public'] as const).map((filterVal) => (
-                                        <button
-                                            key={filterVal}
-                                            type="button"
-                                            onClick={() => { setSharesAccessFilter(filterVal); setSharesPage(1); }}
-                                            className={`px-3 py-1.5 rounded-[8px] text-xs font-medium transition-colors cursor-pointer ${
-                                                sharesAccessFilter === filterVal
-                                                    ? 'bg-primary text-primary-foreground shadow-sm'
-                                                    : 'bg-secondary/70 text-foreground/80 hover:bg-secondary hover:text-foreground border border-border/60'
-                                            }`}
-                                        >
-                                            {filterVal === 'all' ? 'Tất cả' : filterVal === 'restricted' ? 'Giới hạn' : 'Công khai'}
-                                        </button>
-                                    ))}
-                                </div>
-                            )}
-                            {activeTab === 'tags' && (
-                                <form onSubmit={handleCreateTag} className="flex gap-2 w-full sm:w-auto">
-                                    <Input
-                                        placeholder="Tên tag mới..."
-                                        value={newTagName}
-                                        onChange={e => setNewTagName(e.target.value)}
-                                        className="h-10 text-sm bg-background border-border focus-visible:ring-0 focus-visible:ring-offset-0 rounded-[8px] transition-colors text-foreground placeholder:text-foreground/90 dark:placeholder:text-neutral-300"
-                                        disabled={isCreatingTag}
-                                        maxLength={30}
-                                    />
-                                    <Button type="submit" disabled={isCreatingTag || !newTagName.trim()} className="h-10 px-5 bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20 rounded-[8px] font-medium shadow-sm transition-all duration-200 ease-in-out hover:shadow-md disabled:opacity-50 disabled:cursor-not-allowed">
-                                        {isCreatingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : <><Plus className="w-4 h-4 mr-1.5" /><span>Thêm</span></>}
-                                    </Button>
-                                </form>
-                            )}
                         </div>
+
+                        {/* Tabs Container: Keep-Alive & Lazy Mount */}
                         <div className="w-full">
-                            {activeTab === 'posts' ? (
-                                <div className="min-h-[360px] lg:min-h-[680px]">
-                                    <div className="md:hidden p-3 space-y-3">
-                                        {isLoading ? (
-                                            <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-neutral-500">
-                                                <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
-                                                <p className="text-sm">Đang tải...</p>
-                                            </div>
-                                        ) : filteredPosts.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center">
-                                                <FileText className="w-10 h-10 mb-3 text-primary/80" />
-                                                <p className="text-sm font-medium text-foreground/90">{searchQuery ? 'Không tìm thấy' : 'Chưa có bài viết'}</p>
-                                            </div>
-                                        ) : paginatedPosts.map((post) => (
-                                            <article key={post._id} className="rounded-[8px] border border-border/70 bg-card/55 p-3 shadow-sm">
-                                                <div className="flex gap-3">
-                                                    <div className="relative flex h-20 w-16 shrink-0 items-center justify-center overflow-hidden rounded-[8px] bg-card">
-                                                        {post.images[0] ? (
-                                                            <Image src={getOptimizedImageUrl(post.images[0])} alt={post.title} fill className="object-cover object-top" unoptimized />
-                                                        ) : (
-                                                            <FileText className="w-7 h-7 text-primary/80" />
-                                                        )}
-                                                    </div>
-                                                    <div className="min-w-0 flex-1">
-                                                        <p className="line-clamp-2 text-sm font-semibold leading-tight text-foreground">{post.title}</p>
-                                                        {post.tags && post.tags.length > 0 ? (
-                                                            <div className="mt-2 flex flex-wrap gap-1">
-                                                                {post.tags.slice(0, 3).map((tag) => (
-                                                                    <span key={`${post._id}-${tag}`} className="inline-flex rounded-[8px] border border-border px-1.5 py-0.5 text-[10px] text-primary">
-                                                                        #{tag.toLowerCase()}
-                                                                    </span>
-                                                                ))}
-                                                                {post.tags.length > 3 && (
-                                                                    <span className="inline-flex rounded-[8px] border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground/80">
-                                                                        +{post.tags.length - 3}
-                                                                    </span>
-                                                                )}
-                                                            </div>
-                                                        ) : (
-                                                            <p className="mt-1 text-xs text-muted-foreground/80">Chưa gắn tag</p>
-                                                        )}
-                                                        <div className="mt-2 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-                                                            <span className="truncate">{post.author}</span>
-                                                            <span className="text-right whitespace-nowrap">{new Date(post.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</span>
-                                                        </div>
-                                                    </div>
-                                                </div>
-                                                <div className="mt-3 grid grid-cols-2 gap-2">
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => { setSelectedPost(post); setIsEditOpen(true); }}
-                                                        className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
-                                                    >
-                                                        <Pencil className="w-4 h-4" />
-                                                        Sửa
-                                                    </button>
-                                                    <button
-                                                        type="button"
-                                                        onClick={() => handleDelete(post)}
-                                                        className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
-                                                    >
-                                                        <Trash2 className="w-4 h-4" />
-                                                        Xóa
-                                                    </button>
-                                                </div>
-                                            </article>
-                                        ))}
-                                    </div>
-                                    <div className="hidden md:block overflow-x-auto">
-                                <table className="w-full text-center">
-                                    <thead>
-                                        <tr className="text-xs font-medium text-muted-foreground border-b border-border">
-                                            <th className="px-5 py-4 text-left border-r border-border/60 last:border-r-0">Bài viết</th>
-                                            <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Tác giả</th>
-                                            <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Ngày tạo</th>
-                                            <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
-                                        {isLoading ? (
-                                            <tr>
-                                                <td colSpan={4} className="px-5 py-16 text-center text-neutral-500">
-                                                    <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
-                                                    <p className="text-sm">Đang tải...</p>
-                                                </td>
-                                            </tr>
-                                        ) : filteredPosts.length === 0 ? (
-                                            <tr>
-                                                <td colSpan={4} className="px-5 py-16 text-center">
-                                                    <div className="mx-auto flex w-fit flex-col items-center px-6 py-5">
-                                                        <FileText className="w-10 h-10 mx-auto mb-3 text-primary/80" />
-                                                        <p className="text-sm font-medium text-foreground/90">{searchQuery ? 'Không tìm thấy' : 'Chưa có bài viết'}</p>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ) : paginatedPosts.map((post) => (
-                                            <tr key={post._id} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
-                                                <td className="px-5 py-4 text-left border-r border-border/40 last:border-r-0">
-                                                    <div className="flex items-center justify-start gap-4">
-                                                        <div className="relative w-12 h-12 rounded-[8px] overflow-hidden bg-card shrink-0">
-                                                            {post.images[0] ? (
-                                                                <Image src={getOptimizedImageUrl(post.images[0])} alt={post.title} fill className="object-cover" unoptimized />
-                                                            ) : (
-                                                                <FileText className="w-6 h-6 m-3 text-primary/80" />
-                                                            )}
-                                                        </div>
-                                                        <div className="min-w-0 max-w-xs text-left">
-                                                            <p className="text-sm font-medium text-foreground truncate">{post.title}</p>
-                                                            {post.tags && post.tags.length > 0 ? (
-                                                                <div className="mt-1 flex flex-wrap gap-1">
-                                                                    {post.tags.slice(0, 3).map((tag) => (
-                                                                        <span
-                                                                            key={`${post._id}-${tag}`}
-                                                                            className="inline-flex rounded-[8px] border border-border px-1.5 py-0.5 text-[10px] text-primary"
-                                                                        >
-                                                                            #{tag.toLowerCase()}
-                                                                        </span>
-                                                                    ))}
-                                                                    {post.tags.length > 3 && (
-                                                                        <span className="inline-flex rounded-[8px] border border-border px-1.5 py-0.5 text-[10px] text-muted-foreground/80">
-                                                                            +{post.tags.length - 3}
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            ) : (
-                                                                <p className="text-xs text-muted-foreground/80 mt-0.5">Chưa gắn tag</p>
-                                                            )}
-                                                        </div>
-                                                    </div>
-                                                </td>
-                                                <td className="px-5 py-4 text-sm text-foreground/90 text-center border-r border-border/40 last:border-r-0">{post.author}</td>
-                                                <td className="px-5 py-4 text-sm text-muted-foreground text-center whitespace-nowrap border-r border-border/40 last:border-r-0">
-                                                    {new Date(post.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                                </td>
-                                                <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
-                                                    <div className="flex justify-center gap-2">
-                                                        <button
-                                                            onClick={() => { setSelectedPost(post); setIsEditOpen(true); }}
-                                                            className="p-2 text-foreground/85 hover:text-primary dark:hover:text-primary/80 hover:bg-secondary/80 rounded-[8px] transition-colors cursor-pointer"
-                                                            title="Chỉnh sửa"
-                                                        >
-                                                            <Pencil className="w-4 h-4" />
-                                                        </button>
-                                                        <button
-                                                            onClick={() => handleDelete(post)}
-                                                            className="p-2 text-foreground/85 hover:text-primary hover:bg-secondary/80 rounded-[8px] transition-colors cursor-pointer"
-                                                            title="Xóa"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                        </button>
-                                                    </div>
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                                    </div>
-                                    {filteredPosts.length > 0 && (
-                                        <div className="px-3 sm:px-5 py-3 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                            <p className="text-xs text-muted-foreground">
-                                                {postsPerPage === 'all'
-                                                    ? `Hiển thị tất cả ${filteredPosts.length} bài viết`
-                                                    : `Trang ${postsPage}/${totalPostsPages} • Hiển thị ${paginatedPosts.length}/${filteredPosts.length} bài viết`}
-                                            </p>
-                                            <div className="flex items-center gap-2.5 w-full sm:w-auto justify-between sm:justify-end">
-                                                <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
-                                                    <span>Số lượng:</span>
-                                                    <select
-                                                        value={postsPerPage}
-                                                        onChange={(e) => {
-                                                            const val = e.target.value === 'all' ? 'all' : Number(e.target.value);
-                                                            setPostsPerPage(val);
-                                                            setPostsPage(1);
-                                                        }}
-                                                        className="h-8 px-2 text-xs rounded-[8px] bg-secondary/80 border border-border text-foreground cursor-pointer focus:outline-none focus:ring-1 focus:ring-primary"
-                                                    >
-                                                        <option value={10}>10 / trang</option>
-                                                        <option value={15}>15 / trang</option>
-                                                        <option value={30}>30 / trang</option>
-                                                        <option value="all">Tất cả ({filteredPosts.length})</option>
-                                                    </select>
-                                                </div>
-                                                {postsPerPage !== 'all' && totalPostsPages > 1 && (
-                                                    <div className="flex items-center gap-1.5">
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="h-8 rounded-[8px]"
-                                                            onClick={() => setPostsPage((prev) => Math.max(1, prev - 1))}
-                                                            disabled={postsPage === 1}
-                                                        >
-                                                            Trước
-                                                        </Button>
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            variant="outline"
-                                                            className="h-8 rounded-[8px]"
-                                                            onClick={() => setPostsPage((prev) => Math.min(totalPostsPages, prev + 1))}
-                                                            disabled={postsPage === totalPostsPages}
-                                                        >
-                                                            Sau
-                                                        </Button>
-                                                    </div>
-                                                )}
-                                            </div>
-                                        </div>
-                                    )}
+                            {/* Posts Tab */}
+                            <div className={activeTab === 'posts' ? 'block' : 'hidden'}>
+                                <PostsTab
+                                    posts={posts}
+                                    isLoading={isLoadingPosts}
+                                    searchQuery={searchQuery}
+                                    onSearchTagClick={(tag) => setSearchQuery(tag)}
+                                    availablePostTags={availablePostTags}
+                                    onEditPost={(p) => {
+                                        setSelectedPost(p);
+                                        setIsEditOpen(true);
+                                    }}
+                                    onDeletePost={handleDelete}
+                                />
+                            </div>
+
+                            {/* Shares Tab */}
+                            {visitedTabs.shares && (
+                                <div className={activeTab === 'shares' ? 'block' : 'hidden'}>
+                                    <SharesTab
+                                        sharedPosts={sharedPosts}
+                                        isLoading={isSharesLoading}
+                                        searchQuery={searchQuery}
+                                        onOpenShareDialog={(p) => {
+                                            setSelectedSharePost(p);
+                                            setIsShareDialogOpen(true);
+                                        }}
+                                    />
                                 </div>
-                            ) : activeTab === 'shares' ? (
-                                <div className="min-h-[360px] lg:min-h-[680px]">
-                                    {/* Mobile card view */}
-                                    <div className="md:hidden p-3 space-y-3">
-                                        {isSharesLoading ? (
-                                            <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-neutral-500">
-                                                <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
-                                                <p className="text-sm">Đang tải danh sách chia sẻ...</p>
-                                            </div>
-                                        ) : filteredSharedPosts.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center">
-                                                <Share2 className="w-10 h-10 mb-3 text-primary/80" />
-                                                <p className="text-sm font-medium text-foreground/90">
-                                                    {searchQuery ? 'Không tìm thấy kết quả phù hợp' : 'Chưa có truyện nào được khách truy cập'}
-                                                </p>
-                                                <p className="text-xs text-muted-foreground mt-1 max-w-xs">
-                                                    {searchQuery
-                                                        ? 'Thử tìm kiếm với từ khóa khác hoặc xóa bộ lọc.'
-                                                        : 'Khi người dùng có vai trò Khách (guest) truy cập đọc truyện, danh sách sẽ hiển thị tại đây.'}
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            paginatedSharedPosts.map((post) => (
-                                                <article key={post._id} className="rounded-[8px] border border-border/70 bg-card/55 p-3.5 shadow-sm space-y-3">
-                                                    <div className="flex items-start gap-3">
-                                                        <div className="relative w-14 h-20 rounded-[8px] overflow-hidden bg-secondary shrink-0 border border-border/50">
-                                                            {post.thumbnail ? (
-                                                                <Image
-                                                                    src={getOptimizedImageUrl(post.thumbnail)}
-                                                                    alt={post.title}
-                                                                    fill
-                                                                    className="object-cover"
-                                                                    unoptimized
-                                                                />
-                                                            ) : (
-                                                                <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                                                    <FileText className="w-6 h-6" />
-                                                                </div>
-                                                            )}
-                                                        </div>
-                                                        <div className="min-w-0 flex-1">
-                                                            <div className="flex items-center gap-1.5 flex-wrap">
-                                                                <span
-                                                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-medium ${
-                                                                        post.accessType === 'restricted'
-                                                                            ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                                                                            : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                                                                    }`}
-                                                                >
-                                                                    {post.accessType === 'restricted' ? (
-                                                                        <>
-                                                                            <Lock className="w-2.5 h-2.5" />
-                                                                            Giới hạn
-                                                                        </>
-                                                                    ) : (
-                                                                        <>
-                                                                            <Globe className="w-2.5 h-2.5" />
-                                                                            Công khai
-                                                                        </>
-                                                                    )}
-                                                                </span>
-                                                                <span className="text-[10px] text-muted-foreground">
-                                                                    {post.guestUsers.length} khách đọc
-                                                                </span>
-                                                            </div>
-                                                            <h4 className="text-sm font-semibold text-foreground mt-1 line-clamp-2">{post.title}</h4>
-                                                            <p className="text-xs text-muted-foreground mt-0.5 truncate">{post.author}</p>
-                                                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-1">
-                                                                <Clock className="w-3 h-3 text-primary/70" />
-                                                                <span>Gần nhất: {formatGuestAccessTime(post.lastGuestAccess)}</span>
-                                                            </div>
-                                                        </div>
-                                                    </div>
+                            )}
 
-                                                    <div className="bg-secondary/40 rounded-[8px] p-2.5 space-y-2 border border-border/40">
-                                                        <p className="text-[11px] font-medium text-foreground/80 flex items-center gap-1.5">
-                                                            <Users className="w-3.5 h-3.5 text-primary" />
-                                                            Khách đã truy cập ({post.guestUsers.length})
-                                                        </p>
-                                                        <div className="space-y-1.5 max-h-36 overflow-y-auto pr-1">
-                                                            {post.guestUsers.map((guest, idx) => (
-                                                                <div key={idx} className="flex items-center justify-between gap-2 text-xs py-1 border-b border-border/30 last:border-0">
-                                                                    <div className="flex items-center gap-2 min-w-0">
-                                                                        <div className="relative w-6 h-6 rounded-full overflow-hidden bg-secondary border border-border shrink-0">
-                                                                            {guest.avatar ? (
-                                                                                <Image src={getOptimizedImageUrl(guest.avatar)} alt={guest.name} fill className="object-cover" unoptimized />
-                                                                            ) : (
-                                                                                <div className="w-full h-full flex items-center justify-center text-[10px] font-semibold text-primary">
-                                                                                    {(guest.name || guest.email || '?').charAt(0).toUpperCase()}
-                                                                                </div>
-                                                                            )}
-                                                                        </div>
-                                                                        <div className="min-w-0">
-                                                                            <p className="font-medium text-foreground truncate leading-tight">{guest.name}</p>
-                                                                            <p className="text-[10px] text-muted-foreground truncate leading-tight">{guest.email}</p>
-                                                                        </div>
-                                                                    </div>
-                                                                    <div className="text-right shrink-0">
-                                                                        <span className="inline-block px-1.5 py-0.5 rounded text-[9px] bg-primary/10 text-primary font-medium">
-                                                                            Khách
-                                                                        </span>
-                                                                        <p className="text-[9px] text-muted-foreground mt-0.5">{formatGuestAccessTime(guest.lastAccessedAt)}</p>
-                                                                    </div>
-                                                                </div>
-                                                            ))}
-                                                        </div>
-                                                    </div>
-
-                                                    <div className="grid grid-cols-2 gap-2 pt-1">
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            variant="outline"
-                                                            onClick={() => {
-                                                                setSelectedSharePost({ id: post._id, title: post.title });
-                                                                setIsShareDialogOpen(true);
-                                                            }}
-                                                            className="h-8 text-xs rounded-[8px] border-primary/40 text-primary hover:bg-primary/10"
-                                                        >
-                                                            <Share2 className="w-3.5 h-3.5 mr-1.5" />
-                                                            Quản lý chia sẻ
-                                                        </Button>
-                                                        <Link
-                                                            href={`/posts/${post._id}`}
-                                                            target="_blank"
-                                                            className="inline-flex items-center justify-center h-8 text-xs font-medium rounded-[8px] bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
-                                                        >
-                                                            <ExternalLink className="w-3.5 h-3.5 mr-1.5" />
-                                                            Xem truyện
-                                                        </Link>
-                                                    </div>
-                                                </article>
-                                            ))
-                                        )}
-                                    </div>
-
-                                    {/* Desktop table view */}
-                                    <div className="hidden md:block overflow-x-auto">
-                                        {isSharesLoading ? (
-                                            <div className="flex flex-col items-center justify-center py-24 text-neutral-500">
-                                                <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
-                                                <p className="text-sm">Đang tải danh sách chia sẻ...</p>
-                                            </div>
-                                        ) : filteredSharedPosts.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center py-24 text-center px-4">
-                                                <Share2 className="w-12 h-12 mb-3 text-primary/70" />
-                                                <h3 className="text-base font-semibold text-foreground">
-                                                    {searchQuery ? 'Không tìm thấy truyện phù hợp' : 'Chưa có truyện nào được khách truy cập'}
-                                                </h3>
-                                                <p className="text-sm text-muted-foreground mt-1 max-w-md">
-                                                    {searchQuery
-                                                        ? 'Vui lòng kiểm tra lại từ khóa tìm kiếm hoặc đổi chế độ lọc.'
-                                                        : 'Khi người dùng với vai trò Khách (guest) truy cập link đọc truyện, hệ thống sẽ tự động cập nhật danh sách tại đây.'}
-                                                </p>
-                                            </div>
-                                        ) : (
-                                            <table className="w-full text-left border-collapse border-b border-border/60">
-                                                <thead>
-                                                    <tr className="border-b border-border/60 text-xs font-semibold text-muted-foreground uppercase tracking-wider bg-secondary/30">
-                                                        <th className="px-5 py-3.5 text-center w-16 border-r border-border/40 last:border-r-0">STT</th>
-                                                        <th className="px-5 py-3.5 min-w-[280px] border-r border-border/40 last:border-r-0">Bộ truyện</th>
-                                                        <th className="px-5 py-3.5 min-w-[280px] border-r border-border/40 last:border-r-0">Khách truy cập</th>
-                                                        <th className="px-5 py-3.5 text-center min-w-[150px] border-r border-border/40 last:border-r-0">Lần đọc gần nhất</th>
-                                                        <th className="px-5 py-3.5 text-center w-48 border-r border-border/40 last:border-r-0">Thao tác</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-border/40 text-sm">
-                                                    {paginatedSharedPosts.map((post, index) => (
-                                                        <tr key={post._id} className="hover:bg-secondary/40 transition-colors">
-                                                            <td className="px-5 py-4 text-center text-muted-foreground font-medium border-r border-border/40 last:border-r-0">
-                                                                {(sharesPage - 1) * 10 + index + 1}
-                                                            </td>
-                                                            <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
-                                                                <div className="flex items-center gap-3">
-                                                                    <div className="relative w-12 h-16 rounded-[8px] overflow-hidden bg-secondary shrink-0 border border-border/50">
-                                                                        {post.thumbnail ? (
-                                                                            <Image
-                                                                                src={getOptimizedImageUrl(post.thumbnail)}
-                                                                                alt={post.title}
-                                                                                fill
-                                                                                className="object-cover"
-                                                                                unoptimized
-                                                                            />
-                                                                        ) : (
-                                                                            <div className="w-full h-full flex items-center justify-center text-muted-foreground">
-                                                                                <FileText className="w-5 h-5" />
-                                                                            </div>
-                                                                        )}
-                                                                    </div>
-                                                                    <div className="min-w-0 flex-1">
-                                                                        <div className="flex items-center gap-2 mb-1">
-                                                                            <span
-                                                                                className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-medium ${
-                                                                                    post.accessType === 'restricted'
-                                                                                        ? 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
-                                                                                        : 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
-                                                                                }`}
-                                                                            >
-                                                                                {post.accessType === 'restricted' ? (
-                                                                                    <>
-                                                                                        <Lock className="w-2.5 h-2.5" />
-                                                                                        Giới hạn
-                                                                                    </>
-                                                                                ) : (
-                                                                                    <>
-                                                                                        <Globe className="w-2.5 h-2.5" />
-                                                                                        Công khai
-                                                                                    </>
-                                                                                )}
-                                                                            </span>
-                                                                        </div>
-                                                                        <p className="font-semibold text-foreground line-clamp-1 text-sm">{post.title}</p>
-                                                                        <p className="text-xs text-muted-foreground mt-0.5">{post.author}</p>
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
-                                                                <div className="space-y-1.5">
-                                                                    <div className="flex items-center gap-1.5">
-                                                                        <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-semibold bg-primary/10 text-primary">
-                                                                            <UserCheck className="w-3 h-3" />
-                                                                            {post.guestUsers.length} tài khoản khách
-                                                                        </span>
-                                                                    </div>
-                                                                    <div className="flex flex-col gap-1 max-h-24 overflow-y-auto pr-1">
-                                                                        {post.guestUsers.slice(0, 3).map((guest, i) => (
-                                                                            <div key={i} className="flex items-center gap-2 text-xs">
-                                                                                <div className="relative w-5 h-5 rounded-full overflow-hidden bg-secondary shrink-0 border border-border">
-                                                                                    {guest.avatar ? (
-                                                                                        <Image src={getOptimizedImageUrl(guest.avatar)} alt={guest.name} fill className="object-cover" unoptimized />
-                                                                                    ) : (
-                                                                                        <div className="w-full h-full flex items-center justify-center text-[9px] font-bold text-primary">
-                                                                                            {(guest.name || guest.email || '?').charAt(0).toUpperCase()}
-                                                                                        </div>
-                                                                                    )}
-                                                                                </div>
-                                                                                <span className="font-medium text-foreground truncate max-w-[140px]">{guest.name}</span>
-                                                                                <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">({guest.email})</span>
-                                                                            </div>
-                                                                        ))}
-                                                                        {post.guestUsers.length > 3 && (
-                                                                            <p className="text-[11px] text-muted-foreground italic">
-                                                                                + và {post.guestUsers.length - 3} khách khác...
-                                                                            </p>
-                                                                        )}
-                                                                    </div>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
-                                                                <div className="inline-flex flex-col items-center">
-                                                                    <span className="text-xs font-medium text-foreground">
-                                                                        {formatGuestAccessTime(post.lastGuestAccess)}
-                                                                    </span>
-                                                                    <span className="text-[11px] text-muted-foreground mt-0.5">
-                                                                        {new Date(post.lastGuestAccess).toLocaleDateString('vi-VN')}
-                                                                    </span>
-                                                                </div>
-                                                            </td>
-                                                            <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
-                                                                <div className="flex items-center justify-center gap-2">
-                                                                    <Button
-                                                                        type="button"
-                                                                        size="sm"
-                                                                        onClick={() => {
-                                                                            setSelectedSharePost({ id: post._id, title: post.title });
-                                                                            setIsShareDialogOpen(true);
-                                                                        }}
-                                                                        className="h-8 px-3 rounded-[8px] text-xs font-medium bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm flex items-center gap-1.5"
-                                                                    >
-                                                                        <Share2 className="w-3.5 h-3.5" />
-                                                                        <span>Quản lý chia sẻ</span>
-                                                                    </Button>
-                                                                    <Link
-                                                                        href={`/posts/${post._id}`}
-                                                                        target="_blank"
-                                                                        className="p-2 text-foreground/80 hover:text-primary hover:bg-secondary/80 rounded-[8px] transition-colors"
-                                                                        title="Xem bài viết (tab mới)"
-                                                                    >
-                                                                        <ExternalLink className="w-4 h-4" />
-                                                                    </Link>
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        )}
-                                    </div>
-
-                                    {/* Pagination */}
-                                    {filteredSharedPosts.length > 0 && (
-                                        <div className="px-3 sm:px-5 py-3 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                            <p className="text-xs text-muted-foreground">
-                                                Trang {sharesPage}/{totalSharesPages} • Hiển thị {paginatedSharedPosts.length}/{filteredSharedPosts.length} bộ truyện
-                                            </p>
-                                            {totalSharesPages > 1 && (
-                                                <div className="flex items-center gap-1.5">
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 rounded-[8px]"
-                                                        onClick={() => setSharesPage((prev) => Math.max(1, prev - 1))}
-                                                        disabled={sharesPage === 1}
-                                                    >
-                                                        Trước
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-8 rounded-[8px]"
-                                                        onClick={() => setSharesPage((prev) => Math.min(totalSharesPages, prev + 1))}
-                                                        disabled={sharesPage === totalSharesPages}
-                                                    >
-                                                        Sau
-                                                    </Button>
-                                                </div>
-                                            )}
-                                        </div>
-                                    )}
+                            {/* Users Tab */}
+                            {visitedTabs.users && (
+                                <div className={activeTab === 'users' ? 'block' : 'hidden'}>
+                                    <UsersTab
+                                        currentUserEmail={user?.email}
+                                        usersList={usersList}
+                                        isUsersLoading={isUsersLoading}
+                                        usersLoadError={usersLoadError}
+                                        onRefreshUsers={fetchUsers}
+                                        updatingRoleId={updatingRoleId}
+                                        onChangeRole={handleChangeRole}
+                                        onDeleteUser={handleDeleteUser}
+                                        deletedAccounts={deletedAccounts}
+                                        isDeletedAccountsLoading={isDeletedAccountsLoading}
+                                        onRefreshDeletedAccounts={fetchDeletedAccounts}
+                                        searchQuery={searchQuery}
+                                    />
                                 </div>
-                            ) : activeTab === 'users' ? (
-                                <div className="w-full min-h-[360px] lg:min-h-[680px] space-y-3 sm:space-y-4 pb-4">
-                                    <div className="rounded-[8px] border border-border/60 bg-card/30 shadow-sm overflow-hidden">
-                                        <div className="flex flex-col min-[430px]:flex-row min-[430px]:items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 border-b border-border/60">
-                                            <p className="text-sm font-semibold text-foreground">Tài khoản hiện tại</p>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-xs text-muted-foreground">{filteredUsers.length} tài khoản</span>
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="outline"
-                                                    onClick={() => { fetchUsers(); fetchDeletedAccounts(); }}
-                                                    disabled={isUsersLoading || isDeletedAccountsLoading}
-                                                    className="h-7 px-2.5 rounded-[8px] text-xs border-border text-muted-foreground hover:text-foreground"
-                                                    title="Làm mới danh sách"
-                                                >
-                                                    <span className="inline-flex items-center gap-1.5">
-                                                        <RefreshCw className={`w-3.5 h-3.5 ${(isUsersLoading || isDeletedAccountsLoading) ? 'animate-spin' : ''}`} />
-                                                        Làm mới
-                                                    </span>
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <div className="md:hidden p-3 space-y-3">
-                                            {isUsersLoading ? (
-                                                <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-neutral-500">
-                                                    <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
-                                                    <p className="text-sm">Đang tải...</p>
-                                                </div>
-                                            ) : filteredUsers.length === 0 ? (
-                                                <div className="rounded-[8px] border border-border/60 bg-card/70 px-4 py-8 text-center">
-                                                    <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-secondary/80">
-                                                        <Users className="w-6 h-6 text-foreground" />
-                                                    </div>
-                                                    <p className="text-sm font-semibold text-foreground">
-                                                        {usersLoadError
-                                                            ? 'Không tải được danh sách người dùng'
-                                                            : (searchQuery ? 'Không tìm thấy người dùng' : 'Chưa có người dùng')}
-                                                    </p>
-                                                    {usersLoadError && (
-                                                        <p className="mt-1 text-xs text-muted-foreground">{usersLoadError}</p>
-                                                    )}
-                                                </div>
-                                            ) : paginatedUsers.map((u) => {
-                                                const isAdminUser = u.role === 'admin';
-                                                const isVerified = Boolean(u.isVerified);
-                                                return (
-                                                    <article key={u._id} className="rounded-[8px] border border-border/70 bg-card/55 p-3 shadow-sm">
-                                                        <div className="flex items-start gap-3">
-                                                            <div className="relative shrink-0">
-                                                                <div className="relative h-11 w-11 overflow-hidden rounded-[8px] bg-card">
-                                                                    {u.avatar ? (
-                                                                        <Image src={getOptimizedImageUrl(u.avatar)} alt={u.name || 'Avatar'} fill className="object-cover" unoptimized />
-                                                                    ) : (
-                                                                        <User className="w-5 h-5 m-3 text-primary/80" />
-                                                                    )}
-                                                                </div>
-                                                                {u.email === user?.email ? (
-                                                                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-emerald-500 ring-2 ring-background" title="Tài khoản đang đăng nhập" />
-                                                                ) : (
-                                                                    <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full bg-neutral-300 dark:bg-neutral-600 ring-2 ring-background" title="Không hoạt động" />
-                                                                )}
-                                                            </div>
-                                                            <div className="min-w-0 flex-1">
-                                                                <p className="truncate text-sm font-semibold text-foreground">{u.name || 'Ẩn danh'}</p>
-                                                                <p className="mt-0.5 break-all text-xs text-muted-foreground">{u.email}</p>
-                                                                <div className="mt-2 flex flex-wrap items-center gap-1.5">
-                                                                    <UserRoleSelect
-                                                                        role={u.role || 'guest'}
-                                                                        disabled={u.email === user?.email}
-                                                                        isLoading={updatingRoleId === u._id}
-                                                                        size="sm"
-                                                                        onChange={(newRole) => handleChangeRole(u, newRole)}
-                                                                    />
-                                                                    {isAdminUser ? (
-                                                                        <span className="inline-flex rounded-[8px] border border-sky-300/60 bg-sky-100/70 px-2 py-1 text-[11px] font-medium text-sky-700 dark:border-sky-700/60 dark:bg-sky-900/30 dark:text-sky-300">
-                                                                            Miễn xác thực
-                                                                        </span>
-                                                                    ) : isVerified ? (
-                                                                        <span className="inline-flex rounded-[8px] border border-emerald-300/60 bg-emerald-100/70 px-2 py-1 text-[11px] font-medium text-emerald-700 dark:border-emerald-700/60 dark:bg-emerald-900/30 dark:text-emerald-300">
-                                                                            Đã xác thực
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="inline-flex rounded-[8px] border border-amber-300/60 bg-amber-100/70 px-2 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/30 dark:text-amber-300">
-                                                                            Chưa xác thực
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                        <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-                                                            <div>
-                                                                <p>Hoạt động</p>
-                                                                <p className="mt-0.5 font-medium text-foreground/80">
-                                                                    {u.email === user?.email ? (
-                                                                        <SessionElapsedTime as="span" />
-                                                                    ) : 'Chưa hoạt động'}
-                                                                </p>
-                                                            </div>
-                                                            <div className="text-right">
-                                                                <p>Ngày tham gia</p>
-                                                                <p className="mt-0.5 font-medium text-foreground/80">{new Date(u.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}</p>
-                                                            </div>
-                                                        </div>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => handleDeleteUser(u)}
-                                                            className="mt-3 inline-flex h-9 w-full items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
-                                                        >
-                                                            <Trash2 className="w-4 h-4" />
-                                                            Xóa người dùng
-                                                        </button>
-                                                    </article>
-                                                );
-                                            })}
-                                        </div>
-                                        <div className="hidden md:block overflow-x-auto">
-                                            <table className="w-full text-center">
-                                                <thead>
-                                                    <tr className="text-xs font-medium text-muted-foreground border-b border-border bg-secondary/20">
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Người dùng</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Email</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Vai trò</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Xác thực</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Thời gian hoạt động</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Ngày tham gia</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Thao tác</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-border">
-                                                    {isUsersLoading ? (
-                                                        <tr>
-                                                            <td colSpan={7} className="px-5 py-12 text-center text-neutral-500">
-                                                                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
-                                                                <p className="text-sm">Đang tải...</p>
-                                                            </td>
-                                                        </tr>
-                                                    ) : filteredUsers.length === 0 ? (
-                                                        <tr>
-                                                            <td colSpan={7} className="px-5 py-12 text-center">
-                                                                <div className="mx-auto max-w-sm rounded-[8px] border border-border/60 bg-card/70 px-6 py-7">
-                                                                    <div className="mx-auto mb-3 flex h-11 w-11 items-center justify-center rounded-full bg-secondary/80">
-                                                                        <Users className="w-6 h-6 text-foreground" />
-                                                                    </div>
-                                                                    <p className="text-sm font-semibold text-foreground">
-                                                                        {usersLoadError
-                                                                            ? 'Không tải được danh sách người dùng'
-                                                                            : (searchQuery ? 'Không tìm thấy người dùng' : 'Chưa có người dùng')}
-                                                                    </p>
-                                                                    {usersLoadError && (
-                                                                        <p className="mt-1 text-xs text-muted-foreground">
-                                                                            {usersLoadError}
-                                                                        </p>
-                                                                    )}
-                                                                </div>
-                                                            </td>
-                                                        </tr>
-                                                    ) : paginatedUsers.map((u) => {
-                                                        const isAdminUser = u.role === 'admin';
-                                                        const isVerified = Boolean(u.isVerified);
-                                                        return (
-                                                            <tr key={u._id} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
-                                                                <td className="px-5 py-4 text-left border-r border-border/40 last:border-r-0">
-                                                                    <div className="flex items-center justify-start gap-3">
-                                                                        <div className="relative shrink-0">
-                                                                            <div className="relative w-10 h-10 rounded-[8px] overflow-hidden bg-card">
-                                                                                {u.avatar ? (
-                                                                                    <Image src={getOptimizedImageUrl(u.avatar)} alt={u.name || 'Avatar'} fill className="object-cover" unoptimized />
-                                                                                ) : (
-                                                                                    <User className="w-5 h-5 m-2.5 text-primary/80" />
-                                                                                )}
-                                                                            </div>
-                                                                            {u.email === user?.email ? (
-                                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 ring-2 ring-white dark:ring-background" title="Tài khoản đang đăng nhập" />
-                                                                            ) : (
-                                                                                <span className="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-neutral-300 dark:bg-neutral-600 ring-2 ring-white dark:ring-background" title="Không hoạt động" />
-                                                                            )}
-                                                                        </div>
-                                                                        <p className="text-sm font-medium text-foreground truncate max-w-[150px]">{u.name || 'Ẩn danh'}</p>
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-5 py-4 text-sm text-foreground/90 text-left border-r border-border/40 last:border-r-0">{u.email}</td>
-                                                                <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
-                                                                    <div className="flex justify-center">
-                                                                        <UserRoleSelect
-                                                                            role={u.role || 'guest'}
-                                                                            disabled={u.email === user?.email}
-                                                                            isLoading={updatingRoleId === u._id}
-                                                                            onChange={(newRole) => handleChangeRole(u, newRole)}
-                                                                        />
-                                                                    </div>
-                                                                </td>
-                                                                <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
-                                                                    {isAdminUser ? (
-                                                                        <span className="inline-flex px-2.5 py-1 rounded-[8px] text-xs font-medium border border-sky-300/60 dark:border-sky-700/60 bg-sky-100/70 dark:bg-sky-900/30 text-sky-700 dark:text-sky-300">
-                                                                            Miễn xác thực
-                                                                        </span>
-                                                                    ) : isVerified ? (
-                                                                        <span className="inline-flex px-2.5 py-1 rounded-[8px] text-xs font-medium border border-emerald-300/60 dark:border-emerald-700/60 bg-emerald-100/70 dark:bg-emerald-900/30 text-emerald-700 dark:text-emerald-300">
-                                                                            Đã xác thực
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="inline-flex px-2.5 py-1 rounded-[8px] text-xs font-medium border border-amber-300/60 dark:border-amber-700/60 bg-amber-100/70 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                                                                            Chưa xác thực
-                                                                        </span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-5 py-4 text-sm text-center whitespace-nowrap border-r border-border/40 last:border-r-0">
-                                                                    {u.email === user?.email ? (
-                                                                        <span className="inline-flex items-center rounded-[8px] border border-emerald-300/60 dark:border-emerald-700/60 bg-emerald-100/70 dark:bg-emerald-900/30 px-2.5 py-1 text-xs font-semibold font-mono text-emerald-700 dark:text-emerald-300 tabular-nums">
-                                                                            <SessionElapsedTime />
-                                                                        </span>
-                                                                    ) : (
-                                                                        <span className="inline-flex items-center rounded-[8px] border border-border/70 bg-card/40 px-2.5 py-1 text-xs font-medium text-foreground/75 dark:text-neutral-300">
-                                                                            Chưa hoạt động
-                                                                        </span>
-                                                                    )}
-                                                                </td>
-                                                                <td className="px-5 py-4 text-sm text-muted-foreground text-center whitespace-nowrap border-r border-border/40 last:border-r-0">
-                                                                    {new Date(u.createdAt).toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric' })}
-                                                                </td>
-                                                                <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
-                                                                    <div className="flex justify-center">
-                                                                        <button
-                                                                            onClick={() => handleDeleteUser(u)}
-                                                                            className="p-2 text-foreground/85 hover:text-primary hover:bg-secondary/80 rounded-[8px] transition-colors"
-                                                                            title="Xóa"
-                                                                        >
-                                                                            <Trash2 className="w-4 h-4" />
-                                                                        </button>
-                                                                    </div>
-                                                                </td>
-                                                            </tr>
-                                                        );
-                                                    })}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {filteredUsers.length > 0 && (
-                                            <div className="px-3 sm:px-5 py-3 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                                <p className="text-xs text-muted-foreground">
-                                                    Trang {usersPage}/{totalUsersPages} • Hiển thị {paginatedUsers.length}/{filteredUsers.length} tài khoản
-                                                </p>
-                                                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
-                                                        onClick={() => setUsersPage((prev) => Math.max(1, prev - 1))}
-                                                        disabled={usersPage === 1}
-                                                    >
-                                                        Trước
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
-                                                        onClick={() => setUsersPage((prev) => Math.min(totalUsersPages, prev + 1))}
-                                                        disabled={usersPage === totalUsersPages}
-                                                    >
-                                                        Sau
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
+                            )}
 
-                                    <div className="rounded-[8px] border border-border/60 bg-card/30 shadow-sm overflow-hidden">
-                                        <div className="flex flex-col min-[430px]:flex-row min-[430px]:items-center justify-between gap-2 px-3 py-3 sm:px-5 sm:py-4 border-b border-border/60">
-                                            <p className="text-sm font-semibold text-foreground">Tài khoản bị xóa tự động (chưa xác thực)</p>
-                                            <div className="flex items-center gap-3">
-                                                <span className="text-xs text-muted-foreground">{filteredDeletedAccounts.length} tài khoản</span>
-                                                <Button
-                                                    type="button"
-                                                    variant="outline"
-                                                    size="sm"
-                                                    className="h-8 rounded-[8px]"
-                                                    onClick={fetchDeletedAccounts}
-                                                    disabled={isDeletedAccountsLoading}
-                                                >
-                                                    {isDeletedAccountsLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Làm mới'}
-                                                </Button>
-                                            </div>
-                                        </div>
-                                        <div className="md:hidden p-3 space-y-3">
-                                            {isDeletedAccountsLoading ? (
-                                                <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-foreground/80">
-                                                    <Loader2 className="w-8 h-8 animate-spin mb-3 text-primary" />
-                                                    <p className="text-sm">Đang tải...</p>
-                                                </div>
-                                            ) : filteredDeletedAccounts.length === 0 ? (
-                                                <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-foreground/80">
-                                                    <Users className="w-10 h-10 mb-3 text-foreground/55" />
-                                                    <p className="text-sm">{searchQuery ? 'Không tìm thấy' : 'Chưa có tài khoản bị xóa tự động'}</p>
-                                                </div>
-                                            ) : paginatedDeletedAccounts.map((account) => (
-                                                <article key={account._id} className="rounded-[8px] border border-border/70 bg-card/55 p-3 shadow-sm">
-                                                    <div className="min-w-0">
-                                                        <p className="truncate text-sm font-semibold text-foreground">{account.name || 'Ẩn danh'}</p>
-                                                        <p className="mt-0.5 break-all text-xs text-muted-foreground">{account.email}</p>
-                                                    </div>
-                                                    <div className="mt-3 flex flex-wrap gap-1.5">
-                                                        <span className="inline-flex rounded-[8px] bg-neutral-100 px-2 py-1 text-[11px] font-medium text-muted-foreground dark:bg-neutral-800/50">
-                                                            {account.deletionTrigger === 'verify'
-                                                                ? 'Xác thực'
-                                                                : account.deletionTrigger === 'system'
-                                                                    ? 'Hệ thống'
-                                                                    : 'Đăng nhập'}
-                                                        </span>
-                                                        <span className="inline-flex rounded-[8px] border border-amber-300/60 bg-amber-100/70 px-2 py-1 text-[11px] font-medium text-amber-700 dark:border-amber-700/60 dark:bg-amber-900/30 dark:text-amber-300">
-                                                            Chưa xác thực quá hạn 24h
-                                                        </span>
-                                                    </div>
-                                                    <div className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-                                                        <div>
-                                                            <p>Hạn xác thực</p>
-                                                            <p className="mt-0.5 font-medium text-foreground/80">
-                                                                {account.verificationExpiresAt
-                                                                    ? new Date(account.verificationExpiresAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                                                                    : '--'}
-                                                            </p>
-                                                        </div>
-                                                        <div className="text-right">
-                                                            <p>Thời điểm xóa</p>
-                                                            <p className="mt-0.5 font-medium text-foreground/80">
-                                                                {new Date(account.deletedAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                            </p>
-                                                        </div>
-                                                    </div>
-                                                </article>
-                                            ))}
-                                        </div>
-                                        <div className="hidden md:block overflow-x-auto">
-                                            <table className="w-full text-center">
-                                                <thead>
-                                                    <tr className="text-xs font-medium text-muted-foreground border-b border-border bg-secondary/20">
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Tài khoản</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Email</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Nguồn xóa</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Lý do</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Hạn xác thực</th>
-                                                        <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Thời điểm xóa</th>
-                                                    </tr>
-                                                </thead>
-                                                <tbody className="divide-y divide-border">
-                                                    {isDeletedAccountsLoading ? (
-                                                        <tr>
-                                                            <td colSpan={6} className="px-5 py-12 text-center text-foreground/80">
-                                                                <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
-                                                                <p className="text-sm">Đang tải...</p>
-                                                            </td>
-                                                        </tr>
-                                                    ) : filteredDeletedAccounts.length === 0 ? (
-                                                        <tr>
-                                                            <td colSpan={6} className="px-5 py-12 text-center text-foreground/80">
-                                                                <Users className="w-10 h-10 mx-auto mb-3 text-foreground/55" />
-                                                                <p className="text-sm">{searchQuery ? 'Không tìm thấy' : 'Chưa có tài khoản bị xóa tự động'}</p>
-                                                            </td>
-                                                        </tr>
-                                                    ) : paginatedDeletedAccounts.map((account) => (
-                                                        <tr key={account._id} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
-                                                            <td className="px-5 py-4 text-sm font-medium text-foreground border-r border-border/40 last:border-r-0">
-                                                                {account.name || 'Ẩn danh'}
-                                                            </td>
-                                                            <td className="px-5 py-4 text-sm text-foreground/90 border-r border-border/40 last:border-r-0">
-                                                                {account.email}
-                                                            </td>
-                                                            <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
-                                                                <span className="inline-flex px-2.5 py-1 rounded-[8px] text-xs font-medium bg-neutral-100 dark:bg-neutral-800/50 text-muted-foreground">
-                                                                    {account.deletionTrigger === 'verify'
-                                                                        ? 'Xác thực'
-                                                                        : account.deletionTrigger === 'system'
-                                                                            ? 'Hệ thống'
-                                                                            : 'Đăng nhập'}
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0">
-                                                                <span className="inline-flex px-2.5 py-1 rounded-[8px] text-xs font-medium border border-amber-300/60 dark:border-amber-700/60 bg-amber-100/70 dark:bg-amber-900/30 text-amber-700 dark:text-amber-300">
-                                                                    Chưa xác thực quá hạn 24h
-                                                                </span>
-                                                            </td>
-                                                            <td className="px-5 py-4 text-sm text-muted-foreground text-center whitespace-nowrap border-r border-border/40 last:border-r-0">
-                                                                {account.verificationExpiresAt
-                                                                    ? new Date(account.verificationExpiresAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })
-                                                                    : '--'}
-                                                            </td>
-                                                            <td className="px-5 py-4 text-sm text-muted-foreground text-center whitespace-nowrap border-r border-border/40 last:border-r-0">
-                                                                {new Date(account.deletedAt).toLocaleString('vi-VN', { day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit' })}
-                                                            </td>
-                                                        </tr>
-                                                    ))}
-                                                </tbody>
-                                            </table>
-                                        </div>
-                                        {filteredDeletedAccounts.length > 0 && (
-                                            <div className="px-3 sm:px-5 py-3 border-t border-border/60 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                                                <p className="text-xs text-muted-foreground">
-                                                    Trang {deletedAccountsPage}/{totalDeletedAccountsPages} • Hiển thị {paginatedDeletedAccounts.length}/{filteredDeletedAccounts.length} tài khoản
-                                                </p>
-                                                <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
-                                                        onClick={() => setDeletedAccountsPage((prev) => Math.max(1, prev - 1))}
-                                                        disabled={deletedAccountsPage === 1}
-                                                    >
-                                                        Trước
-                                                    </Button>
-                                                    <Button
-                                                        type="button"
-                                                        size="sm"
-                                                        variant="outline"
-                                                        className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
-                                                        onClick={() => setDeletedAccountsPage((prev) => Math.min(totalDeletedAccountsPages, prev + 1))}
-                                                        disabled={deletedAccountsPage === totalDeletedAccountsPages}
-                                                    >
-                                                        Sau
-                                                    </Button>
-                                                </div>
-                                            </div>
-                                        )}
-                                    </div>
+                            {/* Tags Tab */}
+                            {visitedTabs.tags && (
+                                <div className={activeTab === 'tags' ? 'block' : 'hidden'}>
+                                    <TagsTab
+                                        availablePostTags={availablePostTags}
+                                        tagCounts={tagCounts}
+                                        newTagName={newTagName}
+                                        onNewTagNameChange={setNewTagName}
+                                        isCreatingTag={isCreatingTag}
+                                        onCreateTag={handleCreateTag}
+                                        editingTag={editingTag}
+                                        onEditingTagChange={setEditingTag}
+                                        isUpdatingTag={isUpdatingTag}
+                                        onUpdateTag={handleUpdateTag}
+                                        onDeleteTag={(tag) => setDeleteTarget({ type: 'tag', id: tag, name: tag })}
+                                        searchQuery={searchQuery}
+                                    />
                                 </div>
-                            ) : activeTab === 'tags' ? (
-                                <div className="min-h-[360px] lg:min-h-[680px]">
-                                    <div className="md:hidden p-3 space-y-3">
-                                        {filteredTagNames.length === 0 ? (
-                                            <div className="flex flex-col items-center justify-center rounded-[8px] border border-border/60 bg-card/40 px-4 py-12 text-center text-foreground/80">
-                                                <Tag className="w-10 h-10 mb-3 text-primary/80" />
-                                                <p className="text-sm">{searchQuery ? 'Không tìm thấy tag' : 'Chưa có tag'}</p>
-                                            </div>
-                                        ) : filteredTagNames.map((tag) => (
-                                            <article key={tag} className="rounded-[8px] border border-border/70 bg-card/55 p-3 shadow-sm">
-                                                {editingTag?.oldName === tag ? (
-                                                    <div className="space-y-3">
-                                                        <Input
-                                                            value={editingTag.newName}
-                                                            onChange={(e) => setEditingTag({ ...editingTag, newName: e.target.value })}
-                                                            className="h-10 text-sm text-foreground"
-                                                            autoFocus
-                                                            disabled={isUpdatingTag}
-                                                        />
-                                                        <div className="grid grid-cols-2 gap-2">
-                                                            <Button
-                                                                size="sm"
-                                                                variant="ghost"
-                                                                className="h-9 rounded-[8px] text-muted-foreground"
-                                                                onClick={() => setEditingTag(null)}
-                                                                disabled={isUpdatingTag}
-                                                            >
-                                                                Hủy
-                                                            </Button>
-                                                            <Button
-                                                                size="sm"
-                                                                className="h-9 rounded-[8px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20"
-                                                                onClick={handleUpdateTag}
-                                                                disabled={isUpdatingTag}
-                                                            >
-                                                                {isUpdatingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lưu'}
-                                                            </Button>
-                                                        </div>
-                                                    </div>
-                                                ) : (
-                                                    <>
-                                                        <div className="flex items-start justify-between gap-3">
-                                                            <div className="min-w-0">
-                                                                <span className="inline-flex max-w-full items-center gap-1.5 rounded-[8px] border border-border bg-card px-3 py-1.5 text-sm font-medium text-primary">
-                                                                    <span className="truncate">#{tag}</span>
-                                                                </span>
-                                                                <p className="mt-2 text-xs text-muted-foreground">
-                                                                    {tagCounts[tag] || 0} bài viết đang sử dụng
-                                                                </p>
-                                                            </div>
-                                                        </div>
-                                                        <div className="mt-3 grid grid-cols-2 gap-2">
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setEditingTag({ oldName: tag, newName: tag })}
-                                                                className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
-                                                            >
-                                                                <Pencil className="w-4 h-4" />
-                                                                Sửa
-                                                            </button>
-                                                            <button
-                                                                type="button"
-                                                                onClick={() => setDeleteTarget({ type: 'tag', id: tag, name: tag })}
-                                                                className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
-                                                            >
-                                                                <Trash2 className="w-4 h-4" />
-                                                                Xóa
-                                                            </button>
-                                                        </div>
-                                                    </>
-                                                )}
-                                            </article>
-                                        ))}
-                                    </div>
-                                    <div className="hidden md:block overflow-x-auto">
-                                <table className="w-full text-center">
-                                    <thead>
-                                        <tr className="text-xs font-medium text-muted-foreground border-b border-border">
-                                            <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Tên thẻ (Tag)</th>
-                                            <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Số bài viết đang sử dụng</th>
-                                            <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">Thao tác</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody className="divide-y divide-border">
-                                        {filteredTagNames.map((tag) => (
-                                                <tr key={tag} className="group hover:bg-secondary/70 dark:hover:bg-primary/10 transition-colors">
-                                                    <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
-                                                        {editingTag?.oldName === tag ? (
-                                                            <div className="flex items-center justify-center gap-2">
-                                                                <Input
-                                                                    value={editingTag.newName}
-                                                                    onChange={(e) => setEditingTag({ ...editingTag, newName: e.target.value })}
-                                                                    className="h-8 text-sm text-foreground"
-                                                                    autoFocus
-                                                                    disabled={isUpdatingTag}
-                                                                />
-                                                            </div>
-                                                        ) : (
-                                                            <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] text-sm font-medium bg-card text-primary border border-border">
-                                                                #{tag}
-                                                            </span>
-                                                        )}
-                                                    </td>
-                                                    <td className="px-5 py-4 text-sm text-foreground/90 text-center border-r border-border/40 last:border-r-0">
-                                                        {tagCounts[tag] || 0} bài viết
-                                                    </td>
-                                                    <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
-                                                        <div className="flex justify-center gap-2">
-                                                            {editingTag?.oldName === tag ? (
-                                                                <>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        variant="ghost"
-                                                                        className="h-8 rounded-[8px] text-muted-foreground"
-                                                                        onClick={() => setEditingTag(null)}
-                                                                        disabled={isUpdatingTag}
-                                                                    >
-                                                                        Hủy
-                                                                    </Button>
-                                                                    <Button
-                                                                        size="sm"
-                                                                        className="h-8 rounded-[8px] bg-primary hover:bg-primary/90 text-primary-foreground shadow-md shadow-primary/20"
-                                                                        onClick={handleUpdateTag}
-                                                                        disabled={isUpdatingTag}
-                                                                    >
-                                                                        {isUpdatingTag ? <Loader2 className="w-4 h-4 animate-spin" /> : 'Lưu'}
-                                                                    </Button>
-                                                                </>
-                                                            ) : (
-                                                                <>
-                                                                    <button
-                                                                        onClick={() => setEditingTag({ oldName: tag, newName: tag })}
-                                                                        className="p-2 text-foreground/85 hover:text-primary dark:hover:text-primary/80 hover:bg-secondary/80 rounded-[8px] transition-colors"
-                                                                        title="Sửa tên tag trên toàn bộ bài viết"
-                                                                    >
-                                                                        <Pencil className="w-4 h-4" />
-                                                                    </button>
-                                                                    <button
-                                                                        onClick={() => setDeleteTarget({ type: 'tag', id: tag, name: tag })}
-                                                                        className="p-2 text-foreground/85 hover:text-primary hover:bg-secondary/80 rounded-[8px] transition-colors"
-                                                                        title="Xóa tag khỏi toàn bộ bài viết"
-                                                                    >
-                                                                        <Trash2 className="w-4 h-4" />
-                                                                    </button>
-                                                                </>
-                                                            )}
-                                                        </div>
-                                                    </td>
-                                                </tr>
-                                            ))}
-                                    </tbody>
-                                </table>
-                                    </div>
-                                </div>
-                            ) : null}
+                            )}
                         </div>
                     </div>
-                </div>
-            </main >
+                </main>
             </div>
+
+            {/* Mobile Bottom Navigation */}
             <nav className="lg:hidden fixed bottom-[calc(0.75rem+env(safe-area-inset-bottom))] left-1/2 -translate-x-1/2 z-40 w-[calc(100%-1rem)] max-w-md rounded-[8px] bg-card/85 backdrop-blur-xl border border-border/70 shadow-[0_10px_30px_rgba(0,0,0,0.18)] px-2 py-1.5">
                 <div className="grid grid-cols-5 gap-1">
                     <Link
@@ -1944,32 +767,44 @@ export default function AdminDashboard() {
                         <span>Trang chủ</span>
                     </Link>
                     <button
-                        onClick={() => setActiveTab('posts')}
-                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'posts' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'}`}
+                        type="button"
+                        onClick={() => handleTabChange('posts')}
+                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${
+                            activeTab === 'posts' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'
+                        }`}
                         title="Bài viết"
                     >
                         <FileText className="w-4 h-4" />
                         <span>Bài viết</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('shares')}
-                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'shares' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'}`}
+                        type="button"
+                        onClick={() => handleTabChange('shares')}
+                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${
+                            activeTab === 'shares' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'
+                        }`}
                         title="Chia sẻ"
                     >
                         <Share2 className="w-4 h-4" />
                         <span>Chia sẻ</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('tags')}
-                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'tags' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'}`}
+                        type="button"
+                        onClick={() => handleTabChange('tags')}
+                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${
+                            activeTab === 'tags' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'
+                        }`}
                         title="Tag"
                     >
                         <Tag className="w-4 h-4" />
                         <span>Tag</span>
                     </button>
                     <button
-                        onClick={() => setActiveTab('users')}
-                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${activeTab === 'users' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'}`}
+                        type="button"
+                        onClick={() => handleTabChange('users')}
+                        className={`flex flex-col items-center justify-center gap-0.5 rounded-[8px] py-1.5 text-[10px] font-medium transition-colors ${
+                            activeTab === 'users' ? 'bg-secondary text-primary' : 'text-foreground/80 hover:bg-secondary/70 hover:text-primary'
+                        }`}
                         title="Người dùng"
                     >
                         <Users className="w-4 h-4" />
@@ -1977,46 +812,56 @@ export default function AdminDashboard() {
                     </button>
                 </div>
             </nav>
+
+            {/* Dialogs */}
             {isCreateDialogOpen && (
-            <CreatePostForm
-                open={isCreateDialogOpen}
-                onOpenChange={setIsCreateDialogOpen}
-                onPostCreated={fetchPosts}
-                availableTags={availablePostTags}
-                availableAuthors={availableAuthors}
-                availableTranslators={availableTranslators}
-            />
+                <CreatePostForm
+                    open={isCreateDialogOpen}
+                    onOpenChange={setIsCreateDialogOpen}
+                    onPostCreated={fetchPosts}
+                    availableTags={availablePostTags}
+                    availableAuthors={availableAuthors}
+                    availableTranslators={availableTranslators}
+                />
             )}
             {selectedPost && isEditOpen && (
                 <EditPostForm
                     post={selectedPost}
                     open={isEditOpen}
                     onOpenChange={setIsEditOpen}
-                    onPostUpdated={() => { setIsEditOpen(false); fetchPosts(); }}
+                    onPostUpdated={() => {
+                        setIsEditOpen(false);
+                        fetchPosts();
+                    }}
                     availableTags={availablePostTags}
                 />
-            )
-            }
+            )}
             {deleteTarget && (
-            <DeleteConfirmDialog
-                open={!!deleteTarget}
-                onOpenChange={(open) => {
-                    if (!open && !isDeletingTarget) {
-                        setDeleteTarget(null);
+                <DeleteConfirmDialog
+                    open={!!deleteTarget}
+                    onOpenChange={(open) => {
+                        if (!open && !isDeletingTarget) {
+                            setDeleteTarget(null);
+                        }
+                    }}
+                    onConfirm={handleConfirmDelete}
+                    isLoading={isDeletingTarget}
+                    title={
+                        deleteTarget?.type === 'user'
+                            ? 'Xóa người dùng?'
+                            : deleteTarget?.type === 'post'
+                                ? 'Xóa bài viết?'
+                                : 'Xóa thẻ tag?'
                     }
-                }}
-                onConfirm={handleConfirmDelete}
-                isLoading={isDeletingTarget}
-                title={deleteTarget?.type === 'user' ? 'Xóa người dùng?' : deleteTarget?.type === 'post' ? 'Xóa bài viết?' : 'Xóa thẻ tag?'}
-                description={
-                    deleteTarget?.type === 'user'
-                        ? `Bạn có chắc chắn muốn xóa người dùng "${deleteTarget.email}"? Hành động này không thể hoàn tác.`
-                        : deleteTarget?.type === 'post'
-                            ? `Bạn có chắc chắn muốn xóa bài viết "${deleteTarget?.title || ''}"? Hành động này không thể hoàn tác.`
-                            : `Bạn có chắc muốn xóa thẻ tag "#${deleteTarget?.name || ''}" khỏi toàn bộ ${tagCounts[deleteTarget?.name || ''] || 0} bài viết? Hành động này không thể hoàn tác.`
-                }
-                confirmLabel={isDeletingTarget ? 'Đang xóa...' : 'Xóa'}
-            />
+                    description={
+                        deleteTarget?.type === 'user'
+                            ? `Bạn có chắc chắn muốn xóa người dùng "${deleteTarget.email}"? Hành động này không thể hoàn tác.`
+                            : deleteTarget?.type === 'post'
+                                ? `Bạn có chắc chắn muốn xóa bài viết "${deleteTarget?.title || ''}"? Hành động này không thể hoàn tác.`
+                                : `Bạn có chắc muốn xóa thẻ tag "#${deleteTarget?.name || ''}" khỏi toàn bộ ${tagCounts[deleteTarget?.name || ''] || 0} bài viết? Hành động này không thể hoàn tác.`
+                    }
+                    confirmLabel={isDeletingTarget ? 'Đang xóa...' : 'Xóa'}
+                />
             )}
             {selectedSharePost && isShareDialogOpen && (
                 <ShareDialog
@@ -2032,8 +877,6 @@ export default function AdminDashboard() {
                     postTitle={selectedSharePost.title}
                 />
             )}
-        </div >
+        </div>
     );
 }
-
-
