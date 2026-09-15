@@ -27,7 +27,6 @@ import {
   Loader2,
   Shield,
   HelpCircle,
-  Settings,
   ChevronDown,
   X,
   Users,
@@ -476,13 +475,6 @@ export function ShareDialog({
                   Chia sẻ &ldquo;{postTitle || shareData?.title || 'Truyện'}&rdquo;
                 </DialogTitle>
               <div className="flex items-center gap-1 shrink-0 text-muted-foreground">
-                <button
-                  type="button"
-                  className="w-8 h-8 rounded-[8px] hover:bg-muted flex items-center justify-center transition-colors cursor-pointer text-muted-foreground hover:text-foreground"
-                  title="Cài đặt chia sẻ"
-                >
-                  <Settings className="w-4 h-4" />
-                </button>
                 <button
                   type="button"
                   onClick={() => onOpenChange(false)}
