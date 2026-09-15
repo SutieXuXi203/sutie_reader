@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback, useTransition } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -70,9 +70,8 @@ export default function AdminDashboard() {
     const { user, isLoading: isAuthLoading } = useAuth();
     const router = useRouter();
 
-    // Tab Navigation with React 19 Transition
+    // Tab Navigation: Synchronous 0ms switch
     const [activeTab, setActiveTab] = useState<AdminTabKey>('posts');
-    const [, startTransition] = useTransition();
 
     // Lazy mount + Keep alive pattern
     const [visitedTabs, setVisitedTabs] = useState<Record<AdminTabKey, boolean>>({
@@ -84,9 +83,7 @@ export default function AdminDashboard() {
 
     const handleTabChange = useCallback((newTab: AdminTabKey) => {
         setVisitedTabs((prev) => (prev[newTab] ? prev : { ...prev, [newTab]: true }));
-        startTransition(() => {
-            setActiveTab(newTab);
-        });
+        setActiveTab(newTab);
     }, []);
 
     // Core Data States
@@ -266,9 +263,23 @@ export default function AdminDashboard() {
         return counts;
     }, [posts]);
 
-    // Handlers
-    const handleDelete = useCallback((post: Post) => {
+    // Memoized Handlers for Zero Re-render Propagation
+    const handleEditPost = useCallback((p: Post) => {
+        setSelectedPost(p);
+        setIsEditOpen(true);
+    }, []);
+
+    const handleDeletePost = useCallback((post: Post) => {
         setDeleteTarget({ type: 'post', id: post._id, title: post.title });
+    }, []);
+
+    const handleSearchTagClick = useCallback((tag: string) => {
+        setSearchQuery(tag);
+    }, []);
+
+    const handleOpenShareDialog = useCallback((p: { id: string; title: string }) => {
+        setSelectedSharePost(p);
+        setIsShareDialogOpen(true);
     }, []);
 
     const handleDeleteUser = useCallback((targetUser: AdminUser) => {
@@ -407,6 +418,18 @@ export default function AdminDashboard() {
             setIsCreatingTag(false);
         }
     }, [newTagName, fetchTags]);
+
+    const handleDeleteTag = useCallback((tag: string) => {
+        setDeleteTarget({ type: 'tag', id: tag, name: tag });
+    }, []);
+
+    const handleNewTagNameChange = useCallback((val: string) => {
+        setNewTagName(val);
+    }, []);
+
+    const handleEditingTagChange = useCallback((val: { oldName: string; newName: string } | null) => {
+        setEditingTag(val);
+    }, []);
 
     if (isAuthLoading || !user || user.role !== 'admin') {
         return (
@@ -678,77 +701,67 @@ export default function AdminDashboard() {
                             </div>
                         </div>
 
-                        {/* Tabs Container: Keep-Alive & Lazy Mount */}
+                        {/* Tabs Container: Keep-Alive & Lazy Mount with Custom Memo Optimization */}
                         <div className="w-full">
                             {/* Posts Tab */}
-                            <div className={activeTab === 'posts' ? 'block' : 'hidden'}>
-                                <PostsTab
-                                    posts={posts}
-                                    isLoading={isLoadingPosts}
-                                    searchQuery={searchQuery}
-                                    onSearchTagClick={(tag) => setSearchQuery(tag)}
-                                    availablePostTags={availablePostTags}
-                                    onEditPost={(p) => {
-                                        setSelectedPost(p);
-                                        setIsEditOpen(true);
-                                    }}
-                                    onDeletePost={handleDelete}
-                                />
-                            </div>
+                            <PostsTab
+                                isActive={activeTab === 'posts'}
+                                posts={posts}
+                                isLoading={isLoadingPosts}
+                                searchQuery={searchQuery}
+                                onSearchTagClick={handleSearchTagClick}
+                                availablePostTags={availablePostTags}
+                                onEditPost={handleEditPost}
+                                onDeletePost={handleDeletePost}
+                            />
 
                             {/* Shares Tab */}
                             {visitedTabs.shares && (
-                                <div className={activeTab === 'shares' ? 'block' : 'hidden'}>
-                                    <SharesTab
-                                        sharedPosts={sharedPosts}
-                                        isLoading={isSharesLoading}
-                                        searchQuery={searchQuery}
-                                        onOpenShareDialog={(p) => {
-                                            setSelectedSharePost(p);
-                                            setIsShareDialogOpen(true);
-                                        }}
-                                    />
-                                </div>
+                                <SharesTab
+                                    isActive={activeTab === 'shares'}
+                                    sharedPosts={sharedPosts}
+                                    isLoading={isSharesLoading}
+                                    searchQuery={searchQuery}
+                                    onOpenShareDialog={handleOpenShareDialog}
+                                />
                             )}
 
                             {/* Users Tab */}
                             {visitedTabs.users && (
-                                <div className={activeTab === 'users' ? 'block' : 'hidden'}>
-                                    <UsersTab
-                                        currentUserEmail={user?.email}
-                                        usersList={usersList}
-                                        isUsersLoading={isUsersLoading}
-                                        usersLoadError={usersLoadError}
-                                        onRefreshUsers={fetchUsers}
-                                        updatingRoleId={updatingRoleId}
-                                        onChangeRole={handleChangeRole}
-                                        onDeleteUser={handleDeleteUser}
-                                        deletedAccounts={deletedAccounts}
-                                        isDeletedAccountsLoading={isDeletedAccountsLoading}
-                                        onRefreshDeletedAccounts={fetchDeletedAccounts}
-                                        searchQuery={searchQuery}
-                                    />
-                                </div>
+                                <UsersTab
+                                    isActive={activeTab === 'users'}
+                                    currentUserEmail={user?.email}
+                                    usersList={usersList}
+                                    isUsersLoading={isUsersLoading}
+                                    usersLoadError={usersLoadError}
+                                    onRefreshUsers={fetchUsers}
+                                    updatingRoleId={updatingRoleId}
+                                    onChangeRole={handleChangeRole}
+                                    onDeleteUser={handleDeleteUser}
+                                    deletedAccounts={deletedAccounts}
+                                    isDeletedAccountsLoading={isDeletedAccountsLoading}
+                                    onRefreshDeletedAccounts={fetchDeletedAccounts}
+                                    searchQuery={searchQuery}
+                                />
                             )}
 
                             {/* Tags Tab */}
                             {visitedTabs.tags && (
-                                <div className={activeTab === 'tags' ? 'block' : 'hidden'}>
-                                    <TagsTab
-                                        availablePostTags={availablePostTags}
-                                        tagCounts={tagCounts}
-                                        newTagName={newTagName}
-                                        onNewTagNameChange={setNewTagName}
-                                        isCreatingTag={isCreatingTag}
-                                        onCreateTag={handleCreateTag}
-                                        editingTag={editingTag}
-                                        onEditingTagChange={setEditingTag}
-                                        isUpdatingTag={isUpdatingTag}
-                                        onUpdateTag={handleUpdateTag}
-                                        onDeleteTag={(tag) => setDeleteTarget({ type: 'tag', id: tag, name: tag })}
-                                        searchQuery={searchQuery}
-                                    />
-                                </div>
+                                <TagsTab
+                                    isActive={activeTab === 'tags'}
+                                    availablePostTags={availablePostTags}
+                                    tagCounts={tagCounts}
+                                    newTagName={newTagName}
+                                    onNewTagNameChange={handleNewTagNameChange}
+                                    isCreatingTag={isCreatingTag}
+                                    onCreateTag={handleCreateTag}
+                                    editingTag={editingTag}
+                                    onEditingTagChange={handleEditingTagChange}
+                                    isUpdatingTag={isUpdatingTag}
+                                    onUpdateTag={handleUpdateTag}
+                                    onDeleteTag={handleDeleteTag}
+                                    searchQuery={searchQuery}
+                                />
                             )}
                         </div>
                     </div>

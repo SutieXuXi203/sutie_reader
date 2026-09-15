@@ -78,7 +78,7 @@ export interface UserRoleSelectProps {
   className?: string;
 }
 
-export function UserRoleSelect({
+export const UserRoleSelect = React.memo(function UserRoleSelect({
   role,
   onChange,
   disabled = false,
@@ -191,4 +191,4 @@ export function UserRoleSelect({
       </Select>
     </div>
   );
-}
+});
