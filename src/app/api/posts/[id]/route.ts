@@ -1,7 +1,7 @@
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { Bookmark } from '@/models/Bookmark';
-import { NextRequest, NextResponse } from 'next/server';
+import { NextRequest, NextResponse, after } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
@@ -396,6 +396,7 @@ function computeStoryUpdateDiff(
   existingPost: {
     title: string;
     author?: string;
+    translator?: string;
     description?: string;
     tags?: string[];
   },
@@ -403,6 +404,7 @@ function computeStoryUpdateDiff(
   updatePayload: {
     title: string;
     author: string;
+    translator?: string;
     description?: string;
     tags: string[];
   },
@@ -418,8 +420,15 @@ function computeStoryUpdateDiff(
   // Author change
   const oldAuthor = (existingPost.author || '').trim();
   const newAuthor = (updatePayload.author || '').trim();
-  if (oldAuthor && newAuthor && oldAuthor !== newAuthor) {
-    changes.push(`Đổi tác giả: "${oldAuthor}" -> "${newAuthor}"`);
+  if (oldAuthor !== newAuthor) {
+    changes.push(`Đổi tác giả: "${oldAuthor || 'Chưa có'}" -> "${newAuthor || 'Chưa có'}"`);
+  }
+
+  // Translator change
+  const oldTranslator = (existingPost.translator || '').trim();
+  const newTranslator = (updatePayload.translator || '').trim();
+  if (oldTranslator !== newTranslator) {
+    changes.push(`Đổi nhóm dịch: "${oldTranslator || 'Chưa có'}" -> "${newTranslator || 'Chưa có'}"`);
   }
 
   // Description change
@@ -433,10 +442,18 @@ function computeStoryUpdateDiff(
 
   // Tags change
   const oldTagsSorted = Array.isArray(existingPost.tags)
-    ? [...existingPost.tags].map((t) => t.toLowerCase()).sort().join(',')
+    ? [...existingPost.tags]
+        .filter((t): t is string => typeof t === 'string')
+        .map((t) => t.toLowerCase())
+        .sort()
+        .join(',')
     : '';
   const newTagsSorted = Array.isArray(updatePayload.tags)
-    ? [...updatePayload.tags].map((t) => t.toLowerCase()).sort().join(',')
+    ? [...updatePayload.tags]
+        .filter((t): t is string => typeof t === 'string')
+        .map((t) => t.toLowerCase())
+        .sort()
+        .join(',')
     : '';
   if (oldTagsSorted !== newTagsSorted) {
     changes.push(`Cập nhật thể loại: ${updatePayload.tags.join(', ') || 'Không có'}`);
@@ -457,8 +474,10 @@ function computeStoryUpdateDiff(
     const currChap = currentChapters.find((c) => c.chapterNumber === nextChap.chapterNumber);
     if (!currChap) continue;
 
-    if (currChap.title.trim() !== nextChap.title.trim()) {
-      changes.push(`Đổi tên Chương ${currChap.chapterNumber}: "${currChap.title}" -> "${nextChap.title}"`);
+    const currTitle = (currChap.title || '').trim();
+    const nextTitle = (nextChap.title || '').trim();
+    if (currTitle !== nextTitle) {
+      changes.push(`Đổi tên Chương ${currChap.chapterNumber}: "${currTitle}" -> "${nextTitle}"`);
     }
 
     if ((currChap.content || '').trim() !== (nextChap.content || '').trim()) {
@@ -621,45 +640,49 @@ export async function PUT(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
-    // Chạy các tác vụ I/O chậm (Google Drive folder rename, Telegram notification) ở background không block response
+    // Gửi thông báo Telegram trực tiếp nếu không có tác vụ upload ảnh từ client (đảm bảo hoàn thành trước khi response kết thúc trên serverless)
     const hasUploadTask = payload?.hasUploadTask === true;
-    void (async () => {
-      if (titleChanged) {
-        console.log(`Bắt đầu đổi tên folder Drive từ "${existingPost.title}" sang "${title}"...`);
-        try {
-          await renameDriveFolder(id, existingPost.title, title);
-        } catch (err) {
-          console.warn('Lỗi khi đổi tên folder Drive:', err);
+    if (!hasUploadTask) {
+      try {
+        const changes = computeStoryUpdateDiff(
+          existingPost,
+          currentChapters,
+          updatePayload,
+          nextChapters
+        );
+        const tgRes = await sendTelegramMessage(
+          formatters.update(updated.title, changes, updated.author)
+        );
+        if (!tgRes.success) {
+          console.warn('Gửi thông báo Telegram cập nhật truyện không thành công:', tgRes.error);
         }
+      } catch (telegramErr) {
+        console.warn('Lỗi khi gửi thông báo cập nhật truyện qua Telegram:', telegramErr);
       }
+    }
 
-      for (const change of chapterTitleChanges) {
-        console.log(`Bắt đầu đổi tên thư mục chương từ "${change.oldTitle}" sang "${change.newTitle}"...`);
-        try {
-          await renameDriveChapterFolder(id, title, change.oldTitle, change.newTitle, change.chapterNumber);
-        } catch (err) {
-          console.warn('Lỗi khi đổi tên thư mục chương Drive:', err);
+    // Các tác vụ Google Drive chạy nền qua after() của Next.js
+    if (titleChanged || chapterTitleChanges.length > 0) {
+      after(async () => {
+        if (titleChanged) {
+          console.log(`Bắt đầu đổi tên folder Drive từ "${existingPost.title}" sang "${title}"...`);
+          try {
+            await renameDriveFolder(id, existingPost.title, title);
+          } catch (err) {
+            console.warn('Lỗi khi đổi tên folder Drive:', err);
+          }
         }
-      }
 
-      if (!hasUploadTask) {
-        try {
-          const changes = computeStoryUpdateDiff(
-            existingPost,
-            currentChapters,
-            updatePayload,
-            nextChapters
-          );
-          await sendTelegramMessage(
-            formatters.update(updated.title, changes, updated.author)
-          );
-        } catch (telegramErr) {
-          console.warn('Lỗi khi gửi thông báo cập nhật truyện qua Telegram:', telegramErr);
+        for (const change of chapterTitleChanges) {
+          console.log(`Bắt đầu đổi tên thư mục chương từ "${change.oldTitle}" sang "${change.newTitle}"...`);
+          try {
+            await renameDriveChapterFolder(id, title, change.oldTitle, change.newTitle, change.chapterNumber);
+          } catch (err) {
+            console.warn('Lỗi khi đổi tên thư mục chương Drive:', err);
+          }
         }
-      }
-    })().catch((bgErr) => {
-      console.warn('Lỗi xử lý tác vụ nền sau khi cập nhật bài viết:', bgErr);
-    });
+      });
+    }
 
     invalidateApiCache('posts:');
     try {
@@ -707,26 +730,27 @@ export async function DELETE(
 
     const isDraft = request.nextUrl.searchParams.get('isDraft') === 'true';
 
-    // Run Drive deletion and Telegram notification in the background
-    void (async () => {
+    if (!isDraft) {
+      try {
+        const chapterCount = Array.isArray(deletedPost.chapters) ? deletedPost.chapters.length : 0;
+        const tgRes = await sendTelegramMessage(
+          formatters.delete(deletedPost.title, deletedPost.author, chapterCount)
+        );
+        if (!tgRes.success) {
+          console.warn('Gửi thông báo Telegram xóa truyện không thành công:', tgRes.error);
+        }
+      } catch (telegramErr) {
+        console.warn('Lỗi khi gửi thông báo xóa truyện qua Telegram:', telegramErr);
+      }
+    }
+
+    // Chạy xóa folder Google Drive trong background qua after()
+    after(async () => {
       try {
         await deleteDriveFolder(id, deletedPost.title);
       } catch (err) {
         console.warn('Lỗi khi xóa folder Drive:', err);
       }
-
-      if (!isDraft) {
-        try {
-          const chapterCount = Array.isArray(deletedPost.chapters) ? deletedPost.chapters.length : 0;
-          await sendTelegramMessage(
-            formatters.delete(deletedPost.title, deletedPost.author, chapterCount)
-          );
-        } catch (telegramErr) {
-          console.warn('Lỗi khi gửi thông báo xóa truyện qua Telegram:', telegramErr);
-        }
-      }
-    })().catch((bgErr) => {
-      console.warn('Lỗi xử lý tác vụ nền sau khi xóa bài viết:', bgErr);
     });
 
     invalidateApiCache('posts:');
