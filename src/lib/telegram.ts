@@ -146,6 +146,17 @@ export const editTelegramMessage = async (
   }
 };
 
+const getVietnamTimeStrings = (date = new Date()) => {
+  const timeStr = date.toLocaleTimeString('vi-VN', {
+    hour12: false,
+    timeZone: 'Asia/Ho_Chi_Minh',
+  });
+  const dateStr = date.toLocaleDateString('vi-VN', {
+    timeZone: 'Asia/Ho_Chi_Minh',
+  });
+  return { timeStr, dateStr };
+};
+
 export const formatters = {
   start: (title: string, total: number) => {
     const isUpdate = title.toLowerCase().includes('cập nhật');
@@ -189,9 +200,7 @@ export const formatters = {
   },
 
   success: (title: string, total: number) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
-    const dateStr = now.toLocaleDateString('vi-VN');
+    const { timeStr, dateStr } = getVietnamTimeStrings();
     const isUpdate = title.toLowerCase().includes('cập nhật');
     const header = isUpdate ? '🔄 [CẬP NHẬT THÀNH CÔNG]' : '📤 [TẢI LÊN THÀNH CÔNG]';
     const cleanTitle = title.replace(/^Đang cập nhật ["“']?([^"”']+)["”']?$/i, '$1').trim();
@@ -210,9 +219,7 @@ export const formatters = {
   },
 
   update: (title: string, details?: string[] | string, author?: string) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
-    const dateStr = now.toLocaleDateString('vi-VN');
+    const { timeStr, dateStr } = getVietnamTimeStrings();
     const cleanTitle = title.replace(/^Đang cập nhật ["“']?([^"”']+)["”']?$/i, '$1').trim();
 
     const lines = [
@@ -242,9 +249,7 @@ export const formatters = {
   },
 
   delete: (title: string, author?: string, chapterCount?: number) => {
-    const now = new Date();
-    const timeStr = now.toLocaleTimeString('vi-VN', { hour12: false });
-    const dateStr = now.toLocaleDateString('vi-VN');
+    const { timeStr, dateStr } = getVietnamTimeStrings();
 
     const lines = [
       '🗑️ [XÓA BỘ TRUYỆN]',
@@ -266,11 +271,13 @@ export const formatters = {
   },
 
   error: (title: string, errorMessage?: string) => {
+    const { timeStr, dateStr } = getVietnamTimeStrings();
     const cleanTitle = title.replace(/^Đang cập nhật ["“']?([^"”']+)["”']?$/i, '$1').trim();
     return [
       '❌ [TẢI LÊN THẤT BẠI]',
       `Tiêu đề: ${cleanTitle}`,
       `Lỗi: ${errorMessage || 'Không rõ nguyên nhân'}`,
+      `Thời gian: ${timeStr} ngày ${dateStr}`,
     ].join('\n');
   },
 };

@@ -13,7 +13,7 @@ import { cn } from "@/lib/utils";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getCurrentUser } from "@/lib/server-auth";
 
-const inter = Inter({subsets:['latin'],variable:'--font-sans'});
+const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 const sfPro = localFont({
   src: [
@@ -37,8 +37,7 @@ const sfPro = localFont({
 });
 
 export const metadata: Metadata = {
-  title: "Sutie Xù Xì ",
-  description: "Nơi lưu giữ những bản dịch thuật của Sutie Xù Xì.",
+  title: "Lubu Corp",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",
@@ -67,11 +66,11 @@ export default async function RootLayout({
           <Providers initialUser={initialUser}>
             <UploadProgressProvider>
               <SmoothScrollProvider>
-              <SiteNav />
-              {children}
-              <GooeyToastProvider />
-            </SmoothScrollProvider>
-          </UploadProgressProvider>
+                <SiteNav />
+                {children}
+                <GooeyToastProvider />
+              </SmoothScrollProvider>
+            </UploadProgressProvider>
           </Providers>
         </div>
         <SpeedInsights />
