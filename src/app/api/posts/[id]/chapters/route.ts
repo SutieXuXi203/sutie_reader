@@ -3,6 +3,7 @@ import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
+import { canViewPost } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
@@ -56,8 +57,16 @@ export async function GET(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
-    const chapters = getPostChapters(post);
     const user = await getAuthUser(request);
+    const decision = canViewPost(user, post as any);
+    if (!decision.allowed) {
+      return NextResponse.json(
+        { error: decision.reason, message: decision.message },
+        { status: decision.reason === 'REQUIRE_LOGIN' ? 401 : 403 }
+      );
+    }
+
+    const chapters = getPostChapters(post);
     const signedChapters = user
       ? chapters.map((chapter) => ({
           ...chapter,

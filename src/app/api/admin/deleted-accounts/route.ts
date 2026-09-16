@@ -1,19 +1,11 @@
 import { connectDB } from '@/lib/db';
 import { DeletedAccount } from '@/models/DeletedAccount';
 import { NextRequest, NextResponse } from 'next/server';
-import { jwtVerify } from 'jose';
-
-import { getJwtSecret } from '@/lib/server-auth';
+import { isAdmin } from '@/lib/auth';
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Chưa xác thực' }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, getJwtSecret());
-    if (!payload || payload.role !== 'admin') {
+    if (!(await isAdmin(request))) {
       return NextResponse.json({ error: 'Không có quyền truy cập' }, { status: 403 });
     }
 

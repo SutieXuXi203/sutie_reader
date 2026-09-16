@@ -1,21 +1,13 @@
-import { jwtVerify } from 'jose';
+import { isAdmin } from '@/lib/auth';
 import { NextRequest, NextResponse } from 'next/server';
 
 import { connectDB } from '@/lib/db';
 import { cleanupExpiredUnverifiedUsers } from '@/lib/unverifiedUserCleanup';
 import { User } from '@/models/User';
 
-import { getJwtSecret } from '@/lib/server-auth';
-
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get('token')?.value;
-    if (!token) {
-      return NextResponse.json({ error: 'Chưa xác thực' }, { status: 401 });
-    }
-
-    const { payload } = await jwtVerify(token, getJwtSecret());
-    if (!payload || payload.role !== 'admin') {
+    if (!(await isAdmin(request))) {
       return NextResponse.json({ error: 'Không có quyền truy cập' }, { status: 403 });
     }
 

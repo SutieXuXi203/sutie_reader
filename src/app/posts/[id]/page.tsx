@@ -6,6 +6,7 @@ import { getApiCache, setApiCache } from '@/lib/api-cache';
 import PostDetailClient from './PostDetailClient';
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/server-auth';
+import { canViewPost } from '@/lib/permissions';
 
 export const maxDuration = 60;
 export const revalidate = 60;
@@ -93,8 +94,8 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   }
 
   const user = await getCurrentUser();
-  const accessType = serialized.accessType || 'restricted';
-  const isFullAccess = user?.role === 'admin' || user?.role === 'user';
+  const decision = canViewPost(user, serialized);
+  const hasAccess = decision.allowed;
   const userEmail = user?.email?.toLowerCase();
   const isShared = Boolean(
     user &&
@@ -105,7 +106,6 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
         (s.userId && s.userId.toString() === user.id)
     )
   );
-  const hasAccess = Boolean(user && (accessType === 'public' || isFullAccess || isShared));
 
   // Lọc dữ liệu an toàn trước khi gửi xuống client:
   // Nếu không có quyền truy cập, tuyệt đối không gửi chapters, images, content hay emails

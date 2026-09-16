@@ -7,7 +7,7 @@ export interface IDeletedAccount extends Document {
   originalUserId?: string;
   email: string;
   name?: string;
-  role?: 'user' | 'admin';
+  role?: 'guest' | 'user' | 'admin';
   verificationExpiresAt?: Date;
   deletionReason: AutoDeletionReason;
   deletionTrigger: AutoDeletionTrigger;
@@ -37,8 +37,8 @@ const DeletedAccountSchema = new Schema<IDeletedAccount>(
     },
     role: {
       type: String,
-      enum: ['user', 'admin'],
-      default: 'user',
+      enum: ['guest', 'user', 'admin'],
+      default: 'guest',
     },
     verificationExpiresAt: {
       type: Date,

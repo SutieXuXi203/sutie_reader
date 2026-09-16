@@ -4,6 +4,7 @@ import type { NextRequest } from 'next/server';
 export function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
+  // Bỏ qua các tệp tĩnh, tài nguyên hệ thống Next.js và API routes
   if (
     pathname.startsWith('/_next') ||
     pathname.startsWith('/api') ||
@@ -16,6 +17,15 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Chặn truy cập trang /admin nếu chưa có token đăng nhập
+  if (pathname.startsWith('/admin')) {
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
+  // Kiểm tra mã PIN bảo vệ toàn trang (nếu có cấu hình UNLOCK_PIN)
   const ACCESS_COOKIE_NAME = 'site_access_token';
   const SECRET_TOKEN = process.env.UNLOCK_PIN;
 
@@ -38,11 +48,11 @@ export function proxy(request: NextRequest) {
 export const config = {
   matcher: [
     /*
-     * Match all request paths except for the ones starting with:
+     * Khớp tất cả các đường dẫn trừ:
      * - api (API routes)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
+     * - _next/static (tệp tĩnh)
+     * - _next/image (tối ưu hóa ảnh)
+     * - favicon.ico (icon trình duyệt)
      */
     '/((?!api|_next/static|_next/image|favicon.ico).*)',
   ],

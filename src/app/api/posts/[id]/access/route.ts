@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
-import { getAuthUser } from '@/lib/auth';
+import { getAuthUser, isAdmin } from '@/lib/auth';
+import { canViewPost } from '@/lib/permissions';
 
 export async function POST(
   request: NextRequest,
@@ -20,9 +21,17 @@ export async function POST(
     }
 
     await connectDB();
-    const post = await Post.findById(id).select('accessedUsers');
+    const post = await Post.findById(id).select('accessType sharedWith accessedUsers');
     if (!post) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
+    }
+
+    const decision = canViewPost(user, post as any);
+    if (!decision.allowed) {
+      return NextResponse.json(
+        { error: decision.reason, message: decision.message },
+        { status: decision.reason === 'REQUIRE_LOGIN' ? 401 : 403 }
+      );
     }
 
     if (!Array.isArray(post.accessedUsers)) {
@@ -95,6 +104,13 @@ export async function GET(
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    if (!(await isAdmin(request))) {
+      return NextResponse.json(
+        { error: 'Chỉ Quản trị viên mới có quyền xem danh sách này' },
+        { status: 403 }
+      );
+    }
+
     const { id } = await params;
     if (!ObjectId.isValid(id)) {
       return NextResponse.json({ error: 'ID bài viết không hợp lệ' }, { status: 400 });
