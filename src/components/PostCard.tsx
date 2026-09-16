@@ -84,7 +84,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       setIsDeleting(false);
     }
   };
-  const handleShare = (e: React.MouseEvent) => {
+  const handleShare = async (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (isAdmin) {
@@ -92,12 +92,38 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
     } else {
       const origin = typeof window !== 'undefined' ? window.location.origin : '';
       const url = `${origin}/posts/${post._id}`;
-      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
-        navigator.clipboard.writeText(url).then(() => {
-          notify.success('Đã sao chép liên kết truyện');
-        }).catch(() => {
-          notify.error('Không thể sao chép liên kết');
-        });
+      let success = false;
+      try {
+        if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+          await navigator.clipboard.writeText(url);
+          success = true;
+        }
+      } catch {
+        // Fallback below
+      }
+
+      if (!success && typeof document !== 'undefined') {
+        try {
+          const textArea = document.createElement('textarea');
+          textArea.value = url;
+          textArea.style.position = 'fixed';
+          textArea.style.top = '0';
+          textArea.style.left = '0';
+          textArea.style.opacity = '0';
+          document.body.appendChild(textArea);
+          textArea.focus();
+          textArea.select();
+          success = document.execCommand('copy');
+          document.body.removeChild(textArea);
+        } catch {
+          // Ignore
+        }
+      }
+
+      if (success) {
+        notify.success('Đã sao chép liên kết truyện');
+      } else {
+        notify.error('Không thể sao chép liên kết');
       }
     }
   };

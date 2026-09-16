@@ -343,25 +343,39 @@ export function ShareDialog({
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const shareUrl = `${origin}/posts/${postId}`;
 
+    let success = false;
     try {
       if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
         await navigator.clipboard.writeText(shareUrl);
-      } else {
+        success = true;
+      }
+    } catch {
+      // Fallback below
+    }
+
+    if (!success && typeof document !== 'undefined') {
+      try {
         const textArea = document.createElement('textarea');
         textArea.value = shareUrl;
         textArea.style.position = 'fixed';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
         textArea.style.opacity = '0';
         document.body.appendChild(textArea);
         textArea.focus();
         textArea.select();
-        document.execCommand('copy');
+        success = document.execCommand('copy');
         document.body.removeChild(textArea);
+      } catch (err) {
+        console.error('Lỗi sao chép dự phòng:', err);
       }
+    }
+
+    if (success) {
       setHasCopied(true);
       notify.success('Đã sao chép đường liên kết');
       setTimeout(() => setHasCopied(false), 2500);
-    } catch (err) {
-      console.error('Lỗi sao chép liên kết:', err);
+    } else {
       notify.error('Không thể sao chép liên kết');
     }
   };

@@ -640,10 +640,14 @@ html.lenis body {
 }
 
 
+[data-sonner-toaster] {
+  z-index: 999999999 !important;
+}
+
 [data-sonner-toaster][data-x-position='center'] {
   left: 0 !important;
   right: 0 !important;
-  top: calc(env(safe-area-inset-top) + 18px) !important;
+  top: calc(env(safe-area-inset-top) + 72px) !important;
   bottom: auto !important;
   transform: none !important;
   width: 100% !important;

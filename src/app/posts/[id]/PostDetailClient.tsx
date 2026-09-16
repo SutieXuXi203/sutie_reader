@@ -12,7 +12,7 @@ import {
   AnimatedLock,
   AnimatedShare,
 } from '@/components/animate-ui/icons/AnimateIcon';
-import { Loader2, ChevronDown, Play, Pause, Settings } from 'lucide-react';
+import { Loader2, ChevronDown, Play, Pause, Settings, Check } from 'lucide-react';
 import Link from 'next/link';
 import { useParams, useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
@@ -121,6 +121,15 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
   useEffect(() => {
     setMounted(true);
   }, []);
+  const [hasCopied, setHasCopied] = useState(false);
+  const copyTimeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+    };
+  }, []);
+
   const dragRef = useRef<{ startX: number; startY: number; initialX: number; initialY: number; currentX?: number; currentY?: number } | null>(null);
   const isDraggedRef = useRef(false);
   const autoScrollMenuRef = useRef<HTMLDivElement | null>(null);
@@ -193,16 +202,55 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
   }, [user, post?._id, post?.chapters]);
 
   const handleCopyLink = useCallback(async () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : '';
+    const shareUrl = post?._id ? `${origin}/posts/${post._id}` : (typeof window !== 'undefined' ? window.location.href : '');
+
+    let success = false;
     try {
-      const url = typeof window !== 'undefined' ? window.location.href : '';
-      if (navigator.clipboard?.writeText) {
-        await navigator.clipboard.writeText(url);
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(shareUrl);
+        success = true;
       }
-      notify.success('Đã sao chép liên kết truyện');
     } catch {
+      // Browser may block navigator.clipboard, fall back to execCommand below
+    }
+
+    if (!success && typeof document !== 'undefined') {
+      try {
+        const textArea = document.createElement('textarea');
+        textArea.value = shareUrl;
+        textArea.style.position = 'fixed';
+        textArea.style.top = '0';
+        textArea.style.left = '0';
+        textArea.style.width = '2em';
+        textArea.style.height = '2em';
+        textArea.style.padding = '0';
+        textArea.style.border = 'none';
+        textArea.style.outline = 'none';
+        textArea.style.boxShadow = 'none';
+        textArea.style.background = 'transparent';
+        textArea.style.opacity = '0';
+        document.body.appendChild(textArea);
+        textArea.focus();
+        textArea.select();
+        success = document.execCommand('copy');
+        document.body.removeChild(textArea);
+      } catch (err) {
+        console.error('Fallback copy failed:', err);
+      }
+    }
+
+    if (success) {
+      setHasCopied(true);
+      notify.success('Đã sao chép liên kết truyện');
+      if (copyTimeoutRef.current) clearTimeout(copyTimeoutRef.current);
+      copyTimeoutRef.current = setTimeout(() => {
+        setHasCopied(false);
+      }, 2500);
+    } else {
       notify.error('Không thể sao chép liên kết');
     }
-  }, []);
+  }, [post?._id]);
 
   const toggleEyeCareMode = () => {
     setIsEyeCareMode((prev) => {
@@ -864,14 +912,36 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
               </div>
             )}
 
-            <button
-              type="button"
-              onClick={isAdmin ? () => setIsShareOpen(true) : handleCopyLink}
-              title={isAdmin ? "Quản lý chia sẻ truyện" : "Sao chép liên kết truyện"}
-              className="inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] bg-transparent p-0 transition-colors text-foreground/60 hover:text-foreground cursor-pointer"
-            >
-              <AnimatedShare className="block w-4 h-4 md:w-5 md:h-5" />
-            </button>
+            <div className="relative flex items-center">
+              <button
+                type="button"
+                onClick={isAdmin ? () => setIsShareOpen(true) : handleCopyLink}
+                title={isAdmin ? "Quản lý chia sẻ truyện" : (hasCopied ? "Đã sao chép liên kết" : "Sao chép liên kết truyện")}
+                className={cn(
+                  "inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] transition-all cursor-pointer",
+                  hasCopied
+                    ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/20"
+                    : "bg-transparent text-foreground/60 hover:text-foreground hover:bg-accent/40"
+                )}
+                aria-label={hasCopied ? "Đã sao chép liên kết" : (isAdmin ? "Quản lý chia sẻ truyện" : "Sao chép liên kết truyện")}
+              >
+                {hasCopied ? (
+                  <Check className="block w-4 h-4 md:w-5 md:h-5 text-emerald-500 animate-in zoom-in-50 duration-200" />
+                ) : (
+                  <AnimatedShare className="block w-4 h-4 md:w-5 md:h-5" />
+                )}
+              </button>
+
+              {/* Floating Feedback Badge / Tooltip */}
+              {hasCopied && (
+                <div className="absolute right-0 top-full mt-2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-card/95 border border-emerald-500/40 text-emerald-500 rounded-[8px] shadow-lg backdrop-blur-md text-xs font-semibold whitespace-nowrap">
+                    <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
+                    <span>Đã sao chép liên kết</span>
+                  </div>
+                </div>
+              )}
+            </div>
             <button
               onClick={async () => {
                 if (!user) {
