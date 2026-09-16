@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { jwtVerify } from 'jose';
 
-export function proxy(request: NextRequest) {
+export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // Bỏ qua các tệp tĩnh, tài nguyên hệ thống Next.js và API routes
@@ -17,8 +18,25 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Chặn truy cập các trang quản trị nếu chưa có token đăng nhập
-  if (pathname.startsWith('/admin') || pathname.startsWith('/products')) {
+  // Chặn truy cập trang quản trị nếu không có vai trò Quản trị viên (admin)
+  if (pathname.startsWith('/admin')) {
+    const token = request.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+    try {
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET || '');
+      const { payload } = await jwtVerify(token, secret);
+      if (payload.role !== 'admin') {
+        return NextResponse.redirect(new URL('/', request.url));
+      }
+    } catch {
+      return NextResponse.redirect(new URL('/', request.url));
+    }
+  }
+
+  // Chặn truy cập các trang nội bộ nếu chưa đăng nhập
+  if (pathname.startsWith('/products')) {
     const token = request.cookies.get('token')?.value;
     if (!token) {
       return NextResponse.redirect(new URL('/', request.url));

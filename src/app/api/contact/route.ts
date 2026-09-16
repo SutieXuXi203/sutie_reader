@@ -1,14 +1,43 @@
-import { NextResponse } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { contactSchema } from '@/lib/validations';
-export async function POST(request: Request) {
+import { connectDB } from '@/lib/db';
+import { RateLimit } from '@/models/RateLimit';
+
+export async function POST(request: NextRequest) {
     try {
+        const forwardedFor = request.headers.get('x-forwarded-for');
+        const realIp = request.headers.get('x-real-ip');
+        const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : (realIp || 'unknown');
+        const rateLimitKey = `contact:${ip}`;
+
+        await connectDB();
+        let rateLimit = await RateLimit.findOne({ ip: rateLimitKey });
+
+        if (rateLimit && rateLimit.lockUntil && rateLimit.lockUntil > new Date()) {
+            const waitMinutes = Math.ceil((rateLimit.lockUntil.getTime() - Date.now()) / 60000);
+            return NextResponse.json(
+                { error: `Bạn đã gửi quá nhiều tin nhắn liên hệ. Vui lòng thử lại sau ${waitMinutes} phút.` },
+                { status: 429 }
+            );
+        }
+
         const body = await request.json();
         const parseResult = contactSchema.safeParse(body);
         if (!parseResult.success) {
             return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
         }
         const { name, email, message } = parseResult.data;
+
+        if (!rateLimit) {
+            rateLimit = new RateLimit({ ip: rateLimitKey, attempts: 1 });
+        } else {
+            rateLimit.attempts += 1;
+            if (rateLimit.attempts >= 5) {
+                rateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+            }
+        }
+        await rateLimit.save();
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {

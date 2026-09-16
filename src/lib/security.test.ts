@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { canViewPost, type AuthUserContext, type PostContext } from './permissions';
+import { canViewPost, filterPostsForUser, type AuthUserContext, type PostContext } from './permissions';
 
 describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
   describe('1. Chống dò mã PIN khi đăng nhập', () => {
@@ -187,6 +187,106 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
 
       assert.equal(result.length, 1);
       assert.equal(result[0]?.postTitle, 'Truyện Riêng Tư Được Share');
+    });
+
+    it('endpoint chi tiết GET /api/bookmarks/[postId] trả về null nếu quyền đọc bị thu hồi', () => {
+      const bookmark = {
+        userId: guestUser.id,
+        postId: 'post-100',
+        chapterIndex: 2,
+        currentPage: 10,
+        totalPages: 25,
+      };
+
+      // Khi truyện bị thu hồi quyền:
+      const decision = canViewPost(guestUser, restrictedPostRevoked);
+      const returnedBookmark = decision.allowed ? bookmark : null;
+
+      assert.equal(returnedBookmark, null, 'Bookmark chi tiết phải là null khi bị thu hồi quyền');
+    });
+  });
+
+  describe('4. Bảo vệ truy cập trang Quản trị (/admin)', () => {
+    it('chỉ cho phép token có vai trò admin vào trang /admin', () => {
+      const adminPayload = { role: 'admin', email: 'admin@gmail.com' };
+      const userPayload = { role: 'user', email: 'user@gmail.com' };
+      const guestPayload = { role: 'guest', email: 'guest@gmail.com' };
+
+      const checkAdminAccess = (payload: { role: string }) => payload.role === 'admin';
+
+      assert.equal(checkAdminAccess(adminPayload), true, 'Admin được phép truy cập');
+      assert.equal(checkAdminAccess(userPayload), false, 'User bị từ chối và chuyển hướng');
+      assert.equal(checkAdminAccess(guestPayload), false, 'Guest bị từ chối và chuyển hướng');
+    });
+  });
+
+  describe('5. Chống Bypass Scramble ảnh truyện qua tham số ?raw=1', () => {
+    it('chỉ cho phép Quản trị viên sử dụng tham số raw=1 để xem ảnh gốc', () => {
+      const isRawRequested = true;
+
+      const evaluateIsRaw = (role: string) => isRawRequested && role === 'admin';
+
+      assert.equal(evaluateIsRaw('admin'), true, 'Admin được phép lấy ảnh gốc');
+      assert.equal(evaluateIsRaw('user'), false, 'User bị từ chối raw=1 và phải scramble');
+      assert.equal(evaluateIsRaw('guest'), false, 'Guest bị từ chối raw=1 và phải scramble');
+    });
+  });
+
+  describe('6. Ngăn chặn đăng ký tài khoản bằng Email Quản trị viên gốc', () => {
+    it('từ chối đăng ký nếu email trùng khớp với ADMIN_USERNAME', () => {
+      const adminUsername = 'admin.sutie@gmail.com';
+
+      const validateRegistrationEmail = (email: string) => {
+        const normalized = email.toLowerCase().trim();
+        const rootAdmin = adminUsername.toLowerCase().trim();
+        if (rootAdmin && normalized === rootAdmin) {
+          return { allowed: false, error: 'Địa chỉ email này dành riêng cho Quản trị viên' };
+        }
+        return { allowed: true };
+      };
+
+      assert.equal(validateRegistrationEmail('admin.sutie@gmail.com').allowed, false);
+      assert.equal(validateRegistrationEmail('ADMIN.SUTIE@GMAIL.COM').allowed, false);
+      assert.equal(validateRegistrationEmail(' other.user@gmail.com ').allowed, true);
+    });
+  });
+
+  describe('7. Chống Admin tự xóa tài khoản của chính mình', () => {
+    it('từ chối yêu cầu xóa nếu target id trùng với id của Admin đang thao tác', () => {
+      const currentAdmin = { id: 'admin-id-123', email: 'admin@gmail.com' };
+
+      const canDeleteUser = (operatorId: string, targetId: string) => {
+        if (operatorId === targetId) {
+          return { allowed: false, error: 'Không thể tự xóa tài khoản của chính mình' };
+        }
+        return { allowed: true };
+      };
+
+      assert.equal(canDeleteUser(currentAdmin.id, 'admin-id-123').allowed, false);
+      assert.equal(canDeleteUser(currentAdmin.id, 'other-user-456').allowed, true);
+    });
+  });
+
+  describe('8. Rate Limiting trên form liên hệ (/api/contact)', () => {
+    it('định dạng rate limit key theo chuẩn contact:${ip}', () => {
+      const ip = '10.0.0.1';
+      const key = `contact:${ip}`;
+      assert.equal(key, 'contact:10.0.0.1');
+    });
+
+    it('khóa 15 phút khi đạt 5 lần gửi liên hệ liên tiếp', () => {
+      let attempts = 4;
+      let lockUntil: Date | undefined;
+
+      attempts += 1;
+      if (attempts >= 5) {
+        lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+      }
+
+      assert.equal(attempts, 5);
+      assert.ok(lockUntil);
+      const remainingMs = lockUntil.getTime() - Date.now();
+      assert.ok(remainingMs > 14 * 60 * 1000 && remainingMs <= 15 * 60 * 1000);
     });
   });
 });

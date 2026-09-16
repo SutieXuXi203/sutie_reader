@@ -70,6 +70,12 @@ export default function AdminDashboard() {
     const { user, isLoading: isAuthLoading } = useAuth();
     const router = useRouter();
 
+    useEffect(() => {
+        if (!isAuthLoading && (!user || user.role !== 'admin')) {
+            router.replace('/');
+        }
+    }, [user, isAuthLoading, router]);
+
     // Tab Navigation: Synchronous 0ms switch
     const [activeTab, setActiveTab] = useState<AdminTabKey>('posts');
 

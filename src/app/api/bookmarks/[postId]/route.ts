@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
+import { canViewPost } from '@/lib/permissions';
 
 type BookmarkLean = {
     chapterIndex?: number;
@@ -18,6 +19,15 @@ export async function GET(
         }
         const { postId } = await params;
         await connectDB();
+        const { Post } = await import('@/models/Post');
+        const post = await Post.findById(postId).select('accessType sharedWith').lean();
+        if (!post) {
+            return NextResponse.json(null);
+        }
+        const decision = canViewPost(user, post as any);
+        if (!decision.allowed) {
+            return NextResponse.json(null);
+        }
         const bookmark = await Bookmark.findOne({
             userId: user.id,
             postId,

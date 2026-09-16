@@ -2,6 +2,7 @@ import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin, getAuthUser } from '@/lib/auth';
+import { filterPostsForUser } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { postSchema } from '@/lib/validations';
 import { getApiCache, invalidateApiCache, setApiCache } from '@/lib/api-cache';
@@ -235,24 +236,7 @@ export async function GET(request: NextRequest) {
     }
 
     const user = await getAuthUser(request);
-    let filteredPosts: PostListItem[];
-
-    if (user?.role === 'admin' || user?.role === 'user') {
-      // role admin và role user được nhìn thấy toàn bộ items
-      filteredPosts = allPosts;
-    } else if (user?.role === 'guest') {
-      // role Guest chỉ nhìn thấy items công khai hoặc items được cấp quyền qua email
-      const userEmail = user.email.toLowerCase();
-      filteredPosts = allPosts.filter((post) => {
-        if (post.accessType === 'public') return true;
-        return (post.sharedWith || []).some(
-          (s) => s.email?.toLowerCase() === userEmail || (s.userId && s.userId === user.id)
-        );
-      });
-    } else {
-      // Khách vãng lai chỉ nhìn thấy items công khai
-      filteredPosts = allPosts.filter((post) => post.accessType === 'public');
-    }
+    const filteredPosts = filterPostsForUser(allPosts, user);
 
     const finalPosts = filteredPosts.map((post) => {
       // Ẩn sharedWith trước khi gửi về client

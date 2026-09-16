@@ -13,11 +13,37 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
         }
         const { email, password, name, avatar } = parseResult.data;
-        const isAdminEmail = email === process.env.ADMIN_USERNAME;
-        if (!isAdminEmail && !email.toLowerCase().endsWith('@gmail.com')) {
+        const normalizedEmail = email.toLowerCase().trim();
+        const rootAdminEmail = (process.env.ADMIN_USERNAME || '').toLowerCase().trim();
+
+        if (rootAdminEmail && normalizedEmail === rootAdminEmail) {
+            return NextResponse.json(
+                { error: 'Địa chỉ email này dành riêng cho Quản trị viên và không được phép đăng ký trực tiếp' },
+                { status: 400 }
+            );
+        }
+
+        if (!normalizedEmail.endsWith('@gmail.com')) {
             return NextResponse.json({ error: 'Vui lòng sử dụng tài khoản Gmail hợp lệ' }, { status: 400 });
         }
-        let user = await User.findOne({ email });
+
+        // Chống spam đăng ký gửi mail hàng loạt bằng RateLimit
+        const forwardedFor = request.headers.get('x-forwarded-for');
+        const realIp = request.headers.get('x-real-ip');
+        const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : (realIp || 'unknown');
+        const rateLimitKey = `register:${ip}`;
+        const { RateLimit } = await import('@/models/RateLimit');
+        let rateLimit = await RateLimit.findOne({ ip: rateLimitKey });
+
+        if (rateLimit && rateLimit.lockUntil && rateLimit.lockUntil > new Date()) {
+            const waitMinutes = Math.ceil((rateLimit.lockUntil.getTime() - Date.now()) / 60000);
+            return NextResponse.json(
+                { error: `Bạn đã thực hiện đăng ký quá nhiều lần. Vui lòng thử lại sau ${waitMinutes} phút.` },
+                { status: 429 }
+            );
+        }
+
+        let user = await User.findOne({ email: normalizedEmail });
         if (user) {
             if (user.isVerified) {
                 return NextResponse.json({ error: 'Email đã được sử dụng' }, { status: 400 });
@@ -37,7 +63,7 @@ export async function POST(request: NextRequest) {
             await user.save();
         } else {
             user = await User.create({
-                email,
+                email: normalizedEmail,
                 password: hashedPassword,
                 name,
                 avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
@@ -48,8 +74,19 @@ export async function POST(request: NextRequest) {
                 verificationAttempts: 0,
             });
         }
+
+        if (!rateLimit) {
+            rateLimit = new RateLimit({ ip: rateLimitKey, attempts: 1 });
+        } else {
+            rateLimit.attempts += 1;
+            if (rateLimit.attempts >= 5) {
+                rateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+            }
+        }
+        await rateLimit.save();
+
         try {
-            await sendVerificationEmail(email, verificationCode);
+            await sendVerificationEmail(normalizedEmail, verificationCode);
         } catch (mailError) {
             console.error('Lỗi gửi email:', mailError);
             return NextResponse.json({ error: 'Không thể gửi email xác thực. Vui lòng thử lại.' }, { status: 500 });

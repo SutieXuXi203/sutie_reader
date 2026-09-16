@@ -4,6 +4,7 @@ import { Bookmark } from '@/models/Bookmark';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
+import { canViewPost } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { getApiCache, setApiCache, invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
@@ -334,37 +335,17 @@ export async function GET(
     }
 
     const user = await getAuthUser(request);
-    const accessType = serialized.accessType || 'restricted';
+    const decision = canViewPost(user, serialized);
 
-    if (accessType === 'restricted') {
-      if (!user) {
-        return NextResponse.json(
-          { error: 'unauthorized', code: 'REQUIRE_LOGIN', message: 'Vui lòng đăng nhập để đọc truyện này' },
-          { status: 401 }
-        );
-      }
-
-      const isFullAccess = user.role === 'admin' || user.role === 'user';
-      const userEmail = user.email.toLowerCase();
-      const isAllowed =
-        isFullAccess ||
-        (Array.isArray(serialized.sharedWith) &&
-          serialized.sharedWith.some(
-            (s: any) =>
-              s.email?.toLowerCase() === userEmail ||
-              (s.userId && s.userId.toString() === user.id)
-          ));
-
-      if (!isAllowed) {
-        return NextResponse.json(
-          {
-            error: 'forbidden',
-            code: 'ACCESS_DENIED',
-            message: 'Bạn không có quyền truy cập truyện này. Vui lòng liên hệ quản trị viên để được cấp quyền.',
-          },
-          { status: 403 }
-        );
-      }
+    if (!decision.allowed) {
+      return NextResponse.json(
+        {
+          error: decision.reason === 'REQUIRE_LOGIN' ? 'unauthorized' : 'forbidden',
+          code: decision.reason,
+          message: decision.message,
+        },
+        { status: decision.reason === 'REQUIRE_LOGIN' ? 401 : 403 }
+      );
     }
 
     let result = {

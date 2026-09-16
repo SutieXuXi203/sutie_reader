@@ -1,7 +1,8 @@
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
-import { isAdmin } from '@/lib/auth';
+import { isAdmin, getAuthUser } from '@/lib/auth';
+
 export async function DELETE(
     request: NextRequest,
     { params }: { params: Promise<{ id: string }> }
@@ -12,11 +13,17 @@ export async function DELETE(
         }
         await connectDB();
         const { id } = await params;
+        const currentUser = await getAuthUser(request);
+        if (currentUser && currentUser.id === id) {
+            return NextResponse.json({ error: 'Không thể tự xóa tài khoản của chính mình' }, { status: 400 });
+        }
+
         const userToDelete = await User.findById(id);
         if (!userToDelete) {
             return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
         }
-        if (userToDelete.email === process.env.ADMIN_USERNAME) {
+        const rootAdminEmail = (process.env.ADMIN_USERNAME || '').toLowerCase().trim();
+        if (rootAdminEmail && userToDelete.email.toLowerCase().trim() === rootAdminEmail) {
             return NextResponse.json({ error: 'Không thể xóa tài khoản quản trị viên gốc' }, { status: 403 });
         }
         await User.findByIdAndDelete(id);
@@ -48,7 +55,8 @@ export async function PATCH(
         if (!targetUser) {
             return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
         }
-        if (targetUser.email === process.env.ADMIN_USERNAME && role !== 'admin') {
+        const rootAdminEmail = (process.env.ADMIN_USERNAME || '').toLowerCase().trim();
+        if (rootAdminEmail && targetUser.email.toLowerCase().trim() === rootAdminEmail && role !== 'admin') {
             return NextResponse.json({ error: 'Không thể hạ quyền tài khoản quản trị viên gốc' }, { status: 403 });
         }
 
