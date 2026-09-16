@@ -565,9 +565,15 @@ export function ShareDialog({
                               </span>
                             )}
                           </div>
-                          <p className="text-[11px] text-muted-foreground truncate">
-                            {shareData?.owner.email || 'admin@sutie.com'}
-                          </p>
+                          {shareData?.owner.email ? (
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              {shareData.owner.email}
+                            </p>
+                          ) : (
+                            <p className="text-[11px] text-muted-foreground truncate">
+                              Ban Quản Trị
+                            </p>
+                          )}
                         </div>
                       </div>
                       <div className="shrink-0 pl-2">

@@ -81,11 +81,11 @@ export async function GET(
 
     if (!isUserAdmin) {
       const adminUser = await User.findOne({ role: 'admin' })
-        .select('name email avatar')
+        .select('name avatar')
         .lean();
       ownerInfo = {
         name: adminUser?.name || 'Quản trị viên',
-        email: adminUser?.email || 'admin@sutie.com',
+        email: '', // Bảo vệ quyền riêng tư: không làm lộ email của Admin
         avatar: adminUser?.avatar || '',
         isCurrent: false,
       };
@@ -97,8 +97,10 @@ export async function GET(
       accessType: post.accessType || 'restricted',
       isOwner: isUserAdmin,
       owner: ownerInfo,
-      sharedWith: mappedSharedWith,
-      accessedUsers: mappedAccessedUsers,
+      sharedWith: isUserAdmin
+        ? mappedSharedWith
+        : mappedSharedWith.filter((s: any) => s.email.toLowerCase() === normalizedUserEmail),
+      accessedUsers: isUserAdmin ? mappedAccessedUsers : [],
     });
   } catch (error) {
     console.error('Lỗi khi lấy thông tin chia sẻ:', error);

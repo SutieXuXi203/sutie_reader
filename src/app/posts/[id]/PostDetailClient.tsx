@@ -99,7 +99,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
   const params = useParams();
   const router = useRouter();
   const [post, setPost] = useState<Post | null>(initialPost);
-  const { user, isLoading: isAuthLoading, logout } = useAuth();
+  const { user, isAdmin, isLoading: isAuthLoading, logout } = useAuth();
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [accessedUsers, setAccessedUsers] = useState<any[]>(initialPost?.accessedUsers || []);
@@ -165,6 +165,44 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
     };
     trackAccess();
   }, [post?._id, user?.email]);
+
+  // Nếu người dùng vừa đăng nhập mà bài viết chưa có nội dung chương (do SSR chặn bảo mật), tự động tải lại nội dung
+  useEffect(() => {
+    if (!user || !post?._id) return;
+    if (!post.chapters || post.chapters.length === 0) {
+      let isCancelled = false;
+      const fetchFullPost = async () => {
+        try {
+          setIsLoading(true);
+          const res = await fetch(`/api/posts/${post._id}`);
+          if (res.ok && !isCancelled) {
+            const data = await res.json();
+            setPost(data);
+          }
+        } catch (err) {
+          console.error('Lỗi khi tải dữ liệu truyện:', err);
+        } finally {
+          if (!isCancelled) setIsLoading(false);
+        }
+      };
+      fetchFullPost();
+      return () => {
+        isCancelled = true;
+      };
+    }
+  }, [user, post?._id, post?.chapters]);
+
+  const handleCopyLink = useCallback(async () => {
+    try {
+      const url = typeof window !== 'undefined' ? window.location.href : '';
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(url);
+      }
+      notify.success('Đã sao chép liên kết truyện');
+    } catch {
+      notify.error('Không thể sao chép liên kết');
+    }
+  }, []);
 
   const toggleEyeCareMode = () => {
     setIsEyeCareMode((prev) => {
@@ -618,8 +656,8 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
 
   const accessType = post.accessType || 'restricted';
 
-  // 1. Truyện Hạn chế + Chưa đăng nhập -> Chặn và yêu cầu đăng nhập
-  if (accessType === 'restricted' && !user) {
+  // 1. Chưa đăng nhập -> Chặn và yêu cầu đăng nhập (bảo vệ chống rò rỉ và tránh lỗi tải ảnh)
+  if (!user) {
     return (
       <div className="min-h-screen flex flex-col items-center justify-center text-foreground px-6 text-center">
         <div className="w-20 h-20 bg-card rounded-[12px] flex items-center justify-center mb-6 border border-border shadow-lg">
@@ -627,7 +665,9 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
         </div>
         <h1 className="text-2xl sm:text-3xl font-bold mb-3">Yêu cầu đăng nhập</h1>
         <p className="text-muted-foreground max-w-md mb-8 leading-relaxed text-xs sm:text-sm">
-          Truyện này đang ở chế độ hạn chế và yêu cầu bạn đăng nhập để đọc. Nếu bạn đã được cấp quyền truy cập qua email, vui lòng đăng nhập bằng đúng email đó để tiếp tục.
+          {accessType === 'restricted'
+            ? 'Truyện này đang ở chế độ hạn chế và yêu cầu bạn đăng nhập để đọc. Nếu bạn đã được cấp quyền truy cập qua email, vui lòng đăng nhập bằng đúng email đó để tiếp tục.'
+            : 'Vui lòng đăng nhập hoặc tạo tài khoản để bắt đầu đọc bộ truyện này.'}
         </p>
         <div className="flex flex-col sm:flex-row gap-3 w-full sm:w-auto items-center justify-center">
           <button
@@ -792,8 +832,8 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
           </div>
 
           <div className="flex shrink-0 items-center gap-2 md:gap-3">
-            {/* Viewer Avatars Stack (Google Docs style) */}
-            {accessedUsers.length > 0 && (
+            {/* Viewer Avatars Stack (Google Docs style) - CHỈ hiển thị cho Quản trị viên */}
+            {isAdmin && accessedUsers.length > 0 && (
               <div
                 onClick={() => setIsShareOpen(true)}
                 className="flex items-center -space-x-2 cursor-pointer hover:opacity-90 transition-opacity mr-1"
@@ -826,14 +866,19 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
 
             <button
               type="button"
-              onClick={() => setIsShareOpen(true)}
-              title="Chia sẻ truyện"
+              onClick={isAdmin ? () => setIsShareOpen(true) : handleCopyLink}
+              title={isAdmin ? "Quản lý chia sẻ truyện" : "Sao chép liên kết truyện"}
               className="inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] bg-transparent p-0 transition-colors text-foreground/60 hover:text-foreground cursor-pointer"
             >
               <AnimatedShare className="block w-4 h-4 md:w-5 md:h-5" />
             </button>
             <button
               onClick={async () => {
+                if (!user) {
+                  notify.info('Vui lòng đăng nhập để lưu vị trí đọc');
+                  setIsAuthDialogOpen(true);
+                  return;
+                }
                 if (hasBookmark) {
                   removeBookmark();
                   return;
@@ -851,6 +896,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
                     }),
                   });
                   setHasBookmark(true);
+                  notify.success('Đã lưu vị trí đọc');
                 } catch (error) {
                   console.error('Error saving bookmark:', error);
                 }

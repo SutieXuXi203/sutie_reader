@@ -5,6 +5,7 @@ import { getPostChapters, ensureScrambledImageUrl } from '@/lib/utils';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
 import PostDetailClient from './PostDetailClient';
 import { notFound } from 'next/navigation';
+import { getCurrentUser } from '@/lib/server-auth';
 
 export const maxDuration = 60;
 export const revalidate = 60;
@@ -91,5 +92,47 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     setApiCache(cacheKey, serialized, 300_000);
   }
 
-  return <PostDetailClient initialPost={serialized as any} />;
+  const user = await getCurrentUser();
+  const accessType = serialized.accessType || 'restricted';
+  const isFullAccess = user?.role === 'admin' || user?.role === 'user';
+  const userEmail = user?.email?.toLowerCase();
+  const isShared = Boolean(
+    user &&
+    Array.isArray(serialized.sharedWith) &&
+    serialized.sharedWith.some(
+      (s: any) =>
+        s.email?.toLowerCase() === userEmail ||
+        (s.userId && s.userId.toString() === user.id)
+    )
+  );
+  const hasAccess = Boolean(user && (accessType === 'public' || isFullAccess || isShared));
+
+  // Lọc dữ liệu an toàn trước khi gửi xuống client:
+  // Nếu không có quyền truy cập, tuyệt đối không gửi chapters, images, content hay emails
+  let postForClient = { ...serialized };
+
+  if (!hasAccess) {
+    postForClient = {
+      ...postForClient,
+      chapters: [],
+      images: [],
+      content: '',
+      sharedWith: [],
+      accessedUsers: [],
+    };
+  } else {
+    // Bảo vệ quyền riêng tư email của những người dùng khác:
+    // - Admin: Xem đầy đủ danh sách sharedWith và accessedUsers để quản lý
+    // - Khách được chia sẻ: Chỉ nhận mục chia sẻ của chính mình (để client xác thực isAllowed)
+    // - Thành viên chính thức (role: user): Không cần danh sách sharedWith của người khác
+    postForClient = {
+      ...postForClient,
+      sharedWith: user?.role === 'admin'
+        ? serialized.sharedWith
+        : (isShared ? serialized.sharedWith.filter((s: any) => s.email?.toLowerCase() === userEmail) : []),
+      accessedUsers: user?.role === 'admin' ? serialized.accessedUsers : [],
+    };
+  }
+
+  return <PostDetailClient initialPost={postForClient as any} />;
 }

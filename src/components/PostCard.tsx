@@ -87,7 +87,19 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   const handleShare = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
-    setIsShareOpen(true);
+    if (isAdmin) {
+      setIsShareOpen(true);
+    } else {
+      const origin = typeof window !== 'undefined' ? window.location.origin : '';
+      const url = `${origin}/posts/${post._id}`;
+      if (typeof navigator !== 'undefined' && navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(url).then(() => {
+          notify.success('Đã sao chép liên kết truyện');
+        }).catch(() => {
+          notify.error('Không thể sao chép liên kết');
+        });
+      }
+    }
   };
 
   const formattedCreatedAt = useMemo(() => {
