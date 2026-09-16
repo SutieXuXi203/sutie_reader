@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { isAdmin } from '@/lib/auth';
 import {
   isTelegramConfigured,
   sendTelegramMessage,
@@ -22,6 +23,12 @@ interface ProgressPayload {
 
 export async function POST(req: NextRequest) {
   try {
+    if (!(await isAdmin(req))) {
+      return NextResponse.json(
+        { error: 'Không có quyền truy cập. Chỉ Quản trị viên mới được gửi thông báo tiến độ.' },
+        { status: 403 }
+      );
+    }
     if (!isTelegramConfigured()) {
       return NextResponse.json({
         success: false,

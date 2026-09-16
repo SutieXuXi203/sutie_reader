@@ -17,8 +17,8 @@ export function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
-  // Chặn truy cập trang /admin nếu chưa có token đăng nhập
-  if (pathname.startsWith('/admin')) {
+  // Chặn truy cập các trang quản trị nếu chưa có token đăng nhập
+  if (pathname.startsWith('/admin') || pathname.startsWith('/products')) {
     const token = request.cookies.get('token')?.value;
     if (!token) {
       return NextResponse.redirect(new URL('/', request.url));
