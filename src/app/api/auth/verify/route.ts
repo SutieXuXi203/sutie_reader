@@ -32,13 +32,39 @@ export async function POST(request: NextRequest) {
       );
     }
 
+    if (!user.verificationCode) {
+      return NextResponse.json(
+        { error: 'Mã xác thực không tồn tại hoặc đã bị vô hiệu hóa. Vui lòng đăng ký lại để nhận mã mới.' },
+        { status: 400 }
+      );
+    }
+
     if (user.verificationCode !== code) {
-      return NextResponse.json({ error: 'Mã xác thực không chính xác' }, { status: 400 });
+      const attempts = (user.verificationAttempts || 0) + 1;
+      user.verificationAttempts = attempts;
+
+      if (attempts >= 5) {
+        user.verificationCode = undefined;
+        user.verificationAttempts = 0;
+        await user.save();
+        return NextResponse.json(
+          { error: 'Bạn đã nhập sai mã xác thực quá 5 lần. Mã đã bị vô hiệu hóa, vui lòng đăng ký lại để nhận mã mới.' },
+          { status: 429 }
+        );
+      }
+
+      await user.save();
+      const remaining = 5 - attempts;
+      return NextResponse.json(
+        { error: `Mã xác thực không chính xác (còn ${remaining} lần thử)` },
+        { status: 400 }
+      );
     }
 
     user.isVerified = true;
     user.verificationCode = undefined;
     user.verificationExpiresAt = undefined;
+    user.verificationAttempts = 0;
     await user.save();
 
     return NextResponse.json({

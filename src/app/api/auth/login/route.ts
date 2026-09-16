@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/db';
 import { handleExpiredUnverifiedUser } from '@/lib/unverifiedUserCleanup';
 import { User } from '@/models/User';
+import { RateLimit } from '@/models/RateLimit';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
@@ -81,6 +82,21 @@ export async function POST(request: NextRequest) {
     const isFullAccessRole = user.role === 'admin' || user.role === 'user';
 
     if (isFullAccessRole && SECRET_PIN) {
+      const forwardedFor = request.headers.get('x-forwarded-for');
+      const realIp = request.headers.get('x-real-ip');
+      const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : (realIp || 'unknown');
+      const rateLimitKey = `pin:login:${ip}:${user.email.toLowerCase().trim()}`;
+
+      let rateLimit = await RateLimit.findOne({ ip: rateLimitKey });
+
+      if (rateLimit && rateLimit.lockUntil && rateLimit.lockUntil > new Date()) {
+        const waitMinutes = Math.ceil((rateLimit.lockUntil.getTime() - Date.now()) / 60000);
+        return NextResponse.json(
+          { error: `Bạn đã nhập sai mã PIN quá nhiều lần. Vui lòng thử lại sau ${waitMinutes} phút.` },
+          { status: 429 }
+        );
+      }
+
       if (!pin) {
         return NextResponse.json({
           requirePin: true,
@@ -89,10 +105,31 @@ export async function POST(request: NextRequest) {
       }
 
       if (pin !== SECRET_PIN) {
+        if (!rateLimit) {
+          rateLimit = new RateLimit({ ip: rateLimitKey, attempts: 1 });
+        } else {
+          rateLimit.attempts += 1;
+          if (rateLimit.attempts >= 5) {
+            rateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+          }
+        }
+        await rateLimit.save();
+
+        if (rateLimit.attempts >= 5) {
+          return NextResponse.json(
+            { error: 'Bạn đã nhập sai mã PIN quá 5 lần. Vui lòng thử lại sau 15 phút.' },
+            { status: 429 }
+          );
+        }
+
         return NextResponse.json(
-          { error: 'Mã PIN bảo mật không chính xác' },
+          { error: `Mã PIN bảo mật không chính xác (còn ${5 - rateLimit.attempts} lần thử)` },
           { status: 401 }
         );
+      }
+
+      if (rateLimit) {
+        await RateLimit.deleteOne({ ip: rateLimitKey });
       }
     }
 

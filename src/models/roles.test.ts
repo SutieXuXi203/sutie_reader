@@ -23,6 +23,12 @@ describe('Kiểm thử Ràng Buộc Schema & Vai Trò (Model Constraints)', () =
       const isVerifiedField = User.schema.path('isVerified') as any;
       assert.equal(isVerifiedField.defaultValue, false);
     });
+
+    it('trường verificationAttempts mặc định là 0 khi tạo tài khoản', () => {
+      const attemptsField = User.schema.path('verificationAttempts') as any;
+      assert.ok(attemptsField, 'Field "verificationAttempts" phải tồn tại trong User schema');
+      assert.equal(attemptsField.defaultValue, 0);
+    });
   });
 
   describe('Role Model', () => {

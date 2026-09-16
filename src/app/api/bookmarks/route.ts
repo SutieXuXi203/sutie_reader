@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
 import { signImageUrls } from '@/lib/image-signing';
+import { canViewPost } from '@/lib/permissions';
 
 type BookmarkLean = {
     _id: unknown;
@@ -20,6 +21,8 @@ type PostLean = {
     author?: string;
     translator?: string;
     tags?: string[];
+    accessType?: 'restricted' | 'public';
+    sharedWith?: Array<{ email: string; userId?: string }>;
 };
 
 export async function POST(request: NextRequest) {
@@ -37,6 +40,15 @@ export async function POST(request: NextRequest) {
                 ? Math.floor(chapterIndex)
                 : 0;
         await connectDB();
+        const { Post } = await import('@/models/Post');
+        const post = await Post.findById(postId).select('accessType sharedWith').lean();
+        if (!post) {
+            return NextResponse.json({ error: 'Post not found' }, { status: 404 });
+        }
+        const decision = canViewPost(user, post as any);
+        if (!decision.allowed) {
+            return NextResponse.json({ error: decision.message || 'Forbidden' }, { status: 403 });
+        }
         const bookmark = await Bookmark.findOneAndUpdate(
             { userId: user.id, postId },
             { chapterIndex: normalizedChapterIndex, currentPage, totalPages },
@@ -69,6 +81,8 @@ export async function GET(request: NextRequest) {
                         author: 1,
                         translator: 1,
                         tags: 1,
+                        accessType: 1,
+                        sharedWith: 1,
                         coverImage: {
                             $ifNull: [
                                 { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
@@ -84,6 +98,8 @@ export async function GET(request: NextRequest) {
             .map((b) => {
                 const post = postMap.get(b.postId.toString());
                 if (!post) return null;
+                const decision = canViewPost(user, post as any);
+                if (!decision.allowed) return null;
                 const coverImage = typeof post.coverImage === 'string' && post.coverImage.trim()
                     ? post.coverImage
                     : '';

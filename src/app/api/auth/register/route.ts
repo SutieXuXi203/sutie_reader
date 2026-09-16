@@ -32,6 +32,7 @@ export async function POST(request: NextRequest) {
             user.isVerified = false;
             user.verificationCode = verificationCode;
             user.verificationExpiresAt = verificationExpiresAt;
+            user.verificationAttempts = 0;
             if (avatar) user.avatar = avatar;
             await user.save();
         } else {
@@ -44,6 +45,7 @@ export async function POST(request: NextRequest) {
                 isVerified: false,
                 verificationCode,
                 verificationExpiresAt,
+                verificationAttempts: 0,
             });
         }
         try {
