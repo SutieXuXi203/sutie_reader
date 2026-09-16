@@ -912,36 +912,24 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
               </div>
             )}
 
-            <div className="relative flex items-center">
-              <button
-                type="button"
-                onClick={isAdmin ? () => setIsShareOpen(true) : handleCopyLink}
-                title={isAdmin ? "Quản lý chia sẻ truyện" : (hasCopied ? "Đã sao chép liên kết" : "Sao chép liên kết truyện")}
-                className={cn(
-                  "inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] transition-all cursor-pointer",
-                  hasCopied
-                    ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/20"
-                    : "bg-transparent text-foreground/60 hover:text-foreground hover:bg-accent/40"
-                )}
-                aria-label={hasCopied ? "Đã sao chép liên kết" : (isAdmin ? "Quản lý chia sẻ truyện" : "Sao chép liên kết truyện")}
-              >
-                {hasCopied ? (
-                  <Check className="block w-4 h-4 md:w-5 md:h-5 text-emerald-500 animate-in zoom-in-50 duration-200" />
-                ) : (
-                  <AnimatedShare className="block w-4 h-4 md:w-5 md:h-5" />
-                )}
-              </button>
-
-              {/* Floating Feedback Badge / Tooltip */}
-              {hasCopied && (
-                <div className="absolute right-0 top-full mt-2 z-50 pointer-events-none animate-in fade-in slide-in-from-top-1 duration-200">
-                  <div className="flex items-center gap-1.5 px-2.5 py-1 bg-card/95 border border-emerald-500/40 text-emerald-500 rounded-[8px] shadow-lg backdrop-blur-md text-xs font-semibold whitespace-nowrap">
-                    <Check className="w-3.5 h-3.5 text-emerald-500 shrink-0" />
-                    <span>Đã sao chép liên kết</span>
-                  </div>
-                </div>
+            <button
+              type="button"
+              onClick={isAdmin ? () => setIsShareOpen(true) : handleCopyLink}
+              title={isAdmin ? "Quản lý chia sẻ truyện" : (hasCopied ? "Đã sao chép liên kết" : "Sao chép liên kết truyện")}
+              className={cn(
+                "inline-flex h-9 w-9 md:h-10 md:w-10 shrink-0 items-center justify-center rounded-[8px] transition-all cursor-pointer",
+                hasCopied
+                  ? "bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/20"
+                  : "bg-transparent text-foreground/60 hover:text-foreground hover:bg-accent/40"
               )}
-            </div>
+              aria-label={hasCopied ? "Đã sao chép liên kết" : (isAdmin ? "Quản lý chia sẻ truyện" : "Sao chép liên kết truyện")}
+            >
+              {hasCopied ? (
+                <Check className="block w-4 h-4 md:w-5 md:h-5 text-emerald-500 animate-in zoom-in-50 duration-200" />
+              ) : (
+                <AnimatedShare className="block w-4 h-4 md:w-5 md:h-5" />
+              )}
+            </button>
             <button
               onClick={async () => {
                 if (!user) {
