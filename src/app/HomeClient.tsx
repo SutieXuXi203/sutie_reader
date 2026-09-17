@@ -212,20 +212,19 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     try {
       if (cachedPosts.length === 0) setIsLoading(true);
       const requestOptions: RequestInit = {
-        cache: 'no-store',
         credentials: 'same-origin',
         headers: { Accept: 'application/json' },
       };
       let data: Post[];
       try {
         data = await fetchJsonWithTimeout<Post[]>(
-          `/api/posts?ts=${Date.now()}`,
+          '/api/posts',
           requestOptions
         );
       } catch (firstError) {
         console.warn('Retrying posts fetch after timeout/error:', firstError);
         data = await fetchJsonWithTimeout<Post[]>(
-          `/api/posts?retry=${Date.now()}`,
+          '/api/posts?retry=1',
           requestOptions
         );
       }
@@ -242,9 +241,8 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   const fetchTags = useCallback(async () => {
     try {
       const data = await fetchJsonWithTimeout<{ _id: string; name: string }[]>(
-        `/api/tags?ts=${Date.now()}`,
+        '/api/tags',
         {
-          cache: 'no-store',
           credentials: 'same-origin',
           headers: { Accept: 'application/json' },
         }
@@ -257,18 +255,31 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   }, []);
 
   const prevUserIdRef = useRef<string | undefined>(userId);
+  const isInitialMount = useRef(true);
+
   useEffect(() => {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      prevUserIdRef.current = userId;
+      if (userId) {
+        fetchBookmarks();
+      }
+      if (initialPostState.length === 0) {
+        fetchPosts(true);
+        fetchTags();
+      }
+      return;
+    }
+
     if (prevUserIdRef.current !== userId) {
       prevUserIdRef.current = userId;
       if (userId) {
-        cachedPosts = [];
         cachedBookmarks = [];
-        lastFetchTime = 0;
         fetchBookmarks();
         fetchPosts(true);
-        fetchTags();
       } else {
         setBookmarks([]);
+        cachedBookmarks = [];
         if (initialPosts.length > 0) {
           setPosts(initialPosts);
           setStandaloneTags(initialTags);
@@ -279,7 +290,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     } else if (userId && bookmarks.length === 0) {
       fetchBookmarks();
     }
-  }, [userId, initialPosts, initialTags, fetchBookmarks, fetchPosts, fetchTags, bookmarks.length]);
+  }, [userId, initialPosts, initialTags, initialPostState.length, fetchBookmarks, fetchPosts, fetchTags, bookmarks.length]);
 
   useEffect(() => {
     setSearchTerm(tagParam || '');
@@ -614,7 +625,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
               ) : (
                 <>
                   <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 auto-rows-max content-start">
-                    {paginatedPosts.map((post) => (
+                    {paginatedPosts.map((post, index) => (
                       <PostCard
                         key={post._id}
                         post={post}
@@ -622,6 +633,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                         onUpdate={handlePostUpdated}
                         availableTags={availableTags}
                         compact
+                        priority={index < 4}
                       />
                     ))}
                   </div>

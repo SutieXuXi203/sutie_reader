@@ -34,8 +34,9 @@ interface PostCardProps {
   onUpdate?: (updatedPost?: any) => void;
   availableTags?: string[];
   compact?: boolean;
+  priority?: boolean;
 }
-export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate, availableTags = [], compact = false }: PostCardProps) {
+export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate, availableTags = [], compact = false, priority = false }: PostCardProps) {
   const router = useRouter();
   const [isDeleting, setIsDeleting] = useState(false);
   const [isEditOpen, setIsEditOpen] = useState(false);
@@ -187,6 +188,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                 blurMode === 'blur' && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
                 isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
               )}
+              priority={priority}
               unoptimized
             />
           ) : (

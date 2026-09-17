@@ -9,7 +9,7 @@ import { getApiCache, invalidateApiCache, setApiCache } from '@/lib/api-cache';
 
 export const maxDuration = 60;
 const POSTS_LIST_CACHE_KEY = 'posts:list';
-const POSTS_LIST_CACHE_TTL_MS = 30_000;
+const POSTS_LIST_CACHE_TTL_MS = 300_000;
 
 type IncomingChapter = {
   title?: unknown;
@@ -197,8 +197,8 @@ export async function GET(request: NextRequest) {
             updatedAt: 1,
             coverImage: {
               $ifNull: [
-                { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
                 { $arrayElemAt: ['$images', 0] },
+                { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
               ],
             },
             chapterCount: { $size: { $ifNull: ['$chapters', []] } },

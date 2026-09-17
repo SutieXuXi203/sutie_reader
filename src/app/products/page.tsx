@@ -85,7 +85,7 @@ export default function ProductsPage() {
 
     const fetchTags = useCallback(async () => {
         try {
-            const response = await fetch('/api/tags', { credentials: 'same-origin', cache: 'no-store' });
+            const response = await fetch('/api/tags', { credentials: 'same-origin' });
             if (response.ok) {
                 setStandaloneTags(await response.json());
             }
@@ -97,7 +97,7 @@ export default function ProductsPage() {
     const fetchPosts = useCallback(async () => {
         try {
             setIsLoading(true);
-            const response = await fetch(`/api/posts?ts=${Date.now()}`, { credentials: 'same-origin', cache: 'no-store' });
+            const response = await fetch('/api/posts', { credentials: 'same-origin' });
             if (response.ok) {
                 const data = await response.json();
                 setPosts(data);
@@ -271,7 +271,7 @@ export default function ProductsPage() {
                     ) : (
                         <>
                             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-3 sm:gap-4 auto-rows-max content-start">
-                                {paginatedPosts.map((post) => (
+                                {paginatedPosts.map((post, index) => (
                                     <PostCard
                                         key={post._id}
                                         post={post}
@@ -279,6 +279,7 @@ export default function ProductsPage() {
                                         onUpdate={fetchPosts}
                                         availableTags={availableTags}
                                         compact
+                                        priority={index < 4}
                                     />
                                 ))}
                             </div>
