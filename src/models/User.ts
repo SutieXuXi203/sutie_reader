@@ -47,6 +47,7 @@ const UserSchema = new Schema<IUser>(
         },
         verificationCode: {
             type: String,
+            select: false,
         },
         verificationExpiresAt: {
             type: Date,

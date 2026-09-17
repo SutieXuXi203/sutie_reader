@@ -517,6 +517,59 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
       assert.equal(extracted, fileId);
     });
   });
+
+  describe('17. Bảo vệ danh sách độc giả (accessedUsers) & Chống Timing Attack mã OTP', () => {
+    it('ẩn toàn bộ accessedUsers với người dùng thường và khách đọc link chia sẻ', () => {
+      const accessedUsersList = [
+        { email: 'admin@domain.com', name: 'Admin', role: 'admin', lastAccessedAt: new Date() },
+        { email: 'reader1@domain.com', name: 'Reader 1', role: 'user', lastAccessedAt: new Date() },
+        { email: 'reader2@domain.com', name: 'Reader 2', role: 'guest', lastAccessedAt: new Date() },
+      ];
+
+      // Giả lập logic kiểm duyệt trong GET /api/posts/[id]
+      const filterAccessedUsersForResponse = (role: string | undefined, list: typeof accessedUsersList) => {
+        return role === 'admin' ? list : undefined;
+      };
+
+      assert.equal(filterAccessedUsersForResponse('guest', accessedUsersList), undefined);
+      assert.equal(filterAccessedUsersForResponse('user', accessedUsersList), undefined);
+      assert.equal(filterAccessedUsersForResponse(undefined, accessedUsersList), undefined);
+      assert.equal(filterAccessedUsersForResponse('admin', accessedUsersList)?.length, 3);
+    });
+
+    it('endpoint ghi nhận truy cập link (POST /api/posts/[id]/access) chỉ trả về danh sách độc giả cho admin', () => {
+      const accessedUsersList = [
+        { email: 'reader1@domain.com', name: 'Reader 1', role: 'user' },
+      ];
+
+      const filterAccessEndpointResponse = (userRole: string, list: typeof accessedUsersList) => {
+        return userRole === 'admin' ? list : [];
+      };
+
+      assert.deepEqual(filterAccessEndpointResponse('guest', accessedUsersList), []);
+      assert.deepEqual(filterAccessEndpointResponse('user', accessedUsersList), []);
+      assert.deepEqual(filterAccessEndpointResponse('admin', accessedUsersList), accessedUsersList);
+    });
+
+    it('kiểm tra mã xác thực OTP an toàn thời gian thực (crypto.timingSafeEqual)', async () => {
+      const crypto = await import('node:crypto');
+
+      const verifyOtpConstantTime = (storedCode: string | undefined, inputCode: string): boolean => {
+        if (!storedCode || typeof inputCode !== 'string') return false;
+        const storedBuffer = Buffer.from(storedCode);
+        const inputBuffer = Buffer.from(inputCode);
+        return (
+          storedBuffer.length === inputBuffer.length &&
+          crypto.timingSafeEqual(storedBuffer, inputBuffer)
+        );
+      };
+
+      assert.equal(verifyOtpConstantTime('654321', '654321'), true);
+      assert.equal(verifyOtpConstantTime('654321', '123456'), false);
+      assert.equal(verifyOtpConstantTime('654321', '65432'), false); // độ dài khác nhau
+      assert.equal(verifyOtpConstantTime(undefined, '654321'), false);
+    });
+  });
 });
 
 

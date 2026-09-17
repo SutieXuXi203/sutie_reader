@@ -91,7 +91,8 @@ export async function POST(
 
     return NextResponse.json({
       success: true,
-      accessedUsers: mappedAccessedUsers,
+      // Bảo vệ quyền riêng tư: Chỉ quản trị viên mới được nhận danh sách độc giả khác
+      accessedUsers: user.role === 'admin' ? mappedAccessedUsers : [],
     });
   } catch (error) {
     console.error('Lỗi khi ghi nhận truy cập link truyện:', error);

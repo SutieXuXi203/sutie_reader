@@ -19,7 +19,7 @@ export async function GET(request: NextRequest) {
       console.error('Lỗi dọn tài khoản chưa xác thực quá hạn:', cleanupError);
     }
 
-    const users = await User.find().select('-password').sort({ createdAt: -1 });
+    const users = await User.find().select('-password -verificationCode').sort({ createdAt: -1 });
     return NextResponse.json(users);
   } catch (error) {
     console.error('Lỗi lấy danh sách người dùng:', error);

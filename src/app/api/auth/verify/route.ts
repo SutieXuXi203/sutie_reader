@@ -1,6 +1,7 @@
 import { connectDB } from '@/lib/db';
 import { handleExpiredUnverifiedUser } from '@/lib/unverifiedUserCleanup';
 import { User } from '@/models/User';
+import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { z } from 'zod';
 
@@ -20,7 +21,7 @@ export async function POST(request: NextRequest) {
     const { email, code } = parseResult.data;
     const normalizedEmail = email.toLowerCase().trim();
 
-    const user = await User.findOne({ email: normalizedEmail });
+    const user = await User.findOne({ email: normalizedEmail }).select('+verificationCode');
     if (!user) {
       return NextResponse.json({ error: 'Tài khoản không tồn tại' }, { status: 404 });
     }
@@ -47,7 +48,13 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (user.verificationCode !== code) {
+    const userCodeBuffer = Buffer.from(user.verificationCode);
+    const inputCodeBuffer = Buffer.from(code);
+    const isCodeValid =
+      userCodeBuffer.length === inputCodeBuffer.length &&
+      crypto.timingSafeEqual(userCodeBuffer, inputCodeBuffer);
+
+    if (!isCodeValid) {
       const attempts = (user.verificationAttempts || 0) + 1;
       user.verificationAttempts = attempts;
 

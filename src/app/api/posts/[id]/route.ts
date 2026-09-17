@@ -348,10 +348,26 @@ export async function GET(
       );
     }
 
+    const userEmail = user?.email?.toLowerCase().trim();
+    const isShared = Boolean(
+      user &&
+      Array.isArray(serialized.sharedWith) &&
+      serialized.sharedWith.some(
+        (s: any) =>
+          s.email?.toLowerCase().trim() === userEmail ||
+          (s.userId && s.userId.toString() === user.id)
+      )
+    );
+
     let result = {
       ...serialized,
-      // Ẩn danh sách sharedWith với người dùng thường để bảo vệ quyền riêng tư
-      sharedWith: user?.role === 'admin' ? serialized.sharedWith : undefined,
+      // Bảo vệ quyền riêng tư: Chỉ admin mới xem được toàn bộ sharedWith và accessedUsers
+      sharedWith: user?.role === 'admin'
+        ? serialized.sharedWith
+        : (isShared && Array.isArray(serialized.sharedWith)
+            ? serialized.sharedWith.filter((s: any) => s.email?.toLowerCase().trim() === userEmail)
+            : undefined),
+      accessedUsers: user?.role === 'admin' ? serialized.accessedUsers : undefined,
     };
 
     if (user) {
