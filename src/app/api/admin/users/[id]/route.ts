@@ -3,6 +3,7 @@ import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin, getAuthUser } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
+import { invalidateApiCache } from '@/lib/api-cache';
 
 export async function DELETE(
     request: NextRequest,
@@ -31,6 +32,7 @@ export async function DELETE(
             return NextResponse.json({ error: 'Không thể xóa tài khoản quản trị viên gốc' }, { status: 403 });
         }
         await User.findByIdAndDelete(id);
+        invalidateApiCache('admin:users');
         return NextResponse.json({ message: 'Đã xóa người dùng thành công' });
     } catch (error) {
         console.error('Lỗi xóa người dùng:', error);
@@ -69,6 +71,7 @@ export async function PATCH(
 
         targetUser.role = role;
         await targetUser.save();
+        invalidateApiCache('admin:users');
 
         return NextResponse.json({
             message: 'Đã cập nhật vai trò thành công',

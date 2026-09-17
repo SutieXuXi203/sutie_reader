@@ -99,7 +99,18 @@ export async function getSessionUserFromToken(token?: string | null): Promise<Au
   };
 }
 
+const USER_CACHE_TTL_MS = 60_000;
+const userMemoryCache = new Map<string, { user: AuthUser | null; expiresAt: number }>();
+
 export const getCurrentUserFromToken = cache(async (token?: string | null): Promise<AuthUser | null> => {
+  if (!token) return null;
+
+  const now = Date.now();
+  const cached = userMemoryCache.get(token);
+  if (cached && cached.expiresAt > now) {
+    return cached.user;
+  }
+
   const payload = await getSessionPayload(token);
   if (!payload) return null;
 
@@ -109,16 +120,25 @@ export const getCurrentUserFromToken = cache(async (token?: string | null): Prom
       .select('email name avatar role isVerified')
       .lean()) as LeanAuthUser | null;
 
-    if (!user || !user.email || !user.role) return null;
-    if (user.role !== 'admin' && user.isVerified !== true) return null;
+    if (!user || !user.email || !user.role) {
+      userMemoryCache.set(token, { user: null, expiresAt: now + 10_000 });
+      return null;
+    }
+    if (user.role !== 'admin' && user.isVerified !== true) {
+      userMemoryCache.set(token, { user: null, expiresAt: now + 10_000 });
+      return null;
+    }
 
-    return {
+    const authUser: AuthUser = {
       id: String(user._id),
       email: user.email,
       name: user.name || payload.name || user.email.split('@')[0] || user.email,
       avatar: typeof user.avatar === 'string' ? user.avatar : '',
       role: user.role,
     };
+
+    userMemoryCache.set(token, { user: authUser, expiresAt: now + USER_CACHE_TTL_MS });
+    return authUser;
   } catch {
     return null;
   }

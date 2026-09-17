@@ -3,8 +3,12 @@ import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { User } from '@/models/User';
 import { isAdmin } from '@/lib/auth';
+import { getApiCache, setApiCache } from '@/lib/api-cache';
 
 export const dynamic = 'force-dynamic';
+
+const ADMIN_SHARES_CACHE_KEY = 'admin:shares';
+const ADMIN_SHARES_CACHE_TTL = 60_000;
 
 export async function GET(request: NextRequest) {
   try {
@@ -13,6 +17,16 @@ export async function GET(request: NextRequest) {
         { error: 'Không có quyền truy cập. Chỉ Quản trị viên mới được xem danh sách này.' },
         { status: 403 }
       );
+    }
+
+    const cached = getApiCache<any>(ADMIN_SHARES_CACHE_KEY);
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: {
+          'Cache-Control': 'private, no-cache, stale-while-revalidate=60',
+          'X-Sutie-Cache': 'HIT',
+        },
+      });
     }
 
     await connectDB();
@@ -126,12 +140,21 @@ export async function GET(request: NextRequest) {
       return timeB - timeA;
     });
 
-    return NextResponse.json({
+    const responseData = {
       posts: formattedPosts,
       stats: {
         totalStoriesWithGuests: formattedPosts.length,
         totalUniqueGuests: uniqueGuestEmails.size,
         totalGuestVisits,
+      },
+    };
+
+    setApiCache(ADMIN_SHARES_CACHE_KEY, responseData, ADMIN_SHARES_CACHE_TTL);
+
+    return NextResponse.json(responseData, {
+      headers: {
+        'Cache-Control': 'private, no-cache, stale-while-revalidate=60',
+        'X-Sutie-Cache': 'MISS',
       },
     });
   } catch (error) {

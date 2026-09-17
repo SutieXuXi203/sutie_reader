@@ -17,7 +17,7 @@ export async function GET() {
         const cachedTags = getApiCache<unknown[]>(TAGS_LIST_CACHE_KEY);
         if (cachedTags) {
             return NextResponse.json(cachedTags, {
-                headers: { 'Cache-Control': 'no-store', 'X-Sutie-Cache': 'HIT' },
+                headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300', 'X-Sutie-Cache': 'HIT' },
             });
         }
 
@@ -25,7 +25,7 @@ export async function GET() {
         const tags = await Tag.find({}).sort({ name: 1 }).lean();
         setApiCache(TAGS_LIST_CACHE_KEY, tags, TAGS_LIST_CACHE_TTL_MS);
         return NextResponse.json(tags, {
-            headers: { 'Cache-Control': 'no-store', 'X-Sutie-Cache': 'MISS' },
+            headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300', 'X-Sutie-Cache': 'MISS' },
         });
     } catch (error) {
         console.error('Lỗi khi lấy danh sách tag:', error);

@@ -3,14 +3,13 @@ import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
 import { cookies } from 'next/headers';
-import { getCurrentUserFromToken, type AuthUser } from '@/lib/server-auth';
+import { getSessionUserFromToken, type AuthUser } from '@/lib/server-auth';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
 
 export const maxDuration = 60;
-export const dynamic = 'force-dynamic';
 
 const POSTS_CATALOG_CACHE_KEY = 'posts:catalog';
-const POSTS_CATALOG_TTL_MS = 30_000;
+const POSTS_CATALOG_TTL_MS = 60_000;
 
 type InitialPost = {
   _id: string;
@@ -145,7 +144,7 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
 export default async function HomePage() {
   const cookieStore = await cookies();
   const token = cookieStore.get('token')?.value;
-  const user = token ? ((await getCurrentUserFromToken(token)) as AuthUser | null) : null;
+  const user = token ? await getSessionUserFromToken(token) : null;
   const catalog = await getInitialCatalog(user);
 
   return <HomeClient {...catalog} />;

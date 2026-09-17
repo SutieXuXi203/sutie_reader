@@ -256,23 +256,30 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     }
   }, []);
 
+  const prevUserIdRef = useRef<string | undefined>(userId);
   useEffect(() => {
-    if (userId) {
-      cachedPosts = [];
-      cachedBookmarks = [];
-      lastFetchTime = 0;
+    if (prevUserIdRef.current !== userId) {
+      prevUserIdRef.current = userId;
+      if (userId) {
+        cachedPosts = [];
+        cachedBookmarks = [];
+        lastFetchTime = 0;
+        fetchBookmarks();
+        fetchPosts(true);
+        fetchTags();
+      } else {
+        setBookmarks([]);
+        if (initialPosts.length > 0) {
+          setPosts(initialPosts);
+          setStandaloneTags(initialTags);
+        } else {
+          fetchPosts(true);
+        }
+      }
+    } else if (userId && bookmarks.length === 0) {
       fetchBookmarks();
-      fetchPosts(true);
-      fetchTags();
-    } else {
-      cachedPosts = [];
-      cachedBookmarks = [];
-      lastFetchTime = 0;
-      setBookmarks([]);
-      setPosts([]);
-      setStandaloneTags([]);
     }
-  }, [userId, fetchBookmarks, fetchPosts, fetchTags]);
+  }, [userId, initialPosts, initialTags, fetchBookmarks, fetchPosts, fetchTags, bookmarks.length]);
 
   useEffect(() => {
     setSearchTerm(tagParam || '');

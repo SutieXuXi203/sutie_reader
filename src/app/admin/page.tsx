@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '@/providers/AuthContext';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/button';
@@ -135,30 +135,40 @@ export default function AdminDashboard() {
     const [selectedSharePost, setSelectedSharePost] = useState<{ id: string; title: string } | null>(null);
     const [isShareDialogOpen, setIsShareDialogOpen] = useState(false);
 
-    // Data Fetchers
-    const fetchPosts = useCallback(async () => {
+    // Data Fetchers with On-Demand Caching
+    const lastFetchRef = useRef<Record<string, number>>({});
+
+    const fetchPosts = useCallback(async (force = false) => {
+        if (!force && posts.length > 0 && Date.now() - (lastFetchRef.current['posts'] || 0) < 60000) {
+            return;
+        }
         setIsLoadingPosts(true);
         try {
-            const res = await fetch(`/api/posts?ts=${Date.now()}`, { credentials: 'same-origin', cache: 'no-store' });
+            const res = await fetch('/api/posts', { credentials: 'same-origin' });
             if (res.ok) {
                 const data = await res.json();
                 setPosts(data);
+                lastFetchRef.current['posts'] = Date.now();
             }
         } catch (error) {
             console.error('Error fetching posts:', error);
         } finally {
             setIsLoadingPosts(false);
         }
-    }, []);
+    }, [posts.length]);
 
-    const fetchShares = useCallback(async () => {
+    const fetchShares = useCallback(async (force = false) => {
+        if (!force && sharedPosts.length > 0 && Date.now() - (lastFetchRef.current['shares'] || 0) < 60000) {
+            return;
+        }
         setIsSharesLoading(true);
         try {
-            const res = await fetch('/api/admin/shares', { credentials: 'same-origin', cache: 'no-store' });
+            const res = await fetch('/api/admin/shares', { credentials: 'same-origin' });
             if (res.ok) {
                 const data = await res.json();
                 setSharedPosts(data.posts || []);
                 setSharesStats(data.stats || { totalStoriesWithGuests: 0, totalUniqueGuests: 0, totalGuestVisits: 0 });
+                lastFetchRef.current['shares'] = Date.now();
             } else {
                 const err = await res.json().catch(() => ({}));
                 notify.error(err.error || 'Không thể tải danh sách chia sẻ');
@@ -169,21 +179,28 @@ export default function AdminDashboard() {
         } finally {
             setIsSharesLoading(false);
         }
-    }, []);
+    }, [sharedPosts.length]);
 
-    const fetchTags = useCallback(async () => {
+    const fetchTags = useCallback(async (force = false) => {
+        if (!force && standaloneTags.length > 0 && Date.now() - (lastFetchRef.current['tags'] || 0) < 60000) {
+            return;
+        }
         try {
-            const res = await fetch('/api/tags', { credentials: 'same-origin', cache: 'no-store' });
+            const res = await fetch('/api/tags', { credentials: 'same-origin' });
             if (res.ok) {
                 const data = await res.json();
                 setStandaloneTags(data);
+                lastFetchRef.current['tags'] = Date.now();
             }
         } catch (error) {
             console.error('Error fetching tags:', error);
         }
-    }, []);
+    }, [standaloneTags.length]);
 
-    const fetchUsers = useCallback(async () => {
+    const fetchUsers = useCallback(async (force = false) => {
+        if (!force && usersList.length > 0 && Date.now() - (lastFetchRef.current['users'] || 0) < 60000) {
+            return;
+        }
         setIsUsersLoading(true);
         setUsersLoadError(null);
         try {
@@ -191,6 +208,7 @@ export default function AdminDashboard() {
             if (res.ok) {
                 const data = await res.json();
                 setUsersList(data);
+                lastFetchRef.current['users'] = Date.now();
                 return;
             }
             let errorMessage = 'Không thể tải danh sách người dùng.';
@@ -207,37 +225,47 @@ export default function AdminDashboard() {
         } finally {
             setIsUsersLoading(false);
         }
-    }, []);
+    }, [usersList.length]);
 
-    const fetchDeletedAccounts = useCallback(async () => {
+    const fetchDeletedAccounts = useCallback(async (force = false) => {
+        if (!force && deletedAccounts.length > 0 && Date.now() - (lastFetchRef.current['deletedAccounts'] || 0) < 60000) {
+            return;
+        }
         setIsDeletedAccountsLoading(true);
         try {
             const res = await fetch('/api/admin/deleted-accounts?limit=200');
             if (res.ok) {
                 const data = await res.json();
                 setDeletedAccounts(data);
+                lastFetchRef.current['deletedAccounts'] = Date.now();
             }
         } catch (error) {
             console.error('Error fetching deleted accounts:', error);
         } finally {
             setIsDeletedAccountsLoading(false);
         }
-    }, []);
+    }, [deletedAccounts.length]);
 
-    // Initial load
+    // On-demand load based on activeTab
     useEffect(() => {
         if (!isAuthLoading) {
             if (!user || user.role !== 'admin') {
                 router.push('/');
-            } else {
+                return;
+            }
+            if (activeTab === 'posts') {
                 fetchPosts();
+                fetchTags();
+            } else if (activeTab === 'users') {
                 fetchUsers();
                 fetchDeletedAccounts();
-                fetchTags();
+            } else if (activeTab === 'shares') {
                 fetchShares();
+            } else if (activeTab === 'tags') {
+                fetchTags();
             }
         }
-    }, [user, isAuthLoading, router, fetchPosts, fetchUsers, fetchDeletedAccounts, fetchTags, fetchShares]);
+    }, [user, isAuthLoading, router, activeTab, fetchPosts, fetchUsers, fetchDeletedAccounts, fetchTags, fetchShares]);
 
     // Computed Metadata
     const availablePostTags = useMemo(() => {
@@ -583,7 +611,7 @@ export default function AdminDashboard() {
                                         type="button"
                                         variant="outline"
                                         size="sm"
-                                        onClick={() => { fetchPosts(); fetchTags(); }}
+                                        onClick={() => { fetchPosts(true); fetchTags(true); }}
                                         disabled={isLoadingPosts}
                                         className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
                                         title="Tải lại danh sách bài viết"
@@ -605,7 +633,7 @@ export default function AdminDashboard() {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={fetchShares}
+                                    onClick={() => fetchShares(true)}
                                     disabled={isSharesLoading}
                                     className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
                                     title="Tải lại danh sách truyện có khách truy cập"
@@ -619,7 +647,7 @@ export default function AdminDashboard() {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => { fetchUsers(); fetchDeletedAccounts(); }}
+                                    onClick={() => { fetchUsers(true); fetchDeletedAccounts(true); }}
                                     disabled={isUsersLoading || isDeletedAccountsLoading}
                                     className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
                                     title="Tải lại danh sách người dùng"
@@ -633,7 +661,7 @@ export default function AdminDashboard() {
                                     type="button"
                                     variant="outline"
                                     size="sm"
-                                    onClick={() => { fetchTags(); fetchPosts(); }}
+                                    onClick={() => { fetchTags(true); fetchPosts(true); }}
                                     className="h-9 rounded-[8px] border-border text-foreground hover:bg-secondary px-2.5 sm:px-3 text-xs"
                                     title="Tải lại danh sách thẻ tag"
                                 >

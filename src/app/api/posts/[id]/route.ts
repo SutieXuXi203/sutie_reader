@@ -382,7 +382,11 @@ export async function GET(
           : [],
       };
     }
-    return NextResponse.json(result);
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'private, no-cache, stale-while-revalidate=60',
+      },
+    });
   } catch (error) {
     console.error('Lỗi khi tải bài viết:', error);
     return NextResponse.json({ error: 'Tải bài viết không thành công' }, { status: 500 });

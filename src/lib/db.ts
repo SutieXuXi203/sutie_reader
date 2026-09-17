@@ -1,11 +1,13 @@
 import mongoose from 'mongoose';
 import dns from 'dns';
 
-// Fix for Node.js failing to resolve MongoDB SRV records on some Windows setups
-try {
-  dns.setServers(['8.8.8.8', '8.8.4.4']);
-} catch (error) {
-  console.warn('Could not set custom DNS servers:', error);
+// Fix for Node.js failing to resolve MongoDB SRV records on some local Windows setups
+if (process.platform === 'win32' && process.env.NODE_ENV !== 'production') {
+  try {
+    dns.setServers(['8.8.8.8', '8.8.4.4']);
+  } catch (error) {
+    console.warn('Could not set custom DNS servers:', error);
+  }
 }
 
 interface MongooseCache {
@@ -44,6 +46,11 @@ export async function connectDB() {
     cached.uri = MONGODB_URI;
     cached.promise = mongoose.connect(MONGODB_URI, {
       bufferCommands: false,
+      autoIndex: process.env.NODE_ENV !== 'production',
+      maxPoolSize: 10,
+      serverSelectionTimeoutMS: 5000,
+      connectTimeoutMS: 10000,
+      socketTimeoutMS: 30000,
     }).then(() => mongoose);
   }
   try {
