@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import Image from 'next/image';
 import { RefreshCw, AlertCircle, Image as ImageIcon } from 'lucide-react';
-import { extractDriveImageId, getOptimizedImageUrl } from '@/lib/utils';
+import { extractDriveImageId, ensureScrambledImageUrl } from '@/lib/utils';
 import { parseScrambleParams } from '@/lib/scramble';
 import { ScrambledCanvas } from './ScrambledCanvas';
 
@@ -29,7 +29,7 @@ export const ReaderImage = React.memo(function ReaderImage({
   onLoad,
 }: ReaderImageProps) {
   const [prevSrc, setPrevSrc] = useState(src);
-  const [currentSrc, setCurrentSrc] = useState<string>(() => getOptimizedImageUrl(src));
+  const [currentSrc, setCurrentSrc] = useState<string>(() => ensureScrambledImageUrl(src));
   const [status, setStatus] = useState<'loading' | 'loaded' | 'error'>('loading');
   const [retryCount, setRetryCount] = useState(0);
   const [isRetrying, setIsRetrying] = useState(false);
@@ -42,7 +42,7 @@ export const ReaderImage = React.memo(function ReaderImage({
   // Synchronize when src prop changes
   if (prevSrc !== src) {
     setPrevSrc(src);
-    setCurrentSrc(getOptimizedImageUrl(src));
+    setCurrentSrc(ensureScrambledImageUrl(src));
     setStatus('loading');
     setRetryCount(0);
     setIsRetrying(false);
@@ -121,7 +121,7 @@ export const ReaderImage = React.memo(function ReaderImage({
     setRetryCount(1);
 
     if (fileId) {
-      setCurrentSrc(`/api/image/${encodeURIComponent(fileId)}?v=2&manual=1&t=${Date.now()}`);
+      setCurrentSrc(`/api/image/${encodeURIComponent(fileId)}.webp?v=2&manual=1&t=${Date.now()}`);
     } else {
       setCurrentSrc(`${src}${src.includes('?') ? '&' : '?'}t=${Date.now()}`);
     }

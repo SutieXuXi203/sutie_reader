@@ -66,7 +66,7 @@ export function parseScrambleParams(url: string): ScrambleParams {
     return { isScrambled: false, seed: '', rows: DEFAULT_SCRAMBLE_ROWS, cols: DEFAULT_SCRAMBLE_COLS };
   }
 
-  const apiMatch = url.match(/(?:^|\/)api\/image\/([a-zA-Z0-9_-]{10,})/);
+  const apiMatch = url.match(/(?:^|\/)api\/image\/([a-zA-Z0-9_-]{10,})(?:\.[a-zA-Z0-9]+)?(?:[/?#]|$)/);
   const fileId = apiMatch ? apiMatch[1] : null;
 
   try {

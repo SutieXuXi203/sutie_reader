@@ -476,5 +476,47 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
       assert.equal(ObjectId.isValid(invalidId3), false);
     });
   });
+
+  describe('16. Ngụy trang đường dẫn ảnh xáo trộn chống Crawler phát hiện (Crawler Deception)', () => {
+    it('ensureScrambledImageUrl tạo URL dạng chuẩn tĩnh .webp?v=2 và KHÔNG chứa từ khóa scramble', async () => {
+      const { ensureScrambledImageUrl } = await import('./utils');
+
+      const testId = '1LOpaFTkog3PbmZupfzsgCt1YnFUjTOxI';
+      const rawDriveUrl = `https://drive.google.com/file/d/${testId}/view`;
+      const generatedUrl = ensureScrambledImageUrl(rawDriveUrl);
+
+      assert.equal(generatedUrl, `/api/image/${testId}.webp?v=2`);
+      assert.equal(generatedUrl.includes('scramble'), false, 'URL không được chứa từ khóa scramble');
+      assert.equal(generatedUrl.includes('thumb'), false, 'URL không được là thumbnail');
+    });
+
+    it('parseScrambleParams tự động kích hoạt giải mã Canvas dù URL không chứa scramble=1', async () => {
+      const { parseScrambleParams } = await import('./scramble');
+
+      const stealthUrl = '/api/image/1LOpaFTkog3PbmZupfzsgCt1YnFUjTOxI.webp?v=2';
+      const meta = parseScrambleParams(stealthUrl);
+
+      assert.equal(meta.isScrambled, true, 'Canvas phải tự động giải mã ảnh truyện');
+      assert.ok(meta.seed.startsWith('sutie_'), 'Seed phải được sinh ra tự động từ secret salt');
+      assert.equal(meta.rows, 8);
+      assert.equal(meta.cols, 8);
+
+      // Thumbnail vẫn giữ nguyên là không xáo trộn
+      const thumbUrl = '/api/image/1LOpaFTkog3PbmZupfzsgCt1YnFUjTOxI.webp?v=2&thumb=1';
+      const thumbMeta = parseScrambleParams(thumbUrl);
+      assert.equal(thumbMeta.isScrambled, false, 'Thumbnail không được xáo trộn');
+    });
+
+    it('extractDriveImageId bóc tách chính xác fileId từ URL có đuôi mở rộng .webp', async () => {
+      const { extractDriveImageId } = await import('./utils');
+
+      const fileId = '1LOpaFTkog3PbmZupfzsgCt1YnFUjTOxI';
+      const urlWithExt = `/api/image/${fileId}.webp?v=2`;
+      const extracted = extractDriveImageId(urlWithExt);
+
+      assert.equal(extracted, fileId);
+    });
+  });
 });
+
 

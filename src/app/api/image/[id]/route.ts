@@ -94,7 +94,8 @@ export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
 ) {
-  const { id } = await context.params;
+  const { id: rawId } = await context.params;
+  const id = (rawId || '').replace(/\.(webp|jpg|jpeg|png)$/i, '');
   if (!DRIVE_FILE_ID_PATTERN.test(id)) {
     return imageError('Invalid image id', 400);
   }

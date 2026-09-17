@@ -16,12 +16,12 @@ export function extractDriveImageId(url: string): string | null {
     return value;
   }
 
-  const apiImageMatch = value.match(/(?:^|\/)api\/image\/([a-zA-Z0-9_-]{10,})(?:[/?#]|$)/);
+  const apiImageMatch = value.match(/(?:^|\/)api\/image\/([a-zA-Z0-9_-]{10,})(?:\.[a-zA-Z0-9]+)?(?:[/?#]|$)/);
   if (apiImageMatch) {
     return apiImageMatch[1];
   }
 
-  const workerImageMatch = value.match(/\/image\/([a-zA-Z0-9_-]{10,})(?:[/?#]|$)/);
+  const workerImageMatch = value.match(/\/image\/([a-zA-Z0-9_-]{10,})(?:\.[a-zA-Z0-9]+)?(?:[/?#]|$)/);
   if (workerImageMatch) {
     return workerImageMatch[1];
   }
@@ -42,9 +42,6 @@ export function getOptimizedImageUrl(url: string): string {
   }
 
   if (url.startsWith('/api/image/')) {
-    if (!url.includes('thumb=1') && !url.includes('scramble=1')) {
-      return `${url}${url.includes('?') ? '&' : '?'}thumb=1`;
-    }
     return url;
   }
 
@@ -66,7 +63,7 @@ export function getOptimizedImageUrl(url: string): string {
         }
       } catch {}
     }
-    return `/api/image/${encodeURIComponent(imageId)}?v=${PROTECTED_IMAGE_URL_VERSION}${extraParams}`;
+    return `/api/image/${encodeURIComponent(imageId)}.webp?v=${PROTECTED_IMAGE_URL_VERSION}${extraParams}`;
   }
   return url;
 }
@@ -76,22 +73,8 @@ export function ensureScrambledImageUrl(url: string): string {
   const fileId = extractDriveImageId(url);
   if (!fileId) return url;
 
-  if (url.includes('scramble=1')) {
-    if (url.startsWith('http://') || url.startsWith('https://')) {
-      try {
-        const u = new URL(url);
-        const search = u.searchParams;
-        search.delete('v');
-        search.delete('thumb');
-        const qs = search.toString();
-        return `/api/image/${encodeURIComponent(fileId)}?v=${PROTECTED_IMAGE_URL_VERSION}&scramble=1${qs ? `&${qs}` : ''}`;
-      } catch {}
-    }
-    return url;
-  }
-
-  // Comic chapter reader: full-resolution scrambled image
-  return `/api/image/${encodeURIComponent(fileId)}?v=${PROTECTED_IMAGE_URL_VERSION}&scramble=1`;
+  // Comic chapter reader: full-resolution image URL (looks completely standard to crawlers, no scramble parameter)
+  return `/api/image/${encodeURIComponent(fileId)}.webp?v=${PROTECTED_IMAGE_URL_VERSION}`;
 }
 
 export function normalizeSearchText(value: string): string {
