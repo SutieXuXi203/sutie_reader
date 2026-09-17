@@ -351,18 +351,8 @@ async function uploadFileToDrive(accessToken, folderId, postId, file, index, tot
     throw new Error('Google Drive did not return a file id');
   }
 
-  const permissionRes = await fetch(`https://www.googleapis.com/drive/v3/files/${fileData.id}/permissions?supportsAllDrives=true`, {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ role: 'reader', type: 'anyone' }),
-  });
-
-  if (!permissionRes.ok) {
-    console.warn(`[CF WORKER] Could not make Drive file public: ${fileData.id}`);
-  }
+  // Không cấp quyền public (anyone: reader) trên Google Drive để bảo vệ bản quyền ảnh gốc,
+  // Cloudflare Worker và Next.js sẽ truy cập qua OAuth2 access token có kiểm tra chữ ký HMAC.
 
   console.log(`[CF WORKER] Uploaded image ${index + 1}/${total}: ${file.name} -> ${fileData.id}`);
   return fileData.id;

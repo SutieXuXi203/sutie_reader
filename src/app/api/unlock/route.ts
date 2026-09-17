@@ -1,14 +1,27 @@
 import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { RateLimit } from '@/models/RateLimit';
+import { createSiteAccessToken } from '@/lib/server-auth';
+import crypto from 'node:crypto';
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
+    const body = await request.json().catch(() => ({}));
     const { pin } = body;
 
-    const SECRET_TOKEN = process.env.UNLOCK_PIN || '';
+    const SECRET_PIN = process.env.UNLOCK_PIN?.trim();
     const ACCESS_COOKIE_NAME = 'site_access_token';
+
+    if (!SECRET_PIN) {
+      return NextResponse.json({ success: true });
+    }
+
+    if (!pin || typeof pin !== 'string') {
+      return NextResponse.json(
+        { success: false, error: 'Vui lòng cung cấp mã PIN hợp lệ' },
+        { status: 400 }
+      );
+    }
 
     const forwardedFor = request.headers.get('x-forwarded-for');
     const realIp = request.headers.get('x-real-ip');
@@ -25,18 +38,26 @@ export async function POST(request: Request) {
       );
     }
 
-    if (pin === SECRET_TOKEN) {
+    const pinBuffer = Buffer.from(pin.trim());
+    const secretBuffer = Buffer.from(SECRET_PIN);
+    const isMatch =
+      pinBuffer.length === secretBuffer.length &&
+      crypto.timingSafeEqual(pinBuffer, secretBuffer);
+
+    if (isMatch) {
       if (rateLimit) {
         await RateLimit.deleteOne({ ip });
       }
 
+      const siteToken = await createSiteAccessToken();
       const response = NextResponse.json({ success: true });
       
-      response.cookies.set(ACCESS_COOKIE_NAME, SECRET_TOKEN, {
+      response.cookies.set(ACCESS_COOKIE_NAME, siteToken, {
         path: '/',
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'lax',
+        maxAge: 60 * 60 * 24 * 30, // 30 ngày
       });
 
       return response;

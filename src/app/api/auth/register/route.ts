@@ -2,6 +2,7 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
+import { randomInt } from 'node:crypto';
 import { sendVerificationEmail } from '@/lib/mail';
 import { registerSchema } from '@/lib/validations';
 export async function POST(request: NextRequest) {
@@ -50,8 +51,8 @@ export async function POST(request: NextRequest) {
             }
         }
         const hashedPassword = await bcrypt.hash(password, 12);
-        const verificationCode = Math.floor(100000 + Math.random() * 900000).toString();
-        const verificationExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000);
+        const verificationCode = randomInt(100000, 1000000).toString();
+        const verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
         if (user) {
             user.password = hashedPassword;
             user.name = name;

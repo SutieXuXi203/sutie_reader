@@ -18,6 +18,21 @@ export default function UnlockPage() {
   );
 }
 
+function getSafeCallbackUrl(url: string | null): string {
+  if (!url || typeof url !== 'string') return '/';
+  const trimmed = url.trim();
+  if (
+    trimmed.startsWith('/') &&
+    !trimmed.startsWith('//') &&
+    !trimmed.startsWith('/\\') &&
+    !trimmed.includes('\\') &&
+    !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)
+  ) {
+    return trimmed;
+  }
+  return '/';
+}
+
 function UnlockForm() {
   const [pin, setPin] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -29,7 +44,7 @@ function UnlockForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   
-  const callbackUrl = searchParams.get('callbackUrl') || '/';
+  const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
 
   // Auto focus input on mount for rapid typing
   useEffect(() => {

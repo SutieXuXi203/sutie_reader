@@ -32,8 +32,9 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         const { postId, chapterIndex = 0, currentPage, totalPages } = await request.json();
-        if (!postId || currentPage === undefined || totalPages === undefined) {
-            return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });
+        const { ObjectId } = await import('mongodb');
+        if (!postId || !ObjectId.isValid(postId) || currentPage === undefined || totalPages === undefined) {
+            return NextResponse.json({ error: 'Missing or invalid required fields' }, { status: 400 });
         }
         const normalizedChapterIndex =
             typeof chapterIndex === 'number' && Number.isFinite(chapterIndex) && chapterIndex >= 0

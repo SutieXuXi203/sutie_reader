@@ -6,7 +6,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { loginSchema } from '@/lib/validations';
-import { getJwtSecret } from '@/lib/server-auth';
+import { getJwtSecret, createSiteAccessToken } from '@/lib/server-auth';
+
+import crypto from 'node:crypto';
 
 export async function POST(request: NextRequest) {
   try {
@@ -18,14 +20,52 @@ export async function POST(request: NextRequest) {
     }
     const { email, password, rememberMe, pin } = parseResult.data;
 
+    const forwardedFor = request.headers.get('x-forwarded-for');
+    const realIp = request.headers.get('x-real-ip');
+    const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : (realIp || 'unknown');
+    const normalizedEmail = email.toLowerCase().trim();
+    const pwdRateLimitKey = `pwd:login:${ip}:${normalizedEmail}`;
+
+    let pwdRateLimit = await RateLimit.findOne({ ip: pwdRateLimitKey });
+    if (pwdRateLimit && pwdRateLimit.lockUntil && pwdRateLimit.lockUntil > new Date()) {
+      const waitMinutes = Math.ceil((pwdRateLimit.lockUntil.getTime() - Date.now()) / 60000);
+      return NextResponse.json(
+        { error: `Bạn đã nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau ${waitMinutes} phút.` },
+        { status: 429 }
+      );
+    }
+
+    const recordFailedPassword = async () => {
+      if (!pwdRateLimit) {
+        pwdRateLimit = new RateLimit({ ip: pwdRateLimitKey, attempts: 1 });
+      } else {
+        pwdRateLimit.attempts += 1;
+        if (pwdRateLimit.attempts >= 5) {
+          pwdRateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+        }
+      }
+      await pwdRateLimit.save();
+
+      if (pwdRateLimit.attempts >= 5) {
+        return NextResponse.json(
+          { error: 'Bạn đã nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 15 phút.' },
+          { status: 429 }
+        );
+      }
+      return NextResponse.json(
+        { error: `Email hoặc mật khẩu không đúng (còn ${5 - pwdRateLimit.attempts} lần thử)` },
+        { status: 401 }
+      );
+    };
+
     const isAdminInput =
       email === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD;
 
-    if (!isAdminInput && !email.toLowerCase().endsWith('@gmail.com')) {
+    if (!isAdminInput && !normalizedEmail.endsWith('@gmail.com')) {
       return NextResponse.json({ error: 'Vui lòng sử dụng tài khoản Gmail hợp lệ' }, { status: 400 });
     }
 
-    let user = await User.findOne({ email }).select('+password');
+    let user = await User.findOne({ email: normalizedEmail }).select('+password');
     let isMatch = false;
 
     if (isAdminInput) {
@@ -34,7 +74,7 @@ export async function POST(request: NextRequest) {
       if (!user) {
         const hashedPassword = await bcrypt.hash(password, 12);
         user = new User({
-          email,
+          email: normalizedEmail,
           password: hashedPassword,
           name: 'Administrator',
           role: 'admin',
@@ -48,7 +88,7 @@ export async function POST(request: NextRequest) {
       }
     } else {
       if (!user) {
-        return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
+        return await recordFailedPassword();
       }
 
       isMatch = await bcrypt.compare(password, user.password);
@@ -74,7 +114,12 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isMatch) {
-      return NextResponse.json({ error: 'Email hoặc mật khẩu không đúng' }, { status: 401 });
+      return await recordFailedPassword();
+    }
+
+    // Đăng nhập thành công mật khẩu -> xóa rate limit mật khẩu nếu có
+    if (pwdRateLimit) {
+      await RateLimit.deleteOne({ ip: pwdRateLimitKey });
     }
 
     // Kiểm tra yêu cầu mã PIN đối với role admin và user
@@ -82,10 +127,7 @@ export async function POST(request: NextRequest) {
     const isFullAccessRole = user.role === 'admin' || user.role === 'user';
 
     if (isFullAccessRole && SECRET_PIN) {
-      const forwardedFor = request.headers.get('x-forwarded-for');
-      const realIp = request.headers.get('x-real-ip');
-      const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : (realIp || 'unknown');
-      const rateLimitKey = `pin:login:${ip}:${user.email.toLowerCase().trim()}`;
+      const rateLimitKey = `pin:login:${ip}:${normalizedEmail}`;
 
       let rateLimit = await RateLimit.findOne({ ip: rateLimitKey });
 
@@ -104,7 +146,13 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      if (pin !== SECRET_PIN) {
+      const pinBuffer = Buffer.from(pin.trim());
+      const secretBuffer = Buffer.from(SECRET_PIN.trim());
+      const isPinMatch =
+        pinBuffer.length === secretBuffer.length &&
+        crypto.timingSafeEqual(pinBuffer, secretBuffer);
+
+      if (!isPinMatch) {
         if (!rateLimit) {
           rateLimit = new RateLimit({ ip: rateLimitKey, attempts: 1 });
         } else {
@@ -176,7 +224,8 @@ export async function POST(request: NextRequest) {
 
     // Cấp quyền mở khóa site toàn diện nếu là admin/user đã nhập đúng PIN
     if (isFullAccessRole && SECRET_PIN) {
-      response.cookies.set('site_access_token', SECRET_PIN, cookieOptions);
+      const siteToken = await createSiteAccessToken();
+      response.cookies.set('site_access_token', siteToken, cookieOptions);
     }
 
     return response;

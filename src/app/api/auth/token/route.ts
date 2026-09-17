@@ -8,14 +8,12 @@ export async function GET(request: NextRequest) {
     }
 
     const token = request.cookies.get('token')?.value;
-    const uploadSecret = process.env.CLOUDFLARE_UPLOAD_SECRET;
-    const activeToken = uploadSecret || token;
 
-    if (!activeToken) {
+    if (!token) {
       return NextResponse.json({ error: 'No active session token' }, { status: 401 });
     }
 
-    return NextResponse.json({ token: activeToken });
+    return NextResponse.json({ token });
   } catch (error) {
     console.error('Error fetching auth token:', error);
     return NextResponse.json({ error: 'Failed to retrieve auth token' }, { status: 500 });

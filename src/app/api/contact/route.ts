@@ -4,6 +4,16 @@ import { contactSchema } from '@/lib/validations';
 import { connectDB } from '@/lib/db';
 import { RateLimit } from '@/models/RateLimit';
 
+function escapeHtml(str: string): string {
+    return str.replace(/[&<>"']/g, (m) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;',
+    }[m] || m));
+}
+
 export async function POST(request: NextRequest) {
     try {
         const forwardedFor = request.headers.get('x-forwarded-for');
@@ -38,25 +48,31 @@ export async function POST(request: NextRequest) {
             }
         }
         await rateLimit.save();
+
+        const safeSenderName = name.replace(/[\r\n"']/g, ' ').trim() || 'Người dùng';
+        const safeSubjectName = name.replace(/[\r\n]/g, ' ').trim() || 'Người dùng';
+
         const transporter = nodemailer.createTransport({
             service: 'gmail',
             auth: {
                 user: process.env.EMAIL_USER,
                 pass: process.env.EMAIL_PASS,
             },
+            disableFileAccess: true,
+            disableUrlAccess: true,
         });
         const mailOptions = {
-            from: `"${name}" <${email}>`,
+            from: `"${safeSenderName}" <${email}>`,
             to: 'sutiexuxi.supp.0410@gmail.com',
             replyTo: email,
-            subject: `[Lubu] Tin nhắn liên hệ từ ${name}`,
+            subject: `[Lubu] Tin nhắn liên hệ từ ${safeSubjectName}`,
             text: `Bạn nhận được một tin nhắn liên hệ mới từ ${name} (${email}):\n\n${message}`,
             html: `
         <h3>Tin nhắn liên hệ mới</h3>
-        <p><strong>Người gửi:</strong> ${name}</p>
-        <p><strong>Email:</strong> ${email}</p>
+        <p><strong>Người gửi:</strong> ${escapeHtml(name)}</p>
+        <p><strong>Email:</strong> ${escapeHtml(email)}</p>
         <p><strong>Nội dung:</strong></p>
-        <p style="white-space: pre-wrap;">${message}</p>
+        <p style="white-space: pre-wrap;">${escapeHtml(message)}</p>
       `,
         };
         await transporter.sendMail(mailOptions);

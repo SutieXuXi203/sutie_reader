@@ -8,6 +8,8 @@ type BookmarkLean = {
     chapterIndex?: number;
 } & Record<string, unknown>;
 
+import { ObjectId } from 'mongodb';
+
 export async function GET(
     request: NextRequest,
     { params }: { params: Promise<{ postId: string }> }
@@ -18,6 +20,9 @@ export async function GET(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         const { postId } = await params;
+        if (!postId || !ObjectId.isValid(postId)) {
+            return NextResponse.json(null);
+        }
         await connectDB();
         const { Post } = await import('@/models/Post');
         const post = await Post.findById(postId).select('accessType sharedWith').lean();
@@ -55,6 +60,9 @@ export async function DELETE(
             return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         }
         const { postId } = await params;
+        if (!postId || !ObjectId.isValid(postId)) {
+            return NextResponse.json({ error: 'ID bài viết không hợp lệ' }, { status: 400 });
+        }
         await connectDB();
         await Bookmark.findOneAndDelete({
             userId: user.id,

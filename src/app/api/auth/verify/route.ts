@@ -2,17 +2,25 @@ import { connectDB } from '@/lib/db';
 import { handleExpiredUnverifiedUser } from '@/lib/unverifiedUserCleanup';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
+import { z } from 'zod';
+
+const verifySchema = z.object({
+  email: z.string().email('Email không hợp lệ'),
+  code: z.string().min(1, 'Mã xác thực không được để trống').max(10, 'Mã xác thực không hợp lệ'),
+});
 
 export async function POST(request: NextRequest) {
   try {
     await connectDB();
-    const { email, code } = await request.json();
-
-    if (!email || !code) {
-      return NextResponse.json({ error: 'Thiếu email hoặc mã xác thực' }, { status: 400 });
+    const body = await request.json().catch(() => ({}));
+    const parseResult = verifySchema.safeParse(body);
+    if (!parseResult.success) {
+      return NextResponse.json({ error: JSON.parse(parseResult.error.message)[0].message }, { status: 400 });
     }
+    const { email, code } = parseResult.data;
+    const normalizedEmail = email.toLowerCase().trim();
 
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email: normalizedEmail });
     if (!user) {
       return NextResponse.json({ error: 'Tài khoản không tồn tại' }, { status: 404 });
     }

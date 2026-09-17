@@ -45,7 +45,7 @@ export async function proxy(request: NextRequest) {
 
   // Kiểm tra mã PIN bảo vệ toàn trang (nếu có cấu hình UNLOCK_PIN)
   const ACCESS_COOKIE_NAME = 'site_access_token';
-  const SECRET_TOKEN = process.env.UNLOCK_PIN;
+  const SECRET_TOKEN = process.env.UNLOCK_PIN?.trim();
 
   if (!SECRET_TOKEN) {
     return NextResponse.next();
@@ -53,8 +53,19 @@ export async function proxy(request: NextRequest) {
 
   const cookie = request.cookies.get(ACCESS_COOKIE_NAME);
   
-  if (cookie?.value === SECRET_TOKEN) {
-    return NextResponse.next();
+  if (cookie?.value) {
+    try {
+      const secret = new TextEncoder().encode(process.env.JWT_SECRET || '');
+      const { payload } = await jwtVerify(cookie.value, secret);
+      if (payload.scope === 'site_unlock') {
+        return NextResponse.next();
+      }
+    } catch {
+      // Fallback cho cookie plaintext cũ trong thời gian chuyển tiếp
+      if (cookie.value === SECRET_TOKEN) {
+        return NextResponse.next();
+      }
+    }
   }
 
   const unlockUrl = new URL('/unlock', request.url);

@@ -1,7 +1,7 @@
 import 'server-only';
 
 import { cookies } from 'next/headers';
-import { jwtVerify } from 'jose';
+import { jwtVerify, SignJWT } from 'jose';
 import { cache } from 'react';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
@@ -20,6 +20,24 @@ export function getJwtSecret(): Uint8Array {
     throw new Error('JWT_SECRET environment variable is missing');
   }
   return new TextEncoder().encode(secret);
+}
+
+export async function createSiteAccessToken(): Promise<string> {
+  return new SignJWT({ scope: 'site_unlock' })
+    .setProtectedHeader({ alg: 'HS256' })
+    .setIssuedAt()
+    .setExpirationTime('30d')
+    .sign(getJwtSecret());
+}
+
+export async function verifySiteAccessToken(token?: string | null): Promise<boolean> {
+  if (!token) return false;
+  try {
+    const { payload } = await jwtVerify(token, getJwtSecret());
+    return payload.scope === 'site_unlock';
+  } catch {
+    return false;
+  }
 }
 
 type LeanAuthUser = {

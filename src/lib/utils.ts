@@ -84,7 +84,7 @@ export function ensureScrambledImageUrl(url: string): string {
         search.delete('v');
         search.delete('thumb');
         const qs = search.toString();
-        return `/api/image/${encodeURIComponent(fileId)}?v=${PROTECTED_IMAGE_URL_VERSION}&pre_scrambled=1${qs ? `&${qs}` : ''}`;
+        return `/api/image/${encodeURIComponent(fileId)}?v=${PROTECTED_IMAGE_URL_VERSION}&scramble=1${qs ? `&${qs}` : ''}`;
       } catch {}
     }
     return url;

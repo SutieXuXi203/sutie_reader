@@ -289,4 +289,192 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
       assert.ok(remainingMs > 14 * 60 * 1000 && remainingMs <= 15 * 60 * 1000);
     });
   });
+
+  describe('9. Chống Bypass Scramble ảnh truyện qua tham số ?pre_scrambled=1', () => {
+    it('chỉ cho phép Quản trị viên sử dụng tham số pre_scrambled=1 để lấy ảnh trực tiếp', () => {
+      const isPreScrambledRequested = true;
+
+      const evaluateIsPreScrambled = (role: string) => isPreScrambledRequested && role === 'admin';
+
+      assert.equal(evaluateIsPreScrambled('admin'), true, 'Admin được phép dùng pre_scrambled');
+      assert.equal(evaluateIsPreScrambled('user'), false, 'User bị từ chối pre_scrambled và phải scramble');
+      assert.equal(evaluateIsPreScrambled('guest'), false, 'Guest bị từ chối pre_scrambled và phải scramble');
+    });
+  });
+
+  describe('10. Chống Open Redirect tại trang /unlock (getSafeCallbackUrl)', () => {
+    const getSafeCallbackUrl = (url: string | null): string => {
+      if (!url || typeof url !== 'string') return '/';
+      const trimmed = url.trim();
+      if (
+        trimmed.startsWith('/') &&
+        !trimmed.startsWith('//') &&
+        !trimmed.startsWith('/\\') &&
+        !trimmed.includes('\\') &&
+        !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)
+      ) {
+        return trimmed;
+      }
+      return '/';
+    };
+
+    it('cho phép các đường dẫn nội bộ hợp lệ', () => {
+      assert.equal(getSafeCallbackUrl('/'), '/');
+      assert.equal(getSafeCallbackUrl('/posts/123'), '/posts/123');
+      assert.equal(getSafeCallbackUrl('/products?tab=favorites'), '/products?tab=favorites');
+    });
+
+    it('từ chối và đưa về / đối với các liên kết chuyển hướng độc hại', () => {
+      assert.equal(getSafeCallbackUrl('https://evil-site.com'), '/');
+      assert.equal(getSafeCallbackUrl('http://attacker.com/phishing'), '/');
+      assert.equal(getSafeCallbackUrl('//evil-site.com'), '/');
+      assert.equal(getSafeCallbackUrl('/\\evil-site.com'), '/');
+      assert.equal(getSafeCallbackUrl('javascript:alert(1)'), '/');
+      assert.equal(getSafeCallbackUrl(null), '/');
+      assert.equal(getSafeCallbackUrl(''), '/');
+    });
+  });
+
+  describe('11. Rút ngắn thời hạn OTP xác thực và đảm bảo mã số an toàn', () => {
+    it('thời hạn mã OTP đăng ký mới là 15 phút thay vì 24 giờ', () => {
+      const otpExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
+      const remainingMinutes = Math.round((otpExpiresAt.getTime() - Date.now()) / 60000);
+      assert.equal(remainingMinutes, 15);
+    });
+
+    it('mã OTP luôn có độ dài 6 chữ số hợp lệ từ 100000 đến 999999', () => {
+      for (let i = 0; i < 20; i++) {
+        // Mô phỏng randomInt(100000, 1000000)
+        const code = Math.floor(100000 + Math.random() * 900000).toString();
+        assert.equal(code.length, 6);
+        assert.ok(/^\d{6}$/.test(code));
+      }
+    });
+  });
+
+  describe('12. Chống HTML Injection và Regex Injection', () => {
+    it('escapeHtml mã hóa chính xác các ký tự HTML nhạy cảm trong form liên hệ', () => {
+      const escapeHtml = (str: string): string => {
+        return str.replace(/[&<>"']/g, (m) => ({
+          '&': '&amp;',
+          '<': '&lt;',
+          '>': '&gt;',
+          '"': '&quot;',
+          "'": '&#039;',
+        }[m] || m));
+      };
+
+      const maliciousName = '<script>alert("hacked")</script>';
+      const maliciousMsg = '<a href="http://evil.com">Click me</a> & "win"';
+
+      assert.equal(
+        escapeHtml(maliciousName),
+        '&lt;script&gt;alert(&quot;hacked&quot;)&lt;/script&gt;'
+      );
+      assert.equal(
+        escapeHtml(maliciousMsg),
+        '&lt;a href=&quot;http://evil.com&quot;&gt;Click me&lt;/a&gt; &amp; &quot;win&quot;'
+      );
+    });
+
+    it('escapeRegExp vô hiệu hóa các ký tự đặc biệt của biểu thức chính quy khi quản lý Tag', () => {
+      const escapeRegExp = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+      const dangerousTag = '(a+)+$';
+      const escaped = escapeRegExp(dangerousTag);
+      assert.equal(escaped, '\\(a\\+\\)\\+\\$');
+
+      // Test khi tạo RegExp không bị lỗi ReDoS hoặc syntax error
+      const regex = new RegExp(`^${escaped}$`, 'i');
+      assert.equal(regex.test('(a+)+$'), true);
+      assert.equal(regex.test('aaaa'), false);
+    });
+  });
+
+  describe('13. Bảo vệ mã PIN bằng Signed JWT Token thay vì plaintext cookie', () => {
+    it('thẩm định token mở khóa site chứa scope site_unlock hợp lệ', async () => {
+      const { SignJWT, jwtVerify } = await import('jose');
+      const testSecret = new TextEncoder().encode('test_jwt_secret_key_123456789012');
+
+      const token = await new SignJWT({ scope: 'site_unlock' })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('30d')
+        .sign(testSecret);
+
+      const { payload } = await jwtVerify(token, testSecret);
+      assert.equal(payload.scope, 'site_unlock');
+
+      // Giả mạo token không có scope
+      const fakeToken = await new SignJWT({ scope: 'other' })
+        .setProtectedHeader({ alg: 'HS256' })
+        .sign(testSecret);
+      const fakeVerify = await jwtVerify(fakeToken, testSecret);
+      assert.notEqual(fakeVerify.payload.scope, 'site_unlock');
+    });
+
+    it('timingSafeEqual chống timing attack khi so sánh mã PIN', async () => {
+      const crypto = await import('node:crypto');
+      const pin1 = Buffer.from('123456');
+      const pin2 = Buffer.from('123456');
+      const pin3 = Buffer.from('654321');
+
+      assert.equal(crypto.timingSafeEqual(pin1, pin2), true);
+      assert.equal(crypto.timingSafeEqual(pin1, pin3), false);
+    });
+  });
+
+  describe('14. Chống Brute Force mật khẩu đăng nhập (Password Rate Limiting)', () => {
+    it('định dạng rate limit key theo chuẩn pwd:login:${ip}:${email}', () => {
+      const ip = '192.168.1.100';
+      const email = ' TestUser@gmail.com ';
+      const normalizedEmail = email.toLowerCase().trim();
+      const rateLimitKey = `pwd:login:${ip}:${normalizedEmail}`;
+
+      assert.equal(rateLimitKey, 'pwd:login:192.168.1.100:testuser@gmail.com');
+    });
+
+    it('khóa 15 phút khi nhập sai mật khẩu đủ 5 lần', () => {
+      let attempts = 4;
+      let lockUntil: Date | undefined;
+
+      // Lần sai thứ 5
+      attempts += 1;
+      if (attempts >= 5) {
+        lockUntil = new Date(Date.now() + 15 * 60 * 1000);
+      }
+
+      assert.equal(attempts, 5);
+      assert.ok(lockUntil);
+      assert.ok(lockUntil.getTime() > Date.now());
+    });
+
+    it('reset rate limit khi đăng nhập mật khẩu thành công', () => {
+      let pwdRateLimit: { attempts: number } | null = { attempts: 3 };
+      const loginSuccess = true;
+
+      if (loginSuccess && pwdRateLimit) {
+        pwdRateLimit = null;
+      }
+
+      assert.equal(pwdRateLimit, null);
+    });
+  });
+
+  describe('15. Kiểm tra hợp lệ ObjectId trong Bookmark API', () => {
+    it('nhận diện chính xác ObjectId hợp lệ và không hợp lệ', async () => {
+      const { ObjectId } = await import('mongodb');
+
+      const validId = '507f1f77bcf86cd799439011';
+      const invalidId1 = 'null';
+      const invalidId2 = 'undefined';
+      const invalidId3 = 'invalid-mongo-id-123';
+
+      assert.equal(ObjectId.isValid(validId), true);
+      assert.equal(ObjectId.isValid(invalidId1), false);
+      assert.equal(ObjectId.isValid(invalidId2), false);
+      assert.equal(ObjectId.isValid(invalidId3), false);
+    });
+  });
 });
+

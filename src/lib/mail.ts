@@ -5,6 +5,8 @@ const transporter = nodemailer.createTransport({
         user: process.env.EMAIL_USER || 'sutiexuxi.supp.0410@gmail.com',
         pass: process.env.EMAIL_PASS,
     },
+    disableFileAccess: true,
+    disableUrlAccess: true,
 });
 export const sendVerificationEmail = async (email: string, code: string) => {
     try {

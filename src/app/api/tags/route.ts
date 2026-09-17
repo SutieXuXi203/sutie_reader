@@ -9,6 +9,7 @@ export const maxDuration = 60;
 const TAGS_LIST_CACHE_KEY = 'tags:list';
 const TAGS_LIST_CACHE_TTL_MS = 60_000;
 const normalizeTag = (value: string): string => value.trim().replace(/\s+/g, ' ').toLowerCase();
+const escapeRegExp = (str: string): string => str.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 type MongoDuplicateKeyError = Error & { code?: number };
 
 export async function GET() {
@@ -90,7 +91,7 @@ export async function PUT(request: NextRequest) {
                 { status: 400 }
             );
         }
-        const postsWithOldTag = await Post.find({ tags: { $regex: new RegExp(`^${nOldTag}$`, 'i') } });
+        const postsWithOldTag = await Post.find({ tags: { $regex: new RegExp(`^${escapeRegExp(nOldTag)}$`, 'i') } });
         const currentTag = await Tag.findOne({ name: nOldTag });
         if (currentTag) {
             currentTag.name = nNewTag;
@@ -133,7 +134,7 @@ export async function DELETE(request: NextRequest) {
         }
         const nTag = normalizeTag(tagToRemove);
         await Tag.deleteOne({ name: nTag });
-        const postsWithTag = await Post.find({ tags: { $regex: new RegExp(`^${nTag}$`, 'i') } });
+        const postsWithTag = await Post.find({ tags: { $regex: new RegExp(`^${escapeRegExp(nTag)}$`, 'i') } });
         let updatedCount = 0;
         for (const post of postsWithTag) {
             post.tags = post.tags?.filter(t => t.toLowerCase() !== nTag) || [];

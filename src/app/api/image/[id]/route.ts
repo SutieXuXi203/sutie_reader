@@ -145,7 +145,7 @@ export async function GET(
     }
 
     const isThumb = request.nextUrl.searchParams.get('thumb') === '1' || request.nextUrl.searchParams.get('type') === 'thumb';
-    const isPreScrambled = request.nextUrl.searchParams.get('pre_scrambled') === '1';
+    const isPreScrambled = request.nextUrl.searchParams.get('pre_scrambled') === '1' && user.role === 'admin';
     const isRaw = request.nextUrl.searchParams.get('raw') === '1' && user.role === 'admin';
 
     // 1. Thumbnail mode: Fast, crisp downscaled WebP cover (max 480px width), completely unscrambled
