@@ -2,6 +2,7 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin, getAuthUser } from '@/lib/auth';
+import { ObjectId } from 'mongodb';
 
 export async function DELETE(
     request: NextRequest,
@@ -13,6 +14,9 @@ export async function DELETE(
         }
         await connectDB();
         const { id } = await params;
+        if (!ObjectId.isValid(id)) {
+            return NextResponse.json({ error: 'ID người dùng không hợp lệ' }, { status: 400 });
+        }
         const currentUser = await getAuthUser(request);
         if (currentUser && currentUser.id === id) {
             return NextResponse.json({ error: 'Không thể tự xóa tài khoản của chính mình' }, { status: 400 });
@@ -44,6 +48,9 @@ export async function PATCH(
         }
         await connectDB();
         const { id } = await params;
+        if (!ObjectId.isValid(id)) {
+            return NextResponse.json({ error: 'ID người dùng không hợp lệ' }, { status: 400 });
+        }
         const body = await request.json();
         const { role } = body;
 
