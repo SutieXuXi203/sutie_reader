@@ -570,6 +570,43 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
       assert.equal(verifyOtpConstantTime(undefined, '654321'), false);
     });
   });
+
+  describe('18. Đảm bảo ảnh Thumbnail luôn có tham số thumb=1 và không bị xáo trộn', () => {
+    it('getOptimizedImageUrl tự động gắn thumb=1 vào đường dẫn /api/image/... nếu chưa có', async () => {
+      const { getOptimizedImageUrl } = await import('./utils');
+      const fileId = '1LOpaFTkog3PbmZupfzsgCt1YnFUjTOxI';
+
+      const stealthUrl = `/api/image/${fileId}.webp?v=2`;
+      const thumbUrl = getOptimizedImageUrl(stealthUrl);
+
+      assert.ok(thumbUrl.includes('thumb=1'), 'Thumbnail URL bắt buộc phải có thumb=1');
+      assert.equal(thumbUrl, `/api/image/${fileId}.webp?v=2&thumb=1`);
+    });
+
+    it('getOptimizedImageUrl loại bỏ hoàn toàn các tham số scramble khỏi ảnh thumbnail', async () => {
+      const { getOptimizedImageUrl } = await import('./utils');
+      const fileId = '1LOpaFTkog3PbmZupfzsgCt1YnFUjTOxI';
+
+      const scrambledUrl = `/api/image/${fileId}.webp?v=2&scramble=1&seed=sutie_seed_1&rows=8&cols=8`;
+      const thumbUrl = getOptimizedImageUrl(scrambledUrl);
+
+      assert.ok(thumbUrl.includes('thumb=1'), 'Thumbnail URL phải có thumb=1');
+      assert.equal(thumbUrl.includes('scramble'), false, 'Thumbnail không được chứa tham số scramble');
+      assert.equal(thumbUrl.includes('seed'), false, 'Thumbnail không được chứa tham số seed');
+    });
+
+    it('parseScrambleParams xác nhận URL qua getOptimizedImageUrl không bị kích hoạt ScrambledCanvas', async () => {
+      const { getOptimizedImageUrl } = await import('./utils');
+      const { parseScrambleParams } = await import('./scramble');
+      const fileId = '1LOpaFTkog3PbmZupfzsgCt1YnFUjTOxI';
+
+      const rawReaderUrl = `/api/image/${fileId}.webp?v=2`;
+      const thumbUrl = getOptimizedImageUrl(rawReaderUrl);
+      const meta = parseScrambleParams(thumbUrl);
+
+      assert.equal(meta.isScrambled, false, 'Thumbnail mode tuyệt đối không được coi là ảnh xáo trộn');
+    });
+  });
 });
 
 

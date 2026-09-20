@@ -1,7 +1,7 @@
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { ObjectId } from 'mongodb';
-import { getPostChapters, ensureScrambledImageUrl } from '@/lib/utils';
+import { getPostChapters, ensureScrambledImageUrl, getOptimizedImageUrl } from '@/lib/utils';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
 import PostDetailClient from './PostDetailClient';
 import { notFound } from 'next/navigation';
@@ -81,7 +81,7 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
     serialized = serializePost(post);
 
     if (serialized.images) {
-      serialized.images = serialized.images.map(ensureScrambledImageUrl);
+      serialized.images = serialized.images.map(getOptimizedImageUrl);
     }
     if (Array.isArray(serialized.chapters)) {
       serialized.chapters = serialized.chapters.map((chapter: any) => ({

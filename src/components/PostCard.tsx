@@ -13,6 +13,8 @@ import { useThumbnailBlur } from '@/providers/ThumbnailBlurProvider';
 import { cn, getOptimizedImageUrl } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { GlareHover } from '@/components/GlareHover';
+import { parseScrambleParams } from '@/lib/scramble';
+const ScrambledCanvas = dynamic(() => import('@/components/ScrambledCanvas').then(m => ({ default: m.ScrambledCanvas })), { ssr: false });
 const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
 const DeleteConfirmDialog = dynamic(() => import('@/components/DeleteConfirmDialog').then(m => ({ default: m.DeleteConfirmDialog })), { ssr: false });
 const ShareDialog = dynamic(() => import('@/components/ShareDialog').then(m => ({ default: m.ShareDialog })), { ssr: false });
@@ -177,20 +179,43 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
         >
           <GlareHover width="100%" height="100%" borderRadius="0" borderColor="transparent" glareOpacity={0.3} glareSize={250}>
           {post.images.length > 0 ? (
-            <Image
-              src={getOptimizedImageUrl(post.images[0])}
-              alt={post.title}
-              fill
-              sizes={compact ? "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 16vw" : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"}
-              className={cn(
-                "object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
-                compact && "object-top",
-                blurMode === 'blur' && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
-                isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
-              )}
-              priority={priority}
-              unoptimized
-            />
+            (() => {
+              const thumbSrc = getOptimizedImageUrl(post.images[0]);
+              const scrambleMeta = parseScrambleParams(thumbSrc);
+              if (scrambleMeta.isScrambled) {
+                return (
+                  <ScrambledCanvas
+                    src={thumbSrc}
+                    seedKey={scrambleMeta.seed}
+                    rows={scrambleMeta.rows}
+                    cols={scrambleMeta.cols}
+                    alt={post.title}
+                    className={cn(
+                      "w-full h-full object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
+                      compact && "object-top",
+                      blurMode === 'blur' && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
+                      isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
+                    )}
+                  />
+                );
+              }
+              return (
+                <Image
+                  src={thumbSrc}
+                  alt={post.title}
+                  fill
+                  sizes={compact ? "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 16vw" : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"}
+                  className={cn(
+                    "object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
+                    compact && "object-top",
+                    blurMode === 'blur' && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
+                    isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
+                  )}
+                  priority={priority}
+                  unoptimized
+                />
+              );
+            })()
           ) : (
             <div className="w-full h-full flex items-center justify-center text-primary-foreground/80 dark:text-primary/40">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">

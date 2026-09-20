@@ -42,10 +42,21 @@ export function getOptimizedImageUrl(url: string): string {
   }
 
   if (url.startsWith('/api/image/')) {
-    return url;
+    try {
+      const u = new URL(url, 'http://localhost');
+      u.searchParams.delete('scramble');
+      u.searchParams.delete('seed');
+      u.searchParams.delete('rows');
+      u.searchParams.delete('cols');
+      if (u.searchParams.get('thumb') !== '1' && u.searchParams.get('type') !== 'thumb') {
+        u.searchParams.set('thumb', '1');
+      }
+      return `${u.pathname}${u.search}`;
+    } catch {
+      const sep = url.includes('?') ? '&' : '?';
+      return `${url}${sep}thumb=1`;
+    }
   }
-
-  if (url.startsWith('/')) return url;
 
   const imageId = extractDriveImageId(url);
   if (imageId) {
@@ -56,6 +67,10 @@ export function getOptimizedImageUrl(url: string): string {
         u.searchParams.delete('v');
         u.searchParams.delete('id');
         u.searchParams.delete('export');
+        u.searchParams.delete('scramble');
+        u.searchParams.delete('seed');
+        u.searchParams.delete('rows');
+        u.searchParams.delete('cols');
         u.searchParams.set('thumb', '1');
         const qs = u.searchParams.toString();
         if (qs) {
@@ -65,6 +80,9 @@ export function getOptimizedImageUrl(url: string): string {
     }
     return `/api/image/${encodeURIComponent(imageId)}.webp?v=${PROTECTED_IMAGE_URL_VERSION}${extraParams}`;
   }
+
+  if (url.startsWith('/')) return url;
+
   return url;
 }
 
