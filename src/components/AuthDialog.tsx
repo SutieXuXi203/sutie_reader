@@ -179,7 +179,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             } else if (apiError.status === 410) {
                 notify.error(
                     'Tài khoản đã bị xóa tự động',
-                    'Mã xác thực đã hết hạn sau 24 giờ. Vui lòng đăng ký lại.'
+                    'Mã xác thực đã hết hạn. Vui lòng đăng ký lại.'
                 );
             }
             setError(message);

@@ -16,8 +16,8 @@ export async function scrambleImageBuffer(
   inputBuffer: Buffer,
   options: ScrambleOptions
 ): Promise<Buffer> {
-  const rows = options.rows || DEFAULT_SCRAMBLE_ROWS;
-  const cols = options.cols || DEFAULT_SCRAMBLE_COLS;
+  const rows = Math.min(Math.max(options.rows || DEFAULT_SCRAMBLE_ROWS, 2), 16);
+  const cols = Math.min(Math.max(options.cols || DEFAULT_SCRAMBLE_COLS, 2), 16);
   const totalTiles = rows * cols;
   const quality = options.quality ?? 95;
 

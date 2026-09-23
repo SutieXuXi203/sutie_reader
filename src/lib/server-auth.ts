@@ -144,6 +144,18 @@ export const getCurrentUserFromToken = cache(async (token?: string | null): Prom
   }
 });
 
+export function clearUserCache(userId?: string): void {
+  if (!userId) {
+    userMemoryCache.clear();
+    return;
+  }
+  for (const [token, entry] of userMemoryCache.entries()) {
+    if (entry.user && entry.user.id === userId) {
+      userMemoryCache.delete(token);
+    }
+  }
+}
+
 export async function getCurrentUser(): Promise<AuthUser | null> {
   const cookieStore = await cookies();
   return getCurrentUserFromToken(cookieStore.get('token')?.value);

@@ -3,6 +3,7 @@ import { createSignedWorkerImageUrl } from '@/lib/image-signing';
 import { getSessionUserFromToken } from '@/lib/server-auth';
 import { scrambleImageBuffer } from '@/lib/scramble-server';
 import { deriveScrambleSeed } from '@/lib/scramble';
+import { getApiCache, setApiCache } from '@/lib/api-cache';
 import sharp from 'sharp';
 
 export const runtime = 'nodejs';
@@ -114,6 +115,43 @@ export async function GET(
     });
   }
 
+  const isThumb = request.nextUrl.searchParams.get('thumb') === '1' || request.nextUrl.searchParams.get('type') === 'thumb';
+
+  // Chống IDOR/BOLA: Kiểm tra quyền đối với tài khoản guest khi đọc ảnh truyện chi tiết (không áp dụng với ảnh bìa thumb)
+  if (user.role === 'guest' && !isThumb) {
+    const accessCacheKey = `img_access:${user.id}:${id}`;
+    let isAllowed = getApiCache<boolean>(accessCacheKey);
+    if (isAllowed === null) {
+      try {
+        const { connectDB } = await import('@/lib/db');
+        const { Post } = await import('@/models/Post');
+        const { canViewPost } = await import('@/lib/permissions');
+        await connectDB();
+        const post = await Post.findOne({
+          $or: [
+            { images: { $regex: id } },
+            { 'chapters.images': { $regex: id } },
+          ],
+        }).select('accessType sharedWith').lean();
+
+        if (post) {
+          const decision = canViewPost(user, post as any);
+          isAllowed = decision.allowed;
+        } else {
+          isAllowed = true;
+        }
+        setApiCache(accessCacheKey, isAllowed, 300_000);
+      } catch (err) {
+        console.error('Lỗi kiểm tra quyền xem ảnh:', err);
+        isAllowed = true;
+      }
+    }
+
+    if (!isAllowed) {
+      return imageError('Forbidden: Bạn không có quyền truy cập truyện này', 403);
+    }
+  }
+
   try {
     const signedWorkerUrl = createSignedWorkerImageUrl({
       workerBaseUrl: getWorkerBaseUrl(),
@@ -145,7 +183,6 @@ export async function GET(
       });
     }
 
-    const isThumb = request.nextUrl.searchParams.get('thumb') === '1' || request.nextUrl.searchParams.get('type') === 'thumb';
     const isPreScrambled = request.nextUrl.searchParams.get('pre_scrambled') === '1' && user.role === 'admin';
     const isRaw = request.nextUrl.searchParams.get('raw') === '1' && user.role === 'admin';
 
@@ -178,8 +215,10 @@ export async function GET(
 
     if (shouldScramble) {
       const seed = request.nextUrl.searchParams.get('seed') || deriveScrambleSeed(id);
-      const rows = parseInt(request.nextUrl.searchParams.get('rows') || '8', 10) || 8;
-      const cols = parseInt(request.nextUrl.searchParams.get('cols') || '8', 10) || 8;
+      const rawRows = parseInt(request.nextUrl.searchParams.get('rows') || '8', 10) || 8;
+      const rawCols = parseInt(request.nextUrl.searchParams.get('cols') || '8', 10) || 8;
+      const rows = Math.min(Math.max(rawRows, 2), 16);
+      const cols = Math.min(Math.max(rawCols, 2), 16);
 
       let rawBuffer: Buffer | null = null;
       try {

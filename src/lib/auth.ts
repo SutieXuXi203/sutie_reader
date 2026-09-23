@@ -10,15 +10,6 @@ export async function getAuthUser(request: NextRequest): Promise<AuthUser | null
 }
 
 export async function isAdmin(request: NextRequest): Promise<boolean> {
-    const token = request.cookies.get('token')?.value;
-    if (!token) return false;
-
-    // Fast-path: Check verified JWT signature directly (0ms DB latency)
-    const sessionUser = await getSessionUserFromToken(token);
-    if (sessionUser?.role === 'admin') {
-        return true;
-    }
-
     const user = await getAuthUser(request);
     return user?.role === 'admin';
 }

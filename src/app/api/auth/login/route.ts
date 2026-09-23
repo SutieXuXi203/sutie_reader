@@ -100,7 +100,7 @@ export async function POST(request: NextRequest) {
           return NextResponse.json(
             {
               error:
-                'Tài khoản chưa xác thực đã hết hạn sau 24 giờ và đã bị xóa. Vui lòng đăng ký lại.',
+                'Tài khoản chưa xác thực đã hết hạn và đã được dọn dẹp. Vui lòng đăng ký lại.',
             },
             { status: 410 }
           );

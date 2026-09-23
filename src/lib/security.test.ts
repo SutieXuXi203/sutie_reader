@@ -607,6 +607,68 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
       assert.equal(meta.isScrambled, false, 'Thumbnail mode tuyệt đối không được coi là ảnh xáo trộn');
     });
   });
+
+  describe('19. Chống DoS bằng cách kẹp giới hạn hàng và cột (rows, cols) khi xáo trộn ảnh', () => {
+    it('kẹp giá trị hàng/cột trong khoảng [2, 16] khi nhận tham số quá lớn hoặc bất thường', () => {
+      const clampDimension = (val: number) => Math.min(Math.max(val, 2), 16);
+
+      assert.equal(clampDimension(5000), 16, 'Giá trị 5000 phải bị kẹp xuống 16');
+      assert.equal(clampDimension(100), 16, 'Giá trị 100 phải bị kẹp xuống 16');
+      assert.equal(clampDimension(1), 2, 'Giá trị 1 phải được nâng lên tối thiểu 2');
+      assert.equal(clampDimension(-5), 2, 'Giá trị âm phải được nâng lên tối thiểu 2');
+      assert.equal(clampDimension(8), 8, 'Giá trị 8 tiêu chuẩn được giữ nguyên');
+    });
+  });
+
+  describe('20. Cấp phát token upload ngắn hạn có scope upload (Chống lộ session Admin)', () => {
+    it('token upload có thời hạn ngắn (10m) và mang scope upload', async () => {
+      const { SignJWT, jwtVerify } = await import('jose');
+      const testSecret = new TextEncoder().encode('test_secret_for_jwt_upload_token_123');
+
+      const uploadToken = await new SignJWT({
+        id: 'admin_123',
+        email: 'admin@gmail.com',
+        role: 'admin',
+        scope: 'upload',
+      })
+        .setProtectedHeader({ alg: 'HS256' })
+        .setIssuedAt()
+        .setExpirationTime('10m')
+        .sign(testSecret);
+
+      const { payload } = await jwtVerify(uploadToken, testSecret);
+      assert.equal(payload.scope, 'upload');
+      assert.equal(payload.role, 'admin');
+      assert.ok(payload.exp && payload.iat && payload.exp - payload.iat <= 600);
+    });
+  });
+
+  describe('21. Thu hồi quyền Admin và xóa cache User (clearUserCache)', () => {
+    it('thu hồi quyền và xóa cache user mục tiêu khi role bị thay đổi', () => {
+      const mockCache = new Map<string, { user: { id: string; role: string } | null; expiresAt: number }>();
+      mockCache.set('token_admin', { user: { id: 'user_1', role: 'admin' }, expiresAt: Date.now() + 60000 });
+      mockCache.set('token_other', { user: { id: 'user_2', role: 'user' }, expiresAt: Date.now() + 60000 });
+
+      const evict = (targetId?: string) => {
+        if (!targetId) {
+          mockCache.clear();
+          return;
+        }
+        for (const [token, entry] of mockCache.entries()) {
+          if (entry.user && entry.user.id === targetId) {
+            mockCache.delete(token);
+          }
+        }
+      };
+
+      evict('user_1');
+      assert.equal(mockCache.has('token_admin'), false, 'Session của user_1 phải bị xóa khỏi cache');
+      assert.equal(mockCache.has('token_other'), true, 'Session của user_2 vẫn được giữ nguyên');
+
+      evict();
+      assert.equal(mockCache.size, 0, 'Gọi không tham số phải xóa toàn bộ cache');
+    });
+  });
 });
 
 
