@@ -590,7 +590,7 @@ const worker = {
         const token = authHeader.slice(7).trim();
         try {
           const payload = await verifyJwtToken(token, jwtSecret);
-          if (payload && payload.role === 'admin') {
+          if (payload && (payload.role === 'admin' || payload.scope === 'upload')) {
             isAuthorized = true;
           }
         } catch (jwtErr) {
@@ -668,7 +668,7 @@ const worker = {
         const token = authHeader.slice(7).trim();
         try {
           const payload = await verifyJwtToken(token, jwtSecret);
-          if (payload && payload.role === 'admin') {
+          if (payload && (payload.role === 'admin' || payload.scope === 'upload')) {
             isAuthorized = true;
           }
         } catch (jwtErr) {
@@ -713,7 +713,7 @@ const worker = {
         listUrl.searchParams.set('pageSize', '1000');
         listUrl.searchParams.set('supportsAllDrives', 'true');
         listUrl.searchParams.set('includeItemsFromAllDrives', 'true');
-        listUrl.searchParams.set('orderBy', 'name_natural,name');
+        listUrl.searchParams.set('orderBy', 'name_natural');
 
         const data = await driveFetch(accessToken, listUrl.toString(), {}, 'List Drive files for sync');
         const files = data.files || [];
