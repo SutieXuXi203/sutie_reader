@@ -5,6 +5,7 @@ import {
   sendTelegramMessage,
   editTelegramMessage,
   formatters,
+  logApiError,
 } from '@/lib/telegram';
 
 export const dynamic = 'force-dynamic';
@@ -104,6 +105,12 @@ export async function POST(req: NextRequest) {
   } catch (err) {
     const errorMsg = err instanceof Error ? err.message : 'Unknown error';
     console.error('Error in /api/telegram/progress:', errorMsg);
+    void logApiError({
+      module: '[POST] /api/telegram/progress',
+      error: err,
+      request: req,
+      statusCode: 500,
+    });
     return NextResponse.json({ success: false, error: errorMsg }, { status: 200 });
   }
 }

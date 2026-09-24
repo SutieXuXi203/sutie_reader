@@ -7,6 +7,7 @@ import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { loginSchema } from '@/lib/validations';
 import { getJwtSecret, createSiteAccessToken } from '@/lib/server-auth';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 
 import crypto from 'node:crypto';
 
@@ -47,6 +48,18 @@ export async function POST(request: NextRequest) {
       await pwdRateLimit.save();
 
       if (pwdRateLimit.attempts >= 5) {
+        void logApiAction({
+          module: 'Bảo mật tài khoản (Auth)',
+          action: 'Khóa đăng nhập do nhập sai mật khẩu 5 lần',
+          request,
+          details: {
+            'Email': normalizedEmail,
+            'IP': ip,
+            'Thời gian khóa': '15 phút',
+          },
+          level: 'warn',
+        });
+
         return NextResponse.json(
           { error: 'Bạn đã nhập sai mật khẩu quá 5 lần. Vui lòng thử lại sau 15 phút.' },
           { status: 429 }
@@ -164,6 +177,18 @@ export async function POST(request: NextRequest) {
         await rateLimit.save();
 
         if (rateLimit.attempts >= 5) {
+          void logApiAction({
+            module: 'Bảo mật tài khoản (Auth)',
+            action: 'Khóa đăng nhập do nhập sai mã PIN 5 lần',
+            request,
+            details: {
+              'Email': normalizedEmail,
+              'IP': ip,
+              'Thời gian khóa': '15 phút',
+            },
+            level: 'warn',
+          });
+
           return NextResponse.json(
             { error: 'Bạn đã nhập sai mã PIN quá 5 lần. Vui lòng thử lại sau 15 phút.' },
             { status: 429 }
@@ -228,9 +253,30 @@ export async function POST(request: NextRequest) {
       response.cookies.set('site_access_token', siteToken, cookieOptions);
     }
 
+    // Ghi nhận log đăng nhập thành công về Telegram
+    void logApiAction({
+      module: 'Xác thực (Auth)',
+      action: 'Đăng nhập thành công',
+      request,
+      user: { email: user.email, id: user._id.toString(), role: user.role, name: user.name },
+      details: {
+        'Tài khoản': user.email,
+        'Tên': user.name,
+        'Vai trò': user.role,
+        'Ghi nhớ': rememberMe ? 'Có (7 ngày)' : 'Không (24 giờ)',
+      },
+      level: 'success',
+    });
+
     return response;
   } catch (error) {
     console.error('Lỗi đăng nhập:', error);
+    void logApiError({
+      module: '[POST] /api/auth/login',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Đăng nhập không thành công' }, { status: 500 });
   }
 }

@@ -1,6 +1,7 @@
 import { archiveAndDeleteExpiredUnverifiedUser } from '@/lib/archiveDeletedAccount';
 import { type AutoDeletionTrigger } from '@/models/DeletedAccount';
 import { type IUser, User } from '@/models/User';
+import { logApiAction } from '@/lib/telegramLogger';
 
 const UNVERIFIED_USER_TTL_MS = 24 * 60 * 60 * 1000;
 
@@ -63,6 +64,18 @@ export async function cleanupExpiredUnverifiedUsers(
     } else if (result.expiryBackfilled) {
       backfilledCount += 1;
     }
+  }
+
+  if (deletedCount > 0) {
+    void logApiAction({
+      module: 'Dọn dẹp hệ thống (Cleanup)',
+      action: `Dọn dẹp tự động ${deletedCount} tài khoản chưa xác thực quá hạn`,
+      details: {
+        'Kích hoạt bởi': trigger,
+        'Số tài khoản đã xóa': deletedCount,
+      },
+      level: 'info',
+    });
   }
 
   return { deletedCount, backfilledCount };

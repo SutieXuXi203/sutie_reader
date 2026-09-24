@@ -6,6 +6,7 @@ import { filterPostsForUser } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { postSchema } from '@/lib/validations';
 import { getApiCache, invalidateApiCache, setApiCache } from '@/lib/api-cache';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 
 export const maxDuration = 60;
 const POSTS_LIST_CACHE_KEY = 'posts:list';
@@ -255,6 +256,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Lỗi khi tải bài viết:', error);
+    void logApiError({
+      module: '[GET] /api/posts',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Tải bài viết không thành công' }, { status: 500 });
   }
 }
@@ -310,9 +317,32 @@ export async function POST(request: NextRequest) {
 
     const savedPost = await post.save();
     invalidateApiCache('posts:');
+
+    // Ghi nhận log tạo truyện mới lên Telegram
+    const authUser = await getAuthUser(request);
+    void logApiAction({
+      module: 'Quản lý truyện (Posts)',
+      action: 'Tạo truyện mới',
+      request,
+      user: authUser,
+      details: {
+        'Tiêu đề': savedPost.title,
+        'Tác giả': savedPost.author,
+        'Số chương': normalizedChapters.length,
+        'Thể loại': normalizedTags.join(', ') || 'Chưa phân loại',
+      },
+      level: 'success',
+    });
+
     return NextResponse.json(serializePost(savedPost), { status: 201 });
   } catch (error) {
     console.error('Lỗi khi tạo bài viết:', error);
+    void logApiError({
+      module: '[POST] /api/posts',
+      error,
+      request,
+      statusCode: 500,
+    });
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json({ error: 'Tạo bài viết không thành công', details: message }, { status: 500 });
   }

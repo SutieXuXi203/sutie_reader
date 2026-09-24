@@ -3,6 +3,7 @@ import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
 import { getCurrentUserFromToken, getJwtSecret } from '@/lib/server-auth';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
 function getDataUrlByteSize(dataUrl: string): number {
@@ -138,6 +139,13 @@ export async function PUT(request: NextRequest) {
           user.avatar = await uploadAvatarToCloudflareWorker(body.avatar, user._id.toString());
         } catch (uploadError) {
           console.error('Lỗi upload avatar lên Cloudflare Worker:', uploadError);
+          void logApiError({
+            module: '[PUT] /api/auth/me (Upload Avatar Cloudflare)',
+            error: uploadError,
+            request,
+            user: { email: user.email, id: user._id.toString(), role: user.role, name: user.name },
+            statusCode: 500,
+          });
           return NextResponse.json(
             { error: uploadError instanceof Error ? uploadError.message : 'Không thể tải ảnh lên Cloudflare' },
             { status: 500 }
@@ -184,10 +192,29 @@ export async function PUT(request: NextRequest) {
       ...(tokenMaxAge ? { maxAge: tokenMaxAge } : {}),
     });
 
+    // Ghi nhận log cập nhật thông tin tài khoản
+    void logApiAction({
+      module: 'Tài khoản cá nhân (Profile)',
+      action: 'Cập nhật thông tin tài khoản',
+      request,
+      user: { email: user.email, id: user._id.toString(), role: user.role, name: user.name },
+      details: {
+        'Tên mới': user.name,
+        'Cập nhật avatar': body.avatar !== undefined ? 'Có' : 'Không',
+      },
+      level: 'info',
+    });
+
     return response;
   } catch (error) {
     const details = error instanceof Error ? error.message : 'Unknown error';
     console.error('Loi cap nhat ho so:', error);
+    void logApiError({
+      module: '[PUT] /api/auth/me',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json(
       { error: 'Cap nhat khong thanh cong', details },
       { status: 500 }

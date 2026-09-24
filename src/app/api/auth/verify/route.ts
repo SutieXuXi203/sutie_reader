@@ -3,6 +3,7 @@ import { handleExpiredUnverifiedUser } from '@/lib/unverifiedUserCleanup';
 import { User } from '@/models/User';
 import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 import { z } from 'zod';
 
 const verifySchema = z.object({
@@ -62,6 +63,17 @@ export async function POST(request: NextRequest) {
         user.verificationCode = undefined;
         user.verificationAttempts = 0;
         await user.save();
+
+        void logApiAction({
+          module: 'Xác thực tài khoản (Verify)',
+          action: 'Vô hiệu hóa mã OTP do nhập sai 5 lần',
+          request,
+          details: {
+            'Email': normalizedEmail,
+          },
+          level: 'warn',
+        });
+
         return NextResponse.json(
           { error: 'Bạn đã nhập sai mã xác thực quá 5 lần. Mã đã bị vô hiệu hóa, vui lòng đăng ký lại để nhận mã mới.' },
           { status: 429 }
@@ -82,11 +94,29 @@ export async function POST(request: NextRequest) {
     user.verificationAttempts = 0;
     await user.save();
 
+    // Ghi nhận log xác thực tài khoản thành công
+    void logApiAction({
+      module: 'Xác thực tài khoản (Verify)',
+      action: 'Xác thực tài khoản email thành công',
+      request,
+      details: {
+        'Email': normalizedEmail,
+        'Tên': user.name,
+      },
+      level: 'success',
+    });
+
     return NextResponse.json({
       message: 'Xác thực thành công. Bạn có thể đăng nhập.',
     });
   } catch (error) {
     console.error('Lỗi xác thực:', error);
+    void logApiError({
+      module: '[POST] /api/auth/verify',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Xác thực không thành công' }, { status: 500 });
   }
 }

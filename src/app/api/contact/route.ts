@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import { contactSchema } from '@/lib/validations';
 import { connectDB } from '@/lib/db';
 import { RateLimit } from '@/models/RateLimit';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 
 function escapeHtml(str: string): string {
     return str.replace(/[&<>"']/g, (m) => ({
@@ -76,12 +77,32 @@ export async function POST(request: NextRequest) {
       `,
         };
         await transporter.sendMail(mailOptions);
+
+        // Ghi nhận log tin nhắn liên hệ về Telegram
+        void logApiAction({
+            module: 'Liên hệ (Contact)',
+            action: 'Người dùng gửi tin nhắn liên hệ',
+            request,
+            details: {
+                'Người gửi': name,
+                'Email': email,
+                'Nội dung tin nhắn': message,
+            },
+            level: 'info',
+        });
+
         return NextResponse.json(
             { message: 'Tin nhắn đã được gửi thành công.' },
             { status: 200 }
         );
     } catch (error) {
         console.error('Lỗi khi gửi email liên hệ:', error);
+        void logApiError({
+            module: '[POST] /api/contact',
+            error,
+            request,
+            statusCode: 500,
+        });
         return NextResponse.json(
             { error: 'Có lỗi xảy ra khi gửi tin nhắn. Vui lòng thử lại sau.' },
             { status: 500 }

@@ -7,6 +7,7 @@ import { canViewPost } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 
 const normalizeImages = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
@@ -80,6 +81,12 @@ export async function GET(
     });
   } catch (error) {
     console.error('Lỗi khi tải danh sách chương:', error);
+    void logApiError({
+      module: '[GET] /api/posts/[id]/chapters',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Tải danh sách chương không thành công' }, { status: 500 });
   }
 }
@@ -173,12 +180,35 @@ export async function POST(
     ) || updatedPost;
 
     invalidateApiCache('posts:');
+
+    // Ghi nhận log thêm chương mới lên Telegram
+    const authUser = await getAuthUser(request);
+    void logApiAction({
+      module: 'Quản lý chương (Chapters)',
+      action: 'Thêm chương mới',
+      request,
+      user: authUser,
+      details: {
+        'Bộ truyện': post.title,
+        'Số chương': newChapter.chapterNumber,
+        'Tiêu đề chương': newChapter.title,
+        'Số lượng ảnh': newChapter.images?.length || 0,
+      },
+      level: 'success',
+    });
+
     return NextResponse.json({
       chapter: newChapter,
       post: serializePost(finalPost),
     });
   } catch (error) {
     console.error('Lỗi khi thêm chương:', error);
+    void logApiError({
+      module: '[POST] /api/posts/[id]/chapters',
+      error,
+      request,
+      statusCode: 500,
+    });
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { error: 'Thêm chương không thành công', details: message },

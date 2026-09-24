@@ -5,6 +5,7 @@ import { Post } from '@/models/Post';
 import { User } from '@/models/User';
 import { getAuthUser, isAdmin } from '@/lib/auth';
 import { invalidateApiCache } from '@/lib/api-cache';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 import { z } from 'zod';
 
 const emailSchema = z.string().trim().toLowerCase().email('Email không hợp lệ');
@@ -104,6 +105,12 @@ export async function GET(
     });
   } catch (error) {
     console.error('Lỗi khi lấy thông tin chia sẻ:', error);
+    void logApiError({
+      module: '[GET] /api/posts/[id]/share',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Lỗi máy chủ' }, { status: 500 });
   }
 }
@@ -178,6 +185,21 @@ export async function POST(
       await post.save();
       invalidateApiCache('posts:');
 
+      // Ghi nhận log chia sẻ quyền đọc lên Telegram
+      const authUser = await getAuthUser(request);
+      void logApiAction({
+        module: 'Phân quyền truyện (Share)',
+        action: 'Cấp quyền đọc truyện cho người dùng',
+        request,
+        user: authUser,
+        details: {
+          'Mã truyện': id,
+          'Email được cấp quyền': targetEmail,
+          'Vai trò': 'viewer',
+        },
+        level: 'info',
+      });
+
       return NextResponse.json({
         message: 'Đã thêm quyền truy cập thành công',
         user: {
@@ -194,6 +216,12 @@ export async function POST(
     return NextResponse.json({ error: 'Hành động không được hỗ trợ' }, { status: 400 });
   } catch (error) {
     console.error('Lỗi khi cập nhật chia sẻ:', error);
+    void logApiError({
+      module: '[POST] /api/posts/[id]/share',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Không thể cập nhật quyền chia sẻ' }, { status: 500 });
   }
 }
@@ -248,12 +276,32 @@ export async function DELETE(
 
     invalidateApiCache('posts:');
 
+    // Ghi nhận log gỡ quyền đọc lên Telegram
+    const authUser = await getAuthUser(request);
+    void logApiAction({
+      module: 'Phân quyền truyện (Share)',
+      action: 'Thu hồi quyền đọc truyện của người dùng',
+      request,
+      user: authUser,
+      details: {
+        'Mã truyện': id,
+        'Email bị thu hồi': normalizedEmail,
+      },
+      level: 'warn',
+    });
+
     return NextResponse.json({
       message: 'Đã xóa quyền truy cập của tài khoản',
       email: normalizedEmail,
     });
   } catch (error) {
     console.error('Lỗi khi xóa quyền chia sẻ:', error);
+    void logApiError({
+      module: '[DELETE] /api/posts/[id]/share',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Không thể xóa quyền truy cập' }, { status: 500 });
   }
 }

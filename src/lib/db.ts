@@ -59,6 +59,18 @@ export async function connectDB() {
   } catch (e) {
     cached.promise = null;
     cached.uri = null;
+    // Báo cáo lỗi kết nối cơ sở dữ liệu về Telegram Bot
+    try {
+      const { logApiError } = await import('@/lib/telegramLogger');
+      void logApiError({
+        module: 'MongoDB Database',
+        error: e,
+        metadata: { action: 'connectDB' },
+        statusCode: 500,
+      });
+    } catch {
+      // ignore
+    }
     throw e;
   }
   return cached.conn;

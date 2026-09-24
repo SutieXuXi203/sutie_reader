@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser, isAdmin } from '@/lib/auth';
 import { SignJWT } from 'jose';
 import { getJwtSecret } from '@/lib/server-auth';
+import { logApiError } from '@/lib/telegramLogger';
 
 export async function GET(request: NextRequest) {
   try {
@@ -30,7 +31,12 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ token: uploadToken });
   } catch (error) {
     console.error('Error generating upload token:', error);
+    void logApiError({
+      module: '[GET] /api/auth/token',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Failed to retrieve auth token' }, { status: 500 });
   }
 }
-

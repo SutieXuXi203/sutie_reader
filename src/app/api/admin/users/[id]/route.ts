@@ -5,6 +5,7 @@ import { isAdmin, getAuthUser } from '@/lib/auth';
 import { ObjectId } from 'mongodb';
 import { invalidateApiCache } from '@/lib/api-cache';
 import { clearUserCache } from '@/lib/server-auth';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 
 export async function DELETE(
     request: NextRequest,
@@ -35,9 +36,31 @@ export async function DELETE(
         await User.findByIdAndDelete(id);
         clearUserCache(id);
         invalidateApiCache('admin:users');
+
+        // Ghi nhận log xóa tài khoản người dùng
+        void logApiAction({
+            module: 'Quản trị người dùng (Admin)',
+            action: 'Xóa tài khoản người dùng',
+            request,
+            user: currentUser,
+            details: {
+                'ID người dùng bị xóa': id,
+                'Email': userToDelete.email,
+                'Tên': userToDelete.name,
+                'Vai trò trước khi xóa': userToDelete.role,
+            },
+            level: 'warn',
+        });
+
         return NextResponse.json({ message: 'Đã xóa người dùng thành công' });
     } catch (error) {
         console.error('Lỗi xóa người dùng:', error);
+        void logApiError({
+            module: '[DELETE] /api/admin/users/[id]',
+            error,
+            request,
+            statusCode: 500,
+        });
         return NextResponse.json({ error: 'Không thể xóa người dùng' }, { status: 500 });
     }
 }
@@ -71,10 +94,26 @@ export async function PATCH(
             return NextResponse.json({ error: 'Không thể hạ quyền tài khoản quản trị viên gốc' }, { status: 403 });
         }
 
+        const oldRole = targetUser.role;
         targetUser.role = role;
         await targetUser.save();
         clearUserCache(id);
         invalidateApiCache('admin:users');
+
+        // Ghi nhận log thay đổi vai trò người dùng
+        const adminUser = await getAuthUser(request);
+        void logApiAction({
+            module: 'Quản trị người dùng (Admin)',
+            action: 'Cập nhật phân quyền / vai trò',
+            request,
+            user: adminUser,
+            details: {
+                'Tài khoản thay đổi': targetUser.email,
+                'Vai trò cũ': oldRole,
+                'Vai trò mới': role,
+            },
+            level: 'info',
+        });
 
         return NextResponse.json({
             message: 'Đã cập nhật vai trò thành công',
@@ -88,6 +127,12 @@ export async function PATCH(
         });
     } catch (error) {
         console.error('Lỗi cập nhật vai trò:', error);
+        void logApiError({
+            module: '[PATCH] /api/admin/users/[id]',
+            error,
+            request,
+            statusCode: 500,
+        });
         return NextResponse.json({ error: 'Không thể cập nhật vai trò' }, { status: 500 });
     }
 }

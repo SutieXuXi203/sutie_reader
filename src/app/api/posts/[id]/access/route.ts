@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { getAuthUser, isAdmin } from '@/lib/auth';
 import { canViewPost } from '@/lib/permissions';
+import { logApiError } from '@/lib/telegramLogger';
 
 export async function POST(
   request: NextRequest,
@@ -96,6 +97,12 @@ export async function POST(
     });
   } catch (error) {
     console.error('Lỗi khi ghi nhận truy cập link truyện:', error);
+    void logApiError({
+      module: '[POST] /api/posts/[id]/access',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Lỗi máy chủ' }, { status: 500 });
   }
 }
@@ -137,6 +144,12 @@ export async function GET(
     });
   } catch (error) {
     console.error('Lỗi khi lấy danh sách truy cập:', error);
+    void logApiError({
+      module: '[GET] /api/posts/[id]/access',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Lỗi máy chủ' }, { status: 500 });
   }
 }

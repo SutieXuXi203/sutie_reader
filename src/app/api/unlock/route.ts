@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
 import { RateLimit } from '@/models/RateLimit';
 import { createSiteAccessToken } from '@/lib/server-auth';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 import crypto from 'node:crypto';
 
 export async function POST(request: Request) {
@@ -60,6 +61,18 @@ export async function POST(request: Request) {
         maxAge: 60 * 60 * 24 * 30, // 30 ngày
       });
 
+      // Ghi nhận log mở khóa site thành công
+      void logApiAction({
+        module: 'Mở khóa trang (Unlock PIN)',
+        action: 'Mở khóa bảo vệ toàn site thành công',
+        request,
+        details: {
+          'Client IP': ip,
+          'Thời hạn cookie': '30 ngày',
+        },
+        level: 'info',
+      });
+
       return response;
     }
 
@@ -74,6 +87,17 @@ export async function POST(request: Request) {
     await rateLimit.save();
 
     if (rateLimit.attempts >= 5) {
+      void logApiAction({
+        module: 'Bảo mật site (Unlock PIN)',
+        action: 'Khóa mở trang do nhập sai mã PIN quá 5 lần',
+        request,
+        details: {
+          'Client IP': ip,
+          'Thời gian khóa': '15 phút',
+        },
+        level: 'warn',
+      });
+
       return NextResponse.json(
         { success: false, error: 'Bạn đã nhập sai quá 5 lần. Vui lòng thử lại sau 15 phút.' },
         { status: 429 }
@@ -86,6 +110,12 @@ export async function POST(request: Request) {
     );
   } catch (error) {
     console.error('Unlock error:', error);
+    void logApiError({
+      module: '[POST] /api/unlock',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json(
       { success: false, error: 'Đã xảy ra lỗi' },
       { status: 500 }

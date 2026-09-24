@@ -5,6 +5,7 @@ import bcrypt from 'bcryptjs';
 import { randomInt } from 'node:crypto';
 import { sendVerificationEmail } from '@/lib/mail';
 import { registerSchema } from '@/lib/validations';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 export async function POST(request: NextRequest) {
     try {
         await connectDB();
@@ -90,8 +91,29 @@ export async function POST(request: NextRequest) {
             await sendVerificationEmail(normalizedEmail, verificationCode);
         } catch (mailError) {
             console.error('Lỗi gửi email:', mailError);
+            void logApiError({
+                module: '[POST] /api/auth/register (Send Mail)',
+                error: mailError,
+                request,
+                metadata: { email: normalizedEmail },
+                statusCode: 500,
+            });
             return NextResponse.json({ error: 'Không thể gửi email xác thực. Vui lòng thử lại.' }, { status: 500 });
         }
+
+        // Ghi nhận log đăng ký tài khoản mới lên Telegram
+        void logApiAction({
+            module: 'Xác thực (Auth)',
+            action: 'Đăng ký tài khoản mới',
+            request,
+            details: {
+                'Email': normalizedEmail,
+                'Tên': name,
+                'Trạng thái': 'Đã gửi mã xác thực qua email',
+            },
+            level: 'info',
+        });
+
         return NextResponse.json({
             message: 'Vui lòng kiểm tra email để nhận mã xác thực',
             requireVerification: true,
@@ -99,6 +121,12 @@ export async function POST(request: NextRequest) {
         });
     } catch (error) {
         console.error('Lỗi đăng ký:', error);
+        void logApiError({
+            module: '[POST] /api/auth/register',
+            error,
+            request,
+            statusCode: 500,
+        });
         return NextResponse.json({ error: 'Đăng ký không thành công' }, { status: 500 });
     }
 }

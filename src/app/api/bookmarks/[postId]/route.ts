@@ -3,6 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
 import { canViewPost } from '@/lib/permissions';
+import { logApiError } from '@/lib/telegramLogger';
 
 type BookmarkLean = {
     chapterIndex?: number;
@@ -47,6 +48,12 @@ export async function GET(
         });
     } catch (error) {
         console.error('Error fetching bookmark:', error);
+        void logApiError({
+            module: '[GET] /api/bookmarks/[postId]',
+            error,
+            request,
+            statusCode: 500,
+        });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -71,6 +78,12 @@ export async function DELETE(
         return NextResponse.json({ success: true });
     } catch (error) {
         console.error('Error deleting bookmark:', error);
+        void logApiError({
+            module: '[DELETE] /api/bookmarks/[postId]',
+            error,
+            request,
+            statusCode: 500,
+        });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

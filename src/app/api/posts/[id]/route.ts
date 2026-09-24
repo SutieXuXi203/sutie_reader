@@ -8,7 +8,7 @@ import { canViewPost } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { getApiCache, setApiCache, invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
-import { sendTelegramMessage, formatters } from '@/lib/telegram';
+import { sendTelegramMessage, formatters, logApiError, logApiAction } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
 export const maxDuration = 60;
@@ -389,6 +389,12 @@ export async function GET(
     });
   } catch (error) {
     console.error('Lỗi khi tải bài viết:', error);
+    void logApiError({
+      module: '[GET] /api/posts/[id]',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Tải bài viết không thành công' }, { status: 500 });
   }
 }
@@ -696,6 +702,12 @@ export async function PUT(
     return NextResponse.json(serializePost(updated));
   } catch (error) {
     console.error('Lỗi khi cập nhật bài viết:', error);
+    void logApiError({
+      module: '[PUT] /api/posts/[id]',
+      error,
+      request,
+      statusCode: 500,
+    });
     const message = error instanceof Error ? error.message : 'Unknown error';
     return NextResponse.json(
       { error: 'Cập nhật bài viết không thành công', details: message },
@@ -765,6 +777,12 @@ export async function DELETE(
     return NextResponse.json({ message: 'Đã xóa bài viết thành công' });
   } catch (error) {
     console.error('Lỗi khi xóa bài viết:', error);
+    void logApiError({
+      module: '[DELETE] /api/posts/[id]',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json({ error: 'Xóa bài viết không thành công' }, { status: 500 });
   }
 }

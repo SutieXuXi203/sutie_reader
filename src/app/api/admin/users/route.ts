@@ -5,6 +5,7 @@ import { connectDB } from '@/lib/db';
 import { cleanupExpiredUnverifiedUsers } from '@/lib/unverifiedUserCleanup';
 import { User } from '@/models/User';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
+import { logApiError } from '@/lib/telegramLogger';
 
 export const dynamic = 'force-dynamic';
 
@@ -53,6 +54,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Lỗi lấy danh sách người dùng:', error);
+    void logApiError({
+      module: '[GET] /api/admin/users',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json(
       { error: 'Không thể lấy dữ liệu người dùng' },
       { status: 500 }

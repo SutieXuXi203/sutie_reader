@@ -4,6 +4,7 @@ import { getSessionUserFromToken } from '@/lib/server-auth';
 import { scrambleImageBuffer } from '@/lib/scramble-server';
 import { deriveScrambleSeed } from '@/lib/scramble';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
+import { logApiError } from '@/lib/telegramLogger';
 import sharp from 'sharp';
 
 export const runtime = 'nodejs';
@@ -269,6 +270,13 @@ export async function GET(
     });
   } catch (error) {
     console.error('Error serving signed image:', error);
+    void logApiError({
+      module: '[GET] /api/image/[id]',
+      error,
+      request,
+      metadata: { imageId: id },
+      statusCode: 500,
+    });
     return imageError('Image unavailable', 500);
   }
 }

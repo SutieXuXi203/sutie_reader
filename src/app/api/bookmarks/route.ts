@@ -4,6 +4,7 @@ import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
 import { signImageUrls } from '@/lib/image-signing';
 import { canViewPost } from '@/lib/permissions';
+import { logApiError } from '@/lib/telegramLogger';
 
 type BookmarkLean = {
     _id: unknown;
@@ -58,6 +59,12 @@ export async function POST(request: NextRequest) {
         return NextResponse.json(bookmark);
     } catch (error) {
         console.error('Error saving bookmark:', error);
+        void logApiError({
+            module: '[POST] /api/bookmarks',
+            error,
+            request,
+            statusCode: 500,
+        });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }
@@ -129,6 +136,12 @@ export async function GET(request: NextRequest) {
         return NextResponse.json(result);
     } catch (error) {
         console.error('Error fetching bookmarks:', error);
+        void logApiError({
+            module: '[GET] /api/bookmarks',
+            error,
+            request,
+            statusCode: 500,
+        });
         return NextResponse.json({ error: 'Internal server error' }, { status: 500 });
     }
 }

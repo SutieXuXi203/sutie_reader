@@ -3,6 +3,7 @@ import { DeletedAccount } from '@/models/DeletedAccount';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
+import { logApiError } from '@/lib/telegramLogger';
 
 export const dynamic = 'force-dynamic';
 
@@ -46,6 +47,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Lỗi lấy lịch sử tài khoản đã xóa tự động:', error);
+    void logApiError({
+      module: '[GET] /api/admin/deleted-accounts',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json(
       { error: 'Không thể lấy dữ liệu tài khoản đã xóa tự động' },
       { status: 500 }

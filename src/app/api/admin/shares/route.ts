@@ -4,6 +4,7 @@ import { Post } from '@/models/Post';
 import { User } from '@/models/User';
 import { isAdmin } from '@/lib/auth';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
+import { logApiError } from '@/lib/telegramLogger';
 
 export const dynamic = 'force-dynamic';
 
@@ -159,6 +160,12 @@ export async function GET(request: NextRequest) {
     });
   } catch (error) {
     console.error('Lỗi khi lấy danh sách truyện chia sẻ cho khách:', error);
+    void logApiError({
+      module: '[GET] /api/admin/shares',
+      error,
+      request,
+      statusCode: 500,
+    });
     return NextResponse.json(
       { error: 'Không thể tải danh sách truyện chia sẻ' },
       { status: 500 }

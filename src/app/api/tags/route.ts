@@ -5,6 +5,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin } from '@/lib/auth';
 import { tagSchema, updateTagSchema } from '@/lib/validations';
 import { getApiCache, invalidateApiCache, setApiCache } from '@/lib/api-cache';
+import { logApiError, logApiAction } from '@/lib/telegramLogger';
 export const maxDuration = 60;
 const TAGS_LIST_CACHE_KEY = 'tags:list';
 const TAGS_LIST_CACHE_TTL_MS = 60_000;
@@ -29,6 +30,11 @@ export async function GET() {
         });
     } catch (error) {
         console.error('Lỗi khi lấy danh sách tag:', error);
+        void logApiError({
+            module: '[GET] /api/tags',
+            error,
+            statusCode: 500,
+        });
         return NextResponse.json({ error: 'Không thể lấy danh sách tag' }, { status: 500 });
     }
 }
@@ -54,9 +60,25 @@ export async function POST(request: NextRequest) {
         }
         const newTag = await Tag.create({ name: normalizedName });
         invalidateApiCache('tags:');
+
+        // Ghi nhận log tạo tag mới lên Telegram
+        void logApiAction({
+            module: 'Quản lý Thể loại (Tags)',
+            action: 'Tạo thể loại / tag mới',
+            request,
+            details: { 'Tên thể loại': normalizedName },
+            level: 'info',
+        });
+
         return NextResponse.json({ message: 'Tạo tag thành công', tag: newTag }, { status: 201 });
     } catch (error) {
         console.error('Lỗi khi tạo tag:', error);
+        void logApiError({
+            module: '[POST] /api/tags',
+            error,
+            request,
+            statusCode: 500,
+        });
         const mongoError = error as MongoDuplicateKeyError;
         if (mongoError.code === 11000) {
             return NextResponse.json({ error: 'Tag này đã tồn tại.' }, { status: 409 });
@@ -111,9 +133,29 @@ export async function PUT(request: NextRequest) {
         }
         invalidateApiCache('tags:');
         invalidateApiCache('posts:');
+
+        // Ghi nhận log sửa tag lên Telegram
+        void logApiAction({
+            module: 'Quản lý Thể loại (Tags)',
+            action: 'Đổi tên thể loại / tag',
+            request,
+            details: {
+                'Tag cũ': nOldTag,
+                'Tag mới': nNewTag,
+                'Số bài viết bị ảnh hưởng': updatedCount,
+            },
+            level: 'info',
+        });
+
         return NextResponse.json({ message: `Đã cập nhật tên tag đổi thành ${nNewTag}, và sửa trên ${updatedCount} bài viết.` });
     } catch (error) {
         console.error('Lỗi khi sửa tag:', error);
+        void logApiError({
+            module: '[PUT] /api/tags',
+            error,
+            request,
+            statusCode: 500,
+        });
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ error: 'Cập nhật tag không thành công', details: message }, { status: 500 });
     }
@@ -143,9 +185,28 @@ export async function DELETE(request: NextRequest) {
         }
         invalidateApiCache('tags:');
         invalidateApiCache('posts:');
+
+        // Ghi nhận log xóa tag lên Telegram
+        void logApiAction({
+            module: 'Quản lý Thể loại (Tags)',
+            action: 'Xóa thể loại / tag',
+            request,
+            details: {
+                'Tag đã xóa': nTag,
+                'Số bài viết bị gỡ tag': updatedCount,
+            },
+            level: 'warn',
+        });
+
         return NextResponse.json({ message: `Đã xóa tag và gỡ khỏi ${updatedCount} bài viết.` });
     } catch (error) {
         console.error('Lỗi khi xóa tag:', error);
+        void logApiError({
+            module: '[DELETE] /api/tags',
+            error,
+            request,
+            statusCode: 500,
+        });
         const message = error instanceof Error ? error.message : 'Unknown error';
         return NextResponse.json({ error: 'Xóa tag không thành công', details: message }, { status: 500 });
     }
