@@ -53,7 +53,7 @@ export function AuthProvider({
     useEffect(() => {
         let lastChecked = Date.now();
         const handleRecheck = () => {
-            if (typeof document !== 'undefined' && document.visibilityState === 'visible' && Date.now() - lastChecked > 20000) {
+            if (typeof document !== 'undefined' && document.visibilityState === 'visible' && Date.now() - lastChecked > 5000) {
                 lastChecked = Date.now();
                 void checkAuth();
             }

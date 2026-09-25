@@ -70,24 +70,30 @@ export default function AdminDashboard() {
     const { user, isLoading: isAuthLoading, checkAuth } = useAuth();
     const router = useRouter();
 
-    useEffect(() => {
-        if (!isAuthLoading && (!user || user.role !== 'admin')) {
-            void checkAuth();
-        }
-    }, [isAuthLoading, user, checkAuth]);
+    // Trạng thái đang kiểm tra xác thực bổ sung (khi token cũ chưa cập nhật role mới)
+    const [isRecheckingAuth, setIsRecheckingAuth] = useState(false);
 
     useEffect(() => {
-        if (!isAuthLoading && user && user.role !== 'admin') {
-            const timer = setTimeout(() => {
-                if (user?.role !== 'admin') {
-                    router.replace('/');
-                }
-            }, 800);
-            return () => clearTimeout(timer);
-        } else if (!isAuthLoading && !user) {
+        // Nếu đang tải xác thực ban đầu, chờ xong
+        if (isAuthLoading) return;
+
+        // Nếu chưa có user hoặc role không phải admin, kiểm tra lại từ server một lần
+        if (!user || user.role !== 'admin') {
+            setIsRecheckingAuth(true);
+            void checkAuth().finally(() => setIsRecheckingAuth(false));
+        }
+    // Chỉ chạy khi lần đầu xác thực xong, không phụ thuộc vào user để tránh vòng lặp
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [isAuthLoading]);
+
+    useEffect(() => {
+        // Chỉ redirect khi CHẮC CHẮN đã hoàn thành tất cả việc kiểm tra auth
+        if (isAuthLoading || isRecheckingAuth) return;
+
+        if (!user || user.role !== 'admin') {
             router.replace('/');
         }
-    }, [user, isAuthLoading, router]);
+    }, [user, isAuthLoading, isRecheckingAuth, router]);
 
     // Tab Navigation: Synchronous 0ms switch
     const [activeTab, setActiveTab] = useState<AdminTabKey>('posts');
@@ -489,7 +495,7 @@ export default function AdminDashboard() {
         setEditingTag(val);
     }, []);
 
-    if (isAuthLoading || !user || user.role !== 'admin') {
+    if (isAuthLoading || isRecheckingAuth || !user || user.role !== 'admin') {
         return (
             <div className="min-h-screen flex items-center justify-center text-foreground">
                 <Loader2 className="w-8 h-8 animate-spin text-primary" />

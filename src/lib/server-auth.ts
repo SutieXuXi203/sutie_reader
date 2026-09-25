@@ -99,7 +99,7 @@ export async function getSessionUserFromToken(token?: string | null): Promise<Au
   };
 }
 
-const USER_CACHE_TTL_MS = 60_000;
+const USER_CACHE_TTL_MS = 15_000;
 const userMemoryCache = new Map<string, { user: AuthUser | null; expiresAt: number }>();
 
 export const getCurrentUserFromToken = cache(async (token?: string | null): Promise<AuthUser | null> => {

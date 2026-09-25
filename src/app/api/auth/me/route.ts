@@ -2,7 +2,7 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
-import { getCurrentUserFromToken, getJwtSecret, createSiteAccessToken } from '@/lib/server-auth';
+import { getCurrentUserFromToken, getJwtSecret, createSiteAccessToken, clearUserCache } from '@/lib/server-auth';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
@@ -86,6 +86,9 @@ export async function GET(request: NextRequest) {
     try {
       const { payload } = await jwtVerify(token, getJwtSecret());
       if (payload && (payload.role !== user.role || payload.name !== user.name)) {
+        // Xóa cache của token cũ ngay lập tức để tránh trả về role lỗi thời
+        clearUserCache(user.id);
+
         const newToken = await new SignJWT({
           id: user.id,
           email: user.email,
