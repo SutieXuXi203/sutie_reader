@@ -152,10 +152,13 @@ export default function AdminDashboard() {
     const lastFetchRef = useRef<Record<string, number>>({});
 
     const fetchPosts = useCallback(async (force = false) => {
-        if (!force && posts.length > 0 && Date.now() - (lastFetchRef.current['posts'] || 0) < 60000) {
+        if (!force && lastFetchRef.current['posts'] && Date.now() - lastFetchRef.current['posts'] < 60000) {
             return;
         }
-        setIsLoadingPosts(true);
+        setPosts((currentPosts) => {
+            if (currentPosts.length === 0) setIsLoadingPosts(true);
+            return currentPosts;
+        });
         try {
             const res = await fetch('/api/posts', { credentials: 'same-origin' });
             if (res.ok) {
@@ -168,13 +171,16 @@ export default function AdminDashboard() {
         } finally {
             setIsLoadingPosts(false);
         }
-    }, [posts.length]);
+    }, []);
 
     const fetchShares = useCallback(async (force = false) => {
-        if (!force && sharedPosts.length > 0 && Date.now() - (lastFetchRef.current['shares'] || 0) < 60000) {
+        if (!force && lastFetchRef.current['shares'] && Date.now() - lastFetchRef.current['shares'] < 60000) {
             return;
         }
-        setIsSharesLoading(true);
+        setSharedPosts((current) => {
+            if (current.length === 0) setIsSharesLoading(true);
+            return current;
+        });
         try {
             const res = await fetch('/api/admin/shares', { credentials: 'same-origin' });
             if (res.ok) {
@@ -192,10 +198,10 @@ export default function AdminDashboard() {
         } finally {
             setIsSharesLoading(false);
         }
-    }, [sharedPosts.length]);
+    }, []);
 
     const fetchTags = useCallback(async (force = false) => {
-        if (!force && standaloneTags.length > 0 && Date.now() - (lastFetchRef.current['tags'] || 0) < 60000) {
+        if (!force && lastFetchRef.current['tags'] && Date.now() - lastFetchRef.current['tags'] < 60000) {
             return;
         }
         try {
@@ -208,13 +214,16 @@ export default function AdminDashboard() {
         } catch (error) {
             console.error('Error fetching tags:', error);
         }
-    }, [standaloneTags.length]);
+    }, []);
 
     const fetchUsers = useCallback(async (force = false) => {
-        if (!force && usersList.length > 0 && Date.now() - (lastFetchRef.current['users'] || 0) < 60000) {
+        if (!force && lastFetchRef.current['users'] && Date.now() - lastFetchRef.current['users'] < 60000) {
             return;
         }
-        setIsUsersLoading(true);
+        setUsersList((current) => {
+            if (current.length === 0) setIsUsersLoading(true);
+            return current;
+        });
         setUsersLoadError(null);
         try {
             const res = await fetch('/api/admin/users');
@@ -238,13 +247,16 @@ export default function AdminDashboard() {
         } finally {
             setIsUsersLoading(false);
         }
-    }, [usersList.length]);
+    }, []);
 
     const fetchDeletedAccounts = useCallback(async (force = false) => {
-        if (!force && deletedAccounts.length > 0 && Date.now() - (lastFetchRef.current['deletedAccounts'] || 0) < 60000) {
+        if (!force && lastFetchRef.current['deletedAccounts'] && Date.now() - lastFetchRef.current['deletedAccounts'] < 60000) {
             return;
         }
-        setIsDeletedAccountsLoading(true);
+        setDeletedAccounts((current) => {
+            if (current.length === 0) setIsDeletedAccountsLoading(true);
+            return current;
+        });
         try {
             const res = await fetch('/api/admin/deleted-accounts?limit=200');
             if (res.ok) {
@@ -257,7 +269,7 @@ export default function AdminDashboard() {
         } finally {
             setIsDeletedAccountsLoading(false);
         }
-    }, [deletedAccounts.length]);
+    }, []);
 
     // On-demand load based on activeTab
     useEffect(() => {
@@ -266,18 +278,18 @@ export default function AdminDashboard() {
                 return;
             }
             if (activeTab === 'posts') {
-                fetchPosts();
-                fetchTags();
+                void fetchPosts();
+                void fetchTags();
             } else if (activeTab === 'users') {
-                fetchUsers();
-                fetchDeletedAccounts();
+                void fetchUsers();
+                void fetchDeletedAccounts();
             } else if (activeTab === 'shares') {
-                fetchShares();
+                void fetchShares();
             } else if (activeTab === 'tags') {
-                fetchTags();
+                void fetchTags();
             }
         }
-    }, [user, isAuthLoading, router, activeTab, fetchPosts, fetchUsers, fetchDeletedAccounts, fetchTags, fetchShares]);
+    }, [user, isAuthLoading, activeTab, fetchPosts, fetchUsers, fetchDeletedAccounts, fetchTags, fetchShares]);
 
     // Computed Metadata
     const availablePostTags = useMemo(() => {

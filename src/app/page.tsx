@@ -2,8 +2,7 @@ import HomeClient from './HomeClient';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
-import { cookies } from 'next/headers';
-import { getSessionUserFromToken, type AuthUser } from '@/lib/server-auth';
+import { getCurrentUser, type AuthUser } from '@/lib/server-auth';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
 
 export const maxDuration = 60;
@@ -142,9 +141,7 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
 }
 
 export default async function HomePage() {
-  const cookieStore = await cookies();
-  const token = cookieStore.get('token')?.value;
-  const user = token ? await getSessionUserFromToken(token) : null;
+  const user = await getCurrentUser();
   const catalog = await getInitialCatalog(user);
 
   return <HomeClient {...catalog} />;

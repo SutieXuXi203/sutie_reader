@@ -210,7 +210,14 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
       return; // Use cache entirely
     }
     try {
-      if (cachedPosts.length === 0) setIsLoading(true);
+      // Chỉ hiện loading spinner nếu trang chưa có bất kỳ bài viết nào
+      setPosts((currentPosts) => {
+        if (currentPosts.length === 0 && cachedPosts.length === 0) {
+          setIsLoading(true);
+        }
+        return currentPosts;
+      });
+
       const requestOptions: RequestInit = {
         credentials: 'same-origin',
         headers: { Accept: 'application/json' },
@@ -255,28 +262,35 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   }, []);
 
   const prevUserIdRef = useRef<string | undefined>(userId);
+  const userRole = user?.role;
+  const prevUserRoleRef = useRef<string | undefined>(userRole);
   const isInitialMount = useRef(true);
 
   useEffect(() => {
     if (isInitialMount.current) {
       isInitialMount.current = false;
       prevUserIdRef.current = userId;
+      prevUserRoleRef.current = userRole;
       if (userId) {
-        fetchBookmarks();
+        void fetchBookmarks();
       }
       if (initialPostState.length === 0) {
-        fetchPosts(true);
-        fetchTags();
+        void fetchPosts(true);
+        void fetchTags();
       }
       return;
     }
 
-    if (prevUserIdRef.current !== userId) {
+    const userChanged = prevUserIdRef.current !== userId;
+    const roleChanged = prevUserRoleRef.current !== userRole;
+
+    if (userChanged || roleChanged) {
       prevUserIdRef.current = userId;
+      prevUserRoleRef.current = userRole;
       if (userId) {
         cachedBookmarks = [];
-        fetchBookmarks();
-        fetchPosts(true);
+        void fetchBookmarks();
+        void fetchPosts(true);
       } else {
         setBookmarks([]);
         cachedBookmarks = [];
@@ -284,13 +298,11 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           setPosts(initialPosts);
           setStandaloneTags(initialTags);
         } else {
-          fetchPosts(true);
+          void fetchPosts(true);
         }
       }
-    } else if (userId && bookmarks.length === 0) {
-      fetchBookmarks();
     }
-  }, [userId, initialPosts, initialTags, initialPostState.length, fetchBookmarks, fetchPosts, fetchTags, bookmarks.length]);
+  }, [userId, userRole, initialPosts, initialTags, initialPostState.length, fetchBookmarks, fetchPosts, fetchTags]);
 
   useEffect(() => {
     setSearchTerm(tagParam || '');
