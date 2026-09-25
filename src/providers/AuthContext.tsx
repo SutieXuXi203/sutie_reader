@@ -44,9 +44,28 @@ export function AuthProvider({
         }
     }, []);
     useEffect(() => {
-        if (hasInitialAuth) return;
-        checkAuth();
+        if (!hasInitialAuth) {
+            checkAuth();
+        }
     }, [checkAuth, hasInitialAuth]);
+
+    // Tự động kiểm tra và đồng bộ lại vai trò khi người dùng quay lại tab trình duyệt
+    useEffect(() => {
+        let lastChecked = Date.now();
+        const handleRecheck = () => {
+            if (typeof document !== 'undefined' && document.visibilityState === 'visible' && Date.now() - lastChecked > 20000) {
+                lastChecked = Date.now();
+                void checkAuth();
+            }
+        };
+
+        window.addEventListener('focus', handleRecheck);
+        document.addEventListener('visibilitychange', handleRecheck);
+        return () => {
+            window.removeEventListener('focus', handleRecheck);
+            document.removeEventListener('visibilitychange', handleRecheck);
+        };
+    }, [checkAuth]);
     const login = useCallback((userData: User) => {
         setUser(userData);
         setIsLoading(false);

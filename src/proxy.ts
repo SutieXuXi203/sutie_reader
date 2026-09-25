@@ -28,7 +28,11 @@ export async function proxy(request: NextRequest) {
       const secret = new TextEncoder().encode(process.env.JWT_SECRET || '');
       const { payload } = await jwtVerify(token, secret);
       if (payload.role !== 'admin') {
-        return NextResponse.redirect(new URL('/', request.url));
+        // Token trong cookie có thể bị cũ (vừa được cấp quyền admin trong DB nhưng cookie chưa cập nhật).
+        // Điều hướng qua /api/auth/refresh để đồng bộ token từ DB trong tích tắc, tránh bị kẹt hoặc đá ra trang chủ.
+        const refreshUrl = new URL('/api/auth/refresh', request.url);
+        refreshUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
+        return NextResponse.redirect(refreshUrl);
       }
     } catch {
       return NextResponse.redirect(new URL('/', request.url));

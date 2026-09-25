@@ -67,11 +67,24 @@ function SessionElapsedTime({
 }
 
 export default function AdminDashboard() {
-    const { user, isLoading: isAuthLoading } = useAuth();
+    const { user, isLoading: isAuthLoading, checkAuth } = useAuth();
     const router = useRouter();
 
     useEffect(() => {
         if (!isAuthLoading && (!user || user.role !== 'admin')) {
+            void checkAuth();
+        }
+    }, [isAuthLoading, user, checkAuth]);
+
+    useEffect(() => {
+        if (!isAuthLoading && user && user.role !== 'admin') {
+            const timer = setTimeout(() => {
+                if (user?.role !== 'admin') {
+                    router.replace('/');
+                }
+            }, 800);
+            return () => clearTimeout(timer);
+        } else if (!isAuthLoading && !user) {
             router.replace('/');
         }
     }, [user, isAuthLoading, router]);
@@ -250,7 +263,6 @@ export default function AdminDashboard() {
     useEffect(() => {
         if (!isAuthLoading) {
             if (!user || user.role !== 'admin') {
-                router.push('/');
                 return;
             }
             if (activeTab === 'posts') {

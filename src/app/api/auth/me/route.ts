@@ -2,7 +2,7 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
-import { getCurrentUserFromToken, getJwtSecret } from '@/lib/server-auth';
+import { getCurrentUserFromToken, getJwtSecret, createSiteAccessToken } from '@/lib/server-auth';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
@@ -71,8 +71,52 @@ async function uploadAvatarToCloudflareWorker(dataUrl: string, userId: string): 
 export async function GET(request: NextRequest) {
   try {
     const token = request.cookies.get('token')?.value;
+    if (!token) {
+      return NextResponse.json({ user: null });
+    }
+
     const user = await getCurrentUserFromToken(token);
-    return NextResponse.json({ user });
+    if (!user) {
+      return NextResponse.json({ user: null });
+    }
+
+    const response = NextResponse.json({ user });
+
+    // Kiểm tra xem vai trò (role) trong token có bị lệch so với dữ liệu mới nhất trong Database hay không
+    try {
+      const { payload } = await jwtVerify(token, getJwtSecret());
+      if (payload && (payload.role !== user.role || payload.name !== user.name)) {
+        const newToken = await new SignJWT({
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        })
+          .setProtectedHeader({ alg: 'HS256' })
+          .setIssuedAt()
+          .setExpirationTime('7d')
+          .sign(getJwtSecret());
+
+        const cookieOptions = {
+          httpOnly: true,
+          secure: process.env.NODE_ENV === 'production',
+          sameSite: 'lax' as const,
+          path: '/' as const,
+          maxAge: 60 * 60 * 24 * 7,
+        };
+
+        response.cookies.set('token', newToken, cookieOptions);
+
+        if ((user.role === 'admin' || user.role === 'user') && process.env.UNLOCK_PIN) {
+          const siteToken = await createSiteAccessToken();
+          response.cookies.set('site_access_token', siteToken, cookieOptions);
+        }
+      }
+    } catch {
+      // Bỏ qua lỗi verify token phụ, vẫn trả về user hợp lệ
+    }
+
+    return response;
   } catch (error) {
     console.error('Loi kiem tra phien dang nhap:', error);
     return NextResponse.json({ user: null });

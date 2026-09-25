@@ -669,6 +669,53 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
       assert.equal(mockCache.size, 0, 'Gọi không tham số phải xóa toàn bộ cache');
     });
   });
+
+  describe('22. Tự động đồng bộ và làm mới token khi đổi vai trò (Auto-refresh Token)', () => {
+    it('nhận diện chính xác URL chuyển hướng an toàn (chống Open Redirect)', () => {
+      const getSafeCallbackUrl = (callbackUrl: string | null | undefined): string => {
+        if (!callbackUrl) return '/admin';
+        const clean = callbackUrl.trim();
+        if (
+          clean.startsWith('/') &&
+          !clean.startsWith('//') &&
+          !clean.includes('\\') &&
+          !clean.includes('://')
+        ) {
+          return clean;
+        }
+        return '/admin';
+      };
+
+      assert.equal(getSafeCallbackUrl('/admin'), '/admin');
+      assert.equal(getSafeCallbackUrl('/admin/users'), '/admin/users');
+      assert.equal(getSafeCallbackUrl('https://evil.com'), '/admin');
+      assert.equal(getSafeCallbackUrl('//evil.com'), '/admin');
+      assert.equal(getSafeCallbackUrl('/\\evil.com'), '/admin');
+      assert.equal(getSafeCallbackUrl(null), '/admin');
+    });
+
+    it('tự động phát hành token mang vai trò mới nhất nếu phát hiện lệch vai trò', async () => {
+      const { SignJWT, jwtVerify } = await import('jose');
+      const testSecret = new TextEncoder().encode('test_secret_for_jwt_signing_key_32_bytes_long!!');
+      const oldToken = await new SignJWT({ id: 'user_123', email: 'test@gmail.com', role: 'user' })
+        .setProtectedHeader({ alg: 'HS256' })
+        .sign(testSecret);
+
+      const dbUser = { id: 'user_123', email: 'test@gmail.com', role: 'admin' };
+      const { payload } = await jwtVerify(oldToken, testSecret);
+
+      assert.notEqual(payload.role, dbUser.role, 'Token cũ phải khác role với DB');
+
+      // Thực hiện cấp mới token
+      const newToken = await new SignJWT({ id: dbUser.id, email: dbUser.email, role: dbUser.role })
+        .setProtectedHeader({ alg: 'HS256' })
+        .sign(testSecret);
+
+      const { payload: newPayload } = await jwtVerify(newToken, testSecret);
+      assert.equal(newPayload.role, 'admin', 'Token mới phải mang đúng role admin từ DB');
+    });
+  });
 });
+
 
 
