@@ -1,7 +1,7 @@
 'use client';
 import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimatedLanguages, AnimatedShare, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
-import { CalendarDays, ShieldAlert, Eye } from 'lucide-react';
-import React, { useEffect, useState, useMemo } from 'react';
+import { CalendarDays, ShieldAlert, Eye, RefreshCw } from 'lucide-react';
+import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { HoverCard } from 'radix-ui';
 import Image from 'next/image';
 import Link from 'next/link';
@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
 import { useThumbnailBlur } from '@/providers/ThumbnailBlurProvider';
-import { cn, getOptimizedImageUrl } from '@/lib/utils';
+import { cn, getOptimizedImageUrl, extractDriveImageId } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { GlareHover } from '@/components/GlareHover';
 import { parseScrambleParams } from '@/lib/scramble';
@@ -50,6 +50,56 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   const { blurMode } = useThumbnailBlur();
   const isNSFW = (post.tags || []).some(tag => tag.toLowerCase().includes('18+'));
   const isNsfwLocked = isNSFW && !nsfwRevealed;
+
+  const initialThumbSrc = useMemo(() => {
+    return post.images && post.images.length > 0 ? getOptimizedImageUrl(post.images[0]) : '';
+  }, [post.images]);
+
+  const [thumbSrc, setThumbSrc] = useState(initialThumbSrc);
+  const [imgError, setImgError] = useState(false);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const retryCountRef = useRef(0);
+
+  useEffect(() => {
+    setThumbSrc(initialThumbSrc);
+    setImgError(false);
+    setIsRetrying(false);
+    retryCountRef.current = 0;
+  }, [initialThumbSrc]);
+
+  const handleImageError = useCallback(() => {
+    if (retryCountRef.current < 2) {
+      retryCountRef.current += 1;
+      setIsRetrying(true);
+      setTimeout(() => {
+        const fileId = extractDriveImageId(post.images?.[0] || '');
+        if (fileId) {
+          setThumbSrc(`/api/image/${encodeURIComponent(fileId)}.webp?v=2&thumb=1&retry=${retryCountRef.current}&t=${Date.now()}`);
+        } else {
+          setThumbSrc((prev) => `${prev}${prev.includes('?') ? '&' : '?'}retry=${retryCountRef.current}&t=${Date.now()}`);
+        }
+        setIsRetrying(false);
+      }, 1000);
+    } else {
+      setImgError(true);
+    }
+  }, [post.images]);
+
+  const handleManualRetry = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    retryCountRef.current = 0;
+    setImgError(false);
+    setIsRetrying(true);
+    const fileId = extractDriveImageId(post.images?.[0] || '');
+    if (fileId) {
+      setThumbSrc(`/api/image/${encodeURIComponent(fileId)}.webp?v=2&thumb=1&manual=1&t=${Date.now()}`);
+    } else {
+      setThumbSrc((prev) => `${prev}${prev.includes('?') ? '&' : '?'}manual=1&t=${Date.now()}`);
+    }
+    setTimeout(() => setIsRetrying(false), 500);
+  }, [post.images]);
+
   useEffect(() => {
     let timeout: ReturnType<typeof setTimeout>;
     if (nsfwRevealed) {
@@ -179,43 +229,63 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
         >
           <GlareHover width="100%" height="100%" borderRadius="0" borderColor="transparent" glareOpacity={0.3} glareSize={250}>
           {post.images.length > 0 ? (
-            (() => {
-              const thumbSrc = getOptimizedImageUrl(post.images[0]);
-              const scrambleMeta = parseScrambleParams(thumbSrc);
-              if (scrambleMeta.isScrambled) {
+            imgError ? (
+              <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-card/60 backdrop-blur-xs select-none">
+                <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center mb-2 text-primary">
+                  <RefreshCw className={cn("w-4 h-4", isRetrying && "animate-spin")} />
+                </div>
+                <span className="text-[11px] text-muted-foreground font-medium mb-2 line-clamp-1">
+                  Không thể tải ảnh bìa
+                </span>
+                <button
+                  type="button"
+                  onClick={handleManualRetry}
+                  disabled={isRetrying}
+                  className="px-2.5 py-1 text-[10px] font-semibold rounded-[6px] bg-primary text-primary-foreground hover:bg-primary/90 transition-all flex items-center gap-1 shadow-xs cursor-pointer disabled:opacity-50"
+                >
+                  <RefreshCw className={cn("w-3 h-3", isRetrying && "animate-spin")} />
+                  <span>{isRetrying ? 'Đang tải...' : 'Tải lại ảnh'}</span>
+                </button>
+              </div>
+            ) : (
+              (() => {
+                const scrambleMeta = parseScrambleParams(thumbSrc);
+                if (scrambleMeta.isScrambled) {
+                  return (
+                    <ScrambledCanvas
+                      src={thumbSrc}
+                      seedKey={scrambleMeta.seed}
+                      rows={scrambleMeta.rows}
+                      cols={scrambleMeta.cols}
+                      alt={post.title}
+                      className={cn(
+                        "w-full h-full object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
+                        compact && "object-top",
+                        blurMode === 'blur' && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
+                        isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
+                      )}
+                    />
+                  );
+                }
                 return (
-                  <ScrambledCanvas
+                  <Image
                     src={thumbSrc}
-                    seedKey={scrambleMeta.seed}
-                    rows={scrambleMeta.rows}
-                    cols={scrambleMeta.cols}
                     alt={post.title}
+                    fill
+                    sizes={compact ? "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 16vw" : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"}
                     className={cn(
-                      "w-full h-full object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
+                      "object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
                       compact && "object-top",
                       blurMode === 'blur' && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
                       isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
                     )}
+                    priority={priority}
+                    unoptimized
+                    onError={handleImageError}
                   />
                 );
-              }
-              return (
-                <Image
-                  src={thumbSrc}
-                  alt={post.title}
-                  fill
-                  sizes={compact ? "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 16vw" : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"}
-                  className={cn(
-                    "object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
-                    compact && "object-top",
-                    blurMode === 'blur' && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
-                    isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
-                  )}
-                  priority={priority}
-                  unoptimized
-                />
-              );
-            })()
+              })()
+            )
           ) : (
             <div className="w-full h-full flex items-center justify-center text-primary-foreground/80 dark:text-primary/40">
               <svg className="w-8 h-8" fill="none" stroke="currentColor" viewBox="0 0 24 24">

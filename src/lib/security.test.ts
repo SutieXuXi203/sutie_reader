@@ -606,6 +606,19 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
 
       assert.equal(meta.isScrambled, false, 'Thumbnail mode tuyệt đối không được coi là ảnh xáo trộn');
     });
+
+    it('getOptimizedImageUrl chuẩn hóa URL đã ký (signed worker URL) thành endpoint /api/image/...&thumb=1 và loại bỏ exp, sig, sub', async () => {
+      const { getOptimizedImageUrl } = await import('./utils');
+      const fileId = '1LOpaFTkog3PbmZupfzsgCt1YnFUjTOxI';
+
+      const signedUrl = `https://sutie-images.workers.dev/image/${fileId}?exp=1727546000&sub=user123&sig=abcxyz`;
+      const thumbUrl = getOptimizedImageUrl(signedUrl);
+
+      assert.equal(thumbUrl, `/api/image/${fileId}.webp?v=2&thumb=1`);
+      assert.equal(thumbUrl.includes('exp='), false);
+      assert.equal(thumbUrl.includes('sig='), false);
+      assert.equal(thumbUrl.includes('sub='), false);
+    });
   });
 
   describe('19. Chống DoS bằng cách kẹp giới hạn hàng và cột (rows, cols) khi xáo trộn ảnh', () => {

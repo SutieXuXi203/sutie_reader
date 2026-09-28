@@ -2,8 +2,8 @@ import { createHmac } from 'node:crypto';
 import { extractDriveImageId } from './utils';
 
 const IMAGE_SIGNATURE_VERSION = 'v1';
-const DEFAULT_IMAGE_URL_TTL_SECONDS = 120;
-const MAX_IMAGE_URL_TTL_SECONDS = 3600;
+const DEFAULT_IMAGE_URL_TTL_SECONDS = 3600;
+const MAX_IMAGE_URL_TTL_SECONDS = 86400;
 
 function getPositiveIntegerEnv(name: string, fallback: number): number {
   const raw = process.env[name];

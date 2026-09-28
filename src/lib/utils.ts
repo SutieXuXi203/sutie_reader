@@ -37,10 +37,6 @@ export function extractDriveImageId(url: string): string | null {
 export function getOptimizedImageUrl(url: string): string {
   if (!url) return '';
 
-  if (url.includes('sig=') && url.includes('exp=')) {
-    return url;
-  }
-
   if (url.startsWith('/api/image/')) {
     try {
       const u = new URL(url, 'http://localhost');
@@ -48,6 +44,9 @@ export function getOptimizedImageUrl(url: string): string {
       u.searchParams.delete('seed');
       u.searchParams.delete('rows');
       u.searchParams.delete('cols');
+      u.searchParams.delete('exp');
+      u.searchParams.delete('sig');
+      u.searchParams.delete('sub');
       if (u.searchParams.get('thumb') !== '1' && u.searchParams.get('type') !== 'thumb') {
         u.searchParams.set('thumb', '1');
       }
@@ -71,6 +70,9 @@ export function getOptimizedImageUrl(url: string): string {
         u.searchParams.delete('seed');
         u.searchParams.delete('rows');
         u.searchParams.delete('cols');
+        u.searchParams.delete('exp');
+        u.searchParams.delete('sig');
+        u.searchParams.delete('sub');
         u.searchParams.set('thumb', '1');
         const qs = u.searchParams.toString();
         if (qs) {
