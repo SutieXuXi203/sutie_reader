@@ -370,7 +370,7 @@ export default function AdminDashboard() {
                 setUsersList((prev) =>
                     prev.map((u) => (u._id === targetUser._id ? { ...u, role: newRole } : u))
                 );
-                notify.success(`Đã đổi vai trò của ${targetUser.email} thành ${newRole === 'admin' ? 'Quản trị' : newRole === 'user' ? 'Thành viên' : 'Khách'}`);
+                notify.success(`Cập nhật vai trò cho ${targetUser.email} thành công`);
             } else {
                 const data = await res.json();
                 notify.error(data.error || 'Cập nhật vai trò thất bại');
