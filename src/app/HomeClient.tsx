@@ -83,6 +83,7 @@ interface BookmarkItem {
 }
 
 let cachedPosts: Post[] = [];
+let cachedPostsKey = '';
 let cachedBookmarks: BookmarkItem[] = [];
 let cachedTags: { _id: string; name: string }[] = [];
 let lastFetchTime = 0;
@@ -120,7 +121,11 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const { user, isLoading: isAuthLoading, isAdmin } = useAuth();
   const { blurMode } = useThumbnailBlur();
-  const initialPostState = cachedPosts.length > 0 ? cachedPosts : initialPosts;
+  const currentCacheKey = user ? `${user.id}:${user.role}` : ':guest';
+  const initialPostState =
+    cachedPosts.length > 0 && cachedPostsKey === currentCacheKey
+      ? cachedPosts
+      : initialPosts;
   const initialTagState = cachedTags.length > 0 ? cachedTags : initialTags;
   const [bookmarks, setBookmarks] = useState<BookmarkItem[]>(cachedBookmarks);
   const [posts, setPosts] = useState<Post[]>(initialPostState);
@@ -174,12 +179,13 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   useEffect(() => {
     if (initialPosts.length > 0 && cachedPosts.length === 0) {
       cachedPosts = initialPosts;
+      cachedPostsKey = currentCacheKey;
       lastFetchTime = Date.now();
     }
     if (initialTags.length > 0 && cachedTags.length === 0) {
       cachedTags = initialTags;
     }
-  }, [initialPosts, initialTags]);
+  }, [initialPosts, initialTags, currentCacheKey]);
 
   const fetchBookmarks = useCallback(async () => {
     try {
@@ -203,14 +209,14 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     }
   }, []);
 
-  const fetchPosts = useCallback(async (force = false) => {
-    if (!force && cachedPosts.length > 0 && Date.now() - lastFetchTime < 60000) {
+  const fetchPosts = useCallback(async (force = false, forCacheKey?: string) => {
+    const resolvedKey = forCacheKey ?? currentCacheKey;
+    if (!force && cachedPosts.length > 0 && cachedPostsKey === resolvedKey && Date.now() - lastFetchTime < 60000) {
       setPosts(cachedPosts);
       setIsLoading(false);
-      return; // Use cache entirely
+      return;
     }
     try {
-      // Chỉ hiện loading spinner nếu trang chưa có bất kỳ bài viết nào
       setPosts((currentPosts) => {
         if (currentPosts.length === 0 && cachedPosts.length === 0) {
           setIsLoading(true);
@@ -229,13 +235,14 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           requestOptions
         );
       } catch (firstError) {
-        console.warn('Retrying posts fetch after timeout/error:', firstError);
+        console.warn('Retrying posts fetch:', firstError);
         data = await fetchJsonWithTimeout<Post[]>(
           '/api/posts?retry=1',
           requestOptions
         );
       }
       cachedPosts = data;
+      cachedPostsKey = resolvedKey;
       lastFetchTime = Date.now();
       setPosts(data);
     } catch (error) {
@@ -243,7 +250,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     } finally {
       setIsLoading(false);
     }
-  }, []);
+  }, [currentCacheKey]);
 
   const fetchTags = useCallback(async () => {
     try {
@@ -287,10 +294,13 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     if (userChanged || roleChanged) {
       prevUserIdRef.current = userId;
       prevUserRoleRef.current = userRole;
+      cachedPosts = [];
+      cachedPostsKey = '';
+      lastFetchTime = 0;
       if (userId) {
         cachedBookmarks = [];
         void fetchBookmarks();
-        void fetchPosts(true);
+        void fetchPosts(true, currentCacheKey);
       } else {
         setBookmarks([]);
         cachedBookmarks = [];
@@ -298,7 +308,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           setPosts(initialPosts);
           setStandaloneTags(initialTags);
         } else {
-          void fetchPosts(true);
+          void fetchPosts(true, currentCacheKey);
         }
       }
     }
@@ -330,7 +340,16 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
       { threshold: 0.01, rootMargin: '60px 0px 60px 0px' }
     );
     const observeAll = () => {
-      document.querySelectorAll('.reveal:not(.reveal-visible)').forEach((el) => observer.observe(el));
+      const elements = document.querySelectorAll('.reveal:not(.reveal-visible)');
+      elements.forEach((el) => {
+        const rect = el.getBoundingClientRect();
+        const inViewport = rect.bottom > -60 && rect.top < window.innerHeight + 60;
+        if (inViewport) {
+          el.classList.add('reveal-visible');
+        } else {
+          observer.observe(el);
+        }
+      });
     };
     observeAll();
     return () => {
@@ -433,10 +452,8 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     <div className="min-h-screen text-foreground transition-colors relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20 pt-20 pb-0 flex flex-col justify-between">
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1">
 
-        {/* Dashboard Content */}
         <div id="main-content" className="space-y-8">
 
-          {/* Bookmarks ("Đang đọc dở") */}
           {user && bookmarks.length > 0 && (
             <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
@@ -513,7 +530,6 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
             </div>
           )}
 
-          {/* Stories List Section */}
           {user && (
             <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-3.5 sm:gap-4 border-b border-border/50 pb-4">
@@ -522,7 +538,6 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                   <h2 className="text-base sm:text-lg font-extrabold text-foreground font-sans">Danh sách truyện</h2>
                 </div>
 
-                {/* Search Bar & Filters */}
                 <div className="w-full lg:w-auto flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-2.5">
                   <div className="relative group flex-1 sm:w-auto lg:w-[210px] xl:w-[240px] lg:flex-initial min-w-0">
                     <span className="pointer-events-none absolute left-2.5 sm:left-3 top-1/2 z-10 -translate-y-1/2 text-primary/80 transition-colors group-focus-within:text-primary">
@@ -678,7 +693,6 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
             </div>
           )}
 
-          {/* Locked State for Guest Users */}
           {!user && (
             <div className="reveal flex flex-col items-center justify-center py-20 px-6 bg-card/50 backdrop-blur-md border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
