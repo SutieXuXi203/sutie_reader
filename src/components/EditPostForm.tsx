@@ -35,7 +35,9 @@ interface Chapter {
   images: string[];
   translator?: string;
   accessType?: 'inherit' | 'restricted' | 'public';
+  sharedWith?: any[];
 }
+
 
 interface Post {
   _id: string;
@@ -71,7 +73,9 @@ interface ChapterEditState {
   images: ChapterImage[];
   translator?: string;
   accessType?: 'inherit' | 'restricted' | 'public';
+  sharedWith?: any[];
 }
+
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
 const EXPANDED_INITIAL_IMAGE_COUNT = 10;
@@ -119,38 +123,74 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       url,
     });
 
-    if (post.chapters && post.chapters.length > 0) {
-      setChapters(post.chapters.map((ch, idx) => ({
-        title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
-        chapterNumber: ch.chapterNumber || idx + 1,
-        content: ch.content || '',
-        images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
-      })));
+    const hasFullChapters =
+      Array.isArray(post.chapters) &&
+      post.chapters.length > 0 &&
+      post.chapters.some(
+        (ch: any) =>
+          (Array.isArray(ch.images) && ch.images.length > 0) ||
+          (typeof ch.content === 'string' && ch.content.length > 0)
+      );
+
+    if (hasFullChapters && post.chapters) {
+      setChapters(
+        post.chapters.map((ch: any, idx) => ({
+          _id: ch._id,
+          title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
+          chapterNumber: ch.chapterNumber || idx + 1,
+          content: ch.content || '',
+          translator: ch.translator || '',
+          accessType: ch.accessType || 'inherit',
+          sharedWith: Array.isArray(ch.sharedWith) ? ch.sharedWith : [],
+          images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
+        }))
+      );
       setSelectedChapterIndex(0);
     } else {
+      // Hiển thị ngay thông tin metadata của các chương (tiêu đề, số chương, dịch giả, quyền)
+      if (Array.isArray(post.chapters) && post.chapters.length > 0) {
+        setChapters(
+          post.chapters.map((ch: any, idx) => ({
+            _id: ch._id,
+            title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
+            chapterNumber: ch.chapterNumber || idx + 1,
+            content: ch.content || '',
+            translator: ch.translator || '',
+            accessType: ch.accessType || 'inherit',
+            sharedWith: Array.isArray(ch.sharedWith) ? ch.sharedWith : [],
+            images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
+          }))
+        );
+        setSelectedChapterIndex(0);
+      }
+
       setIsLoadingDetails(true);
       fetch(`/api/posts/${post._id}`)
         .then((res) => res.json())
         .then((data: PostDetailsResponse) => {
-          const fetchedChapters: Chapter[] = data.chapters && data.chapters.length > 0
-            ? data.chapters
-            : [
-              {
-                title: 'Chương 1',
-                chapterNumber: 1,
-                content: data.content || post.content || '',
-                images: data.images || post.images || [],
-              },
-            ];
+          const fetchedChapters: Chapter[] =
+            Array.isArray(data.chapters) && data.chapters.length > 0
+              ? data.chapters
+              : [
+                  {
+                    title: 'Chương 1',
+                    chapterNumber: 1,
+                    content: data.content || post.content || '',
+                    images: data.images || post.images || [],
+                    translator: (data as any).translator || post.translator || '',
+                    accessType: 'inherit',
+                  },
+                ];
 
           setChapters(
-            fetchedChapters.map((ch, idx) => ({
+            fetchedChapters.map((ch: any, idx) => ({
               _id: ch._id,
               title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
               chapterNumber: ch.chapterNumber || idx + 1,
               content: ch.content || '',
               translator: ch.translator || '',
               accessType: ch.accessType || 'inherit',
+              sharedWith: Array.isArray(ch.sharedWith) ? ch.sharedWith : [],
               images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
             }))
           );
@@ -158,15 +198,19 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         })
         .catch((err) => {
           console.error('Lỗi tải chi tiết truyện:', err);
-          setChapters([
-            {
-              title: 'Chương 1',
-              chapterNumber: 1,
-              content: post.content || '',
-              images: (post.images || []).map(mapToChapterImage),
-            },
-          ]);
-          setSelectedChapterIndex(0);
+          if (!post.chapters || post.chapters.length === 0) {
+            setChapters([
+              {
+                title: 'Chương 1',
+                chapterNumber: 1,
+                content: post.content || '',
+                translator: post.translator || '',
+                accessType: 'inherit',
+                images: (post.images || []).map(mapToChapterImage),
+              },
+            ]);
+            setSelectedChapterIndex(0);
+          }
         })
         .finally(() => {
           setIsLoadingDetails(false);
@@ -534,12 +578,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         });
 
         updatedChaptersPayload.push({
+          ...(ch._id ? { _id: ch._id } : {}),
           title: ch.title.trim() || `Chương ${i + 1}`,
           chapterNumber: i + 1,
           content: ch.content.trim(),
           images: finalImageUrls,
           translator: ch.translator?.trim() || '',
           accessType: ch.accessType || 'inherit',
+          ...(Array.isArray(ch.sharedWith) ? { sharedWith: ch.sharedWith } : {}),
         });
       }
 
@@ -834,7 +880,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                   }
                   placeholder={`Ví dụ: Chương ${selectedChapterIndex + 1}`}
                   maxLength={100}
-                  disabled={isSubmitting}
+                  disabled={isSubmitting || isLoadingDetails}
                   className="rounded-[8px]"
                 />
               </div>
@@ -851,7 +897,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     }
                     placeholder={translator ? `Mặc định: ${translator}` : "Tên dịch giả chương này"}
                     maxLength={100}
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isLoadingDetails}
                     className="rounded-[8px]"
                   />
                 </div>
@@ -864,7 +910,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     onValueChange={(val: any) =>
                       updateActiveChapter((ch) => ({ ...ch, accessType: val }))
                     }
-                    disabled={isSubmitting}
+                    disabled={isSubmitting || isLoadingDetails}
                   >
                     <SelectTrigger className="w-full rounded-[8px] h-9 text-xs bg-background flex items-center justify-between cursor-pointer px-3">
                       <SelectValue placeholder="Chọn quyền">

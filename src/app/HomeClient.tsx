@@ -430,6 +430,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
             translator: updatedPost.translator ?? p.translator,
             updatedAt: updatedPost.updatedAt ?? new Date().toISOString(),
             chapterCount: updatedPost.chapterCount ?? p.chapterCount,
+            chapters: updatedPost.chapters ?? p.chapters,
             images:
               Array.isArray(updatedPost.images) && updatedPost.images.length > 0
                 ? [updatedPost.images[0]]

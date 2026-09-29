@@ -14,6 +14,7 @@ import { revalidatePath } from 'next/cache';
 export const maxDuration = 60;
 
 type IncomingChapter = {
+  _id?: unknown;
   title?: unknown;
   chapterNumber?: unknown;
   content?: unknown;
@@ -22,6 +23,7 @@ type IncomingChapter = {
   accessType?: unknown;
   sharedWith?: unknown;
 };
+
 
 const normalizeTags = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
@@ -95,6 +97,7 @@ const normalizeChapter = (
   const sharedWith = Array.isArray(raw.sharedWith) ? raw.sharedWith : [];
 
   return {
+    ...(raw._id ? { _id: String(raw._id) } : {}),
     title,
     chapterNumber,
     content,
@@ -542,6 +545,12 @@ function computeStoryUpdateDiff(
       changes.push(`Cập nhật nội dung chữ Chương ${currChap.chapterNumber}`);
     }
 
+    const currTrans = (currChap.translator || '').trim();
+    const nextTrans = (nextChap.translator || '').trim();
+    if (currTrans !== nextTrans) {
+      changes.push(`Đổi dịch giả Chương ${currChap.chapterNumber}: "${currTrans || 'Chưa có'}" -> "${nextTrans || 'Chưa có'}"`);
+    }
+
     const currImgs = Array.isArray(currChap.images) ? currChap.images : [];
     const nextImgs = Array.isArray(nextChap.images) ? nextChap.images : [];
     if (currImgs.length !== nextImgs.length || JSON.stringify(currImgs) !== JSON.stringify(nextImgs)) {
@@ -622,11 +631,27 @@ export async function PUT(
         );
       }
 
-      nextChapters = dedupeAndSortChapters(normalizedIncoming);
+      nextChapters = dedupeAndSortChapters(normalizedIncoming).map((nextChap) => {
+        const currChap = currentChapters.find(
+          (c: NormalizedPostChapter) =>
+            c.chapterNumber === nextChap.chapterNumber ||
+            (nextChap._id && c._id && String(c._id) === String(nextChap._id))
+        );
+        const sharedWith =
+          Array.isArray(nextChap.sharedWith) && nextChap.sharedWith.length > 0
+            ? nextChap.sharedWith
+            : currChap?.sharedWith || [];
+        return {
+          ...nextChap,
+          _id: nextChap._id || (currChap?._id ? String(currChap._id) : undefined),
+          sharedWith,
+        };
+      });
     }
 
     const hasLegacyPayload =
-      typeof payload?.content === 'string' || Array.isArray(payload?.images);
+      (!Array.isArray(payload?.chapters) || payload.chapters.length === 0) &&
+      (typeof payload?.content === 'string' || Array.isArray(payload?.images));
     if (hasLegacyPayload) {
       const firstChapterNumber = nextChapters[0]?.chapterNumber || 1;
       const firstChapterTitle = nextChapters[0]?.title || `Chuong ${firstChapterNumber}`;
@@ -636,6 +661,9 @@ export async function PUT(
           chapterNumber: firstChapterNumber,
           content: payload?.content,
           images: payload?.images,
+          translator: typeof payload?.translator === 'string' ? payload.translator : '',
+          accessType: typeof payload?.accessType === 'string' ? payload.accessType : 'inherit',
+          sharedWith: Array.isArray(payload?.sharedWith) ? payload.sharedWith : [],
         },
         0
       );

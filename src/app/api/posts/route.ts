@@ -17,7 +17,11 @@ type IncomingChapter = {
   chapterNumber?: unknown;
   content?: unknown;
   images?: unknown;
+  translator?: unknown;
+  accessType?: unknown;
+  sharedWith?: unknown;
 };
+
 
 const normalizeTags = (value: unknown): string[] => {
   if (!Array.isArray(value)) return [];
@@ -78,11 +82,26 @@ const normalizeChapter = (
       ? raw.title.trim().slice(0, 120)
       : fallbackTitle;
 
+  const translator =
+    typeof raw.translator === 'string' && raw.translator.trim()
+      ? raw.translator.trim().slice(0, 100)
+      : '';
+
+  const accessType =
+    typeof raw.accessType === 'string' && ['inherit', 'restricted', 'public'].includes(raw.accessType)
+      ? (raw.accessType as 'inherit' | 'restricted' | 'public')
+      : 'inherit';
+
+  const sharedWith = Array.isArray(raw.sharedWith) ? raw.sharedWith : [];
+
   return {
     title,
     chapterNumber,
     content,
     images,
+    translator,
+    accessType,
+    sharedWith,
   };
 };
 
