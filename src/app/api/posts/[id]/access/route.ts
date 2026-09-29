@@ -22,7 +22,7 @@ export async function POST(
     }
 
     await connectDB();
-    const post = await Post.findById(id).select('accessType sharedWith accessedUsers');
+    const post = await Post.findById(id).select('accessType sharedWith accessedUsers chapters');
     if (!post) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }

@@ -506,49 +506,44 @@ html.lenis body {
 .app-toast .gooey-contentCompact,
 .app-toast .gooey-contentExpanded,
 .app-toast-content {
-  border-radius: 8px !important;
+  border-radius: 10px !important;
   background: var(--card) !important;
   color: var(--foreground) !important;
   border: 1px solid var(--border) !important;
-  backdrop-filter: blur(12px) !important;
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12) !important;
-}
-
-.app-toast .gooey-contentCompact,
-.app-toast-content {
-  padding: 8px 16px !important;
-  min-height: 42px !important;
+  backdrop-filter: blur(16px) !important;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
+  padding: 8px 12px 8px 14px !important;
+  min-height: 40px !important;
   display: flex !important;
+  flex-direction: row !important;
   align-items: center !important;
-  justify-content: center !important;
-}
-
-.app-toast .gooey-contentExpanded,
-.app-toast-content--expanded {
-  padding: 12px 16px !important;
-  min-width: 260px !important;
-  max-width: 380px !important;
+  justify-content: space-between !important;
+  gap: 12px !important;
+  width: auto !important;
+  max-width: min(92vw, 480px) !important;
 }
 
 .app-toast .gooey-header {
-  width: 100% !important;
-  display: flex !important;
+  display: inline-flex !important;
   align-items: center !important;
-  justify-content: center !important;
-  text-align: center !important;
+  justify-content: flex-start !important;
+  text-align: left !important;
   color: var(--foreground) !important;
-  gap: 6px !important;
+  gap: 8px !important;
+  flex: 1 1 auto !important;
+  min-width: 0 !important;
 }
 
 .app-toast .gooey-iconWrapper {
   width: 15px !important;
   height: 15px !important;
   color: var(--foreground) !important;
+  flex-shrink: 0 !important;
 }
 
 .app-toast .gooey-iconWrapper svg {
-  width: 13px !important;
-  height: 13px !important;
+  width: 14px !important;
+  height: 14px !important;
 }
 
 .app-toast .gooey-title,
@@ -561,11 +556,28 @@ html.lenis body {
 .app-toast .gooey-titleLoading,
 .app-toast .app-toast-title-error {
   color: var(--foreground) !important;
-  font-weight: 700 !important;
+  font-weight: 600 !important;
   font-size: 11px !important;
-  line-height: 1.2 !important;
+  line-height: 1.3 !important;
   padding: 0 !important;
-  text-align: center !important;
+  text-align: left !important;
+  white-space: normal !important;
+  word-break: break-word !important;
+}
+
+@media (min-width: 480px) {
+  .app-toast .gooey-title,
+  .app-toast .app-toast-title,
+  .app-toast .gooey-titleDefault,
+  .app-toast .gooey-titleSuccess,
+  .app-toast .gooey-titleError,
+  .app-toast .gooey-titleWarning,
+  .app-toast .gooey-titleInfo,
+  .app-toast .gooey-titleLoading,
+  .app-toast .app-toast-title-error {
+    font-size: 12px !important;
+    white-space: nowrap !important;
+  }
 }
 
 .app-toast .gooey-description,
@@ -592,20 +604,53 @@ html.lenis body {
   background: var(--primary) !important;
 }
 
-.app-toast .gooey-actionButton,
-.app-toast .app-toast-action-button {
-  border-radius: 8px !important;
-  font-weight: 700 !important;
+.app-toast .gooey-actionWrapper,
+.app-toast .app-toast-action-wrapper {
+  margin: 0 !important;
+  padding: 0 !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  flex-shrink: 0 !important;
 }
 
+.app-toast .gooey-actionButton,
+.app-toast .app-toast-action-button,
 .app-toast .gooey-actionDefault,
 .app-toast .gooey-actionSuccess,
 .app-toast .gooey-actionError,
 .app-toast .gooey-actionWarning,
 .app-toast .gooey-actionInfo {
-  background: color-mix(in oklab, var(--secondary) 72%, transparent) !important;
-  color: var(--primary) !important;
-  border: 1px solid color-mix(in oklab, var(--primary) 25%, transparent) !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  white-space: nowrap !important;
+  height: 28px !important;
+  padding: 0 14px !important;
+  font-size: 11px !important;
+  font-weight: 600 !important;
+  border-radius: 6px !important;
+  background: var(--primary) !important;
+  color: var(--primary-foreground) !important;
+  border: none !important;
+  cursor: pointer !important;
+  box-shadow: 0 2px 8px color-mix(in oklab, var(--primary) 30%, transparent) !important;
+  transition: all 0.15s ease !important;
+  flex-shrink: 0 !important;
+  width: auto !important;
+  margin: 0 !important;
+}
+
+.app-toast .gooey-actionButton:hover,
+.app-toast .app-toast-action-button:hover,
+.app-toast .gooey-actionWarning:hover {
+  opacity: 0.9 !important;
+  transform: translateY(-1px) !important;
+}
+
+.app-toast .gooey-actionButton:active,
+.app-toast .app-toast-action-button:active,
+.app-toast .gooey-actionWarning:active {
+  transform: scale(0.96) !important;
 }
 
 .app-toast--success .gooey-contentCompact,

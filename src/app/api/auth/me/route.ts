@@ -110,7 +110,10 @@ export async function GET(request: NextRequest) {
 
         response.cookies.set('token', newToken, cookieOptions);
 
-        if ((user.role === 'admin' || user.role === 'user') && process.env.UNLOCK_PIN) {
+        const testUsername = (process.env.TEST_USERNAME || '').toLowerCase().trim();
+        const isTestAccount = Boolean(testUsername && user.email.toLowerCase().trim() === testUsername);
+
+        if ((user.role === 'admin' || user.role === 'user' || isTestAccount) && process.env.UNLOCK_PIN) {
           const siteToken = await createSiteAccessToken();
           response.cookies.set('site_access_token', siteToken, cookieOptions);
         }

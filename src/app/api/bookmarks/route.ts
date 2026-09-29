@@ -43,13 +43,20 @@ export async function POST(request: NextRequest) {
                 : 0;
         await connectDB();
         const { Post } = await import('@/models/Post');
-        const post = await Post.findById(postId).select('accessType sharedWith').lean();
+        const post = await Post.findById(postId).select('accessType sharedWith chapters').lean();
         if (!post) {
             return NextResponse.json({ error: 'Post not found' }, { status: 404 });
         }
         const decision = canViewPost(user, post as any);
         if (!decision.allowed) {
             return NextResponse.json({ error: decision.message || 'Forbidden' }, { status: 403 });
+        }
+        if (Array.isArray(post.chapters) && post.chapters[normalizedChapterIndex]) {
+            const { canViewChapter } = await import('@/lib/permissions');
+            const chapDecision = canViewChapter(user, post as any, post.chapters[normalizedChapterIndex] as any);
+            if (!chapDecision.allowed) {
+                return NextResponse.json({ error: chapDecision.message || 'Forbidden' }, { status: 403 });
+            }
         }
         const bookmark = await Bookmark.findOneAndUpdate(
             { userId: user.id, postId },
@@ -91,6 +98,7 @@ export async function GET(request: NextRequest) {
                         tags: 1,
                         accessType: 1,
                         sharedWith: 1,
+                        chapters: 1,
                         coverImage: {
                             $ifNull: [
                                 { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },

@@ -28,6 +28,8 @@ export const postSchema = z.object({
       chapterNumber: z.number().optional(),
       content: z.string().optional().or(z.literal('')),
       images: z.array(z.string()).optional(),
+      translator: z.string().max(100, 'Tên dịch giả chương không được vượt quá 100 ký tự').optional().or(z.literal('')),
+      accessType: z.enum(['inherit', 'restricted', 'public']).optional(),
     })
   ).optional(),
 });

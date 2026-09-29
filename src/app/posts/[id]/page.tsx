@@ -6,7 +6,7 @@ import { getApiCache, setApiCache } from '@/lib/api-cache';
 import PostDetailClient from './PostDetailClient';
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/server-auth';
-import { canViewPost } from '@/lib/permissions';
+import { canViewPost, canViewChapter } from '@/lib/permissions';
 
 export const maxDuration = 60;
 export const revalidate = 60;
@@ -61,8 +61,16 @@ function serializePost(postDoc: any) {
   };
 }
 
-export default async function PostPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function PostPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams?: Promise<{ chapter?: string }>;
+}) {
   const { id } = await params;
+  const resolvedSearchParams = searchParams ? await searchParams : undefined;
+  const requestedChapterNum = resolvedSearchParams?.chapter ? parseInt(resolvedSearchParams.chapter, 10) : undefined;
   
   if (!ObjectId.isValid(id)) {
     return notFound();
@@ -94,45 +102,103 @@ export default async function PostPage({ params }: { params: Promise<{ id: strin
   }
 
   const user = await getCurrentUser();
-  const decision = canViewPost(user, serialized);
-  const hasAccess = decision.allowed;
-  const userEmail = user?.email?.toLowerCase();
-  const isShared = Boolean(
+  const userEmail = user?.email?.toLowerCase().trim();
+  const userId = user?.id ? String(user.id) : '';
+
+  const isSharedInPost = Boolean(
     user &&
     Array.isArray(serialized.sharedWith) &&
     serialized.sharedWith.some(
       (s: any) =>
-        s.email?.toLowerCase() === userEmail ||
-        (s.userId && s.userId.toString() === user.id)
+        s.email?.toLowerCase().trim() === userEmail ||
+        (s.userId && String(s.userId) === userId)
     )
   );
 
-  // Lọc dữ liệu an toàn trước khi gửi xuống client:
-  // Nếu không có quyền truy cập, tuyệt đối không gửi chapters, images, content hay emails
-  let postForClient = { ...serialized };
+  const isSharedInAnyChapter = Boolean(
+    user &&
+    Array.isArray(serialized.chapters) &&
+    serialized.chapters.some(
+      (ch: any) =>
+        Array.isArray(ch.sharedWith) &&
+        ch.sharedWith.some(
+          (s: any) =>
+            s.email?.toLowerCase().trim() === userEmail ||
+            (s.userId && String(s.userId) === userId)
+        )
+    )
+  );
 
-  if (!hasAccess) {
-    postForClient = {
-      ...postForClient,
-      chapters: [],
-      images: [],
-      content: '',
-      sharedWith: [],
-      accessedUsers: [],
-    };
-  } else {
-    // Bảo vệ quyền riêng tư email của những người dùng khác:
-    // - Admin: Xem đầy đủ danh sách sharedWith và accessedUsers để quản lý
-    // - Khách được chia sẻ: Chỉ nhận mục chia sẻ của chính mình (để client xác thực isAllowed)
-    // - Thành viên chính thức (role: user): Không cần danh sách sharedWith của người khác
-    postForClient = {
-      ...postForClient,
-      sharedWith: user?.role === 'admin'
-        ? serialized.sharedWith
-        : (isShared ? serialized.sharedWith.filter((s: any) => s.email?.toLowerCase() === userEmail) : []),
-      accessedUsers: user?.role === 'admin' ? serialized.accessedUsers : [],
-    };
-  }
+  const isShared = isSharedInPost || isSharedInAnyChapter;
 
-  return <PostDetailClient initialPost={postForClient as any} />;
+  // Lọc dữ liệu chương an toàn theo từng chương (Phương án 2)
+  const safeChapters = (serialized.chapters || []).map((ch: any, idx: number) => {
+    const chDecision = canViewChapter(user, serialized, ch);
+    const translator = ch.translator || serialized.translator || '';
+
+    if (!chDecision.allowed) {
+      return {
+        _id: ch._id ? String(ch._id) : undefined,
+        chapterNumber: ch.chapterNumber ?? idx + 1,
+        title: ch.title || `Chương ${ch.chapterNumber ?? idx + 1}`,
+        translator,
+        accessType: ch.accessType || 'inherit',
+        isLocked: true,
+        lockReason: chDecision.reason,
+        lockMessage: chDecision.message,
+        sharedWith: [],
+        content: '',
+        images: [],
+      };
+    }
+
+    const sanitizedSharedWith = Array.isArray(ch.sharedWith)
+      ? ch.sharedWith
+          .filter((s: any) => user?.role === 'admin' || s.email?.toLowerCase().trim() === userEmail)
+          .map((s: any) => ({
+            email: String(s.email || ''),
+            userId: s.userId ? String(s.userId) : undefined,
+            role: String(s.role || 'viewer'),
+            addedAt: s.addedAt instanceof Date
+              ? s.addedAt.toISOString()
+              : (typeof s.addedAt === 'string' ? s.addedAt : undefined),
+          }))
+      : [];
+
+    return {
+      _id: ch._id ? String(ch._id) : undefined,
+      chapterNumber: ch.chapterNumber ?? idx + 1,
+      title: ch.title || `Chương ${ch.chapterNumber ?? idx + 1}`,
+      translator,
+      accessType: ch.accessType || 'inherit',
+      isLocked: false,
+      sharedWith: sanitizedSharedWith,
+      content: ch.content || '',
+      images: (ch.images || []).map(ensureScrambledImageUrl),
+    };
+  });
+
+  const firstUnlocked = safeChapters.find((c: any) => !c.isLocked);
+
+  let postForClient = {
+    ...serialized,
+    chapters: safeChapters,
+    content: firstUnlocked?.content || '',
+    images: firstUnlocked?.images || [],
+    sharedWith: user?.role === 'admin'
+      ? serialized.sharedWith
+      : (isShared && Array.isArray(serialized.sharedWith)
+          ? serialized.sharedWith.filter((s: any) => s.email?.toLowerCase().trim() === userEmail)
+          : []),
+    accessedUsers: user?.role === 'admin' ? serialized.accessedUsers : [],
+  };
+
+  const plainPostForClient = JSON.parse(JSON.stringify(postForClient));
+
+  return (
+    <PostDetailClient
+      initialPost={plainPostForClient as any}
+      initialChapterNumber={typeof requestedChapterNum === 'number' && !isNaN(requestedChapterNum) ? requestedChapterNum : undefined}
+    />
+  );
 }

@@ -51,6 +51,7 @@ export function CreatePostForm({
   const [createdChapterCount, setCreatedChapterCount] = useState(0);
 
   const [chapterTitle, setChapterTitle] = useState('Chương 1');
+  const [chapterTranslator, setChapterTranslator] = useState('');
   const [chapterContent, setChapterContent] = useState('');
   const [imageFiles, setImageFiles] = useState<File[]>([]);
   const [imagePreviews, setImagePreviews] = useState<string[]>([]);
@@ -71,6 +72,7 @@ export function CreatePostForm({
   };
 
   const resetChapterFields = () => {
+    setChapterTranslator('');
     setChapterContent('');
     setImageFiles([]);
     setImagePreviews([]);
@@ -300,7 +302,8 @@ export function CreatePostForm({
       showProgress,
       updateProgress,
       onPostCreated,
-      notify.error
+      notify.error,
+      chapterTranslator || translator
     );
   };
 
@@ -430,6 +433,20 @@ export function CreatePostForm({
                 value={chapterTitle}
                 onChange={(e) => setChapterTitle(e.target.value)}
                 placeholder={`Chương ${createdChapterCount + 1}`}
+                disabled={isSubmitting}
+                className="rounded-[8px]"
+              />
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-slate-900 dark:text-white mb-2">
+                Dịch giả chương (tuỳ chọn)
+              </label>
+              <Input
+                value={chapterTranslator}
+                onChange={(e) => setChapterTranslator(e.target.value)}
+                placeholder={translator ? `Mặc định: ${translator}` : "Tên người dịch chương này"}
+                maxLength={100}
                 disabled={isSubmitting}
                 className="rounded-[8px]"
               />

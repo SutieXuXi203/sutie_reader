@@ -63,6 +63,9 @@ interface Post {
   translator?: string;
   createdAt: string;
   updatedAt: string;
+  accessibleChapterNumbers?: number[];
+  accessibleChapterLabel?: string;
+  isPartialAccess?: boolean;
 }
 
 interface BookmarkItem {

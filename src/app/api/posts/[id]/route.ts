@@ -4,7 +4,7 @@ import { Bookmark } from '@/models/Bookmark';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
-import { canViewPost } from '@/lib/permissions';
+import { canViewPost, canViewChapter } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { getApiCache, setApiCache, invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
@@ -18,6 +18,9 @@ type IncomingChapter = {
   chapterNumber?: unknown;
   content?: unknown;
   images?: unknown;
+  translator?: unknown;
+  accessType?: unknown;
+  sharedWith?: unknown;
 };
 
 const normalizeTags = (value: unknown): string[] => {
@@ -79,11 +82,26 @@ const normalizeChapter = (
       ? raw.title.trim().slice(0, 120)
       : fallbackTitle;
 
+  const translator =
+    typeof raw.translator === 'string' && raw.translator.trim()
+      ? raw.translator.trim().slice(0, 100)
+      : '';
+
+  const accessType =
+    typeof raw.accessType === 'string' && ['inherit', 'restricted', 'public'].includes(raw.accessType)
+      ? (raw.accessType as 'inherit' | 'restricted' | 'public')
+      : 'inherit';
+
+  const sharedWith = Array.isArray(raw.sharedWith) ? raw.sharedWith : [];
+
   return {
     title,
     chapterNumber,
     content,
     images,
+    translator,
+    accessType,
+    sharedWith,
   };
 };
 
@@ -349,7 +367,7 @@ export async function GET(
     }
 
     const userEmail = user?.email?.toLowerCase().trim();
-    const isShared = Boolean(
+    const isSharedInPost = Boolean(
       user &&
       Array.isArray(serialized.sharedWith) &&
       serialized.sharedWith.some(
@@ -358,6 +376,22 @@ export async function GET(
           (s.userId && s.userId.toString() === user.id)
       )
     );
+
+    const isSharedInAnyChapter = Boolean(
+      user &&
+      Array.isArray(serialized.chapters) &&
+      serialized.chapters.some(
+        (ch: any) =>
+          Array.isArray(ch.sharedWith) &&
+          ch.sharedWith.some(
+            (s: any) =>
+              s.email?.toLowerCase().trim() === userEmail ||
+              (s.userId && s.userId.toString() === user.id)
+          )
+      )
+    );
+
+    const isShared = isSharedInPost || isSharedInAnyChapter;
 
     let result = {
       ...serialized,
@@ -371,15 +405,32 @@ export async function GET(
     };
 
     if (user) {
+      const safeChapters = Array.isArray(serialized.chapters)
+        ? serialized.chapters.map((chapter: NormalizedPostChapter) => {
+            const chDecision = canViewChapter(user, serialized, chapter);
+            return {
+              ...chapter,
+              isLocked: !chDecision.allowed,
+              lockReason: chDecision.reason,
+              lockMessage: chDecision.message,
+              content: chDecision.allowed ? chapter.content : '',
+              images: chDecision.allowed ? signImageUrls(chapter.images || [], user.id) : [],
+              sharedWith: user?.role === 'admin'
+                ? chapter.sharedWith
+                : (Array.isArray(chapter.sharedWith)
+                    ? chapter.sharedWith.filter((s: any) => s.email?.toLowerCase().trim() === userEmail)
+                    : []),
+            };
+          })
+        : [];
+
+      const firstUnlocked = safeChapters.find((c: any) => !c.isLocked);
+
       result = {
         ...result,
-        images: serialized.images ? signImageUrls(serialized.images, user.id) : [],
-        chapters: Array.isArray(serialized.chapters)
-          ? serialized.chapters.map((chapter: NormalizedPostChapter) => ({
-              ...chapter,
-              images: signImageUrls(chapter.images || [], user.id),
-            }))
-          : [],
+        content: firstUnlocked ? firstUnlocked.content : '',
+        images: firstUnlocked ? firstUnlocked.images : [],
+        chapters: safeChapters,
       };
     }
     return NextResponse.json(result, {

@@ -26,7 +26,7 @@ export async function GET(
         }
         await connectDB();
         const { Post } = await import('@/models/Post');
-        const post = await Post.findById(postId).select('accessType sharedWith').lean();
+        const post = await Post.findById(postId).select('accessType sharedWith chapters').lean();
         if (!post) {
             return NextResponse.json(null);
         }

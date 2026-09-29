@@ -30,6 +30,12 @@ interface Chapter {
   chapterNumber: number;
   content: string;
   images: string[];
+  translator?: string;
+  accessType?: 'inherit' | 'restricted' | 'public';
+  isLocked?: boolean;
+  lockReason?: string;
+  lockMessage?: string;
+  sharedWith?: Array<{ email: string; userId?: string; role?: string; addedAt?: string }>;
 }
 
 interface Post {
@@ -78,8 +84,12 @@ const normalizeChapters = (post: Post | null): Chapter[] => {
           ...chapter,
           chapterNumber,
           title: chapter.title?.trim() || `Chuong ${chapterNumber}`,
+          translator: chapter.translator || post.translator || '',
           content: typeof chapter.content === 'string' ? chapter.content : '',
           images: Array.isArray(chapter.images) ? chapter.images.filter(Boolean) : [],
+          isLocked: Boolean(chapter.isLocked),
+          lockReason: chapter.lockReason,
+          lockMessage: chapter.lockMessage,
         };
       })
       .sort((a, b) => a.chapterNumber - b.chapterNumber);
@@ -89,13 +99,20 @@ const normalizeChapters = (post: Post | null): Chapter[] => {
     {
       title: 'Oneshot',
       chapterNumber: 1,
+      translator: post.translator || '',
       content: post.content || '',
       images: Array.isArray(post.images) ? post.images : [],
     },
   ];
 };
 
-export default function PostDetailClient({ initialPost }: { initialPost: Post | null }) {
+export default function PostDetailClient({
+  initialPost,
+  initialChapterNumber,
+}: {
+  initialPost: Post | null;
+  initialChapterNumber?: number;
+}) {
   const params = useParams();
   const router = useRouter();
   const [post, setPost] = useState<Post | null>(initialPost);
@@ -105,7 +122,29 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
   const [accessedUsers, setAccessedUsers] = useState<any[]>(initialPost?.accessedUsers || []);
   const [isLoading, setIsLoading] = useState(false);
   const [showUI, setShowUI] = useState(true);
-  const [activeChapterIndex, setActiveChapterIndex] = useState(0);
+  const initialChapterIndex = useMemo(() => {
+    if (!initialPost?.chapters || initialPost.chapters.length === 0) return 0;
+
+    let requestedNum = initialChapterNumber;
+    if (typeof requestedNum !== 'number' && typeof window !== 'undefined') {
+      const paramVal = new URLSearchParams(window.location.search).get('chapter');
+      if (paramVal) {
+        const parsed = parseInt(paramVal, 10);
+        if (!isNaN(parsed)) requestedNum = parsed;
+      }
+    }
+
+    if (typeof requestedNum === 'number') {
+      const foundIdx = initialPost.chapters.findIndex(
+        (c, idx) => (c.chapterNumber ?? idx + 1) === requestedNum
+      );
+      if (foundIdx >= 0) return foundIdx;
+    }
+
+    const firstUnlocked = initialPost.chapters.findIndex((c) => !c.isLocked);
+    return firstUnlocked >= 0 ? firstUnlocked : 0;
+  }, [initialPost, initialChapterNumber]);
+  const [activeChapterIndex, setActiveChapterIndex] = useState(initialChapterIndex);
   const [currentPage, setCurrentPage] = useState(0);
   const [nsfwAccepted, setNsfwAccepted] = useState(false);
   const [hasBookmark, setHasBookmark] = useState(false);
@@ -384,6 +423,18 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
     (index: number) => {
       setIsChapterMenuOpen(false);
       if (index < 0 || index >= chapters.length || index === activeChapterIndex) return;
+      const targetChapter = chapters[index];
+      if (targetChapter?.isLocked) {
+        notify.warning(
+          `Bạn chưa được cấp quyền đọc Chương ${targetChapter.chapterNumber || ''}.`,
+          {
+            action: {
+              label: 'Liên hệ',
+              onClick: () => router.push('/contact'),
+            },
+          }
+        );
+      }
       setActiveChapterIndex(index);
       setCurrentPage(0);
       imageRefs.current = [];
@@ -428,7 +479,12 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
           const data = (await res.json()) as BookmarkData | null;
           if (data && chapters.length > 0) {
             const savedChapter = clamp(data.chapterIndex ?? 0, 0, chapters.length - 1);
-            const chapterImages = chapters[savedChapter]?.images || [];
+            const targetChap = chapters[savedChapter];
+            if (targetChap?.isLocked) {
+              initialScrollDone.current = true;
+              return;
+            }
+            const chapterImages = targetChap?.images || [];
             const maxPage = Math.max(chapterImages.length - 1, 0);
             const savedPage = clamp(data.currentPage ?? 0, 0, maxPage);
 
@@ -738,16 +794,30 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
     );
   }
 
-  // 2. Truyện Hạn chế + Đã đăng nhập -> Kiểm tra xem có phải Admin hoặc nằm trong sharedWith không
+  // 2. Truyện Hạn chế + Đã đăng nhập -> Kiểm tra xem có phải Admin hoặc được cấp quyền truyện/chương không
   if (accessType === 'restricted' && user) {
     const isFullAccessUser = user.role === 'admin' || user.role === 'user';
-    const userEmail = user.email.toLowerCase();
-    const isAllowed =
-      isFullAccessUser ||
-      (Array.isArray(post.sharedWith) &&
-        post.sharedWith.some(
-          (s) => s.email?.toLowerCase() === userEmail || (s.userId && s.userId === user.id)
-        ));
+    const userEmail = user.email.toLowerCase().trim();
+    const userId = user.id ? String(user.id) : '';
+
+    const isSharedInPost =
+      Array.isArray(post.sharedWith) &&
+      post.sharedWith.some(
+        (s) => s.email?.toLowerCase().trim() === userEmail || (s.userId && String(s.userId) === userId)
+      );
+
+    const isSharedInAnyChapter =
+      Array.isArray(post.chapters) &&
+      post.chapters.some(
+        (ch) =>
+          !ch.isLocked ||
+          (Array.isArray(ch.sharedWith) &&
+            ch.sharedWith.some(
+              (s) => s.email?.toLowerCase().trim() === userEmail || (s.userId && String(s.userId) === userId)
+            ))
+      );
+
+    const isAllowed = isFullAccessUser || isSharedInPost || isSharedInAnyChapter;
 
     if (!isAllowed) {
       return (
@@ -873,7 +943,8 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
                   {post.title}
                 </h1>
                 <p className="text-muted-foreground text-[10px] md:text-xs line-clamp-1">
-                  {activeChapter?.title || `Chuong ${activeChapterIndex + 1}`} - {post.author}{post.translator ? ` (Dịch: ${post.translator})` : ''}
+                  {activeChapter?.title || `Chuong ${activeChapterIndex + 1}`} - {post.author}
+                  {(activeChapter?.translator || post.translator) ? ` • Dịch: ${activeChapter?.translator || post.translator}` : ''}
                 </p>
               </div>
             </div>
@@ -981,7 +1052,63 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
 
       <main className="w-full flex-1 flex flex-col items-center pt-14 md:pt-20 pb-16 md:pb-20">
         <div className="flex flex-col items-center w-full gap-[4px]">
-          {chapterImages.length > 0 ? (
+          {activeChapter?.isLocked ? (
+            <div className="w-[calc(100%-2rem)] max-w-lg mx-auto my-8 sm:my-12 p-5 sm:p-6 md:p-8 rounded-2xl border border-border/60 bg-card/85 backdrop-blur-xl shadow-2xl text-center flex flex-col items-center animate-in fade-in-50 zoom-in-95">
+              <div className="w-14 h-14 sm:w-16 sm:h-16 rounded-2xl bg-primary/10 flex items-center justify-center text-primary mb-3 sm:mb-4 shadow-lg shadow-primary/20">
+                <AnimatedLock className="w-7 h-7 sm:w-8 sm:h-8 text-primary" />
+              </div>
+              <span className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary mb-1.5 sm:mb-2">
+                Chương bị giới hạn quyền truy cập
+              </span>
+              <h2 className="text-lg sm:text-xl md:text-2xl font-bold text-foreground mb-1 sm:mb-1.5">
+                {activeChapter?.title || `Chương ${activeChapter?.chapterNumber}`}
+              </h2>
+              {activeChapter?.translator && (
+                <p className="text-xs sm:text-sm font-medium text-primary mb-2 sm:mb-3">
+                  Dịch giả: <span className="font-semibold underline decoration-primary/50 underline-offset-2">{activeChapter.translator}</span>
+                </p>
+              )}
+              <p className="text-muted-foreground text-xs sm:text-sm max-w-md mb-5 sm:mb-6 leading-relaxed">
+                {activeChapter?.lockMessage ||
+                  `Bạn chưa được cấp quyền đọc Chương ${activeChapter?.chapterNumber || ''}.`}
+              </p>
+
+              {activeChapter?.lockReason === 'REQUIRE_LOGIN' ? (
+                <button
+                  type="button"
+                  onClick={() => setIsAuthDialogOpen(true)}
+                  className="w-full sm:w-auto px-6 py-2.5 rounded-xl bg-primary text-primary-foreground font-semibold text-xs sm:text-sm hover:opacity-90 transition-all shadow-lg shadow-primary/30 cursor-pointer active:scale-95"
+                >
+                  Đăng nhập để đọc
+                </button>
+              ) : (
+                <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-center gap-2 sm:gap-3 w-full sm:w-auto">
+                  {activeChapterIndex > 0 && (
+                    <button
+                      type="button"
+                      onClick={() => goToChapter(activeChapterIndex - 1)}
+                      className="w-full sm:w-auto px-4 py-2 rounded-xl bg-secondary hover:bg-muted text-foreground font-medium text-xs sm:text-sm border border-border transition-all cursor-pointer text-center justify-center"
+                    >
+                      ← Đọc chương trước
+                    </button>
+                  )}
+                  <Link
+                    href="/contact"
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-primary text-primary-foreground font-semibold text-xs sm:text-sm transition-all cursor-pointer hover:bg-primary/90 shadow-md shadow-primary/20 active:scale-95 inline-flex items-center justify-center gap-1.5 text-center"
+                  >
+                    Chuyển đến Liên Hệ
+                  </Link>
+                  <button
+                    type="button"
+                    onClick={() => router.push('/#posts')}
+                    className="w-full sm:w-auto px-4 py-2 rounded-xl bg-primary/10 hover:bg-primary/20 text-primary font-medium text-xs sm:text-sm transition-all cursor-pointer text-center justify-center"
+                  >
+                    Về trang chủ
+                  </button>
+                </div>
+              )}
+            </div>
+          ) : chapterImages.length > 0 ? (
             chapterImages.map((img, idx) => (
               <div
                 key={`${activeChapterIndex}-${idx}`}
@@ -1011,13 +1138,19 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
             </div>
           )}
 
-          <div className="flex flex-col items-center gap-4 py-20 text-center w-full max-w-md px-6 z-10">
-            <div className="w-16 h-1 bg-border rounded-full mb-2" />
-            <h2 className="text-foreground text-xl font-bold">Cảm ơn đã theo dõi!</h2>
-            <p className="text-muted-foreground text-sm">
-              Bạn đã đọc xong {activeChapter?.title || `chương ${activeChapterIndex + 1}`} trong
-              &quot;{post.title}&quot;.
-            </p>
+          {!activeChapter?.isLocked && (
+            <div className="flex flex-col items-center gap-4 py-20 text-center w-full max-w-md px-6 z-10">
+              <div className="w-16 h-1 bg-border rounded-full mb-2" />
+              <h2 className="text-foreground text-xl font-bold">Cảm ơn đã theo dõi!</h2>
+              <p className="text-muted-foreground text-sm">
+                Bạn đã đọc xong {activeChapter?.title || `chương ${activeChapterIndex + 1}`} trong
+                &quot;{post.title}&quot;.
+              </p>
+              {activeChapter?.translator && (
+                <p className="text-xs text-primary/80 font-medium">
+                  Chương này được dịch bởi: <span className="font-semibold">{activeChapter.translator}</span>
+                </p>
+              )}
             <div className="flex gap-4 mt-4">
               {hasBookmark && (
                 <button
@@ -1042,8 +1175,9 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
               </button>
             </div>
           </div>
-        </div>
-      </main>
+        )}
+      </div>
+    </main>
 
       <div
         className={`fixed bottom-0 left-0 right-0 z-50 transition-opacity duration-500 ${
@@ -1095,10 +1229,12 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
               <div
                 role="listbox"
                 aria-label="Danh sách chương"
-                className="absolute bottom-full left-1/2 z-50 mb-2 max-h-56 w-36 -translate-x-1/2 overflow-y-auto rounded-[8px] border border-border bg-background p-1 shadow-2xl"
+                className="absolute bottom-full left-1/2 z-50 mb-2 max-h-64 w-52 sm:w-60 -translate-x-1/2 overflow-y-auto rounded-[8px] border border-border bg-background p-1.5 shadow-2xl space-y-1"
               >
                 {chapters.map((chapter, index) => {
                   const isActive = index === activeChapterIndex;
+                  const isLocked = Boolean(chapter.isLocked);
+                  const translatorName = chapter.translator || post.translator;
 
                   return (
                     <button
@@ -1108,11 +1244,21 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
                       aria-selected={isActive}
                       onClick={() => goToChapter(index)}
                       className={cn(
-                        "flex h-8 w-full items-center rounded-[6px] px-3 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-muted focus-visible:bg-muted md:text-xs",
+                        "flex w-full items-center justify-between rounded-[6px] px-2.5 py-1.5 text-left text-[11px] font-medium text-foreground transition-colors hover:bg-muted focus-visible:bg-muted md:text-xs gap-2 cursor-pointer",
                         isActive && "bg-muted font-bold text-foreground"
                       )}
                     >
-                      Chương {chapter.chapterNumber}
+                      <div className="flex flex-col min-w-0 flex-1">
+                        <span className="truncate">Chương {chapter.chapterNumber}</span>
+                        {translatorName && (
+                          <span className="text-[10px] text-muted-foreground/80 truncate">
+                            Dịch: {translatorName}
+                          </span>
+                        )}
+                      </div>
+                      {isLocked && (
+                        <AnimatedLock className="w-3.5 h-3.5 text-amber-500 shrink-0" />
+                      )}
                     </button>
                   );
                 })}

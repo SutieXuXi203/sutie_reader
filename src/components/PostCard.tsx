@@ -1,6 +1,6 @@
 'use client';
 import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimatedLanguages, AnimatedShare, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
-import { CalendarDays, ShieldAlert, Eye, RefreshCw } from 'lucide-react';
+import { CalendarDays, ShieldAlert, Eye, RefreshCw, BookOpen } from 'lucide-react';
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { HoverCard } from 'radix-ui';
 import Image from 'next/image';
@@ -25,10 +25,19 @@ interface Post {
   tags?: string[];
   content?: string;
   images: string[];
+  chapters?: Array<{
+    title?: string;
+    chapterNumber?: number;
+    translator?: string;
+  }>;
   author: string;
   translator?: string;
+  chapterCount?: number;
   createdAt: string;
   updatedAt: string;
+  accessibleChapterNumbers?: number[];
+  accessibleChapterLabel?: string;
+  isPartialAccess?: boolean;
 }
 interface PostCardProps {
   post: Post;
@@ -50,6 +59,34 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   const { blurMode } = useThumbnailBlur();
   const isNSFW = (post.tags || []).some(tag => tag.toLowerCase().includes('18+'));
   const isNsfwLocked = isNSFW && !nsfwRevealed;
+
+  const distinctTranslators = useMemo(() => {
+    const list: string[] = [];
+    const seen = new Set<string>();
+    if (post.translator && post.translator.trim()) {
+      const t = post.translator.trim();
+      seen.add(t.toLowerCase());
+      list.push(t);
+    }
+    if (Array.isArray(post.chapters)) {
+      for (const ch of post.chapters) {
+        if (ch.translator && ch.translator.trim()) {
+          const t = ch.translator.trim();
+          if (!seen.has(t.toLowerCase())) {
+            seen.add(t.toLowerCase());
+            list.push(t);
+          }
+        }
+      }
+    }
+    return list;
+  }, [post.translator, post.chapters]);
+
+  const displayTranslator = useMemo(() => {
+    if (distinctTranslators.length === 0) return 'Chưa có dịch giả';
+    if (distinctTranslators.length <= 2) return distinctTranslators.join(', ');
+    return `${distinctTranslators.slice(0, 2).join(', ')} +${distinctTranslators.length - 2}`;
+  }, [distinctTranslators]);
 
   const initialThumbSrc = useMemo(() => {
     return post.images && post.images.length > 0 ? getOptimizedImageUrl(post.images[0]) : '';
@@ -214,10 +251,18 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   );
   const mobileRemainingCount = mobileRemainingTags.length;
   const desktopRemainingCount = desktopRemainingTags.length;
+
+  const targetChapter = post.accessibleChapterNumbers && post.accessibleChapterNumbers.length > 0
+    ? post.accessibleChapterNumbers[0]
+    : undefined;
+  const postDetailHref = targetChapter
+    ? `/posts/${post._id}?chapter=${targetChapter}`
+    : `/posts/${post._id}`;
+
   return (
     <>
       <Link
-        href={`/posts/${post._id}`}
+        href={postDetailHref}
         prefetch={true}
         className="group/card flex flex-col h-full bg-card/60 backdrop-blur-md border border-border rounded-[8px] overflow-hidden hover:shadow-[0_8px_30px_rgba(140,47,57,0.18)] hover:-translate-y-1 transition-all duration-500 cursor-pointer relative"
       >
@@ -320,6 +365,28 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               </span>
             </div>
           )}
+          {/* Chapter Access Badge on Thumbnail */}
+          {post.accessibleChapterLabel ? (
+            <div
+              className={cn(
+                "absolute top-2 left-2 z-[6] inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 font-bold shadow-md select-none transition-transform pointer-events-none",
+                post.isPartialAccess
+                  ? "bg-amber-500/95 text-amber-950 border border-amber-300/40 backdrop-blur-xs text-[10px] sm:text-[11px]"
+                  : "bg-black/70 text-white/95 border border-white/15 backdrop-blur-xs text-[9.5px] sm:text-[10px]"
+              )}
+              title={post.isPartialAccess ? `Bạn được cấp quyền: ${post.accessibleChapterLabel}` : `Bộ truyện: ${post.accessibleChapterLabel}`}
+            >
+              <BookOpen className={cn("shrink-0", compact ? "w-3 h-3" : "w-3.5 h-3.5", post.isPartialAccess ? "text-amber-950" : "text-primary")} />
+              <span className="truncate max-w-[120px]">{post.accessibleChapterLabel}</span>
+            </div>
+          ) : post.chapterCount && post.chapterCount > 0 ? (
+            <div
+              className="absolute top-2 left-2 z-[6] inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 bg-black/70 text-white/95 border border-white/15 backdrop-blur-xs text-[9.5px] sm:text-[10px] font-medium shadow-md select-none pointer-events-none"
+            >
+              <BookOpen className={cn("shrink-0 text-primary", compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
+              <span>{post.chapterCount} chương</span>
+            </div>
+          ) : null}
           <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
           </GlareHover>
         </div>
@@ -414,20 +481,47 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             <div
               className={cn(
                 "flex items-center min-w-0 w-full",
-                post.translator ? "text-foreground/80 font-semibold" : "text-muted-foreground/80 font-medium",
+                distinctTranslators.length > 0 ? "text-foreground/80 font-semibold" : "text-muted-foreground/80 font-medium",
                 compact ? "gap-1.5 h-5" : "gap-2 h-6"
               )}
-              title={post.translator ? `Dịch giả: ${post.translator}` : 'Chưa có dịch giả'}
+              title={distinctTranslators.length > 0 ? `Dịch giả: ${distinctTranslators.join(', ')}` : 'Chưa có dịch giả'}
             >
               <AnimatedLanguages
                 className={cn(
                   "shrink-0",
-                  post.translator ? "text-primary/90" : "text-muted-foreground/70",
+                  distinctTranslators.length > 0 ? "text-primary/90" : "text-muted-foreground/70",
                   compact ? "w-3.5 h-3.5" : "w-4 h-4"
                 )}
               />
               <span className={cn("truncate min-w-0 flex-1", compact ? "text-[11px] sm:text-xs" : "text-sm")}>
-                {post.translator || 'Chưa có dịch giả'}
+                {displayTranslator}
+              </span>
+            </div>
+            <div
+              className={cn(
+                "flex items-center min-w-0 w-full",
+                post.isPartialAccess ? "text-amber-600 dark:text-amber-400 font-semibold" : "text-foreground/80 font-medium",
+                compact ? "gap-1.5 h-5" : "gap-2 h-6"
+              )}
+              title={
+                post.isPartialAccess
+                  ? `Quyền đọc: ${post.accessibleChapterLabel}`
+                  : `Số chương: ${post.accessibleChapterLabel || (post.chapterCount ? `${post.chapterCount} chương` : '1 chương')}`
+              }
+            >
+              <BookOpen
+                className={cn(
+                  "shrink-0",
+                  post.isPartialAccess ? "text-amber-600 dark:text-amber-400" : "text-primary/90",
+                  compact ? "w-3.5 h-3.5" : "w-4 h-4"
+                )}
+              />
+              <span className={cn("truncate min-w-0 flex-1", compact ? "text-[11px] sm:text-xs" : "text-sm")}>
+                {post.isPartialAccess ? (
+                  <span>Quyền đọc: <strong className="font-bold underline decoration-amber-500/50">{post.accessibleChapterLabel}</strong></span>
+                ) : (
+                  <span>{post.accessibleChapterLabel || (post.chapterCount ? `${post.chapterCount} chương` : '1 chương')}</span>
+                )}
               </span>
             </div>
           </div>
@@ -477,7 +571,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
         <>
           {isEditOpen && (
           <EditPostForm
-            post={post}
+            post={post as any}
             open={isEditOpen}
             onOpenChange={setIsEditOpen}
             onPostUpdated={(updated) => { setIsEditOpen(false); onUpdate?.(updated); }}

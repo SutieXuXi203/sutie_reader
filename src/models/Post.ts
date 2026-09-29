@@ -1,19 +1,23 @@
 import mongoose, { Schema, Document } from 'mongoose';
 
-export interface IPostChapter {
-  title: string;
-  chapterNumber: number;
-  content: string;
-  images: string[];
-  createdAt?: Date;
-  updatedAt?: Date;
-}
-
 export interface IPostShareUser {
   userId?: mongoose.Types.ObjectId;
   email: string;
   role: 'viewer';
   addedAt: Date;
+}
+
+export interface IPostChapter {
+  _id?: mongoose.Types.ObjectId | string;
+  title: string;
+  chapterNumber: number;
+  content: string;
+  images: string[];
+  translator?: string;
+  accessType?: 'inherit' | 'restricted' | 'public';
+  sharedWith?: IPostShareUser[];
+  createdAt?: Date;
+  updatedAt?: Date;
 }
 
 export interface IPostAccessedUser {
@@ -41,6 +45,16 @@ export interface IPost extends Document {
   updatedAt: Date;
 }
 
+const ShareUserSchema = new Schema<IPostShareUser>(
+  {
+    userId: { type: Schema.Types.ObjectId, ref: 'User' },
+    email: { type: String, required: true, lowercase: true, trim: true },
+    role: { type: String, enum: ['viewer'], default: 'viewer' },
+    addedAt: { type: Date, default: Date.now },
+  },
+  { _id: false }
+);
+
 const ChapterSchema = new Schema<IPostChapter>(
   {
     title: {
@@ -59,6 +73,20 @@ const ChapterSchema = new Schema<IPostChapter>(
     },
     images: {
       type: [String],
+      default: [],
+    },
+    translator: {
+      type: String,
+      default: '',
+      maxlength: 100,
+    },
+    accessType: {
+      type: String,
+      enum: ['inherit', 'restricted', 'public'],
+      default: 'inherit',
+    },
+    sharedWith: {
+      type: [ShareUserSchema],
       default: [],
     },
   },
@@ -108,17 +136,7 @@ const PostSchema = new Schema<IPost>(
       default: 'restricted',
     },
     sharedWith: {
-      type: [
-        new Schema<IPostShareUser>(
-          {
-            userId: { type: Schema.Types.ObjectId, ref: 'User' },
-            email: { type: String, required: true, lowercase: true, trim: true },
-            role: { type: String, enum: ['viewer'], default: 'viewer' },
-            addedAt: { type: Date, default: Date.now },
-          },
-          { _id: false }
-        ),
-      ],
+      type: [ShareUserSchema],
       default: [],
     },
     accessedUsers: {

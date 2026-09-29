@@ -26,7 +26,7 @@ export async function GET(
     }
 
     await connectDB();
-    const post = await Post.findById(id).select('title accessType sharedWith accessedUsers author').lean();
+    const post = await Post.findById(id).select('title accessType sharedWith accessedUsers author translator chapters').lean();
     if (!post) {
       return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
     }
@@ -41,9 +41,13 @@ export async function GET(
       return NextResponse.json({ error: 'Bạn không có quyền truy cập thông tin chia sẻ truyện này' }, { status: 403 });
     }
 
-    // Populate user profile info for shared users
-    const sharedEmails = (post.sharedWith || []).map((s: any) => s.email);
-    const existingUsers = await User.find({ email: { $in: sharedEmails } })
+    // Populate user profile info for shared users (cả cấp post lẫn từng chapter)
+    const allSharedEmails = new Set<string>((post.sharedWith || []).map((s: any) => s.email));
+    (post.chapters || []).forEach((ch: any) => {
+      (ch.sharedWith || []).forEach((s: any) => allSharedEmails.add(s.email));
+    });
+
+    const existingUsers = await User.find({ email: { $in: Array.from(allSharedEmails) } })
       .select('name email avatar')
       .lean();
 
@@ -61,6 +65,35 @@ export async function GET(
         name: uInfo?.name || s.email.split('@')[0],
         avatar: uInfo?.avatar || '',
         isRegistered: Boolean(uInfo),
+        scope: 'all',
+      };
+    });
+
+    const mappedChapters = (post.chapters || []).map((ch: any) => {
+      const chShared = (ch.sharedWith || []).map((s: any) => {
+        const uInfo = userMap.get(s.email.toLowerCase());
+        return {
+          email: s.email,
+          role: s.role || 'viewer',
+          addedAt: s.addedAt instanceof Date ? s.addedAt.toISOString() : s.addedAt,
+          name: uInfo?.name || s.email.split('@')[0],
+          avatar: uInfo?.avatar || '',
+          isRegistered: Boolean(uInfo),
+          scope: `chap_${ch.chapterNumber}`,
+          chapterNumber: ch.chapterNumber,
+          chapterTitle: ch.title,
+        };
+      });
+
+      return {
+        _id: ch._id?.toString(),
+        chapterNumber: ch.chapterNumber,
+        title: ch.title,
+        translator: ch.translator || post.translator || '',
+        accessType: ch.accessType || 'inherit',
+        sharedWith: isUserAdmin
+          ? chShared
+          : chShared.filter((s: any) => s.email.toLowerCase() === normalizedUserEmail),
       };
     });
 
@@ -96,11 +129,13 @@ export async function GET(
       postId: post._id.toString(),
       title: post.title,
       accessType: post.accessType || 'restricted',
+      translator: post.translator || '',
       isOwner: isUserAdmin,
       owner: ownerInfo,
       sharedWith: isUserAdmin
         ? mappedSharedWith
         : mappedSharedWith.filter((s: any) => s.email.toLowerCase() === normalizedUserEmail),
+      chapters: mappedChapters,
       accessedUsers: isUserAdmin ? mappedAccessedUsers : [],
     });
   } catch (error) {
@@ -145,6 +180,7 @@ export async function POST(
         return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
       }
       invalidateApiCache('posts:');
+      invalidateApiCache('img_access:');
 
       return NextResponse.json({
         message: 'Đã cập nhật quyền truy cập chung',
@@ -158,42 +194,61 @@ export async function POST(
         return NextResponse.json({ error: 'Địa chỉ email không đúng định dạng' }, { status: 400 });
       }
       const targetEmail = emailParse.data;
+      const chapterNumber = typeof body.chapterNumber === 'number' && body.chapterNumber > 0
+        ? Math.floor(body.chapterNumber)
+        : null;
 
-      const post = await Post.findById(id).select('sharedWith');
+      const post = await Post.findById(id);
       if (!post) {
         return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
       }
 
-      if (!Array.isArray(post.sharedWith)) {
-        post.sharedWith = [];
-      }
-
-      const alreadyExists = post.sharedWith.some((s) => s.email === targetEmail);
-      if (alreadyExists) {
-        return NextResponse.json({ error: 'Email này đã có trong danh sách được cấp quyền' }, { status: 400 });
-      }
-
       const existingUser = await User.findOne({ email: targetEmail }).select('_id name avatar').lean();
-
-      post.sharedWith.push({
+      const shareItem = {
         userId: existingUser?._id,
         email: targetEmail,
-        role: 'viewer',
+        role: 'viewer' as const,
         addedAt: new Date(),
-      });
+      };
+
+      if (chapterNumber) {
+        // Cấp quyền cho chương cụ thể
+        const targetChap = (post.chapters || []).find((c) => c.chapterNumber === chapterNumber);
+        if (!targetChap) {
+          return NextResponse.json({ error: `Không tìm thấy chương ${chapterNumber}` }, { status: 404 });
+        }
+        if (!Array.isArray(targetChap.sharedWith)) {
+          targetChap.sharedWith = [];
+        }
+        if (targetChap.sharedWith.some((s) => s.email === targetEmail)) {
+          return NextResponse.json({ error: `Email này đã có quyền đọc Chương ${chapterNumber}` }, { status: 400 });
+        }
+        targetChap.sharedWith.push(shareItem);
+      } else {
+        // Cấp quyền cho toàn bộ truyện
+        if (!Array.isArray(post.sharedWith)) {
+          post.sharedWith = [];
+        }
+        if (post.sharedWith.some((s) => s.email === targetEmail)) {
+          return NextResponse.json({ error: 'Email này đã có trong danh sách được cấp quyền toàn bộ truyện' }, { status: 400 });
+        }
+        post.sharedWith.push(shareItem);
+      }
 
       await post.save();
       invalidateApiCache('posts:');
+      invalidateApiCache('img_access:');
 
       // Ghi nhận log chia sẻ quyền đọc lên Telegram
       const authUser = await getAuthUser(request);
       void logApiAction({
         module: 'Phân quyền truyện (Share)',
-        action: 'Cấp quyền đọc truyện cho người dùng',
+        action: chapterNumber ? `Cấp quyền đọc Chương ${chapterNumber}` : 'Cấp quyền đọc toàn bộ truyện',
         request,
         user: authUser,
         details: {
           'Mã truyện': id,
+          'Phạm vi': chapterNumber ? `Chương ${chapterNumber}` : 'Toàn bộ truyện',
           'Email được cấp quyền': targetEmail,
           'Vai trò': 'viewer',
         },
@@ -201,7 +256,7 @@ export async function POST(
       });
 
       return NextResponse.json({
-        message: 'Đã thêm quyền truy cập thành công',
+        message: chapterNumber ? `Đã cấp quyền đọc Chương ${chapterNumber}` : 'Đã thêm quyền truy cập thành công',
         user: {
           email: targetEmail,
           role: 'viewer',
@@ -209,6 +264,8 @@ export async function POST(
           avatar: existingUser?.avatar || '',
           isRegistered: Boolean(existingUser),
           addedAt: new Date().toISOString(),
+          scope: chapterNumber ? `chap_${chapterNumber}` : 'all',
+          chapterNumber: chapterNumber || undefined,
         },
       });
     }
@@ -241,12 +298,17 @@ export async function DELETE(
     }
 
     const searchEmail = request.nextUrl.searchParams.get('email');
+    const searchChapterNum = request.nextUrl.searchParams.get('chapterNumber');
     let targetEmail = searchEmail;
+    let targetChapterNumber = searchChapterNum && Number(searchChapterNum) > 0 ? Math.floor(Number(searchChapterNum)) : null;
 
     if (!targetEmail) {
       try {
         const body = await request.json();
         targetEmail = body?.email;
+        if (typeof body?.chapterNumber === 'number' && body.chapterNumber > 0) {
+          targetChapterNumber = Math.floor(body.chapterNumber);
+        }
       } catch {
         // ignore
       }
@@ -259,32 +321,42 @@ export async function DELETE(
     const normalizedEmail = targetEmail.trim().toLowerCase();
 
     await connectDB();
-    const result = await Post.findByIdAndUpdate(
-      id,
-      {
-        $pull: {
-          sharedWith: { email: normalizedEmail },
-          accessedUsers: { email: normalizedEmail },
-        },
-      },
-      { new: true }
-    ).select('_id');
-
-    if (!result) {
-      return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
+    
+    if (targetChapterNumber) {
+      await Post.updateOne(
+        { _id: id, 'chapters.chapterNumber': targetChapterNumber },
+        {
+          $pull: {
+            'chapters.$.sharedWith': { email: normalizedEmail },
+          },
+        }
+      );
+    } else {
+      await Post.updateOne(
+        { _id: id },
+        {
+          $pull: {
+            sharedWith: { email: normalizedEmail },
+            accessedUsers: { email: normalizedEmail },
+            'chapters.$[].sharedWith': { email: normalizedEmail },
+          },
+        }
+      );
     }
 
     invalidateApiCache('posts:');
+    invalidateApiCache('img_access:');
 
     // Ghi nhận log gỡ quyền đọc lên Telegram
     const authUser = await getAuthUser(request);
     void logApiAction({
       module: 'Phân quyền truyện (Share)',
-      action: 'Thu hồi quyền đọc truyện của người dùng',
+      action: targetChapterNumber ? `Thu hồi quyền đọc Chương ${targetChapterNumber}` : 'Thu hồi quyền đọc toàn bộ truyện',
       request,
       user: authUser,
       details: {
         'Mã truyện': id,
+        'Phạm vi': targetChapterNumber ? `Chương ${targetChapterNumber}` : 'Toàn bộ truyện',
         'Email bị thu hồi': normalizedEmail,
       },
       level: 'warn',
@@ -293,6 +365,7 @@ export async function DELETE(
     return NextResponse.json({
       message: 'Đã xóa quyền truy cập của tài khoản',
       email: normalizedEmail,
+      chapterNumber: targetChapterNumber,
     });
   } catch (error) {
     console.error('Lỗi khi xóa quyền chia sẻ:', error);

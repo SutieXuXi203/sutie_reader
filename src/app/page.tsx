@@ -4,6 +4,7 @@ import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
 import { getCurrentUser, type AuthUser } from '@/lib/server-auth';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
+import { filterPostsForUser, getAccessibleChapterInfo } from '@/lib/permissions';
 
 export const maxDuration = 60;
 
@@ -21,6 +22,9 @@ type InitialPost = {
   updatedAt: string;
   chapterCount: number;
   images: string[];
+  accessibleChapterNumbers?: number[];
+  accessibleChapterLabel?: string;
+  isPartialAccess?: boolean;
 };
 
 type InitialTag = {
@@ -29,7 +33,7 @@ type InitialTag = {
 };
 
 type CatalogPostAggregate = {
-  _id: { toString: () => string };
+  _id: string | { toString: () => string };
   title?: string;
   description?: string;
   tags?: string[];
@@ -41,6 +45,13 @@ type CatalogPostAggregate = {
   updatedAt?: Date | string;
   chapterCount?: number;
   coverImage?: string;
+  chapters?: Array<{
+    chapterNumber?: number;
+    title?: string;
+    translator?: string;
+    accessType?: 'inherit' | 'restricted' | 'public';
+    sharedWith?: Array<{ email?: string; userId?: string | any }>;
+  }>;
 };
 
 type TagLean = {
@@ -87,6 +98,19 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
               ],
             },
             chapterCount: { $size: { $ifNull: ['$chapters', []] } },
+            chapters: {
+              $map: {
+                input: { $ifNull: ['$chapters', []] },
+                as: 'c',
+                in: {
+                  chapterNumber: '$$c.chapterNumber',
+                  title: '$$c.title',
+                  translator: '$$c.translator',
+                  accessType: '$$c.accessType',
+                  sharedWith: '$$c.sharedWith',
+                },
+              },
+            },
           },
         },
       ]),
@@ -96,20 +120,7 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
     setApiCache(POSTS_CATALOG_CACHE_KEY, { posts, tags }, POSTS_CATALOG_TTL_MS);
   }
 
-  let visiblePosts = posts;
-  if (user?.role !== 'admin' && user?.role !== 'user') {
-    if (user?.role === 'guest') {
-      const userEmail = user.email.toLowerCase();
-      visiblePosts = posts.filter((post) => {
-        if (post.accessType === 'public') return true;
-        return (post.sharedWith || []).some(
-          (s) => s.email?.toLowerCase() === userEmail || (s.userId && s.userId.toString() === user.id)
-        );
-      });
-    } else {
-      visiblePosts = posts.filter((post) => post.accessType === 'public');
-    }
-  }
+  const visiblePosts = filterPostsForUser(posts as any, user) as CatalogPostAggregate[];
 
   return {
     initialPosts: visiblePosts.map((post) => {
@@ -118,8 +129,10 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
           ? post.coverImage
           : '';
 
+      const chapterInfo = getAccessibleChapterInfo(post as any, user);
+
       return {
-        _id: post._id.toString(),
+        _id: typeof post._id === 'string' ? post._id : post._id?.toString?.() || '',
         title: post.title || '',
         description: post.description || '',
         tags: post.tags || [],
@@ -129,6 +142,9 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
         updatedAt: serializeDate(post.updatedAt),
         chapterCount: post.chapterCount || 0,
         images: coverImage ? [coverImage] : [],
+        accessibleChapterNumbers: chapterInfo.accessibleChapterNumbers,
+        accessibleChapterLabel: chapterInfo.accessibleChapterLabel,
+        isPartialAccess: chapterInfo.isPartialAccess,
       };
     }),
     initialTags: tags

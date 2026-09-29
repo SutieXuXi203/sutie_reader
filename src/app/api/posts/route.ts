@@ -2,7 +2,7 @@ import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin, getAuthUser } from '@/lib/auth';
-import { filterPostsForUser } from '@/lib/permissions';
+import { filterPostsForUser, getAccessibleChapterInfo } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { postSchema } from '@/lib/validations';
 import { getApiCache, invalidateApiCache, setApiCache } from '@/lib/api-cache';
@@ -171,7 +171,17 @@ type PostListItem = {
   createdAt: string | Date;
   updatedAt?: string | Date;
   chapterCount: number;
+  chapters?: Array<{
+    chapterNumber?: number;
+    title?: string;
+    translator?: string;
+    accessType?: 'inherit' | 'restricted' | 'public';
+    sharedWith?: Array<{ email?: string; userId?: string | any }>;
+  }>;
   images: string[];
+  accessibleChapterNumbers?: number[];
+  accessibleChapterLabel?: string;
+  isPartialAccess?: boolean;
 };
 
 export async function GET(request: NextRequest) {
@@ -203,6 +213,19 @@ export async function GET(request: NextRequest) {
               ],
             },
             chapterCount: { $size: { $ifNull: ['$chapters', []] } },
+            chapters: {
+              $map: {
+                input: { $ifNull: ['$chapters', []] },
+                as: 'c',
+                in: {
+                  chapterNumber: '$$c.chapterNumber',
+                  title: '$$c.title',
+                  translator: '$$c.translator',
+                  accessType: '$$c.accessType',
+                  sharedWith: '$$c.sharedWith',
+                },
+              },
+            },
           },
         },
       ]);
@@ -226,6 +249,20 @@ export async function GET(request: NextRequest) {
                 userId: s.userId ? s.userId.toString() : undefined,
               }))
             : [],
+          chapters: Array.isArray(post.chapters)
+            ? post.chapters.map((ch: any) => ({
+                chapterNumber: ch.chapterNumber,
+                title: ch.title,
+                translator: ch.translator,
+                accessType: ch.accessType,
+                sharedWith: Array.isArray(ch.sharedWith)
+                  ? ch.sharedWith.map((s: any) => ({
+                      email: s.email,
+                      userId: s.userId ? s.userId.toString() : undefined,
+                    }))
+                  : [],
+              }))
+            : [],
           createdAt: post.createdAt instanceof Date ? post.createdAt.toISOString() : post.createdAt,
           updatedAt: post.updatedAt instanceof Date ? post.updatedAt.toISOString() : post.updatedAt,
           chapterCount: post.chapterCount,
@@ -240,10 +277,14 @@ export async function GET(request: NextRequest) {
     const filteredPosts = filterPostsForUser(allPosts, user);
 
     const finalPosts = filteredPosts.map((post) => {
-      // Ẩn sharedWith trước khi gửi về client
-      const { sharedWith: _, ...rest } = post;
+      const chapterInfo = getAccessibleChapterInfo(post, user);
+      // Ẩn sharedWith và chi tiết chapters riêng tư trước khi gửi về client
+      const { sharedWith: _, chapters: _rawChapters, ...rest } = post;
       return {
         ...rest,
+        accessibleChapterNumbers: chapterInfo.accessibleChapterNumbers,
+        accessibleChapterLabel: chapterInfo.accessibleChapterLabel,
+        isPartialAccess: chapterInfo.isPartialAccess,
         images: user ? signImageUrls(post.images || [], user.id) : post.images,
       };
     });

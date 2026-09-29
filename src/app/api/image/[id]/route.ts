@@ -126,22 +126,33 @@ export async function GET(
       try {
         const { connectDB } = await import('@/lib/db');
         const { Post } = await import('@/models/Post');
-        const { canViewPost } = await import('@/lib/permissions');
+        const { canViewPost, canViewChapter } = await import('@/lib/permissions');
         await connectDB();
         const post = await Post.findOne({
           $or: [
             { images: { $regex: id } },
             { 'chapters.images': { $regex: id } },
           ],
-        }).select('accessType sharedWith').lean();
+        }).select('accessType sharedWith chapters').lean();
 
         if (post) {
-          const decision = canViewPost(user, post as any);
-          isAllowed = decision.allowed;
+          const targetChapter = Array.isArray(post.chapters)
+            ? (post.chapters as any[]).find((ch: any) =>
+                Array.isArray(ch.images) && ch.images.some((img: string) => img.includes(id))
+              )
+            : null;
+
+          if (targetChapter) {
+            const decision = canViewChapter(user, post as any, targetChapter);
+            isAllowed = decision.allowed;
+          } else {
+            const decision = canViewPost(user, post as any);
+            isAllowed = decision.allowed;
+          }
         } else {
           isAllowed = true;
         }
-        setApiCache(accessCacheKey, isAllowed, 300_000);
+        setApiCache(accessCacheKey, isAllowed, 60_000);
       } catch (err) {
         console.error('Lỗi kiểm tra quyền xem ảnh:', err);
         isAllowed = true;

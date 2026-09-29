@@ -17,10 +17,18 @@ export async function POST(request: NextRequest) {
         const { email, password, name, avatar } = parseResult.data;
         const normalizedEmail = email.toLowerCase().trim();
         const rootAdminEmail = (process.env.ADMIN_USERNAME || '').toLowerCase().trim();
+        const testUserEmail = (process.env.TEST_USERNAME || '').toLowerCase().trim();
 
         if (rootAdminEmail && normalizedEmail === rootAdminEmail) {
             return NextResponse.json(
                 { error: 'Địa chỉ email này dành riêng cho Quản trị viên và không được phép đăng ký trực tiếp' },
+                { status: 400 }
+            );
+        }
+
+        if (testUserEmail && normalizedEmail === testUserEmail) {
+            return NextResponse.json(
+                { error: 'Địa chỉ email này dành riêng cho Tài khoản kiểm thử và không được phép đăng ký trực tiếp' },
                 { status: 400 }
             );
         }

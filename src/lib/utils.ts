@@ -121,10 +121,19 @@ export function sanitizeFileName(name: string): string {
 }
 
 export type NormalizedPostChapter = {
+  _id?: string;
   title: string;
   chapterNumber: number;
   content: string;
   images: string[];
+  translator?: string;
+  accessType?: 'inherit' | 'restricted' | 'public';
+  sharedWith?: Array<{
+    userId?: string;
+    email: string;
+    role?: string;
+    addedAt?: Date | string;
+  }>;
 };
 
 type PostChapterLike = Partial<NormalizedPostChapter> & {
@@ -168,12 +177,34 @@ export function getPostChapters(
         typeof chapter.title === "string" && chapter.title.trim()
           ? chapter.title.trim()
           : defaultTitle;
+      const translator =
+        typeof (chapter as any).translator === "string" && (chapter as any).translator.trim()
+          ? (chapter as any).translator.trim()
+          : typeof (post as any)?.translator === "string" && (post as any).translator.trim()
+          ? (post as any).translator.trim()
+          : "";
+      const accessType = (chapter as any).accessType || "inherit";
+      const sharedWith = Array.isArray((chapter as any).sharedWith)
+        ? (chapter as any).sharedWith.map((s: any) => ({
+            email: typeof s?.email === "string" ? s.email.trim() : "",
+            userId: s?.userId ? String(s.userId) : undefined,
+            role: typeof s?.role === "string" ? s.role : "viewer",
+            addedAt: s?.addedAt instanceof Date
+              ? s.addedAt.toISOString()
+              : (typeof s?.addedAt === "string" ? s.addedAt : undefined),
+          }))
+        : [];
+      const chapterId = (chapter as any)._id ? String((chapter as any)._id) : undefined;
 
       return {
+        _id: chapterId,
         title,
         chapterNumber,
         content,
         images,
+        translator,
+        accessType,
+        sharedWith,
       };
     })
     .filter((chapter) => chapter.images.length > 0 || chapter.content.trim().length > 0)
@@ -196,6 +227,9 @@ export function getPostChapters(
       chapterNumber: 1,
       content: legacyContent,
       images: legacyImages,
+      translator: typeof (post as any)?.translator === "string" ? (post as any).translator.trim() : "",
+      accessType: "inherit",
+      sharedWith: [],
     },
   ];
 }

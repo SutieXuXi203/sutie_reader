@@ -2,7 +2,9 @@ import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   canViewPost,
+  canViewChapter,
   filterPostsForUser,
+  getAccessibleChapterInfo,
   canManagePost,
   canManageUsers,
   canManageShares,
@@ -12,6 +14,7 @@ import {
   filterPostPrivacyForUser,
   type AuthUserContext,
   type PostContext,
+  type ChapterContext,
 } from './permissions';
 
 describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
@@ -192,6 +195,28 @@ describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
       assert.equal(visible[0]._id, publicPost._id);
     });
 
+    it('khách có tài khoản (guest) được share theo từng chương riêng biệt vẫn thấy truyện đó trên Trang chủ', () => {
+      const chapterOnlyCatalog: PostContext[] = [
+        {
+          _id: 'post-chap-only',
+          title: 'Truyện Share Theo Chương',
+          accessType: 'restricted',
+          chapters: [
+            { chapterNumber: 1, accessType: 'restricted' },
+            { chapterNumber: 2, accessType: 'restricted', sharedWith: [{ email: guestUserShared.email }] },
+          ],
+        },
+      ];
+      const visible = filterPostsForUser(chapterOnlyCatalog, guestUserShared);
+      assert.equal(visible.length, 1);
+      assert.equal(visible[0]._id, 'post-chap-only');
+
+      const info = getAccessibleChapterInfo(chapterOnlyCatalog[0], guestUserShared);
+      assert.deepEqual(info.accessibleChapterNumbers, [2]);
+      assert.equal(info.accessibleChapterLabel, 'Chương 2');
+      assert.equal(info.isPartialAccess, true);
+    });
+
     it('thành viên chính thức (user) nhìn thấy toàn bộ tất cả truyện', () => {
       const visible = filterPostsForUser(postCatalog, memberUser);
       assert.equal(visible.length, 3);
@@ -200,6 +225,47 @@ describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
     it('quản trị viên (admin) nhìn thấy toàn bộ tất cả truyện', () => {
       const visible = filterPostsForUser(postCatalog, adminUser);
       assert.equal(visible.length, 3);
+    });
+  });
+
+  describe('2.1. Tính toán danh sách chương được cấp quyền (getAccessibleChapterInfo)', () => {
+    const multiChapterPost: PostContext = {
+      _id: 'post-multi-chap',
+      title: 'Bộ Truyện 5 Chương',
+      accessType: 'restricted',
+      chapterCount: 5,
+      chapters: [
+        { chapterNumber: 1, accessType: 'restricted' },
+        { chapterNumber: 2, accessType: 'restricted', sharedWith: [{ email: guestUserShared.email }] },
+        { chapterNumber: 3, accessType: 'restricted' },
+        { chapterNumber: 4, accessType: 'restricted', sharedWith: [{ email: guestUserShared.email }] },
+        { chapterNumber: 5, accessType: 'restricted' },
+      ],
+    };
+
+    it('khách được share chương 2 và 4 nhận được nhãn Chương 2, 4 và isPartialAccess = true', () => {
+      const info = getAccessibleChapterInfo(multiChapterPost, guestUserShared);
+      assert.deepEqual(info.accessibleChapterNumbers, [2, 4]);
+      assert.equal(info.accessibleChapterLabel, 'Chương 2, 4');
+      assert.equal(info.isPartialAccess, true);
+    });
+
+    it('người dùng có quyền toàn bộ truyện nhận đủ số chương và isPartialAccess = false', () => {
+      const wholePost: PostContext = {
+        ...multiChapterPost,
+        sharedWith: [{ email: guestUserShared.email }],
+      };
+      const info = getAccessibleChapterInfo(wholePost, guestUserShared);
+      assert.deepEqual(info.accessibleChapterNumbers, [1, 2, 3, 4, 5]);
+      assert.equal(info.accessibleChapterLabel, '5 chương');
+      assert.equal(info.isPartialAccess, false);
+    });
+
+    it('quản trị viên (admin) luôn có quyền xem toàn bộ các chương', () => {
+      const info = getAccessibleChapterInfo(multiChapterPost, adminUser);
+      assert.deepEqual(info.accessibleChapterNumbers, [1, 2, 3, 4, 5]);
+      assert.equal(info.accessibleChapterLabel, '5 chương');
+      assert.equal(info.isPartialAccess, false);
     });
   });
 
@@ -342,6 +408,103 @@ describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
       const filtered = filterPostPrivacyForUser(restrictedPost, null);
       assert.equal(filtered.sharedWith?.length, 0);
       assert.equal(filtered.accessedUsers?.length, 0);
+    });
+  });
+
+  describe('7. Phân quyền và cô lập từng chương truyện (Chapter Isolation & canViewChapter)', () => {
+    const multiChapterPost: PostContext = {
+      _id: 'post-multi-1',
+      title: 'Bộ Truyện Nhiều Chương',
+      accessType: 'restricted',
+      translator: 'Nhóm Dịch Chính',
+      sharedWith: [], // Không cấp quyền toàn bộ truyện
+      chapters: [
+        {
+          _id: 'chap-1',
+          chapterNumber: 1,
+          title: 'Chương 1: Mở đầu',
+          translator: 'Dịch Giả A',
+          accessType: 'inherit',
+          sharedWith: [
+            {
+              email: 'guest.shared@gmail.com',
+              userId: 'user-guest-3',
+              role: 'viewer',
+            },
+          ],
+        },
+        {
+          _id: 'chap-2',
+          chapterNumber: 2,
+          title: 'Chương 2: Diễn biến',
+          translator: 'Dịch Giả B',
+          accessType: 'inherit',
+          sharedWith: [], // Không share cho ai
+        },
+        {
+          _id: 'chap-3',
+          chapterNumber: 3,
+          title: 'Chương 3: Kết thúc',
+          translator: 'Dịch Giả C',
+          accessType: 'restricted',
+          sharedWith: [], // Chương bị khóa riêng
+        },
+      ],
+    };
+
+    const chapter1 = (multiChapterPost.chapters as ChapterContext[])[0];
+    const chapter2 = (multiChapterPost.chapters as ChapterContext[])[1];
+    const chapter3 = (multiChapterPost.chapters as ChapterContext[])[2];
+
+    it('cho phép Guest vào trang truyện nếu được cấp quyền ít nhất 1 chương', () => {
+      const postDecision = canViewPost(guestUserShared, multiChapterPost);
+      assert.equal(postDecision.allowed, true);
+    });
+
+    it('chặn Guest không được cấp bất kỳ chương nào vào trang truyện', () => {
+      const postDecision = canViewPost(guestUserUnshared, multiChapterPost);
+      assert.equal(postDecision.allowed, false);
+      assert.equal(postDecision.reason, 'ACCESS_DENIED');
+    });
+
+    it('Guest được cấp quyền Chương 1: Đọc được Chương 1', () => {
+      const chap1Decision = canViewChapter(guestUserShared, multiChapterPost, chapter1);
+      assert.equal(chap1Decision.allowed, true);
+    });
+
+    it('CÔ LẬP CHƯƠNG: Guest chỉ có quyền Chương 1 KHÔNG THỂ đọc Chương 2 (kế thừa) hay Chương 3', () => {
+      const chap2Decision = canViewChapter(guestUserShared, multiChapterPost, chapter2);
+      assert.equal(chap2Decision.allowed, false);
+      assert.equal(chap2Decision.reason, 'ACCESS_DENIED');
+      assert.equal(chap2Decision.message, 'Bạn chưa được cấp quyền đọc Chương 2.');
+
+      const chap3Decision = canViewChapter(guestUserShared, multiChapterPost, chapter3);
+      assert.equal(chap3Decision.allowed, false);
+      assert.equal(chap3Decision.reason, 'ACCESS_DENIED');
+      assert.match(chap3Decision.message || '', /Dịch Giả C/);
+    });
+
+    it('Admin luôn có quyền đọc tất cả các chương', () => {
+      assert.equal(canViewChapter(adminUser, multiChapterPost, chapter1).allowed, true);
+      assert.equal(canViewChapter(adminUser, multiChapterPost, chapter2).allowed, true);
+      assert.equal(canViewChapter(adminUser, multiChapterPost, chapter3).allowed, true);
+    });
+
+    it('Người dùng được cấp quyền toàn bộ truyện (post.sharedWith) thì đọc được tất cả chương inherit', () => {
+      const wholePostShared: PostContext = {
+        ...multiChapterPost,
+        sharedWith: [
+          {
+            email: 'guest.shared@gmail.com',
+            userId: 'user-guest-3',
+            role: 'viewer',
+          },
+        ],
+      };
+      assert.equal(canViewChapter(guestUserShared, wholePostShared, chapter1).allowed, true);
+      assert.equal(canViewChapter(guestUserShared, wholePostShared, chapter2).allowed, true);
+      // Chương 3 có accessType: 'restricted' riêng nên vẫn khóa nếu không share riêng
+      assert.equal(canViewChapter(guestUserShared, wholePostShared, chapter3).allowed, false);
     });
   });
 });

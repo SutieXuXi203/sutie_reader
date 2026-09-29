@@ -34,25 +34,45 @@ const palette: Record<ToastVariant, Pick<GooeyToastOptions, 'fillColor' | 'borde
   },
 };
 
+export type NotifyExtra =
+  | string
+  | {
+      description?: string;
+      action?: {
+        label: string;
+        onClick: () => void;
+        successLabel?: string;
+      };
+      duration?: number;
+    };
+
 const getOptions = (
   type: ToastVariant,
-  duration: number,
-  description?: string
-): GooeyToastOptions => ({
-  description,
-  timing: { displayDuration: duration },
-  showProgress: true,
-  borderWidth: 1.25,
-  preset: 'smooth',
-  ...palette[type],
-  classNames: {
-    wrapper: `app-toast app-toast--${type}`,
-    content: 'app-toast-content',
-    title: 'app-toast-title',
-    description: 'app-toast-description',
-    actionButton: 'app-toast-action-button',
-  },
-});
+  defaultDuration: number,
+  extra?: NotifyExtra
+): GooeyToastOptions => {
+  const description = typeof extra === 'string' ? extra : extra?.description;
+  const action = typeof extra === 'object' ? extra?.action : undefined;
+  const duration = (typeof extra === 'object' && extra?.duration) || defaultDuration;
+
+  return {
+    description,
+    timing: { displayDuration: duration },
+    showProgress: true,
+    borderWidth: 1.25,
+    preset: 'smooth',
+    ...palette[type],
+    ...(action ? { action } : {}),
+    classNames: {
+      wrapper: `app-toast app-toast--${type}`,
+      content: 'app-toast-content',
+      title: 'app-toast-title',
+      description: 'app-toast-description',
+      actionWrapper: 'app-toast-action-wrapper',
+      actionButton: 'app-toast-action-button',
+    },
+  };
+};
 
 const getPromiseOptions = <T>(config: PromiseConfig<T>): GooeyPromiseData<T> => ({
   loading: config.loading,
@@ -76,16 +96,16 @@ const getPromiseOptions = <T>(config: PromiseConfig<T>): GooeyPromiseData<T> => 
 });
 
 export const notify = {
-  success: (title: string, description?: string) =>
-    gooeyToast.success(title, getOptions('success', 3500, description)),
-  error: (title: string, description?: string) =>
-    gooeyToast.error(title, getOptions('error', 4000, description)),
-  info: (title: string, description?: string) =>
-    gooeyToast.info(title, getOptions('info', 3500, description)),
-  warning: (title: string, description?: string) =>
-    gooeyToast.warning(title, getOptions('warning', 4000, description)),
-  show: (title: string, description?: string) =>
-    gooeyToast(title, getOptions('default', 3500, description)),
+  success: (title: string, extra?: NotifyExtra) =>
+    gooeyToast.success(title, getOptions('success', 3500, extra)),
+  error: (title: string, extra?: NotifyExtra) =>
+    gooeyToast.error(title, getOptions('error', 4000, extra)),
+  info: (title: string, extra?: NotifyExtra) =>
+    gooeyToast.info(title, getOptions('info', 3500, extra)),
+  warning: (title: string, extra?: NotifyExtra) =>
+    gooeyToast.warning(title, getOptions('warning', 4000, extra)),
+  show: (title: string, extra?: NotifyExtra) =>
+    gooeyToast(title, getOptions('default', 3500, extra)),
   promise: <T>(promise: Promise<T>, config: PromiseConfig<T>) =>
     gooeyToast.promise(promise, getPromiseOptions(config)),
 };

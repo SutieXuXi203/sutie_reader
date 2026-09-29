@@ -49,6 +49,18 @@ interface SharedUserItem {
   avatar?: string;
   addedAt: string;
   isRegistered?: boolean;
+  scope?: string;
+  chapterNumber?: number;
+  chapterTitle?: string;
+}
+
+interface ChapterShareItem {
+  _id?: string;
+  chapterNumber: number;
+  title: string;
+  translator?: string;
+  accessType?: 'inherit' | 'restricted' | 'public';
+  sharedWith: SharedUserItem[];
 }
 
 interface AccessedUserItem {
@@ -64,6 +76,7 @@ interface ShareData {
   postId: string;
   title: string;
   accessType: 'restricted' | 'public';
+  translator?: string;
   isOwner: boolean;
   owner: {
     name: string;
@@ -72,6 +85,7 @@ interface ShareData {
     isCurrent?: boolean;
   };
   sharedWith: SharedUserItem[];
+  chapters?: ChapterShareItem[];
   accessedUsers?: AccessedUserItem[];
 }
 
@@ -112,6 +126,7 @@ export function ShareDialog({
   const [shareData, setShareData] = useState<ShareData | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [emailInput, setEmailInput] = useState('');
+  const [selectedScope, setSelectedScope] = useState<'all' | number>('all');
   const [isSubmittingUser, setIsSubmittingUser] = useState(false);
   const [isUpdatingAccess, setIsUpdatingAccess] = useState(false);
   const [deletingEmail, setDeletingEmail] = useState<string | null>(null);
@@ -158,6 +173,7 @@ export function ShareDialog({
     if (!open) return;
     const controller = new AbortController();
     setEmailInput('');
+    setSelectedScope('all');
     setHasCopied(false);
     setIsSidebarOpen(false);
     setVisitorSearch('');
@@ -165,6 +181,24 @@ export function ShareDialog({
     fetchShareData(controller.signal);
     return () => controller.abort();
   }, [open, fetchShareData]);
+
+  const allSharedUsers = useMemo(() => {
+    const list: Array<SharedUserItem & { chapterNumber?: number; chapterTitle?: string }> = [];
+    (shareData?.sharedWith || []).forEach((u) => {
+      list.push({ ...u, scope: 'all' });
+    });
+    (shareData?.chapters || []).forEach((ch) => {
+      (ch.sharedWith || []).forEach((u) => {
+        list.push({
+          ...u,
+          scope: `chap_${ch.chapterNumber}`,
+          chapterNumber: ch.chapterNumber,
+          chapterTitle: ch.title,
+        });
+      });
+    });
+    return list;
+  }, [shareData]);
 
   const linkVisitors = useMemo(() => {
     return (shareData?.accessedUsers || []).filter(
@@ -198,9 +232,17 @@ export function ShareDialog({
       return;
     }
 
-    if (shareData?.sharedWith.some((u) => u.email.toLowerCase() === cleanEmail)) {
-      notify.error('Email này đã có trong danh sách được cấp quyền');
-      return;
+    if (selectedScope === 'all') {
+      if (shareData?.sharedWith.some((u) => u.email.toLowerCase() === cleanEmail)) {
+        notify.error('Email này đã có quyền đọc toàn bộ truyện');
+        return;
+      }
+    } else {
+      const targetChap = (shareData?.chapters || []).find((c) => c.chapterNumber === selectedScope);
+      if (targetChap && targetChap.sharedWith.some((u) => u.email.toLowerCase() === cleanEmail)) {
+        notify.error(`Email này đã có quyền đọc Chương ${selectedScope}`);
+        return;
+      }
     }
 
     setIsSubmittingUser(true);
@@ -212,25 +254,19 @@ export function ShareDialog({
           action: 'add_user',
           email: cleanEmail,
           role: 'viewer',
+          chapterNumber: selectedScope === 'all' ? undefined : selectedScope,
         }),
       });
 
       const resData = await res.json();
       if (res.ok) {
-        notify.success(`Đã cấp quyền truy cập cho ${cleanEmail}`);
+        notify.success(
+          selectedScope === 'all'
+            ? `Đã cấp quyền đọc toàn bộ truyện cho ${cleanEmail}`
+            : `Đã cấp quyền đọc Chương ${selectedScope} cho ${cleanEmail}`
+        );
         setEmailInput('');
-        if (resData.user) {
-          setShareData((prev) =>
-            prev
-              ? {
-                ...prev,
-                sharedWith: [...prev.sharedWith, resData.user],
-              }
-              : prev
-          );
-        } else {
-          fetchShareData();
-        }
+        fetchShareData();
       } else {
         notify.error(resData.error || 'Không thể thêm người dùng');
       }
@@ -274,23 +310,22 @@ export function ShareDialog({
     }
   };
 
-  const handleDeleteUser = async (targetEmail: string) => {
-    setDeletingEmail(targetEmail);
+  const handleDeleteUser = async (targetEmail: string, chapterNum?: number) => {
+    const deletingKey = chapterNum ? `${targetEmail}-${chapterNum}` : targetEmail;
+    setDeletingEmail(deletingKey);
     try {
-      const res = await fetch(`/api/posts/${postId}/share?email=${encodeURIComponent(targetEmail)}`, {
+      const url = `/api/posts/${postId}/share?email=${encodeURIComponent(targetEmail)}${chapterNum ? `&chapterNumber=${chapterNum}` : ''}`;
+      const res = await fetch(url, {
         method: 'DELETE',
       });
 
       if (res.ok) {
-        notify.success(`Đã xóa quyền truy cập của ${targetEmail}`);
-        setShareData((prev) =>
-          prev
-            ? {
-              ...prev,
-              sharedWith: prev.sharedWith.filter((u) => u.email !== targetEmail),
-            }
-            : prev
+        notify.success(
+          chapterNum
+            ? `Đã xóa quyền đọc Chương ${chapterNum} của ${targetEmail}`
+            : `Đã xóa quyền truy cập của ${targetEmail}`
         );
+        fetchShareData();
       } else {
         const err = await res.json().catch(() => ({}));
         notify.error(err.error || 'Không thể xóa quyền');
@@ -504,31 +539,57 @@ export function ShareDialog({
             <div className="px-4 sm:px-6 py-3 space-y-4 max-h-[calc(80vh-140px)] md:max-h-[calc(80vh-140px)] overflow-y-auto flex-1 min-h-0 custom-scrollbar">
               {/* Add People Bar (Google Drive Style) */}
               {isAdmin && (
-                <form onSubmit={handleAddUser} className="space-y-1">
-                  <div className="relative flex items-center gap-2">
-                    <div className="relative flex-1 group">
+                <form onSubmit={handleAddUser} className="space-y-2">
+                  <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-1.5 sm:gap-2">
+                    <div className="relative flex-1 min-w-0">
                       <Input
                         type="email"
-                        placeholder="Thêm người, nhóm, không gian hoặc email..."
+                        placeholder="Thêm email người đọc..."
                         value={emailInput}
                         onChange={(e) => setEmailInput(e.target.value)}
                         disabled={isSubmittingUser}
-                        className="px-3 sm:px-4 h-10 sm:h-11 rounded-[8px] border-border bg-transparent text-xs sm:text-sm placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary shadow-none"
+                        className="h-8 text-xs px-2.5 rounded-[8px] border-border bg-transparent placeholder:text-muted-foreground focus-visible:border-primary focus-visible:ring-1 focus-visible:ring-primary shadow-none"
                       />
                     </div>
 
-                    <Button
-                      type="submit"
-                      size="sm"
-                      disabled={!emailInput.trim() || isSubmittingUser}
-                      className="h-10 sm:h-11 px-4 sm:px-5 rounded-[8px] font-medium text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer shrink-0 shadow-none"
-                    >
-                      {isSubmittingUser ? (
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      ) : (
-                        'Thêm'
-                      )}
-                    </Button>
+                    <div className="flex items-center gap-1.5 shrink-0">
+                      <Select
+                        value={selectedScope.toString()}
+                        onValueChange={(val) => setSelectedScope(val === 'all' ? 'all' : Number(val))}
+                        disabled={isSubmittingUser}
+                      >
+                        <SelectTrigger size="sm" className="h-8 flex-1 sm:flex-none sm:w-[150px] text-xs px-2.5 rounded-[8px] shrink-0 border-border bg-secondary/30 hover:bg-secondary/60">
+                          <SelectValue placeholder="Phạm vi">
+                            <span className="truncate">
+                              {selectedScope === 'all' ? 'Toàn bộ truyện' : `Chương ${selectedScope}`}
+                            </span>
+                          </SelectValue>
+                        </SelectTrigger>
+                        <SelectContent align="end" side="bottom" sideOffset={4} className="rounded-[8px] border border-border bg-popover py-1 shadow-xl z-50 min-w-[175px] max-h-[220px]">
+                          <SelectItem value="all" className="text-xs py-1.5 cursor-pointer">
+                            🌐 Toàn bộ truyện
+                          </SelectItem>
+                          {(shareData?.chapters || []).map((ch) => (
+                            <SelectItem key={`scope-chap-${ch.chapterNumber}`} value={ch.chapterNumber.toString()} className="text-xs py-1.5 cursor-pointer">
+                              📖 Chương {ch.chapterNumber} {ch.translator ? `(${ch.translator})` : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+
+                      <Button
+                        type="submit"
+                        size="sm"
+                        disabled={!emailInput.trim() || isSubmittingUser}
+                        className="h-8 px-3 sm:px-3.5 rounded-[8px] font-medium text-xs bg-primary text-primary-foreground hover:bg-primary/90 transition-all cursor-pointer shrink-0 shadow-none disabled:opacity-50"
+                      >
+                        {isSubmittingUser ? (
+                          <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                        ) : (
+                          'Cấp quyền'
+                        )}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               )}
@@ -598,12 +659,17 @@ export function ShareDialog({
                     </div>
 
                     {/* Shared Users Rows */}
-                    {shareData?.sharedWith && shareData.sharedWith.length > 0 && (
-                      shareData.sharedWith.map((userItem) => {
-                        const isDeleting = deletingEmail === userItem.email;
+                    {allSharedUsers.length > 0 && (
+                      allSharedUsers.map((userItem) => {
+                        const deleteKey = userItem.chapterNumber
+                          ? `${userItem.email}-${userItem.chapterNumber}`
+                          : userItem.email;
+                        const isDeleting = deletingEmail === deleteKey;
+                        const isChapterScope = Boolean(userItem.chapterNumber);
+
                         return (
                           <div
-                            key={userItem.email}
+                            key={`${userItem.email}-${userItem.scope || 'all'}`}
                             className="flex items-center justify-between py-2 px-1 rounded-[8px] hover:bg-secondary/20 transition-colors group"
                           >
                             <div className="flex items-center gap-3 min-w-0">
@@ -622,7 +688,7 @@ export function ShareDialog({
                                 )}
                               </div>
                               <div className="min-w-0">
-                                <div className="flex items-center gap-1.5">
+                                <div className="flex items-center gap-1.5 flex-wrap">
                                   <p className="text-xs sm:text-sm font-medium text-foreground truncate">
                                     {userItem.name}
                                   </p>
@@ -634,6 +700,15 @@ export function ShareDialog({
                                   {!userItem.isRegistered && (
                                     <span className="text-[9px] px-1.5 py-0.5 rounded-[8px] bg-amber-500/10 text-amber-600 dark:text-amber-400 font-medium shrink-0">
                                       Chờ đăng ký
+                                    </span>
+                                  )}
+                                  {isChapterScope ? (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded-[6px] bg-blue-500/10 text-blue-600 dark:text-blue-400 border border-blue-500/20 font-medium shrink-0">
+                                      Chương {userItem.chapterNumber}
+                                    </span>
+                                  ) : (
+                                    <span className="text-[10px] px-1.5 py-0.5 rounded-[6px] bg-primary/10 text-primary border border-primary/20 font-medium shrink-0">
+                                      Toàn bộ truyện
                                     </span>
                                   )}
                                 </div>
@@ -652,7 +727,7 @@ export function ShareDialog({
                               {isAdmin && (
                                 <button
                                   type="button"
-                                  onClick={() => handleDeleteUser(userItem.email)}
+                                  onClick={() => handleDeleteUser(userItem.email, userItem.chapterNumber)}
                                   disabled={isDeleting}
                                   className="p-1.5 rounded-[8px] text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-colors cursor-pointer"
                                   title={`Xóa quyền truy cập của ${userItem.email}`}

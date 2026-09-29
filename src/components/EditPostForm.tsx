@@ -33,6 +33,8 @@ interface Chapter {
   chapterNumber: number;
   content: string;
   images: string[];
+  translator?: string;
+  accessType?: 'inherit' | 'restricted' | 'public';
 }
 
 interface Post {
@@ -62,10 +64,13 @@ interface PostDetailsResponse {
 }
 
 interface ChapterEditState {
+  _id?: string;
   title: string;
   chapterNumber: number;
   content: string;
   images: ChapterImage[];
+  translator?: string;
+  accessType?: 'inherit' | 'restricted' | 'public';
 }
 
 const generateId = () => Math.random().toString(36).substring(2, 9);
@@ -140,9 +145,12 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
 
           setChapters(
             fetchedChapters.map((ch, idx) => ({
+              _id: ch._id,
               title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
               chapterNumber: ch.chapterNumber || idx + 1,
               content: ch.content || '',
+              translator: ch.translator || '',
+              accessType: ch.accessType || 'inherit',
               images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
             }))
           );
@@ -342,6 +350,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       chapterNumber: nextNum,
       content: '',
       images: [],
+      translator: translator || '',
+      accessType: 'inherit',
     };
     setChapters((prev) => [...prev, newChap]);
     setSelectedChapterIndex(chapters.length);
@@ -528,6 +538,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
           chapterNumber: i + 1,
           content: ch.content.trim(),
           images: finalImageUrls,
+          translator: ch.translator?.trim() || '',
+          accessType: ch.accessType || 'inherit',
         });
       }
 
@@ -825,6 +837,45 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                   disabled={isSubmitting}
                   className="rounded-[8px]"
                 />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Dịch giả chương (tuỳ chọn)
+                  </label>
+                  <Input
+                    value={activeChapter.translator || ''}
+                    onChange={(e) =>
+                      updateActiveChapter((ch) => ({ ...ch, translator: e.target.value }))
+                    }
+                    placeholder={translator ? `Mặc định: ${translator}` : "Tên dịch giả chương này"}
+                    maxLength={100}
+                    disabled={isSubmitting}
+                    className="rounded-[8px]"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-medium text-muted-foreground mb-1.5">
+                    Quyền truy cập chương
+                  </label>
+                  <Select
+                    value={activeChapter.accessType || 'inherit'}
+                    onValueChange={(val: any) =>
+                      updateActiveChapter((ch) => ({ ...ch, accessType: val }))
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <SelectTrigger className="rounded-[8px] h-9 text-xs">
+                      <SelectValue placeholder="Chọn quyền" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="inherit">Kế thừa từ bộ truyện</SelectItem>
+                      <SelectItem value="public">Công khai (Mọi người đọc được)</SelectItem>
+                      <SelectItem value="restricted">Giới hạn (Chỉ người được cấp quyền)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
 
               <div>

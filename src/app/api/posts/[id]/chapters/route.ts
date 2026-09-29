@@ -3,7 +3,7 @@ import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
-import { canViewPost } from '@/lib/permissions';
+import { canViewPost, canViewChapter } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
@@ -59,25 +59,31 @@ export async function GET(
     }
 
     const user = await getAuthUser(request);
-    const decision = canViewPost(user, post as any);
-    if (!decision.allowed) {
-      return NextResponse.json(
-        { error: decision.reason, message: decision.message },
-        { status: decision.reason === 'REQUIRE_LOGIN' ? 401 : 403 }
-      );
-    }
-
     const chapters = getPostChapters(post);
-    const signedChapters = user
-      ? chapters.map((chapter) => ({
+    
+    // Kiểm tra quyền từng chương
+    const safeChapters = chapters.map((chapter) => {
+      const decision = canViewChapter(user, post as any, chapter as any);
+      if (!decision.allowed) {
+        return {
           ...chapter,
-          images: signImageUrls(chapter.images || [], user.id),
-        }))
-      : chapters;
+          isLocked: true,
+          lockReason: decision.reason,
+          lockMessage: decision.message,
+          content: '',
+          images: [],
+        };
+      }
+      return {
+        ...chapter,
+        isLocked: false,
+        images: user ? signImageUrls(chapter.images || [], user.id) : chapter.images,
+      };
+    });
 
     return NextResponse.json({
-      chapters: signedChapters,
-      chapterCount: signedChapters.length,
+      chapters: safeChapters,
+      chapterCount: safeChapters.length,
     });
   } catch (error) {
     console.error('Lỗi khi tải danh sách chương:', error);
@@ -147,11 +153,24 @@ export async function POST(
         ? payload.title.trim().slice(0, 120)
         : `Chuong ${chapterNumber}`;
 
+    const translator =
+      typeof payload?.translator === 'string' && payload.translator.trim()
+        ? payload.translator.trim().slice(0, 100)
+        : post.translator || '';
+
+    const accessType =
+      payload?.accessType && ['inherit', 'restricted', 'public'].includes(payload.accessType)
+        ? payload.accessType
+        : 'inherit';
+
     const newChapter: NormalizedPostChapter = {
       title,
       chapterNumber,
       content,
       images,
+      translator,
+      accessType,
+      sharedWith: [],
     };
 
     const updatedPost = await Post.findByIdAndUpdate(

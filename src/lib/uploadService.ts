@@ -96,7 +96,8 @@ export const processBackgroundChapterSave = async (
   showProgress: (title: string, total: number) => string,
   updateProgress: (taskId: string, completed: number, total: number, status?: 'uploading' | 'saving' | 'success' | 'error', errorMessage?: string) => void,
   onPostCreated: () => void,
-  notifyError: (title: string, message?: string) => void
+  notifyError: (title: string, message?: string) => void,
+  chapTranslator?: string
 ) => {
   const taskId = showProgress(`${upTitle} - ${chapTitle} (${files.length} ảnh)`, files.length);
 
@@ -116,6 +117,7 @@ export const processBackgroundChapterSave = async (
         chapterNumber: chapNum,
         content: chapContent,
         images: imageUrls,
+        translator: chapTranslator || '',
       }),
     });
 

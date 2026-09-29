@@ -71,10 +71,18 @@ export async function POST(request: NextRequest) {
       );
     };
 
-    const isAdminInput =
-      email === process.env.ADMIN_USERNAME && password === process.env.ADMIN_PASSWORD;
+    const adminUsername = (process.env.ADMIN_USERNAME || '').toLowerCase().trim();
+    const adminPassword = process.env.ADMIN_PASSWORD || '';
+    const testUsername = (process.env.TEST_USERNAME || '').toLowerCase().trim();
+    const testPassword = process.env.TEST_PASSWORD || '';
 
-    if (!isAdminInput && !normalizedEmail.endsWith('@gmail.com')) {
+    const isAdminAccount = Boolean(adminUsername && normalizedEmail === adminUsername);
+    const isTestAccount = Boolean(testUsername && normalizedEmail === testUsername);
+
+    const isAdminInput = isAdminAccount && password === adminPassword;
+    const isTestInput = isTestAccount && password === testPassword;
+
+    if (!isAdminAccount && !isTestAccount && !normalizedEmail.endsWith('@gmail.com')) {
       return NextResponse.json({ error: 'Vui lòng sử dụng tài khoản Gmail hợp lệ' }, { status: 400 });
     }
 
@@ -98,6 +106,38 @@ export async function POST(request: NextRequest) {
         user.role = 'admin';
         user.isVerified = true;
         await user.save();
+      }
+    } else if (isTestInput) {
+      isMatch = true;
+
+      if (!user) {
+        const hashedPassword = await bcrypt.hash(password, 12);
+        user = new User({
+          email: normalizedEmail,
+          password: hashedPassword,
+          name: 'Tài khoản Test',
+          role: 'guest',
+          isVerified: true,
+        });
+        await user.save();
+      } else {
+        let shouldSave = false;
+        if (user.role !== 'guest') {
+          user.role = 'guest';
+          shouldSave = true;
+        }
+        if (!user.isVerified) {
+          user.isVerified = true;
+          shouldSave = true;
+        }
+        const isDbPasswordMatch = user.password ? await bcrypt.compare(password, user.password) : false;
+        if (!isDbPasswordMatch) {
+          user.password = await bcrypt.hash(password, 12);
+          shouldSave = true;
+        }
+        if (shouldSave) {
+          await user.save();
+        }
       }
     } else {
       if (!user) {
@@ -135,11 +175,12 @@ export async function POST(request: NextRequest) {
       await RateLimit.deleteOne({ ip: pwdRateLimitKey });
     }
 
-    // Kiểm tra yêu cầu mã PIN đối với role admin và user
+    // Kiểm tra yêu cầu mã PIN đối với role admin và user, hoặc tài khoản test
     const SECRET_PIN = process.env.UNLOCK_PIN;
     const isFullAccessRole = user.role === 'admin' || user.role === 'user';
+    const shouldRequirePin = (isFullAccessRole || isTestAccount) && Boolean(SECRET_PIN);
 
-    if (isFullAccessRole && SECRET_PIN) {
+    if (shouldRequirePin && SECRET_PIN) {
       const rateLimitKey = `pin:login:${ip}:${normalizedEmail}`;
 
       let rateLimit = await RateLimit.findOne({ ip: rateLimitKey });
@@ -247,8 +288,8 @@ export async function POST(request: NextRequest) {
 
     response.cookies.set('token', token, cookieOptions);
 
-    // Cấp quyền mở khóa site toàn diện nếu là admin/user đã nhập đúng PIN
-    if (isFullAccessRole && SECRET_PIN) {
+    // Cấp quyền mở khóa site toàn diện nếu là admin/user hoặc tài khoản test đã nhập đúng PIN
+    if ((isFullAccessRole || isTestAccount) && SECRET_PIN) {
       const siteToken = await createSiteAccessToken();
       response.cookies.set('site_access_token', siteToken, cookieOptions);
     }
