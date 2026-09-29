@@ -278,7 +278,7 @@ async function getOrCreateFolder(accessToken, parentFolderId, title, postId) {
   const folderTitle = title.trim().slice(0, 100) || 'Untitled';
 
   let folder = postId ? await findFolderByPostId(accessToken, parentFolderId, postId) : null;
-  if (!folder && !postId) {
+  if (!folder) {
     folder = await findFolderByTitle(accessToken, parentFolderId, folderTitle);
   }
 
@@ -717,6 +717,7 @@ const worker = {
 
         const data = await driveFetch(accessToken, listUrl.toString(), {}, 'List Drive files for sync');
         const files = data.files || [];
+        files.sort((a, b) => (a.name || '').localeCompare(b.name || '', undefined, { numeric: true, sensitivity: 'base' }));
 
         const syncedUrls = files.map(f => `${imageBaseUrl}/image/${f.id}`);
 
