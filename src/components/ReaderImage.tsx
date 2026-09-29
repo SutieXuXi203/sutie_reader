@@ -72,7 +72,7 @@ export const ReaderImage = React.memo(function ReaderImage({
         }
       },
       {
-        rootMargin: '1200px 0px 1200px 0px',
+        rootMargin: '2400px 0px 2400px 0px',
         threshold: 0.01,
       }
     );

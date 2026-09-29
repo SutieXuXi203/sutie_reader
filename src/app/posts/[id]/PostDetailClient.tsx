@@ -998,7 +998,7 @@ export default function PostDetailClient({ initialPost }: { initialPost: Post | 
                   width={1200}
                   height={1800}
                   className="w-full h-auto block select-none"
-                  priority={idx < 3}
+                  priority={idx < 5}
                 />
               </div>
             ))
