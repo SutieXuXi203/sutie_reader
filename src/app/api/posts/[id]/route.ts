@@ -342,18 +342,13 @@ export async function GET(
       return NextResponse.json({ error: 'ID bài viết không hợp lệ' }, { status: 400 });
     }
 
-    const cacheKey = `posts:detail:${id}`;
-    let serialized = getApiCache<any>(cacheKey);
-
-    if (!serialized) {
-      await connectDB();
-      const post = await Post.findById(id).lean();
-      if (!post) {
-        return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
-      }
-      serialized = serializePost(post);
-      setApiCache(cacheKey, serialized, 300_000);
+    await connectDB();
+    const post = await Post.findById(id).lean();
+    if (!post) {
+      return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
+    const serialized: any = serializePost(post);
+
 
     const user = await getAuthUser(request);
     const decision = canViewPost(user, serialized);

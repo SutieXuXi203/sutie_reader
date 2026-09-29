@@ -118,12 +118,27 @@ export default function PostDetailClient({
   const params = useParams();
   const router = useRouter();
   const [post, setPost] = useState<Post | null>(initialPost);
+
+  useEffect(() => {
+    if (initialPost) {
+      setPost(initialPost);
+    }
+  }, [initialPost]);
+
   const { user, isAdmin, isLoading: isAuthLoading, logout } = useAuth();
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [accessedUsers, setAccessedUsers] = useState<any[]>(initialPost?.accessedUsers || []);
+
+  useEffect(() => {
+    if (initialPost?.accessedUsers) {
+      setAccessedUsers(initialPost.accessedUsers);
+    }
+  }, [initialPost?.accessedUsers]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [showUI, setShowUI] = useState(true);
+
   const initialChapterIndex = useMemo(() => {
     if (!initialPost?.chapters || initialPost.chapters.length === 0) return 0;
 
