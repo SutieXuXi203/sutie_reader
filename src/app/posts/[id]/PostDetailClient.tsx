@@ -11,6 +11,8 @@ import {
   AnimatedShieldAlert,
   AnimatedLock,
   AnimatedShare,
+  AnimatedLanguages,
+  AnimatedUser,
 } from '@/components/animate-ui/icons/AnimateIcon';
 import { Loader2, ChevronDown, Play, Pause, Settings, Check } from 'lucide-react';
 import Link from 'next/link';
@@ -1143,39 +1145,83 @@ export default function PostDetailClient({
               <div className="w-16 h-1 bg-border rounded-full mb-2" />
               <h2 className="text-foreground text-xl font-bold">Cảm ơn đã theo dõi!</h2>
               <p className="text-muted-foreground text-sm">
-                Bạn đã đọc xong {activeChapter?.title || `chương ${activeChapterIndex + 1}`} trong
+                Bạn đã đọc xong {activeChapter?.title || `Chương ${activeChapterIndex + 1}`} trong
                 &quot;{post.title}&quot;.
               </p>
-              {activeChapter?.translator && (
-                <p className="text-xs text-primary/80 font-medium">
-                  Chương này được dịch bởi: <span className="font-semibold">{activeChapter.translator}</span>
-                </p>
-              )}
-            <div className="flex gap-4 mt-4">
-              {hasBookmark && (
+
+              {/* Thông tin Dịch giả chương & Tác giả truyện */}
+              {(() => {
+                const chapterTranslator = (activeChapter?.translator || '').trim() || (post.translator || '').trim();
+                const postAuthor = (post.author || '').trim();
+
+                return (
+                  <div className="flex flex-col sm:flex-row items-center justify-center gap-2 sm:gap-4 my-1 px-4 py-2 rounded-xl bg-card/60 backdrop-blur-md border border-border/70 text-xs shadow-xs">
+                    <div className="flex items-center gap-1.5 text-foreground">
+                      <AnimatedLanguages className="w-3.5 h-3.5 text-primary shrink-0" />
+                      <span>
+                        Dịch giả chương:{' '}
+                        <strong className="font-bold text-primary">
+                          {chapterTranslator || 'Chưa cập nhật'}
+                        </strong>
+                      </span>
+                    </div>
+                    {postAuthor && (
+                      <div className="flex items-center gap-1.5 text-muted-foreground border-t sm:border-t-0 sm:border-l border-border/70 pt-1.5 sm:pt-0 sm:pl-4">
+                        <AnimatedUser className="w-3.5 h-3.5 text-muted-foreground/80 shrink-0" />
+                        <span>
+                          Tác giả truyện:{' '}
+                          <strong className="font-semibold text-foreground/90">{postAuthor}</strong>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                );
+              })()}
+
+              <div className="flex flex-wrap items-center justify-center gap-3 mt-3 w-full">
+                {hasBookmark && (
+                  <button
+                    onClick={removeBookmark}
+                    className="px-5 py-2.5 rounded-[8px] bg-secondary text-foreground hover:bg-muted text-xs sm:text-sm font-bold transition-transform active:scale-95 border border-border cursor-pointer"
+                  >
+                    Xóa đánh dấu
+                  </button>
+                )}
+                {activeChapterIndex < chapters.length - 1 && !chapters[activeChapterIndex + 1]?.isLocked && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setActiveChapterIndex(activeChapterIndex + 1);
+                      setCurrentPage(0);
+                      window.scrollTo({ top: 0, behavior: 'smooth' });
+                    }}
+                    className="px-6 py-2.5 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 text-xs sm:text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-primary/20 border border-primary/20 cursor-pointer flex items-center gap-1.5"
+                  >
+                    <span>Đọc tiếp {chapters[activeChapterIndex + 1]?.title || `Chương ${activeChapterIndex + 2}`}</span>
+                    <AnimatedArrowRight className="w-4 h-4" />
+                  </button>
+                )}
                 <button
-                  onClick={removeBookmark}
-                  className="px-6 py-3 rounded-[8px] bg-secondary text-foreground hover:bg-muted text-sm font-bold transition-transform active:scale-95 border border-border"
+                  type="button"
+                  onClick={() => {
+                    if (typeof window !== 'undefined' && window.history.length > 1) {
+                      router.back();
+                    } else {
+                      router.push('/#posts');
+                    }
+                  }}
+                  className={cn(
+                    "px-6 py-2.5 rounded-[8px] text-xs sm:text-sm font-bold transition-transform active:scale-95 cursor-pointer",
+                    activeChapterIndex < chapters.length - 1 && !chapters[activeChapterIndex + 1]?.isLocked
+                      ? "bg-secondary text-foreground hover:bg-muted border border-border"
+                      : "bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 border border-primary/20"
+                  )}
                 >
-                  Xóa đánh dấu
+                  Quay lại trang chủ
                 </button>
-              )}
-              <button
-                type="button"
-                onClick={() => {
-                  if (typeof window !== 'undefined' && window.history.length > 1) {
-                    router.back();
-                  } else {
-                    router.push('/#posts');
-                  }
-                }}
-                className="px-8 py-3 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 text-sm font-bold transition-transform active:scale-95 shadow-lg shadow-primary/20 border border-primary/20 cursor-pointer"
-              >
-                Quay lại trang chủ
-              </button>
+              </div>
             </div>
-          </div>
-        )}
+          )}
       </div>
     </main>
 
