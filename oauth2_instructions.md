@@ -25,7 +25,8 @@
    - Dán cái `Client ID` và `Client secret` (bạn vừa lấy ở Bước 1) vào 2 ô tương ứng. Bấm Close.
 3. Nhìn sang cột bên trái (Step 1):
    - Thay vì bấm mở các mục, bạn hãy kiếm dòng nhập code "Input your own scopes" (nhỏ trong cùng panel)
-   - Và dán link này vào: `https://www.googleapis.com/auth/drive.file`
+   - Và dán link này vào: `https://www.googleapis.com/auth/drive`
+   - *(Lưu ý: Dùng scope `drive` thay vì `drive.file` để ứng dụng có quyền đồng bộ các file do bạn tải lên hoặc thay thế thủ công trên Google Drive).*
    - Rồi bấm nút **Authorize APIs** màu xanh lam.
    - Chọn đúng tài khoản Google cá nhân của bạn và bấm Continue (nếu nó cảnh báo App chưa được xác minh thì bấm Continue).
 4. Cột bên trái sẽ chuyển sang **Step 2**:
