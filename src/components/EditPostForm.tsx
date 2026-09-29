@@ -866,13 +866,32 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     }
                     disabled={isSubmitting}
                   >
-                    <SelectTrigger className="rounded-[8px] h-9 text-xs">
-                      <SelectValue placeholder="Chọn quyền" />
+                    <SelectTrigger className="w-full rounded-[8px] h-9 text-xs bg-background flex items-center justify-between cursor-pointer px-3">
+                      <SelectValue placeholder="Chọn quyền">
+                        {(val: any) => {
+                          const v = val || activeChapter.accessType || 'inherit';
+                          if (v === 'public') return 'Công khai (Mọi người đọc được)';
+                          if (v === 'restricted') return 'Giới hạn (Chỉ người được cấp quyền)';
+                          return 'Kế thừa từ bộ truyện';
+                        }}
+                      </SelectValue>
                     </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="inherit">Kế thừa từ bộ truyện</SelectItem>
-                      <SelectItem value="public">Công khai (Mọi người đọc được)</SelectItem>
-                      <SelectItem value="restricted">Giới hạn (Chỉ người được cấp quyền)</SelectItem>
+                    <SelectContent
+                      align="start"
+                      side="bottom"
+                      sideOffset={4}
+                      alignItemWithTrigger={false}
+                      className="min-w-[280px] sm:min-w-[320px] w-auto rounded-[8px] border border-border bg-popover p-1 shadow-xl z-50"
+                    >
+                      <SelectItem value="inherit" className="py-2 text-xs cursor-pointer rounded-[6px]">
+                        Kế thừa từ bộ truyện
+                      </SelectItem>
+                      <SelectItem value="public" className="py-2 text-xs cursor-pointer rounded-[6px]">
+                        Công khai (Mọi người đọc được)
+                      </SelectItem>
+                      <SelectItem value="restricted" className="py-2 text-xs cursor-pointer rounded-[6px]">
+                        Giới hạn (Chỉ người được cấp quyền)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
