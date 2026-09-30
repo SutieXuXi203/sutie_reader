@@ -40,6 +40,10 @@ export async function POST(request: NextRequest) {
       if (!pwdRateLimit) {
         pwdRateLimit = new RateLimit({ ip: pwdRateLimitKey, attempts: 1 });
       } else {
+        if (pwdRateLimit.lockUntil && pwdRateLimit.lockUntil <= new Date()) {
+          pwdRateLimit.attempts = 0;
+          pwdRateLimit.lockUntil = undefined;
+        }
         pwdRateLimit.attempts += 1;
         if (pwdRateLimit.attempts >= 5) {
           pwdRateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
@@ -210,6 +214,10 @@ export async function POST(request: NextRequest) {
         if (!rateLimit) {
           rateLimit = new RateLimit({ ip: rateLimitKey, attempts: 1 });
         } else {
+          if (rateLimit.lockUntil && rateLimit.lockUntil <= new Date()) {
+            rateLimit.attempts = 0;
+            rateLimit.lockUntil = undefined;
+          }
           rateLimit.attempts += 1;
           if (rateLimit.attempts >= 5) {
             rateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);

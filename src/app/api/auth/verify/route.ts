@@ -7,8 +7,8 @@ import { logApiError, logApiAction } from '@/lib/telegramLogger';
 import { z } from 'zod';
 
 const verifySchema = z.object({
-  email: z.string().email('Email không hợp lệ'),
-  code: z.string().min(1, 'Mã xác thực không được để trống').max(10, 'Mã xác thực không hợp lệ'),
+  email: z.string().trim().email('Email không hợp lệ'),
+  code: z.string().trim().min(1, 'Mã xác thực không được để trống').max(10, 'Mã xác thực không hợp lệ'),
 });
 
 export async function POST(request: NextRequest) {

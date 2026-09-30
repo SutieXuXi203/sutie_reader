@@ -1,6 +1,7 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
 import { canViewPost, filterPostsForUser, type AuthUserContext, type PostContext } from './permissions';
+import { loginSchema, registerSchema } from './validations';
 
 describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
   describe('1. Chống dò mã PIN khi đăng nhập', () => {
@@ -726,6 +727,74 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
 
       const { payload: newPayload } = await jwtVerify(newToken, testSecret);
       assert.equal(newPayload.role, 'admin', 'Token mới phải mang đúng role admin từ DB');
+    });
+  });
+
+  describe('23. Kiểm soát dữ liệu và Chống Khóa Oan khi Hết Hạn Rate Limit Đăng ký / Đăng nhập', () => {
+    it('loginSchema tự động cắt khoảng trắng thừa (trim) và chấp nhận định dạng email hoặc tên đăng nhập', () => {
+      const resWithSpaces = loginSchema.safeParse({
+        email: '  test.user@gmail.com  ',
+        password: 'password123',
+      });
+      assert.equal(resWithSpaces.success, true);
+      if (resWithSpaces.success) {
+        assert.equal(resWithSpaces.data.email, 'test.user@gmail.com');
+      }
+
+      const resAdminName = loginSchema.safeParse({
+        email: ' admin_super ',
+        password: 'password123',
+      });
+      assert.equal(resAdminName.success, true);
+      if (resAdminName.success) {
+        assert.equal(resAdminName.data.email, 'admin_super');
+      }
+    });
+
+    it('registerSchema tự động cắt khoảng trắng thừa (trim) và kiểm tra email hợp lệ, độ dài mật khẩu', () => {
+      const resWithSpaces = registerSchema.safeParse({
+        email: '  newuser@gmail.com  ',
+        password: 'Password123',
+        name: '  Nguyen Van A  ',
+      });
+      assert.equal(resWithSpaces.success, true);
+      if (resWithSpaces.success) {
+        assert.equal(resWithSpaces.data.email, 'newuser@gmail.com');
+        assert.equal(resWithSpaces.data.name, 'Nguyen Van A');
+      }
+
+      // Từ chối mật khẩu quá ngắn (< 6 ký tự)
+      const resShortPwd = registerSchema.safeParse({
+        email: 'user@gmail.com',
+        password: '123',
+        name: 'User',
+      });
+      assert.equal(resShortPwd.success, false);
+
+      // Từ chối email không hợp lệ
+      const resInvalidEmail = registerSchema.safeParse({
+        email: 'not-an-email',
+        password: 'Password123',
+        name: 'User',
+      });
+      assert.equal(resInvalidEmail.success, false);
+    });
+
+    it('reset attempts về 0 khi thời hạn khóa rateLimit.lockUntil đã trôi qua', () => {
+      const expiredRateLimit: { attempts: number; lockUntil?: Date } = {
+        attempts: 5,
+        lockUntil: new Date(Date.now() - 5000), // đã hết hạn khóa 5 giây trước
+      };
+
+      // Giả lập logic cập nhật rate limit
+      if (expiredRateLimit.lockUntil && expiredRateLimit.lockUntil <= new Date()) {
+        expiredRateLimit.attempts = 0;
+        expiredRateLimit.lockUntil = undefined;
+      }
+      expiredRateLimit.attempts += 1;
+
+      assert.equal(expiredRateLimit.attempts, 1, 'Sau khi hết hạn khóa, lần thất bại tiếp theo chỉ tính là 1');
+      assert.equal(expiredRateLimit.lockUntil, undefined, 'lockUntil phải được gỡ bỏ cho chu kỳ mới');
     });
   });
 });

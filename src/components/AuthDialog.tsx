@@ -176,11 +176,13 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     'Tài khoản chưa xác thực',
                     'Vui lòng kiểm tra email và nhập mã xác thực trước khi đăng nhập.'
                 );
+                setMode('verify');
             } else if (apiError.status === 410) {
                 notify.error(
                     'Tài khoản đã bị xóa tự động',
                     'Mã xác thực đã hết hạn. Vui lòng đăng ký lại.'
                 );
+                setMode('register');
             }
             setError(message);
         } finally {
@@ -478,7 +480,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
                     <Button
                         type="submit"
-                        disabled={isLoading || (mode === 'pin' && pin.length !== 6)}
+                        disabled={isLoading || (mode === 'pin' && pin.length !== 6) || (mode === 'verify' && verificationCode.length !== 6)}
                         className="rounded-[8px] w-full shadow-lg"
                     >
                         {isLoading ? (

@@ -88,6 +88,10 @@ export async function POST(request: NextRequest) {
         if (!rateLimit) {
             rateLimit = new RateLimit({ ip: rateLimitKey, attempts: 1 });
         } else {
+            if (rateLimit.lockUntil && rateLimit.lockUntil <= new Date()) {
+                rateLimit.attempts = 0;
+                rateLimit.lockUntil = undefined;
+            }
             rateLimit.attempts += 1;
             if (rateLimit.attempts >= 5) {
                 rateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
