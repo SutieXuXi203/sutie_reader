@@ -5,7 +5,7 @@ import { NextRequest, NextResponse, after } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
 import { canViewPost, canViewChapter } from '@/lib/permissions';
-import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
+import { getPostChapters, ensureScrambledImageUrl, type NormalizedPostChapter } from '@/lib/utils';
 import { getApiCache, setApiCache, invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
 import { sendTelegramMessage, formatters, logApiError, logApiAction } from '@/lib/telegram';
@@ -402,35 +402,35 @@ export async function GET(
       accessedUsers: user?.role === 'admin' ? serialized.accessedUsers : undefined,
     };
 
-    if (user) {
-      const safeChapters = Array.isArray(serialized.chapters)
-        ? serialized.chapters.map((chapter: NormalizedPostChapter) => {
-            const chDecision = canViewChapter(user, serialized, chapter);
-            return {
-              ...chapter,
-              isLocked: !chDecision.allowed,
-              lockReason: chDecision.reason,
-              lockMessage: chDecision.message,
-              content: chDecision.allowed ? chapter.content : '',
-              images: chDecision.allowed ? signImageUrls(chapter.images || [], user.id) : [],
-              sharedWith: user?.role === 'admin'
-                ? chapter.sharedWith
-                : (Array.isArray(chapter.sharedWith)
-                    ? chapter.sharedWith.filter((s: any) => s.email?.toLowerCase().trim() === userEmail)
-                    : []),
-            };
-          })
-        : [];
+    const safeChapters = Array.isArray(serialized.chapters)
+      ? serialized.chapters.map((chapter: NormalizedPostChapter) => {
+          const chDecision = canViewChapter(user, serialized, chapter);
+          return {
+            ...chapter,
+            isLocked: !chDecision.allowed,
+            lockReason: chDecision.reason,
+            lockMessage: chDecision.message,
+            content: chDecision.allowed ? chapter.content : '',
+            images: chDecision.allowed
+              ? (user ? signImageUrls(chapter.images || [], user.id) : (chapter.images || []).map(ensureScrambledImageUrl))
+              : [],
+            sharedWith: user?.role === 'admin'
+              ? chapter.sharedWith
+              : (Array.isArray(chapter.sharedWith) && userEmail
+                  ? chapter.sharedWith.filter((s: any) => s.email?.toLowerCase().trim() === userEmail)
+                  : []),
+          };
+        })
+      : [];
 
-      const firstUnlocked = safeChapters.find((c: any) => !c.isLocked);
+    const firstUnlocked = safeChapters.find((c: any) => !c.isLocked);
 
-      result = {
-        ...result,
-        content: firstUnlocked ? firstUnlocked.content : '',
-        images: firstUnlocked ? firstUnlocked.images : [],
-        chapters: safeChapters,
-      };
-    }
+    result = {
+      ...result,
+      content: firstUnlocked ? firstUnlocked.content : '',
+      images: firstUnlocked ? firstUnlocked.images : [],
+      chapters: safeChapters,
+    };
     return NextResponse.json(result, {
       headers: {
         'Cache-Control': 'private, no-cache, stale-while-revalidate=60',

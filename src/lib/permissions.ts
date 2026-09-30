@@ -268,11 +268,13 @@ export function filterPostsForUser<T extends PostContext>(
       if (isSharedInPost) return true;
 
       const isSharedInAnyChapter = Array.isArray(post.chapters) && (post.chapters as any[]).some((ch) => {
-        return Array.isArray(ch.sharedWith) && ch.sharedWith.some((s: any) => {
+        const isPublicChap = ch.accessType === 'public';
+        const isSharedChap = Array.isArray(ch.sharedWith) && ch.sharedWith.some((s: any) => {
           const shareEmail = (s.email || '').toLowerCase().trim();
           const shareUserId = s.userId ? String(s.userId) : '';
           return (shareEmail && shareEmail === userEmail) || (shareUserId && shareUserId === userId);
         });
+        return isPublicChap || isSharedChap;
       });
       return isSharedInAnyChapter;
     });
@@ -405,13 +407,21 @@ export function canManageTags(user: AuthUserContext | null | undefined): boolean
  */
 export function canModifyTargetUser(
   currentUser: AuthUserContext | null | undefined,
-  targetUser: { email: string; role: UserRole },
+  targetUser: { email: string; role: UserRole; id?: string },
   action: 'change_role' | 'delete',
   newRole?: string,
   rootAdminEmail?: string
 ): { allowed: boolean; error?: string } {
   if (currentUser?.role !== 'admin') {
     return { allowed: false, error: 'Không có quyền truy cập' };
+  }
+
+  const isSelf = Boolean(
+    currentUser.id && targetUser.id && String(currentUser.id) === String(targetUser.id)
+  );
+
+  if (isSelf && action === 'delete') {
+    return { allowed: false, error: 'Không thể tự xóa tài khoản của chính mình' };
   }
 
   const isRootAdmin = Boolean(
@@ -431,6 +441,9 @@ export function canModifyTargetUser(
   if (action === 'change_role') {
     if (!newRole || !['guest', 'user', 'admin'].includes(newRole)) {
       return { allowed: false, error: 'Vai trò không hợp lệ' };
+    }
+    if (isSelf && newRole !== 'admin') {
+      return { allowed: false, error: 'Không thể tự hạ quyền quản trị viên của chính mình' };
     }
   }
 
@@ -487,9 +500,26 @@ export function filterPostPrivacyForUser<T extends PostContext>(
     );
   }
 
+  let filteredChapters = post.chapters;
+  if (Array.isArray(post.chapters)) {
+    filteredChapters = (post.chapters as ChapterContext[]).map((ch) => {
+      let chSharedWith: PostShareItem[] = [];
+      if (user?.role === 'guest' && Array.isArray(ch.sharedWith)) {
+        chSharedWith = ch.sharedWith.filter(
+          (s) => (s.email || '').toLowerCase().trim() === userEmail
+        );
+      }
+      return {
+        ...ch,
+        sharedWith: chSharedWith,
+      };
+    });
+  }
+
   return {
     ...post,
     sharedWith: filteredSharedWith,
     accessedUsers: [],
+    chapters: filteredChapters,
   };
 }

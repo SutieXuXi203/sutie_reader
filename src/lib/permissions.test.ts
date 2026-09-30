@@ -217,6 +217,28 @@ describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
       assert.equal(info.isPartialAccess, true);
     });
 
+    it('khách có tài khoản (guest) thấy truyện restricted nếu truyện có ít nhất một chương public preview', () => {
+      const previewCatalog: PostContext[] = [
+        {
+          _id: 'post-preview-chap',
+          title: 'Truyện Có Chương 1 Public',
+          accessType: 'restricted',
+          chapters: [
+            { chapterNumber: 1, accessType: 'public' },
+            { chapterNumber: 2, accessType: 'restricted' },
+          ],
+        },
+      ];
+      const visible = filterPostsForUser(previewCatalog, guestUserUnshared);
+      assert.equal(visible.length, 1);
+      assert.equal(visible[0]._id, 'post-preview-chap');
+
+      const info = getAccessibleChapterInfo(previewCatalog[0], guestUserUnshared);
+      assert.deepEqual(info.accessibleChapterNumbers, [1]);
+      assert.equal(info.accessibleChapterLabel, 'Chương 1');
+      assert.equal(info.isPartialAccess, true);
+    });
+
     it('thành viên chính thức (user) nhìn thấy toàn bộ tất cả truyện', () => {
       const visible = filterPostsForUser(postCatalog, memberUser);
       assert.equal(visible.length, 3);
@@ -362,6 +384,38 @@ describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
       assert.equal(resGuest.allowed, false);
       assert.match(resGuest.error || '', /quản trị viên gốc/i);
     });
+
+    it('chống Admin tự hạ vai trò của chính mình sang guest hoặc user (tránh tự khóa tài khoản)', () => {
+      const selfAdminTarget = { email: adminUser.email, role: 'admin' as const, id: adminUser.id };
+      const resDemoteGuest = canModifyTargetUser(
+        adminUser,
+        selfAdminTarget,
+        'change_role',
+        'guest'
+      );
+      assert.equal(resDemoteGuest.allowed, false);
+      assert.match(resDemoteGuest.error || '', /tự hạ quyền/i);
+
+      const resDemoteUser = canModifyTargetUser(
+        adminUser,
+        selfAdminTarget,
+        'change_role',
+        'user'
+      );
+      assert.equal(resDemoteUser.allowed, false);
+      assert.match(resDemoteUser.error || '', /tự hạ quyền/i);
+    });
+
+    it('chống Admin tự xóa tài khoản của chính mình', () => {
+      const selfAdminTarget = { email: adminUser.email, role: 'admin' as const, id: adminUser.id };
+      const resDeleteSelf = canModifyTargetUser(
+        adminUser,
+        selfAdminTarget,
+        'delete'
+      );
+      assert.equal(resDeleteSelf.allowed, false);
+      assert.match(resDeleteSelf.error || '', /tự xóa tài khoản/i);
+    });
   });
 
   describe('5. Chính sách yêu cầu mã PIN khi đăng nhập (requiresPinOnLogin)', () => {
@@ -408,6 +462,39 @@ describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
       const filtered = filterPostPrivacyForUser(restrictedPost, null);
       assert.equal(filtered.sharedWith?.length, 0);
       assert.equal(filtered.accessedUsers?.length, 0);
+    });
+
+    it('bảo vệ quyền riêng tư trong danh sách chương (ch.sharedWith): lọc email người khác cho từng chương', () => {
+      const postWithChapterShares: PostContext = {
+        _id: 'post-with-chap-shares',
+        title: 'Truyện có share theo chương',
+        chapters: [
+          {
+            chapterNumber: 1,
+            sharedWith: [
+              { email: 'guest.shared@gmail.com', role: 'viewer' },
+              { email: 'secret.user@gmail.com', role: 'viewer' },
+            ],
+          },
+        ],
+      };
+
+      // Admin thấy đủ
+      const adminFiltered = filterPostPrivacyForUser(postWithChapterShares, adminUser);
+      assert.equal((adminFiltered.chapters as any[])[0].sharedWith.length, 2);
+
+      // Guest chỉ thấy email của chính mình trong chương đó
+      const guestFiltered = filterPostPrivacyForUser(postWithChapterShares, guestUserShared);
+      assert.equal((guestFiltered.chapters as any[])[0].sharedWith.length, 1);
+      assert.equal((guestFiltered.chapters as any[])[0].sharedWith[0].email, guestUserShared.email);
+
+      // Member không thấy ai
+      const memberFiltered = filterPostPrivacyForUser(postWithChapterShares, memberUser);
+      assert.equal((memberFiltered.chapters as any[])[0].sharedWith.length, 0);
+
+      // Khách vãng lai không thấy ai
+      const nullFiltered = filterPostPrivacyForUser(postWithChapterShares, null);
+      assert.equal((nullFiltered.chapters as any[])[0].sharedWith.length, 0);
     });
   });
 
@@ -505,6 +592,30 @@ describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
       assert.equal(canViewChapter(guestUserShared, wholePostShared, chapter2).allowed, true);
       // Chương 3 có accessType: 'restricted' riêng nên vẫn khóa nếu không share riêng
       assert.equal(canViewChapter(guestUserShared, wholePostShared, chapter3).allowed, false);
+    });
+
+    it('khách vãng lai (chưa đăng nhập) vào truyện public có chương restricted: chỉ đọc được chương public, bị khóa chương restricted', () => {
+      const publicPostWithRestrictedChapter: PostContext = {
+        _id: 'post-pub-res',
+        title: 'Truyện Public Có Chương Khóa',
+        accessType: 'public',
+        chapters: [
+          { chapterNumber: 1, accessType: 'inherit' },
+          { chapterNumber: 2, accessType: 'restricted', translator: 'Dịch Giả Khóa' },
+        ],
+      };
+
+      const chap1 = (publicPostWithRestrictedChapter.chapters as ChapterContext[])[0];
+      const chap2 = (publicPostWithRestrictedChapter.chapters as ChapterContext[])[1];
+
+      // Chương 1 (inherit từ post public) cho phép đọc
+      const resChap1 = canViewChapter(null, publicPostWithRestrictedChapter, chap1);
+      assert.equal(resChap1.allowed, true);
+
+      // Chương 2 (restricted) yêu cầu đăng nhập
+      const resChap2 = canViewChapter(null, publicPostWithRestrictedChapter, chap2);
+      assert.equal(resChap2.allowed, false);
+      assert.equal(resChap2.reason, 'REQUIRE_LOGIN');
     });
   });
 });

@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
 import { canViewPost, canViewChapter } from '@/lib/permissions';
-import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
+import { getPostChapters, ensureScrambledImageUrl, type NormalizedPostChapter } from '@/lib/utils';
 import { invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
@@ -59,25 +59,43 @@ export async function GET(
     }
 
     const user = await getAuthUser(request);
+    const serialized: any = serializePost(post);
+    const decision = canViewPost(user, serialized);
+
+    if (!decision.allowed) {
+      return NextResponse.json(
+        {
+          error: decision.reason === 'REQUIRE_LOGIN' ? 'unauthorized' : 'forbidden',
+          code: decision.reason,
+          message: decision.message,
+        },
+        { status: decision.reason === 'REQUIRE_LOGIN' ? 401 : 403 }
+      );
+    }
+
+    const userEmail = user?.email?.toLowerCase().trim();
     const chapters = getPostChapters(post);
     
-    // Kiểm tra quyền từng chương
+    // Kiểm tra quyền từng chương và lọc dữ liệu nhạy cảm
     const safeChapters = chapters.map((chapter) => {
-      const decision = canViewChapter(user, post as any, chapter as any);
-      if (!decision.allowed) {
-        return {
-          ...chapter,
-          isLocked: true,
-          lockReason: decision.reason,
-          lockMessage: decision.message,
-          content: '',
-          images: [],
-        };
-      }
+      const chDecision = canViewChapter(user, serialized, chapter as any);
+      const isAllowed = chDecision.allowed;
+      const sanitizedSharedWith = user?.role === 'admin'
+        ? chapter.sharedWith
+        : (Array.isArray(chapter.sharedWith) && userEmail
+            ? chapter.sharedWith.filter((s: any) => (s.email || '').toLowerCase().trim() === userEmail)
+            : []);
+
       return {
         ...chapter,
-        isLocked: false,
-        images: user ? signImageUrls(chapter.images || [], user.id) : chapter.images,
+        isLocked: !isAllowed,
+        lockReason: isAllowed ? undefined : chDecision.reason,
+        lockMessage: isAllowed ? undefined : chDecision.message,
+        content: isAllowed ? chapter.content : '',
+        images: isAllowed
+          ? (user ? signImageUrls(chapter.images || [], user.id) : (chapter.images || []).map(ensureScrambledImageUrl))
+          : [],
+        sharedWith: sanitizedSharedWith,
       };
     });
 

@@ -2,6 +2,7 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin, getAuthUser } from '@/lib/auth';
+import { canModifyTargetUser } from '@/lib/permissions';
 import { ObjectId } from 'mongodb';
 import { invalidateApiCache } from '@/lib/api-cache';
 import { clearUserCache } from '@/lib/server-auth';
@@ -21,18 +22,22 @@ export async function DELETE(
             return NextResponse.json({ error: 'ID người dùng không hợp lệ' }, { status: 400 });
         }
         const currentUser = await getAuthUser(request);
-        if (currentUser && currentUser.id === id) {
-            return NextResponse.json({ error: 'Không thể tự xóa tài khoản của chính mình' }, { status: 400 });
-        }
-
         const userToDelete = await User.findById(id);
         if (!userToDelete) {
             return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
         }
-        const rootAdminEmail = (process.env.ADMIN_USERNAME || '').toLowerCase().trim();
-        if (rootAdminEmail && userToDelete.email.toLowerCase().trim() === rootAdminEmail) {
-            return NextResponse.json({ error: 'Không thể xóa tài khoản quản trị viên gốc' }, { status: 403 });
+
+        const modifyCheck = canModifyTargetUser(
+            currentUser,
+            { email: userToDelete.email, role: userToDelete.role, id: userToDelete._id.toString() },
+            'delete',
+            undefined,
+            process.env.ADMIN_USERNAME
+        );
+        if (!modifyCheck.allowed) {
+            return NextResponse.json({ error: modifyCheck.error }, { status: 400 });
         }
+
         await User.findByIdAndDelete(id);
         clearUserCache(id);
         invalidateApiCache('admin:users');
@@ -81,17 +86,21 @@ export async function PATCH(
         const body = await request.json();
         const { role } = body;
 
-        if (!['guest', 'user', 'admin'].includes(role)) {
-            return NextResponse.json({ error: 'Vai trò không hợp lệ' }, { status: 400 });
-        }
-
         const targetUser = await User.findById(id).select('email role name avatar');
         if (!targetUser) {
             return NextResponse.json({ error: 'Không tìm thấy người dùng' }, { status: 404 });
         }
-        const rootAdminEmail = (process.env.ADMIN_USERNAME || '').toLowerCase().trim();
-        if (rootAdminEmail && targetUser.email.toLowerCase().trim() === rootAdminEmail && role !== 'admin') {
-            return NextResponse.json({ error: 'Không thể hạ quyền tài khoản quản trị viên gốc' }, { status: 403 });
+
+        const adminUser = await getAuthUser(request);
+        const modifyCheck = canModifyTargetUser(
+            adminUser,
+            { email: targetUser.email, role: targetUser.role, id: targetUser._id.toString() },
+            'change_role',
+            role,
+            process.env.ADMIN_USERNAME
+        );
+        if (!modifyCheck.allowed) {
+            return NextResponse.json({ error: modifyCheck.error }, { status: 400 });
         }
 
         const oldRole = targetUser.role;
@@ -101,7 +110,6 @@ export async function PATCH(
         invalidateApiCache('admin:users');
 
         // Ghi nhận log thay đổi vai trò người dùng
-        const adminUser = await getAuthUser(request);
         void logApiAction({
             module: 'Quản trị người dùng (Admin)',
             action: 'Cập nhật phân quyền / vai trò',

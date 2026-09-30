@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { createSignedWorkerImageUrl } from '@/lib/image-signing';
-import { getSessionUserFromToken } from '@/lib/server-auth';
+import { getCurrentUserFromToken } from '@/lib/server-auth';
 import { scrambleImageBuffer } from '@/lib/scramble-server';
 import { deriveScrambleSeed } from '@/lib/scramble';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
@@ -103,7 +103,7 @@ export async function GET(
   }
 
   const sessionToken = request.cookies.get('token')?.value;
-  const user = await getSessionUserFromToken(sessionToken);
+  const user = await getCurrentUserFromToken(sessionToken);
   if (!user) {
     return imageError('Unauthorized', 401);
   }
