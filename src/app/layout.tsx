@@ -8,15 +8,27 @@ import { GooeyToastProvider } from "@/components/GooeyToastProvider";
 import { DevPointerCaptureGuard } from "@/components/DevPointerCaptureGuard";
 import "./globals.css";
 import "goey-toast/styles.css";
-import { Inter } from "next/font/google";
 import { cn } from "@/lib/utils";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getCurrentUser } from "@/lib/server-auth";
 
-const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
-
 const sfPro = localFont({
   src: [
+    {
+      path: "../../public/fonts/SFPRODISPLAYTHINITALIC.otf",
+      weight: "100",
+      style: "italic",
+    },
+    {
+      path: "../../public/fonts/SFPRODISPLAYULTRALIGHTITALIC.otf",
+      weight: "200",
+      style: "italic",
+    },
+    {
+      path: "../../public/fonts/SFPRODISPLAYLIGHTITALIC.otf",
+      weight: "300",
+      style: "italic",
+    },
     {
       path: "../../public/fonts/SFPRODISPLAYREGULAR.otf",
       weight: "400",
@@ -28,12 +40,28 @@ const sfPro = localFont({
       style: "normal",
     },
     {
+      path: "../../public/fonts/SFPRODISPLAYSEMIBOLDITALIC.otf",
+      weight: "600",
+      style: "italic",
+    },
+    {
       path: "../../public/fonts/SFPRODISPLAYBOLD.otf",
       weight: "700",
       style: "normal",
     },
+    {
+      path: "../../public/fonts/SFPRODISPLAYHEAVYITALIC.otf",
+      weight: "800",
+      style: "italic",
+    },
+    {
+      path: "../../public/fonts/SFPRODISPLAYBLACKITALIC.otf",
+      weight: "900",
+      style: "italic",
+    },
   ],
-  variable: "--font-sf-pro",
+  variable: "--font-sans",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -51,7 +79,7 @@ export default async function RootLayout({
   const initialUser = await getCurrentUser();
 
   return (
-    <html lang="vi" suppressHydrationWarning className={cn("font-sans", inter.variable)}>
+    <html lang="vi" suppressHydrationWarning className={cn("font-sans", sfPro.variable)}>
       <body
         className={`${sfPro.variable} font-sans antialiased bg-background text-foreground relative`}
         suppressHydrationWarning

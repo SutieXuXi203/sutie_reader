@@ -8,6 +8,7 @@
   --color-foreground: var(--foreground);
   --font-sans: var(--font-sans);
   --font-mono: var(--font-geist-mono);
+  --font-sf-pro: var(--font-sans);
 
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
@@ -76,7 +77,9 @@
 
 :root {
   --radius: 0.5rem;
-  --furry-font-family-primary: var(--font-sf-pro), sans-serif;
+  --font-sf-pro: var(--font-sans);
+  --furry-font-family-primary: var(--font-sans), sans-serif;
+  --wukong-font-family-primary: var(--font-sans), sans-serif;
   --furry-font-size-base: 16px;
   --furry-font-weight-base: 400;
   --furry-line-height-base: 24px;
