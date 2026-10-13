@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { ObjectId } from 'mongodb';
@@ -9,6 +10,91 @@ import { canViewPost, canViewChapter } from '@/lib/permissions';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
+
+const SITE_NAME = 'Lubu Corp';
+
+export async function generateMetadata({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}): Promise<Metadata> {
+  const { id } = await params;
+
+  if (!ObjectId.isValid(id)) {
+    return { title: SITE_NAME };
+  }
+
+  await connectDB();
+  const post = await Post.findById(id)
+    .select('title description images chapters.images')
+    .lean();
+
+  if (!post) {
+    return { title: SITE_NAME };
+  }
+
+  const title = (post as any).title || SITE_NAME;
+  const description =
+    (post as any).description ||
+    `Đọc ${title} trên ${SITE_NAME}`;
+
+  // Lấy ảnh bìa: ưu tiên images[0] của post, fallback chapters[0].images[0]
+  const postImages = (post as any).images || [];
+  const chapters = (post as any).chapters || [];
+  let coverImage =
+    (postImages[0] && typeof postImages[0] === 'string' && postImages[0].trim()) ||
+    '';
+  if (!coverImage && chapters.length > 0) {
+    const firstChapterImages = chapters[0]?.images || [];
+    coverImage =
+      (firstChapterImages[0] && typeof firstChapterImages[0] === 'string' && firstChapterImages[0].trim()) ||
+      '';
+  }
+
+  // Build absolute URL cho ảnh bìa
+  const baseUrl =
+    process.env.NEXT_PUBLIC_SITE_URL ||
+    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+  let ogImage: string | undefined;
+  if (coverImage) {
+    // Nếu là relative path, prefix với baseUrl
+    if (coverImage.startsWith('/')) {
+      ogImage = `${baseUrl}${coverImage}`;
+    } else if (coverImage.startsWith('http')) {
+      ogImage = coverImage;
+    } else {
+      ogImage = `${baseUrl}/${coverImage}`;
+    }
+  }
+
+  return {
+    title: `${title} – ${SITE_NAME}`,
+    description,
+    openGraph: {
+      type: 'article',
+      siteName: SITE_NAME,
+      title,
+      description,
+      ...(ogImage
+        ? {
+            images: [
+              {
+                url: ogImage,
+                alt: title,
+              },
+            ],
+          }
+        : {}),
+    },
+    twitter: {
+      card: ogImage ? 'summary_large_image' : 'summary',
+      title,
+      description,
+      ...(ogImage ? { images: [ogImage] } : {}),
+    },
+  };
+}
 
 function toPlainPost(postDoc: any) {
   if (postDoc && typeof postDoc === 'object') {

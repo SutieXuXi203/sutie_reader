@@ -66,9 +66,33 @@ const sfPro = localFont({
 
 export const metadata: Metadata = {
   title: "Lubu Corp",
+  description:
+    "Lubu Corp – Nền tảng đọc truyện tranh, tiểu thuyết và sáng tác nội dung sáng tạo.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",
+  },
+  openGraph: {
+    type: "website",
+    siteName: "Lubu Corp",
+    title: "Lubu Corp",
+    description:
+      "Lubu Corp – Nền tảng đọc truyện tranh, tiểu thuyết và sáng tác nội dung sáng tạo.",
+    images: [
+      {
+        url: "/logo.png",
+        width: 512,
+        height: 512,
+        alt: "Lubu Corp logo",
+      },
+    ],
+  },
+  twitter: {
+    card: "summary",
+    title: "Lubu Corp",
+    description:
+      "Lubu Corp – Nền tảng đọc truyện tranh, tiểu thuyết và sáng tác nội dung sáng tạo.",
+    images: ["/logo.png"],
   },
 };
 export default async function RootLayout({
