@@ -26,7 +26,7 @@ export async function generateMetadata({
 
   await connectDB();
   const post = await Post.findById(id)
-    .select('title description images chapters.images')
+    .select('title description')
     .lean();
 
   if (!post) {
@@ -38,35 +38,11 @@ export async function generateMetadata({
     (post as any).description ||
     `Đọc ${title} trên ${SITE_NAME}`;
 
-  // Lấy ảnh bìa: ưu tiên images[0] của post, fallback chapters[0].images[0]
-  const postImages = (post as any).images || [];
-  const chapters = (post as any).chapters || [];
-  let coverImage =
-    (postImages[0] && typeof postImages[0] === 'string' && postImages[0].trim()) ||
-    '';
-  if (!coverImage && chapters.length > 0) {
-    const firstChapterImages = chapters[0]?.images || [];
-    coverImage =
-      (firstChapterImages[0] && typeof firstChapterImages[0] === 'string' && firstChapterImages[0].trim()) ||
-      '';
-  }
-
-  // Build absolute URL cho ảnh bìa
+  // Dùng route /api/og-image/[postId] — public, không cần auth
   const baseUrl =
     process.env.NEXT_PUBLIC_SITE_URL ||
     (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
-
-  let ogImage: string | undefined;
-  if (coverImage) {
-    // Nếu là relative path, prefix với baseUrl
-    if (coverImage.startsWith('/')) {
-      ogImage = `${baseUrl}${coverImage}`;
-    } else if (coverImage.startsWith('http')) {
-      ogImage = coverImage;
-    } else {
-      ogImage = `${baseUrl}/${coverImage}`;
-    }
-  }
+  const ogImage = `${baseUrl}/api/og-image/${id}`;
 
   return {
     title: `${title} – ${SITE_NAME}`,
@@ -76,25 +52,24 @@ export async function generateMetadata({
       siteName: SITE_NAME,
       title,
       description,
-      ...(ogImage
-        ? {
-            images: [
-              {
-                url: ogImage,
-                alt: title,
-              },
-            ],
-          }
-        : {}),
+      images: [
+        {
+          url: ogImage,
+          width: 600,
+          height: 600,
+          alt: title,
+        },
+      ],
     },
     twitter: {
-      card: ogImage ? 'summary_large_image' : 'summary',
+      card: 'summary_large_image',
       title,
       description,
-      ...(ogImage ? { images: [ogImage] } : {}),
+      images: [ogImage],
     },
   };
 }
+
 
 function toPlainPost(postDoc: any) {
   if (postDoc && typeof postDoc === 'object') {
