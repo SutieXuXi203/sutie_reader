@@ -412,7 +412,7 @@ export async function GET(
             lockMessage: chDecision.message,
             content: chDecision.allowed ? chapter.content : '',
             images: chDecision.allowed
-              ? (user ? signImageUrls(chapter.images || [], user.id) : (chapter.images || []).map(ensureScrambledImageUrl))
+              ? (user ? signImageUrls(chapter.images || [], user.id, id) : (chapter.images || []).map(ensureScrambledImageUrl))
               : [],
             sharedWith: user?.role === 'admin'
               ? chapter.sharedWith

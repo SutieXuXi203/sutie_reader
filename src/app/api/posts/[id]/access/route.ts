@@ -22,12 +22,16 @@ export async function POST(
     }
 
     await connectDB();
-    const post = await Post.findById(id).select('accessType sharedWith accessedUsers chapters');
-    if (!post) {
+
+    // Kiểm tra quyền cửa user đối với post (chỉ cần select các field cần thiết)
+    const postForCheck = await Post.findById(id)
+      .select('accessType sharedWith accessedUsers chapters')
+      .lean();
+    if (!postForCheck) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
-    const decision = canViewPost(user, post as any);
+    const decision = canViewPost(user, postForCheck as any);
     if (!decision.allowed) {
       return NextResponse.json(
         { error: decision.reason, message: decision.message },
@@ -35,65 +39,77 @@ export async function POST(
       );
     }
 
-    if (!Array.isArray(post.accessedUsers)) {
-      post.accessedUsers = [];
-    }
-
     const normalizedEmail = user.email.toLowerCase().trim();
-    const existingIndex = post.accessedUsers.findIndex(
-      (u) => u.email.toLowerCase() === normalizedEmail
-    );
-
     const now = new Date();
     const displayName = user.name || normalizedEmail.split('@')[0];
     const avatar = user.avatar || '';
     const role = user.role || 'guest';
+    const userId = user.id && ObjectId.isValid(user.id) ? new ObjectId(user.id) : undefined;
 
-    if (existingIndex >= 0) {
-      post.accessedUsers[existingIndex].lastAccessedAt = now;
-      post.accessedUsers[existingIndex].name = displayName;
-      post.accessedUsers[existingIndex].avatar = avatar;
-      post.accessedUsers[existingIndex].role = role;
-      if (user.id && ObjectId.isValid(user.id)) {
-        post.accessedUsers[existingIndex].userId = new ObjectId(user.id) as any;
-      }
+    // Kiểm tra xem user đã có trong accessedUsers chưa
+    const existingEntry = (postForCheck.accessedUsers || []).find(
+      (u: any) => u.email?.toLowerCase() === normalizedEmail
+    );
+
+    if (existingEntry !== undefined) {
+      // Cập nhật atomic bằng positional operator — chỉ ghi đúng record cần update
+      await Post.updateOne(
+        { _id: new ObjectId(id), 'accessedUsers.email': normalizedEmail },
+        {
+          $set: {
+            'accessedUsers.$.lastAccessedAt': now,
+            'accessedUsers.$.name': displayName,
+            'accessedUsers.$.avatar': avatar,
+            'accessedUsers.$.role': role,
+            ...(userId ? { 'accessedUsers.$.userId': userId } : {}),
+          },
+        }
+      );
     } else {
-      post.accessedUsers.push({
-        userId: user.id && ObjectId.isValid(user.id) ? (new ObjectId(user.id) as any) : undefined,
+      // Thêm mới vào mảng — giữ tối đa 50 entries, sắp xếp giảm dần theo lastAccessedAt
+      const newEntry = {
+        ...(userId ? { userId } : {}),
         email: normalizedEmail,
         name: displayName,
         avatar,
         role,
         lastAccessedAt: now,
-      });
+      };
+      await Post.updateOne(
+        { _id: new ObjectId(id) },
+        {
+          $push: {
+            accessedUsers: {
+              $each: [newEntry],
+              $sort: { lastAccessedAt: -1 },
+              $slice: 50,
+            },
+          },
+        }
+      );
     }
 
-    // Sort by lastAccessedAt descending and limit to latest 50 entries
-    post.accessedUsers.sort((a, b) => {
-      const timeA = a.lastAccessedAt instanceof Date ? a.lastAccessedAt.getTime() : new Date(a.lastAccessedAt).getTime();
-      const timeB = b.lastAccessedAt instanceof Date ? b.lastAccessedAt.getTime() : new Date(b.lastAccessedAt).getTime();
-      return timeB - timeA;
-    });
-
-    if (post.accessedUsers.length > 50) {
-      post.accessedUsers = post.accessedUsers.slice(0, 50);
+    // Chỉ admin mới nhận danh sách đầy đủ — query lại sau khi update để dữ liệu chính xác
+    let mappedAccessedUsers: object[] = [];
+    if (user.role === 'admin') {
+      const updated = await Post.findById(id).select('accessedUsers').lean();
+      mappedAccessedUsers = ((updated?.accessedUsers as any[]) || []).map((u: any) => ({
+        userId: u.userId ? u.userId.toString() : undefined,
+        email: u.email,
+        name: u.name || u.email.split('@')[0],
+        avatar: u.avatar || '',
+        role: u.role || 'guest',
+        lastAccessedAt:
+          u.lastAccessedAt instanceof Date
+            ? u.lastAccessedAt.toISOString()
+            : u.lastAccessedAt,
+      }));
     }
-
-    await post.save();
-
-    const mappedAccessedUsers = post.accessedUsers.map((u) => ({
-      userId: u.userId ? u.userId.toString() : undefined,
-      email: u.email,
-      name: u.name || u.email.split('@')[0],
-      avatar: u.avatar || '',
-      role: u.role || 'guest',
-      lastAccessedAt: u.lastAccessedAt instanceof Date ? u.lastAccessedAt.toISOString() : u.lastAccessedAt,
-    }));
 
     return NextResponse.json({
       success: true,
       // Bảo vệ quyền riêng tư: Chỉ quản trị viên mới được nhận danh sách độc giả khác
-      accessedUsers: user.role === 'admin' ? mappedAccessedUsers : [],
+      accessedUsers: mappedAccessedUsers,
     });
   } catch (error) {
     console.error('Lỗi khi ghi nhận truy cập link truyện:', error);

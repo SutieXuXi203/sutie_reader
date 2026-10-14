@@ -93,8 +93,20 @@ export function ensureScrambledImageUrl(url: string): string {
   const fileId = extractDriveImageId(url);
   if (!fileId) return url;
 
+  // Giữ lại `pid` nếu có trong URL gốc — image route dùng để tra cứu quyền O(1) thay vì $regex
+  let pidSuffix = '';
+  if (url.includes('pid=') || url.includes('?pid') || url.includes('&pid')) {
+    try {
+      const u = new URL(url, 'http://localhost');
+      const pid = u.searchParams.get('pid');
+      if (pid) pidSuffix = `&pid=${encodeURIComponent(pid)}`;
+    } catch {
+      // ignore
+    }
+  }
+
   // Comic chapter reader: full-resolution image URL (looks completely standard to crawlers, no scramble parameter)
-  return `/api/image/${encodeURIComponent(fileId)}.webp?v=${PROTECTED_IMAGE_URL_VERSION}`;
+  return `/api/image/${encodeURIComponent(fileId)}.webp?v=${PROTECTED_IMAGE_URL_VERSION}${pidSuffix}`;
 }
 
 export function normalizeSearchText(value: string): string {

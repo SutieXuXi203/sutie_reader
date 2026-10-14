@@ -93,7 +93,7 @@ export async function GET(
         lockMessage: isAllowed ? undefined : chDecision.message,
         content: isAllowed ? chapter.content : '',
         images: isAllowed
-          ? (user ? signImageUrls(chapter.images || [], user.id) : (chapter.images || []).map(ensureScrambledImageUrl))
+          ? (user ? signImageUrls(chapter.images || [], user.id, id) : (chapter.images || []).map(ensureScrambledImageUrl))
           : [],
         sharedWith: sanitizedSharedWith,
       };

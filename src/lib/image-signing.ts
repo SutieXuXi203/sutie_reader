@@ -80,7 +80,14 @@ export function createSignedWorkerImageUrl({
   return url.toString();
 }
 
-export function signImageUrls(urls: string[], userId: string): string[] {
+/**
+ * Tạo signed URL cho danh sách ảnh.
+ *
+ * @param postId - ID bài viết chứa ảnh. Khi được cung cấp, sẽ được đính kèm vào URL
+ *   dưới dạng `?pid=` để image route (/api/image/[id]) có thể kiểm tra quyền
+ *   bằng findById (O(1) index) thay vì $regex scan toàn collection.
+ */
+export function signImageUrls(urls: string[], userId: string, postId?: string): string[] {
   if (!urls || urls.length === 0) return [];
   const workerBaseUrl =
     process.env.CLOUDFLARE_WORKER_URL ||
@@ -97,22 +104,28 @@ export function signImageUrls(urls: string[], userId: string): string[] {
         subject: userId,
       });
 
+      const signedUrl = new URL(signed);
+
+      // Merge params từ URL gốc (nếu có), không ghi đè params signing
       if (url.includes('?')) {
         try {
           const originalUrl = new URL(url, 'http://localhost');
-          const signedUrl = new URL(signed);
           originalUrl.searchParams.forEach((val, key) => {
             if (!signedUrl.searchParams.has(key)) {
               signedUrl.searchParams.set(key, val);
             }
           });
-          return signedUrl.toString();
         } catch {
-          return signed;
+          // ignore, dùng signed URL gốc
         }
       }
 
-      return signed;
+      // Đính kèm postId để image route tra cứu bằng _id index thay vì $regex
+      if (postId) {
+        signedUrl.searchParams.set('pid', postId);
+      }
+
+      return signedUrl.toString();
     } catch (e) {
       console.error('Error signing image URL:', e);
       return url;

@@ -120,7 +120,13 @@ export async function GET(
 
   // Chống IDOR/BOLA: Kiểm tra quyền đối với tài khoản guest khi đọc ảnh truyện chi tiết (không áp dụng với ảnh bìa thumb)
   if (user.role === 'guest' && !isThumb) {
-    const accessCacheKey = `img_access:${user.id}:${id}`;
+    // `pid` được nhúng vào URL ảnh bởi signImageUrls — cho phép tra cứu O(1) bằng _id index
+    // thay vì $regex scan toàn collection (O(n)).
+    const postIdParam = request.nextUrl.searchParams.get('pid');
+    const accessCacheKey = postIdParam
+      ? `img_access:${user.id}:post:${postIdParam}`
+      : `img_access:${user.id}:img:${id}`;
+
     let isAllowed = getApiCache<boolean>(accessCacheKey);
     if (isAllowed === null) {
       try {
@@ -128,12 +134,28 @@ export async function GET(
         const { Post } = await import('@/models/Post');
         const { canViewPost, canViewChapter } = await import('@/lib/permissions');
         await connectDB();
-        const post = await Post.findOne({
-          $or: [
-            { images: { $regex: id } },
-            { 'chapters.images': { $regex: id } },
-          ],
-        }).select('accessType sharedWith chapters').lean();
+
+        let post: any = null;
+
+        if (postIdParam) {
+          // O(1): tra cứu trực tiếp theo _id index
+          const { ObjectId } = await import('mongodb');
+          if (ObjectId.isValid(postIdParam)) {
+            post = await Post.findById(postIdParam)
+              .select('accessType sharedWith chapters')
+              .lean();
+          }
+        }
+
+        if (!post) {
+          // Fallback: $regex scan (chậm hơn, dùng khi không có pid)
+          post = await Post.findOne({
+            $or: [
+              { images: { $regex: id } },
+              { 'chapters.images': { $regex: id } },
+            ],
+          }).select('accessType sharedWith chapters').lean();
+        }
 
         if (post) {
           const targetChapter = Array.isArray(post.chapters)
@@ -152,7 +174,8 @@ export async function GET(
         } else {
           isAllowed = true;
         }
-        setApiCache(accessCacheKey, isAllowed, 60_000);
+        // TTL 5 phút: giảm số lần query DB khi đọc nhiều ảnh liên tiếp
+        setApiCache(accessCacheKey, isAllowed, 5 * 60_000);
       } catch (err) {
         console.error('Lỗi kiểm tra quyền xem ảnh:', err);
         isAllowed = true;
