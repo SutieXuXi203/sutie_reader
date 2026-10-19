@@ -201,12 +201,17 @@ export function ShareDialog({
   }, [shareData]);
 
   const linkVisitors = useMemo(() => {
+    const seen = new Set<string>();
     return (shareData?.accessedUsers || []).filter(
-      (u) =>
-        u.email.toLowerCase() !== (shareData?.owner.email || '').toLowerCase() &&
-        !(shareData?.sharedWith || []).some(
-          (s) => s.email.toLowerCase() === u.email.toLowerCase()
-        )
+      (u) => {
+        const email = (u?.email || '').toLowerCase().trim();
+        if (!email) return false;
+        if (email === (shareData?.owner.email || '').toLowerCase().trim()) return false;
+        if ((shareData?.sharedWith || []).some((s) => (s?.email || '').toLowerCase().trim() === email)) return false;
+        if (seen.has(email)) return false;
+        seen.add(email);
+        return true;
+      }
     );
   }, [shareData]);
 
@@ -428,9 +433,9 @@ export function ShareDialog({
 
     return (
       <div className="space-y-1.5">
-        {filteredVisitors.map((visitor) => (
+        {filteredVisitors.map((visitor, idx) => (
           <div
-            key={visitor.email}
+            key={visitor.userId ? `${visitor.userId}-${idx}` : `${visitor.email}-${idx}`}
             onClick={() => {
               if (isAdmin) setSelectedVisitor(visitor);
             }}

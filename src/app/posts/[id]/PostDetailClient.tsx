@@ -136,6 +136,17 @@ export default function PostDetailClient({
     }
   }, [initialPost?.accessedUsers]);
 
+  const uniqueAccessedUsers = useMemo(() => {
+    const seen = new Set<string>();
+    return accessedUsers.filter((u) => {
+      const email = (u?.email || '').toLowerCase().trim();
+      if (!email) return true;
+      if (seen.has(email)) return false;
+      seen.add(email);
+      return true;
+    });
+  }, [accessedUsers]);
+
   const [isLoading, setIsLoading] = useState(false);
   const [showUI, setShowUI] = useState(true);
 
@@ -969,15 +980,15 @@ export default function PostDetailClient({
 
           <div className="flex shrink-0 items-center gap-2 md:gap-3">
             {/* Viewer Avatars Stack (Google Docs style) - CHỈ hiển thị cho Quản trị viên */}
-            {isAdmin && accessedUsers.length > 0 && (
+            {isAdmin && uniqueAccessedUsers.length > 0 && (
               <div
                 onClick={() => setIsShareOpen(true)}
                 className="flex items-center -space-x-2 cursor-pointer hover:opacity-90 transition-opacity mr-1"
-                title={`Đã có ${accessedUsers.length} tài khoản truy cập link này. Nhấn để xem chi tiết.`}
+                title={`Đã có ${uniqueAccessedUsers.length} tài khoản truy cập link này. Nhấn để xem chi tiết.`}
               >
-                {accessedUsers.slice(0, 3).map((u, i) => (
+                {uniqueAccessedUsers.slice(0, 3).map((u, i) => (
                   <div
-                    key={u.email || i}
+                    key={u.userId ? `${u.userId}-${i}` : `${u.email || 'user'}-${i}`}
                     className="relative w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-card bg-secondary flex items-center justify-center font-bold text-[10px] text-foreground overflow-hidden shadow-sm shrink-0 ring-1 ring-border/50"
                     title={`${u.name || u.email} (${u.role === 'admin' ? 'Quản trị viên' : u.role === 'user' ? 'Thành viên' : 'Khách'})`}
                   >
@@ -992,9 +1003,9 @@ export default function PostDetailClient({
                     )}
                   </div>
                 ))}
-                {accessedUsers.length > 3 && (
+                {uniqueAccessedUsers.length > 3 && (
                   <div className="relative w-7 h-7 md:w-8 md:h-8 rounded-full border-2 border-card bg-muted flex items-center justify-center font-bold text-[9px] md:text-[10px] text-muted-foreground shadow-sm shrink-0">
-                    +{accessedUsers.length - 3}
+                    +{uniqueAccessedUsers.length - 3}
                   </div>
                 )}
               </div>
