@@ -211,6 +211,7 @@ export const SharesTab = memo(
                                         </Button>
                                         <Link
                                             href={`/posts/${post._id}`}
+                                            prefetch={false}
                                             target="_blank"
                                             className="inline-flex items-center justify-center h-8 text-xs font-medium rounded-[8px] bg-secondary text-foreground hover:bg-secondary/80 transition-colors"
                                         >
@@ -352,6 +353,7 @@ export const SharesTab = memo(
                                                     </Button>
                                                     <Link
                                                         href={`/posts/${post._id}`}
+                                                        prefetch={false}
                                                         target="_blank"
                                                         className="p-2 text-foreground/80 hover:text-primary hover:bg-secondary/80 rounded-[8px] transition-colors"
                                                         title="Xem bài viết (tab mới)"
