@@ -64,7 +64,12 @@ const sfPro = localFont({
   display: "swap",
 });
 
+const siteUrl =
+  process.env.NEXT_PUBLIC_SITE_URL ||
+  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
 export const metadata: Metadata = {
+  metadataBase: new URL(siteUrl),
   title: "Lubu Corp",
   description:
     "Lubu Corp – Nền tảng đọc truyện tranh, tiểu thuyết và sáng tác nội dung sáng tạo.",
@@ -104,6 +109,23 @@ export default async function RootLayout({
 
   return (
     <html lang="vi" suppressHydrationWarning className={cn("font-sans", sfPro.variable)}>
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function() {
+                if (typeof Element !== 'undefined' && Element.prototype) {
+                  var origSetAttr = Element.prototype.setAttribute;
+                  Element.prototype.setAttribute = function(name, value) {
+                    if (name === 'bis_skin_checked') return;
+                    return origSetAttr.call(this, name, value);
+                  };
+                }
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className={`${sfPro.variable} font-sans antialiased bg-background text-foreground relative`}
         suppressHydrationWarning
