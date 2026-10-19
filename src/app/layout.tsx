@@ -6,6 +6,7 @@ import { UploadProgressProvider } from "@/providers/UploadProgressProvider";
 import { SiteNav } from "@/components/SiteNav";
 import { GooeyToastProvider } from "@/components/GooeyToastProvider";
 import { DevPointerCaptureGuard } from "@/components/DevPointerCaptureGuard";
+import { DevToolsProtection } from "@/components/DevToolsProtection";
 import "./globals.css";
 import "goey-toast/styles.css";
 import { cn } from "@/lib/utils";
@@ -137,6 +138,7 @@ export default async function RootLayout({
         </div>
         <div className="relative z-10 flex flex-col min-h-screen">
           <DevPointerCaptureGuard />
+          <DevToolsProtection />
           <Providers initialUser={initialUser}>
             <UploadProgressProvider>
               <SmoothScrollProvider>

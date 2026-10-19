@@ -22,6 +22,8 @@ import { useAuth } from '@/providers/AuthContext';
 import { cn } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { ReaderImage } from '@/components/ReaderImage';
+import { trackPostAccessAction } from '@/actions/postActions';
+import { saveBookmarkAction, getBookmarkAction, deleteBookmarkAction } from '@/actions/bookmarkActions';
 
 const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
 const ShareDialog = dynamic(() => import('@/components/ShareDialog').then(m => ({ default: m.ShareDialog })), { ssr: false });
@@ -226,14 +228,9 @@ export default function PostDetailClient({
     if (!post?._id || !user?.email) return;
     const trackAccess = async () => {
       try {
-        const res = await fetch(`/api/posts/${post._id}/access`, {
-          method: 'POST',
-        });
-        if (res.ok) {
-          const data = await res.json();
-          if (Array.isArray(data.accessedUsers)) {
-            setAccessedUsers(data.accessedUsers);
-          }
+        const data = await trackPostAccessAction(post._id);
+        if (data.success && Array.isArray(data.accessedUsers)) {
+          setAccessedUsers(data.accessedUsers);
         }
       } catch (err) {
         console.warn('Lỗi ghi nhận truy cập:', err);
@@ -429,7 +426,7 @@ export default function PostDetailClient({
   const removeBookmark = useCallback(async () => {
     if (!post) return;
     try {
-      await fetch(`/api/bookmarks/${post._id}`, { method: 'DELETE' });
+      await deleteBookmarkAction(post._id);
       setHasBookmark(false);
     } catch (error) {
       console.error('Error removing bookmark:', error);
@@ -502,10 +499,8 @@ export default function PostDetailClient({
     if (!post || !user) return;
     const fetchBookmark = async () => {
       try {
-        const res = await fetch(`/api/bookmarks/${post._id}`);
-        if (res.ok) {
-          const data = (await res.json()) as BookmarkData | null;
-          if (data && chapters.length > 0) {
+        const data = (await getBookmarkAction(post._id)) as BookmarkData | null;
+        if (data && chapters.length > 0) {
             const savedChapter = clamp(data.chapterIndex ?? 0, 0, chapters.length - 1);
             const targetChap = chapters[savedChapter];
             if (targetChap?.isLocked) {
@@ -526,7 +521,6 @@ export default function PostDetailClient({
               setPendingResume({ chapterIndex: savedChapter, page: savedPage });
             }
           }
-        }
       } catch (error) {
         console.error('Error fetching bookmark:', error);
       } finally {
@@ -578,17 +572,15 @@ export default function PostDetailClient({
       }
 
       try {
-        await fetch('/api/bookmarks', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            postId: post._id,
-            chapterIndex: activeChapterIndex,
-            currentPage,
-            totalPages: activeChapter.images.length,
-          }),
+        const res = await saveBookmarkAction({
+          postId: post._id,
+          chapterIndex: activeChapterIndex,
+          currentPage,
+          totalPages: activeChapter.images.length,
         });
-        setHasBookmark(true);
+        if (res.success) {
+          setHasBookmark(true);
+        }
       } catch (error) {
         console.error('Error saving bookmark:', error);
       }
@@ -1042,18 +1034,16 @@ export default function PostDetailClient({
                 }
                 if (!post || !activeChapter || chapterImages.length === 0) return;
                 try {
-                  await fetch('/api/bookmarks', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                      postId: post._id,
-                      chapterIndex: activeChapterIndex,
-                      currentPage,
-                      totalPages: chapterImages.length,
-                    }),
+                  const res = await saveBookmarkAction({
+                    postId: post._id,
+                    chapterIndex: activeChapterIndex,
+                    currentPage,
+                    totalPages: chapterImages.length,
                   });
-                  setHasBookmark(true);
-                  notify.success('Đã lưu vị trí đọc');
+                  if (res.success) {
+                    setHasBookmark(true);
+                    notify.success('Đã lưu vị trí đọc');
+                  }
                 } catch (error) {
                   console.error('Error saving bookmark:', error);
                 }

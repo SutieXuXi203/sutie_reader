@@ -4,6 +4,8 @@ import { useEffect } from 'react';
 
 export function DevToolsProtection() {
     useEffect(() => {
+        if (process.env.NODE_ENV !== 'production') return;
+
         const handleContextMenu = (e: MouseEvent) => e.preventDefault();
 
         const handleKeyDown = (e: KeyboardEvent) => {

@@ -1,6 +1,7 @@
 'use client';
 import React, { createContext, useContext, useState, useEffect, useCallback, useMemo, ReactNode } from 'react';
 import { notify } from '@/lib/notify';
+import { getCurrentUserAction, logoutAction } from '@/actions/authActions';
 export interface User {
     id: string;
     email: string;
@@ -29,13 +30,8 @@ export function AuthProvider({
     const [isLoading, setIsLoading] = useState(!hasInitialAuth);
     const checkAuth = useCallback(async () => {
         try {
-            const res = await fetch('/api/auth/me');
-            if (res.ok) {
-                const data = await res.json();
-                setUser(data.user);
-            } else {
-                setUser(null);
-            }
+            const authUser = await getCurrentUserAction();
+            setUser(authUser as User | null);
         } catch (error) {
             console.error('Failed to check auth', error);
             setUser(null);
@@ -72,8 +68,8 @@ export function AuthProvider({
     }, []);
     const logout = useCallback(async () => {
         try {
-            const res = await fetch('/api/auth/logout', { method: 'POST' });
-            if (res.ok) {
+            const res = await logoutAction();
+            if (res.success) {
                 setUser(null);
                 setIsLoading(false);
                 notify.success('Đăng xuất thành công');

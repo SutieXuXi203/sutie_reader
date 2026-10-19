@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Lock, Unlock, ArrowRight, ShieldCheck, Loader2, Delete } from 'lucide-react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import { gooeyToast } from 'goey-toast';
+import { unlockSiteAction } from '@/actions/authActions';
 
 export default function UnlockPage() {
   return (
@@ -99,15 +100,9 @@ function UnlockForm() {
     setIsError(false);
     
     try {
-      const res = await fetch('/api/unlock', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pin: fullPin }),
-      });
+      const data = await unlockSiteAction(fullPin);
       
-      const data = await res.json();
-      
-      if (res.ok && data.success) {
+      if (data.success) {
         setIsSuccess(true);
         setIsLoading(false);
         gooeyToast.success('Mở khóa thành công', {
