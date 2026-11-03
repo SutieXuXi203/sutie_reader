@@ -20,7 +20,6 @@ import { ThumbnailBlurToggle } from '@/components/ThumbnailBlurToggle';
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn, getOptimizedImageUrl, normalizeSearchText } from '@/lib/utils';
-import { Footer } from '@/components/Footer';
 import { PostCard } from '@/components/PostCard';
 import type { UpdatedPostPayload } from '@/components/EditPostForm';
 import { Input } from '@/components/ui/input';
@@ -720,7 +719,6 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
         </div>
       </div>
 
-      <Footer />
 
       {isAuthDialogOpen && (
         <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />

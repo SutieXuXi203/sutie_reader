@@ -6,7 +6,7 @@ import { ArrowLeft, Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useAuth } from '@/providers/AuthContext';
 import { notify } from '@/lib/notify';
-import { Footer } from '@/components/Footer';
+
 
 export default function ContactPage() {
   const { user } = useAuth();
@@ -138,7 +138,7 @@ export default function ContactPage() {
         </section>
         </div>
       </div>
-      <Footer />
+
     </div>
   );
 }
