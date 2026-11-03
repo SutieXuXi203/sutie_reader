@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@base-ui/react": "^1.6.0",
+    "@gsap/react": "^2.1.2",
     "@hookform/resolvers": "^5.2.2",
     "@types/bcryptjs": "^3.0.0",
     "@vercel/speed-insights": "^2.0.0",
