@@ -3,7 +3,8 @@ import localFont from "next/font/local";
 import { Providers } from "@/providers/ThemeProvider";
 import { SmoothScrollProvider } from "@/providers/SmoothScrollProvider";
 import { UploadProgressProvider } from "@/providers/UploadProgressProvider";
-import { SiteNav } from "@/components/SiteNav";
+import { PortfolioNav } from "@/components/portfolio/PortfolioNav";
+import { CustomCursor } from "@/components/portfolio/CustomCursor";
 import { GooeyToastProvider } from "@/components/GooeyToastProvider";
 import { DevPointerCaptureGuard } from "@/components/DevPointerCaptureGuard";
 import { DevToolsProtection } from "@/components/DevToolsProtection";
@@ -71,34 +72,25 @@ const siteUrl =
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),
-  title: "Lubu Corp",
+  title: "Alex Nguyen — Creative Technologist & Fullstack Engineer",
   description:
-    "Lubu Corp – Nền tảng đọc truyện tranh, tiểu thuyết và sáng tác nội dung sáng tạo.",
+    "Portfolio of Alex Nguyen — Creative Technologist & Fullstack Engineer specializing in Next.js 16, React 19, GSAP 3, and high-performance spatial web architectures.",
   icons: {
     icon: "/logo.png",
     apple: "/logo.png",
   },
   openGraph: {
     type: "website",
-    siteName: "Lubu Corp",
-    title: "Lubu Corp",
+    siteName: "Alex Nguyen Portfolio",
+    title: "Alex Nguyen — Creative Technologist & Fullstack Engineer",
     description:
-      "Lubu Corp – Nền tảng đọc truyện tranh, tiểu thuyết và sáng tác nội dung sáng tạo.",
-    images: [
-      {
-        url: "/logo.png",
-        width: 512,
-        height: 512,
-        alt: "Lubu Corp logo",
-      },
-    ],
+      "Crafting digital experiences at the intersection of high-end design, motion physics, and resilient system architecture.",
   },
   twitter: {
-    card: "summary",
-    title: "Lubu Corp",
+    card: "summary_large_image",
+    title: "Alex Nguyen — Creative Technologist & Fullstack Engineer",
     description:
-      "Lubu Corp – Nền tảng đọc truyện tranh, tiểu thuyết và sáng tác nội dung sáng tạo.",
-    images: ["/logo.png"],
+      "Crafting digital experiences at the intersection of high-end design, motion physics, and resilient system architecture.",
   },
 };
 export default async function RootLayout({
@@ -142,7 +134,8 @@ export default async function RootLayout({
           <Providers initialUser={initialUser}>
             <UploadProgressProvider>
               <SmoothScrollProvider>
-                <SiteNav />
+                <CustomCursor />
+                <PortfolioNav />
                 {children}
                 <GooeyToastProvider />
               </SmoothScrollProvider>
