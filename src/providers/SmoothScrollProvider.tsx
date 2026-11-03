@@ -67,17 +67,11 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
     }
 
     const setupSmoothScroll = async () => {
-      const [{ default: LenisCtor }, { default: gsap }, { ScrollTrigger }] = await Promise.all([
-        import('lenis'),
-        import('gsap'),
-        import('gsap/ScrollTrigger'),
-      ]);
+      const { default: LenisCtor } = await import('lenis');
       if (cancelled) return;
 
-      gsap.registerPlugin(ScrollTrigger);
-
       const lenis = new LenisCtor({
-        duration: 0.9,
+        duration: 0.8,
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smoothWheel: true,
         syncTouch: false,
@@ -86,8 +80,6 @@ export function SmoothScrollProvider({ children }: { children: React.ReactNode }
       });
 
       lenisRef.current = lenis;
-
-      lenis.on('scroll', ScrollTrigger.update);
 
       function raf(time: number) {
         lenis.raf(time);
