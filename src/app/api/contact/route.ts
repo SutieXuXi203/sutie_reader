@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { contactSchema } from '@/lib/validations';
 import { connectDB } from '@/lib/db';
-import { RateLimit } from '@/models/RateLimit';
+import { getClientIp } from '@/lib/clientIp';
+import { consumeAttempt } from '@/lib/rateLimit';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
 
 function escapeHtml(str: string): string {
@@ -17,18 +18,14 @@ function escapeHtml(str: string): string {
 
 export async function POST(request: NextRequest) {
     try {
-        const forwardedFor = request.headers.get('x-forwarded-for');
-        const realIp = request.headers.get('x-real-ip');
-        const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : (realIp || 'unknown');
-        const rateLimitKey = `contact:${ip}`;
+        const ip = getClientIp(request.headers);
 
         await connectDB();
-        let rateLimit = await RateLimit.findOne({ ip: rateLimitKey });
-
-        if (rateLimit && rateLimit.lockUntil && rateLimit.lockUntil > new Date()) {
-            const waitMinutes = Math.ceil((rateLimit.lockUntil.getTime() - Date.now()) / 60000);
+        // Đếm lượt nguyên tử theo IP (tối đa 5 tin / 15 phút), tính trước khi gửi mail
+        const attempt = await consumeAttempt(`contact:${ip}`);
+        if (!attempt.allowed) {
             return NextResponse.json(
-                { error: `Bạn đã gửi quá nhiều tin nhắn liên hệ. Vui lòng thử lại sau ${waitMinutes} phút.` },
+                { error: `Bạn đã gửi quá nhiều tin nhắn liên hệ. Vui lòng thử lại sau ${attempt.retryAfterMinutes} phút.` },
                 { status: 429 }
             );
         }
@@ -40,18 +37,13 @@ export async function POST(request: NextRequest) {
         }
         const { name, email, message } = parseResult.data;
 
-        if (!rateLimit) {
-            rateLimit = new RateLimit({ ip: rateLimitKey, attempts: 1 });
-        } else {
-            rateLimit.attempts += 1;
-            if (rateLimit.attempts >= 5) {
-                rateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
-            }
-        }
-        await rateLimit.save();
-
         const safeSenderName = name.replace(/[\r\n"']/g, ' ').trim() || 'Người dùng';
         const safeSubjectName = name.replace(/[\r\n]/g, ' ').trim() || 'Người dùng';
+
+        const recipient = process.env.CONTACT_TO_EMAIL || process.env.EMAIL_USER;
+        if (!recipient) {
+            throw new Error('CONTACT_TO_EMAIL / EMAIL_USER is not configured');
+        }
 
         const transporter = nodemailer.createTransport({
             service: 'gmail',
@@ -64,7 +56,7 @@ export async function POST(request: NextRequest) {
         });
         const mailOptions = {
             from: `"${safeSenderName}" <${email}>`,
-            to: 'sutiexuxi.supp.0410@gmail.com',
+            to: recipient,
             replyTo: email,
             subject: `[Lubu] Tin nhắn liên hệ từ ${safeSubjectName}`,
             text: `Bạn nhận được một tin nhắn liên hệ mới từ ${name} (${email}):\n\n${message}`,

@@ -30,8 +30,8 @@ async function main() {
       try {
         await db.collection(oldName).rename(newName);
         console.log(`✅ Đã đổi tên collection: "${oldName}" -> "${newName}"`);
-      } catch (err: any) {
-        console.error(`❌ Lỗi khi đổi tên "${oldName}":`, err.message);
+      } catch (err: unknown) {
+        console.error(`❌ Lỗi khi đổi tên "${oldName}":`, err instanceof Error ? err.message : err);
       }
     } else {
       console.log(`⏭️ Bỏ qua: Collection "${oldName}" không tồn tại (có thể đã được đổi tên rồi).`);

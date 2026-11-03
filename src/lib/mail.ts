@@ -2,7 +2,7 @@ import nodemailer from 'nodemailer';
 const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: {
-        user: process.env.EMAIL_USER || 'sutiexuxi.supp.0410@gmail.com',
+        user: process.env.EMAIL_USER,
         pass: process.env.EMAIL_PASS,
     },
     disableFileAccess: true,
@@ -11,7 +11,7 @@ const transporter = nodemailer.createTransport({
 export const sendVerificationEmail = async (email: string, code: string) => {
     try {
         const mailOptions = {
-            from: process.env.EMAIL_USER || 'sutiexuxi.supp.0410@gmail.com',
+            from: process.env.EMAIL_USER,
             to: email,
             subject: 'Xác thực tài khoản của bạn',
             html: `

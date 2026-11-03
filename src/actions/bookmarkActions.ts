@@ -5,7 +5,7 @@ import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
 import { Post } from '@/models/Post';
 import { getCurrentUser } from '@/lib/server-auth';
-import { canViewPost, canViewChapter } from '@/lib/permissions';
+import { canViewPost, canViewChapter, type PostContext, type ChapterContext } from '@/lib/permissions';
 import { logApiError } from '@/lib/telegramLogger';
 
 export interface SaveBookmarkInput {
@@ -38,13 +38,13 @@ export async function saveBookmarkAction(input: SaveBookmarkInput) {
       return { success: false, error: 'Post not found' };
     }
 
-    const decision = canViewPost(user as any, post as any);
+    const decision = canViewPost(user, post as unknown as PostContext);
     if (!decision.allowed) {
       return { success: false, error: decision.message || 'Forbidden' };
     }
 
     if (Array.isArray(post.chapters) && post.chapters[normalizedChapterIndex]) {
-      const chapDecision = canViewChapter(user as any, post as any, post.chapters[normalizedChapterIndex] as any);
+      const chapDecision = canViewChapter(user, post as unknown as PostContext, post.chapters[normalizedChapterIndex] as unknown as ChapterContext);
       if (!chapDecision.allowed) {
         return { success: false, error: chapDecision.message || 'Forbidden' };
       }
@@ -96,7 +96,7 @@ export async function getBookmarkAction(postId: string) {
       return null;
     }
 
-    const decision = canViewPost(user as any, post as any);
+    const decision = canViewPost(user, post as unknown as PostContext);
     if (!decision.allowed) {
       return null;
     }
@@ -113,9 +113,9 @@ export async function getBookmarkAction(postId: string) {
     return {
       _id: String(bookmark._id),
       postId: String(bookmark.postId),
-      chapterIndex: typeof (bookmark as any).chapterIndex === 'number' ? (bookmark as any).chapterIndex : 0,
-      currentPage: (bookmark as any).currentPage,
-      totalPages: (bookmark as any).totalPages,
+      chapterIndex: typeof bookmark.chapterIndex === 'number' ? bookmark.chapterIndex : 0,
+      currentPage: bookmark.currentPage,
+      totalPages: bookmark.totalPages,
     };
   } catch (error) {
     console.error('Error getting bookmark via Server Action:', error);

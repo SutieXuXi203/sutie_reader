@@ -2,25 +2,12 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { getJwtSecret, createSiteAccessToken, clearUserCache } from '@/lib/server-auth';
-
-function getSafeCallbackUrl(callbackUrl: string | null | undefined): string {
-  if (!callbackUrl) return '/admin';
-  const clean = callbackUrl.trim();
-  if (
-    clean.startsWith('/') &&
-    !clean.startsWith('//') &&
-    !clean.includes('\\') &&
-    !clean.includes('://')
-  ) {
-    return clean;
-  }
-  return '/admin';
-}
+import { getJwtSecret, clearUserCache } from '@/lib/server-auth';
+import { getSafeCallbackUrl } from '@/lib/safeRedirect';
 
 export async function GET(request: NextRequest) {
   const rawCallbackUrl = request.nextUrl.searchParams.get('callbackUrl');
-  const callbackUrl = getSafeCallbackUrl(rawCallbackUrl);
+  const callbackUrl = getSafeCallbackUrl(rawCallbackUrl, '/admin');
   const fallbackUrl = new URL('/', request.url);
 
   try {
@@ -68,11 +55,7 @@ export async function GET(request: NextRequest) {
 
       response.cookies.set('token', newToken, cookieOptions);
 
-      // Cấp quyền mở khóa site toàn diện nếu hệ thống có cấu hình UNLOCK_PIN
-      if (process.env.UNLOCK_PIN) {
-        const siteToken = await createSiteAccessToken();
-        response.cookies.set('site_access_token', siteToken, cookieOptions);
-      }
+      // Không cấp site_access_token ở đây: người vừa được nâng quyền phải tự nhập mã PIN, tránh vượt qua cổng PIN.
 
       return response;
     }

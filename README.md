@@ -7,7 +7,7 @@
 ## 🛠️ 1. Danh Sách Công Nghệ Sử Dụng (Tech Stack)
 
 ### 🖥️ Frontend & UI Framework
-* **Next.js 16.3.5 (Turbopack, App Router)**: Framework React hiện đại nhất với kiến trúc Server Components, Server Actions và quy ước Request Proxy (`proxy.ts`).
+* **Next.js 16.4.4 (Turbopack, App Router)**: Framework React hiện đại nhất với kiến trúc Server Components, Server Actions và quy ước Request Proxy (`proxy.ts`).
 * **React 19.2.3 & React DOM 19.2.3**: Tận dụng cơ chế xử lý đồng thời (Concurrent rendering) và Server Actions.
 * **Tailwind CSS v4**: Phiên bản CSS utility-first mới nhất, biên dịch siêu tốc với `@tailwindcss/postcss` và `tw-animate-css`.
 * **Hệ thống Font chữ**: SF Pro Display (bản quyền Apple) hỗ trợ đầy đủ 9 trọng số từ Thin đến Black Italic.
@@ -28,17 +28,17 @@
 * **MongoDB & Mongoose (v9.2.1)**: Cơ sở dữ liệu NoSQL lưu trữ thông tin truyện, chương, người dùng, vai trò và lịch sử bookmark.
 * **Xác thực & Bảo mật (Auth & Security)**:
   * `jose` (v6.1): Thẩm định và ký mã khóa JWT an toàn thời gian thực.
-  * `bcryptjs` (v3.0): Băm mật khẩu đa lớp an toàn.
-  * `zod` (v4.3) & `react-hook-form` (v7.71): Kiểm soát schema và dữ liệu đầu vào.
+  * `bcrypt` (native, chạy trên thread pool; tự lùi về `bcryptjs` nếu không nạp được binary): Băm mật khẩu.
+  * `zod` (v4.6) & `react-hook-form` (v7.71): Kiểm soát schema và dữ liệu đầu vào.
   * **Timing-Safe Comparison (`crypto.timingSafeEqual`)**: Chống tấn công phân tích thời gian cho mã OTP và mã PIN website.
   * **Canvas Scramble Algorithm**: Thuật toán chia mảnh và xáo trộn pixel chống scraper / crawler leech ảnh.
 * **Email & Dịch vụ Giao Tiếp**:
-  * `nodemailer` (v8.0): Gửi email OTP xác thực tài khoản qua SMTP.
+  * `nodemailer` (v10.3): Gửi email OTP xác thực tài khoản qua SMTP.
   * `googleapis` (v171.4): Tương tác trực tiếp với Google Drive API v3.
   * **Telegram Bot API**: Giám sát lỗi hệ thống, ghi nhận thao tác CRUD và tiến trình tải dữ liệu thời gian thực.
 
 ### 🌐 Hạ Tầng Mạng & Lưu Trữ (Infrastructure & CDN)
-* **Cloudflare Workers (ES Modules)**: Proxy CDN biên mạng, nén ảnh WebP/AVIF và tự động áp dụng ma trận xáo trộn ảnh trước khi trả về trình duyệt.
+* **Cloudflare Workers (ES Modules)**: Kho phục vụ/ tải lên ảnh gốc từ Google Drive (chỉ trong thư mục cho phép), xác thực chữ ký HMAC. Ảnh gốc chỉ đi server-to-server; việc xáo trộn ma trận ảnh do route `/api/image/[id]` của Next.js thực hiện trước khi trả về trình duyệt.
 * **Google Drive API (OAuth 2.0)**: Kho lưu trữ ảnh truyện dung lượng lớn không giới hạn băng thông.
 * **Vercel Analytics & Speed Insights** (`@vercel/speed-insights` v2.0): Theo dõi hiệu năng Core Web Vitals thực tế.
 

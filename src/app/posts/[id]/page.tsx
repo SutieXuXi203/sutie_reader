@@ -2,11 +2,11 @@ import type { Metadata } from 'next';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { ObjectId } from 'mongodb';
-import { getPostChapters, ensureScrambledImageUrl, getOptimizedImageUrl } from '@/lib/utils';
+import { getPostChapters, protectedImageUrl, getOptimizedImageUrl } from '@/lib/utils';
 import PostDetailClient from './PostDetailClient';
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/server-auth';
-import { canViewPost, canViewChapter } from '@/lib/permissions';
+import { canViewChapter } from '@/lib/permissions';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -33,9 +33,9 @@ export async function generateMetadata({
     return { title: SITE_NAME };
   }
 
-  const title = (post as any).title || SITE_NAME;
+  const title = post.title || SITE_NAME;
   const description =
-    (post as any).description ||
+    post.description ||
     `Đọc ${title} trên ${SITE_NAME}`;
 
   // Dùng route /api/og-image/[postId] — public, không cần auth
@@ -71,17 +71,52 @@ export async function generateMetadata({
 }
 
 
-function toPlainPost(postDoc: any) {
+type PostShareLike = {
+  email: string;
+  userId?: { toString: () => string };
+  role?: string;
+};
+
+type PostAccessedLike = {
+  userId?: { toString: () => string };
+  email: string;
+  name?: string;
+  avatar?: string;
+  role?: string;
+  lastAccessedAt?: Date | string;
+};
+
+type PostDocLike = {
+  _id?: { toString: () => string } | string;
+  title?: string;
+  description?: string;
+  author?: string;
+  translator?: string;
+  tags?: string[];
+  accessType?: 'restricted' | 'public';
+  sharedWith?: PostShareLike[];
+  accessedUsers?: PostAccessedLike[];
+  chapters?: unknown;
+  content?: unknown;
+  images?: unknown;
+  createdAt?: Date | string;
+  updatedAt?: Date | string;
+  toObject?: () => PostDocLike;
+  [key: string]: unknown;
+};
+
+function toPlainPost(postDoc: unknown): PostDocLike {
   if (postDoc && typeof postDoc === 'object') {
-    if (typeof postDoc.toObject === 'function') {
-      return postDoc.toObject();
+    const doc = postDoc as PostDocLike;
+    if (typeof doc.toObject === 'function') {
+      return doc.toObject();
     }
-    return postDoc;
+    return doc;
   }
   return {};
 }
 
-function serializePost(postDoc: any) {
+function serializePost(postDoc: unknown) {
   const post = toPlainPost(postDoc);
   const chapters = getPostChapters(post);
   const firstChapter = chapters[0];
@@ -96,14 +131,14 @@ function serializePost(postDoc: any) {
     tags: post.tags || [],
     accessType: post.accessType || 'restricted',
     sharedWith: Array.isArray(post.sharedWith)
-      ? post.sharedWith.map((s: any) => ({
+      ? post.sharedWith.map((s) => ({
           email: s.email,
           userId: s.userId ? s.userId.toString() : undefined,
           role: s.role || 'viewer',
         }))
       : [],
     accessedUsers: Array.isArray(post.accessedUsers)
-      ? post.accessedUsers.map((u: any) => ({
+      ? post.accessedUsers.map((u) => ({
           userId: u.userId ? u.userId.toString() : undefined,
           email: u.email,
           name: u.name || u.email.split('@')[0],
@@ -148,9 +183,9 @@ export default async function PostPage({
     serialized.images = serialized.images.map(getOptimizedImageUrl);
   }
   if (Array.isArray(serialized.chapters)) {
-    serialized.chapters = serialized.chapters.map((chapter: any) => ({
+    serialized.chapters = serialized.chapters.map((chapter) => ({
       ...chapter,
-      images: (chapter.images || []).map(ensureScrambledImageUrl),
+      images: (chapter.images || []).map((img: string) => protectedImageUrl(img, id)),
     }));
   }
 
@@ -163,7 +198,7 @@ export default async function PostPage({
     user &&
     Array.isArray(serialized.sharedWith) &&
     serialized.sharedWith.some(
-      (s: any) =>
+      (s) =>
         s.email?.toLowerCase().trim() === userEmail ||
         (s.userId && String(s.userId) === userId)
     )
@@ -173,10 +208,10 @@ export default async function PostPage({
     user &&
     Array.isArray(serialized.chapters) &&
     serialized.chapters.some(
-      (ch: any) =>
+      (ch) =>
         Array.isArray(ch.sharedWith) &&
         ch.sharedWith.some(
-          (s: any) =>
+          (s) =>
             s.email?.toLowerCase().trim() === userEmail ||
             (s.userId && String(s.userId) === userId)
         )
@@ -186,7 +221,7 @@ export default async function PostPage({
   const isShared = isSharedInPost || isSharedInAnyChapter;
 
   // Lọc dữ liệu chương an toàn theo từng chương (Phương án 2)
-  const safeChapters = (serialized.chapters || []).map((ch: any, idx: number) => {
+  const safeChapters = (serialized.chapters || []).map((ch, idx) => {
     const chDecision = canViewChapter(user, serialized, ch);
     const translator = ch.translator || serialized.translator || '';
 
@@ -208,8 +243,8 @@ export default async function PostPage({
 
     const sanitizedSharedWith = Array.isArray(ch.sharedWith)
       ? ch.sharedWith
-          .filter((s: any) => user?.role === 'admin' || s.email?.toLowerCase().trim() === userEmail)
-          .map((s: any) => ({
+          .filter((s) => user?.role === 'admin' || s.email?.toLowerCase().trim() === userEmail)
+          .map((s) => ({
             email: String(s.email || ''),
             userId: s.userId ? String(s.userId) : undefined,
             role: String(s.role || 'viewer'),
@@ -228,13 +263,13 @@ export default async function PostPage({
       isLocked: false,
       sharedWith: sanitizedSharedWith,
       content: ch.content || '',
-      images: (ch.images || []).map(ensureScrambledImageUrl),
+      images: (ch.images || []).map((img: string) => protectedImageUrl(img, id)),
     };
   });
 
-  const firstUnlocked = safeChapters.find((c: any) => !c.isLocked);
+  const firstUnlocked = safeChapters.find((c) => !c.isLocked);
 
-  let postForClient = {
+  const postForClient = {
     ...serialized,
     chapters: safeChapters,
     content: firstUnlocked?.content || '',
@@ -242,7 +277,7 @@ export default async function PostPage({
     sharedWith: user?.role === 'admin'
       ? serialized.sharedWith
       : (isShared && Array.isArray(serialized.sharedWith)
-          ? serialized.sharedWith.filter((s: any) => s.email?.toLowerCase().trim() === userEmail)
+          ? serialized.sharedWith.filter((s) => s.email?.toLowerCase().trim() === userEmail)
           : []),
     accessedUsers: user?.role === 'admin' ? serialized.accessedUsers : [],
   };
@@ -251,7 +286,7 @@ export default async function PostPage({
 
   return (
     <PostDetailClient
-      initialPost={plainPostForClient as any}
+      initialPost={plainPostForClient}
       initialChapterNumber={typeof requestedChapterNum === 'number' && !isNaN(requestedChapterNum) ? requestedChapterNum : undefined}
     />
   );

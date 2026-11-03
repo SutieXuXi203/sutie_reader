@@ -31,7 +31,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
       .select('_id updatedAt createdAt')
       .lean();
 
-    const postRoutes: MetadataRoute.Sitemap = publicPosts.map((post: any) => ({
+    const postRoutes: MetadataRoute.Sitemap = publicPosts.map((post) => ({
       url: `${baseUrl}/posts/${post._id?.toString() || post._id}`,
       lastModified: post.updatedAt ? new Date(post.updatedAt) : new Date(),
       changeFrequency: 'weekly',

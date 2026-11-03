@@ -5,12 +5,14 @@ import { isAdmin, getAuthUser } from '@/lib/auth';
 import { filterPostsForUser, getAccessibleChapterInfo } from '@/lib/permissions';
 import { getPostChapters, type NormalizedPostChapter } from '@/lib/utils';
 import { postSchema } from '@/lib/validations';
+import { normalizeImages } from '@/lib/imageUrls';
 import { getApiCache, invalidateApiCache, setApiCache } from '@/lib/api-cache';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
 
 export const maxDuration = 60;
 const POSTS_LIST_CACHE_KEY = 'posts:list';
-const POSTS_LIST_CACHE_TTL_MS = 300_000;
+// Cache RAM theo instance, có chứa dữ liệu phân quyền: giữ ngắn để thay đổi quyền chia sẻ có hiệu lực nhanh trên mọi instance
+const POSTS_LIST_CACHE_TTL_MS = 30_000;
 
 type IncomingChapter = {
   title?: unknown;
@@ -37,27 +39,6 @@ const normalizeTags = (value: unknown): string[] => {
     if (tags.length >= 20) break;
   }
   return tags;
-};
-
-const normalizeImages = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((img): img is string => typeof img === 'string')
-    .map((img) => {
-      const trimmed = img.trim();
-      if (!trimmed) return '';
-      try {
-        const parsed = new URL(trimmed, 'https://dummy.com');
-        if (parsed.searchParams.has('sig')) {
-          parsed.search = '';
-          return parsed.origin === 'https://dummy.com' ? parsed.pathname : parsed.toString();
-        }
-      } catch (e) {
-        // ignore
-      }
-      return trimmed;
-    })
-    .filter(Boolean);
 };
 
 const normalizeChapter = (
@@ -178,6 +159,19 @@ const serializePost = (postDoc: unknown) => {
 
 import { signImageUrls } from '@/lib/image-signing';
 
+interface RawShare {
+  email?: string;
+  userId?: { toString(): string } | string | null;
+}
+
+interface RawChapter {
+  chapterNumber?: number;
+  title?: string;
+  translator?: string;
+  accessType?: 'inherit' | 'restricted' | 'public';
+  sharedWith?: RawShare[];
+}
+
 type PostListItem = {
   _id: string;
   title: string;
@@ -186,7 +180,7 @@ type PostListItem = {
   author: string;
   translator?: string;
   accessType?: 'restricted' | 'public';
-  sharedWith?: Array<{ email: string; userId?: string | any }>;
+  sharedWith?: Array<{ email: string; userId?: string }>;
   createdAt: string | Date;
   updatedAt?: string | Date;
   chapterCount: number;
@@ -195,7 +189,7 @@ type PostListItem = {
     title?: string;
     translator?: string;
     accessType?: 'inherit' | 'restricted' | 'public';
-    sharedWith?: Array<{ email?: string; userId?: string | any }>;
+    sharedWith?: Array<{ email?: string; userId?: string }>;
   }>;
   images: string[];
   accessibleChapterNumbers?: number[];
@@ -263,19 +257,19 @@ export async function GET(request: NextRequest) {
           translator: post.translator || '',
           accessType: post.accessType || 'restricted',
           sharedWith: Array.isArray(post.sharedWith)
-            ? post.sharedWith.map((s: any) => ({
+            ? post.sharedWith.map((s: RawShare) => ({
                 email: s.email,
                 userId: s.userId ? s.userId.toString() : undefined,
               }))
             : [],
           chapters: Array.isArray(post.chapters)
-            ? post.chapters.map((ch: any) => ({
+            ? post.chapters.map((ch: RawChapter) => ({
                 chapterNumber: ch.chapterNumber,
                 title: ch.title,
                 translator: ch.translator,
                 accessType: ch.accessType,
                 sharedWith: Array.isArray(ch.sharedWith)
-                  ? ch.sharedWith.map((s: any) => ({
+                  ? ch.sharedWith.map((s: RawShare) => ({
                       email: s.email,
                       userId: s.userId ? s.userId.toString() : undefined,
                     }))
@@ -298,13 +292,20 @@ export async function GET(request: NextRequest) {
     const finalPosts = filteredPosts.map((post) => {
       const chapterInfo = getAccessibleChapterInfo(post, user);
       // Ẩn sharedWith và chi tiết chapters riêng tư trước khi gửi về client
-      const { sharedWith: _, chapters: _rawChapters, ...rest } = post;
+      const rest = { ...post };
+      delete rest.sharedWith;
+      delete rest.chapters;
       return {
         ...rest,
         accessibleChapterNumbers: chapterInfo.accessibleChapterNumbers,
         accessibleChapterLabel: chapterInfo.accessibleChapterLabel,
         isPartialAccess: chapterInfo.isPartialAccess,
-        images: user ? signImageUrls(post.images || [], user.id) : post.images,
+        // Khách vãng lai chỉ thấy truyện công khai: dùng route OG công khai (ảnh bìa nhỏ), không lộ file id của Drive
+        images: user
+          ? signImageUrls(post.images || [], user.id)
+          : (post.images || []).length > 0
+            ? [`/api/og-image/${post._id}`]
+            : [],
       };
     });
 
@@ -403,7 +404,6 @@ export async function POST(request: NextRequest) {
       request,
       statusCode: 500,
     });
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json({ error: 'Tạo bài viết không thành công', details: message }, { status: 500 });
+    return NextResponse.json({ error: 'Tạo bài viết không thành công' }, { status: 500 });
   }
 }

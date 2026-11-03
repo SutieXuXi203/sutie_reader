@@ -83,8 +83,7 @@ export async function POST(request: NextRequest) {
         if (mongoError.code === 11000) {
             return NextResponse.json({ error: 'Tag này đã tồn tại.' }, { status: 409 });
         }
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: 'Tạo tag không thành công', details: message }, { status: 500 });
+        return NextResponse.json({ error: 'Tạo tag không thành công' }, { status: 500 });
     }
 }
 export async function PUT(request: NextRequest) {
@@ -156,8 +155,7 @@ export async function PUT(request: NextRequest) {
             request,
             statusCode: 500,
         });
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: 'Cập nhật tag không thành công', details: message }, { status: 500 });
+        return NextResponse.json({ error: 'Cập nhật tag không thành công' }, { status: 500 });
     }
 }
 export async function DELETE(request: NextRequest) {
@@ -207,7 +205,6 @@ export async function DELETE(request: NextRequest) {
             request,
             statusCode: 500,
         });
-        const message = error instanceof Error ? error.message : 'Unknown error';
-        return NextResponse.json({ error: 'Xóa tag không thành công', details: message }, { status: 500 });
+        return NextResponse.json({ error: 'Xóa tag không thành công' }, { status: 500 });
     }
 }

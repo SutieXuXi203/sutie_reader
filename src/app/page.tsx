@@ -4,7 +4,7 @@ import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
 import { getCurrentUser, type AuthUser } from '@/lib/server-auth';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
-import { filterPostsForUser, getAccessibleChapterInfo } from '@/lib/permissions';
+import { filterPostsForUser, getAccessibleChapterInfo, type PostContext } from '@/lib/permissions';
 
 export const maxDuration = 60;
 
@@ -40,7 +40,7 @@ type CatalogPostAggregate = {
   author?: string;
   translator?: string;
   accessType?: 'restricted' | 'public';
-  sharedWith?: Array<{ email: string; userId?: string | any }>;
+  sharedWith?: Array<{ email: string; userId?: string | { toString: () => string } }>;
   createdAt?: Date | string;
   updatedAt?: Date | string;
   chapterCount?: number;
@@ -50,7 +50,7 @@ type CatalogPostAggregate = {
     title?: string;
     translator?: string;
     accessType?: 'inherit' | 'restricted' | 'public';
-    sharedWith?: Array<{ email?: string; userId?: string | any }>;
+    sharedWith?: Array<{ email?: string; userId?: string | { toString: () => string } }>;
   }>;
 };
 
@@ -68,7 +68,7 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
   initialPosts: InitialPost[];
   initialTags: InitialTag[];
 }> {
-  let cached = getApiCache<{ posts: CatalogPostAggregate[]; tags: TagLean[] }>(POSTS_CATALOG_CACHE_KEY);
+  const cached = getApiCache<{ posts: CatalogPostAggregate[]; tags: TagLean[] }>(POSTS_CATALOG_CACHE_KEY);
   let posts: CatalogPostAggregate[];
   let tags: TagLean[];
 
@@ -120,7 +120,7 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
     setApiCache(POSTS_CATALOG_CACHE_KEY, { posts, tags }, POSTS_CATALOG_TTL_MS);
   }
 
-  const visiblePosts = filterPostsForUser(posts as any, user) as CatalogPostAggregate[];
+  const visiblePosts = filterPostsForUser(posts as unknown as PostContext[], user) as unknown as CatalogPostAggregate[];
 
   return {
     initialPosts: visiblePosts.map((post) => {
@@ -129,7 +129,7 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
           ? post.coverImage
           : '';
 
-      const chapterInfo = getAccessibleChapterInfo(post as any, user);
+      const chapterInfo = getAccessibleChapterInfo(post as unknown as PostContext, user);
 
       return {
         _id: typeof post._id === 'string' ? post._id : post._id?.toString?.() || '',

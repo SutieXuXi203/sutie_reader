@@ -34,7 +34,7 @@ export async function GET(
     const isUserAdmin = user.role === 'admin';
     const normalizedUserEmail = user.email.toLowerCase();
     const isShared = (post.sharedWith || []).some(
-      (s: any) => s.email === normalizedUserEmail || (s.userId && s.userId.toString() === user.id)
+      (s) => s.email === normalizedUserEmail || (s.userId && s.userId.toString() === user.id)
     );
 
     if (!isUserAdmin && post.accessType === 'restricted' && !isShared) {
@@ -42,9 +42,9 @@ export async function GET(
     }
 
     // Populate user profile info for shared users (cả cấp post lẫn từng chapter)
-    const allSharedEmails = new Set<string>((post.sharedWith || []).map((s: any) => s.email));
-    (post.chapters || []).forEach((ch: any) => {
-      (ch.sharedWith || []).forEach((s: any) => allSharedEmails.add(s.email));
+    const allSharedEmails = new Set<string>((post.sharedWith || []).map((s) => s.email));
+    (post.chapters || []).forEach((ch) => {
+      (ch.sharedWith || []).forEach((s) => allSharedEmails.add(s.email));
     });
 
     const existingUsers = await User.find({ email: { $in: Array.from(allSharedEmails) } })
@@ -56,7 +56,7 @@ export async function GET(
       userMap.set(u.email.toLowerCase(), { name: u.name, avatar: u.avatar || '' });
     }
 
-    const mappedSharedWith = (post.sharedWith || []).map((s: any) => {
+    const mappedSharedWith = (post.sharedWith || []).map((s) => {
       const uInfo = userMap.get(s.email.toLowerCase());
       return {
         email: s.email,
@@ -69,8 +69,8 @@ export async function GET(
       };
     });
 
-    const mappedChapters = (post.chapters || []).map((ch: any) => {
-      const chShared = (ch.sharedWith || []).map((s: any) => {
+    const mappedChapters = (post.chapters || []).map((ch) => {
+      const chShared = (ch.sharedWith || []).map((s) => {
         const uInfo = userMap.get(s.email.toLowerCase());
         return {
           email: s.email,
@@ -93,11 +93,11 @@ export async function GET(
         accessType: ch.accessType || 'inherit',
         sharedWith: isUserAdmin
           ? chShared
-          : chShared.filter((s: any) => s.email.toLowerCase() === normalizedUserEmail),
+          : chShared.filter((s) => s.email.toLowerCase() === normalizedUserEmail),
       };
     });
 
-    const mappedAccessedUsers = (post.accessedUsers || []).map((u: any) => ({
+    const mappedAccessedUsers = (post.accessedUsers || []).map((u) => ({
       userId: u.userId ? u.userId.toString() : undefined,
       email: u.email,
       role: u.role || 'guest',
@@ -134,7 +134,7 @@ export async function GET(
       owner: ownerInfo,
       sharedWith: isUserAdmin
         ? mappedSharedWith
-        : mappedSharedWith.filter((s: any) => s.email.toLowerCase() === normalizedUserEmail),
+        : mappedSharedWith.filter((s) => s.email.toLowerCase() === normalizedUserEmail),
       chapters: mappedChapters,
       accessedUsers: isUserAdmin ? mappedAccessedUsers : [],
     });

@@ -5,6 +5,8 @@ type CacheEntry<T> = {
 
 type ApiCacheStore = Map<string, CacheEntry<unknown>>;
 
+const MAX_ENTRIES = 2_000;
+
 const globalWithApiCache = globalThis as typeof globalThis & {
   sutieApiCache?: ApiCacheStore;
 };
@@ -24,7 +26,25 @@ export function getApiCache<T>(key: string): T | null {
   return entry.value as T;
 }
 
+function evictIfFull() {
+  if (apiCache.size < MAX_ENTRIES) return;
+
+  const now = Date.now();
+  for (const [key, entry] of apiCache) {
+    if (entry.expiresAt <= now) apiCache.delete(key);
+  }
+
+  // Vẫn đầy sau khi dọn mục hết hạn: bỏ các mục cũ nhất (Map giữ thứ tự chèn)
+  while (apiCache.size >= MAX_ENTRIES) {
+    const oldest = apiCache.keys().next().value;
+    if (oldest === undefined) break;
+    apiCache.delete(oldest);
+  }
+}
+
 export function setApiCache<T>(key: string, value: T, ttlMs: number) {
+  apiCache.delete(key);
+  evictIfFull();
   apiCache.set(key, {
     value,
     expiresAt: Date.now() + ttlMs,

@@ -2,7 +2,10 @@ const DRIVE_FOLDER_MIME_TYPE = 'application/vnd.google-apps.folder';
 const MAX_FILES_PER_REQUEST = 10;
 const MAX_FILE_SIZE_BYTES = 10 * 1024 * 1024;
 const IMAGE_SIGNATURE_VERSION = 'v1';
-const IMAGE_SIGNATURE_MAX_FUTURE_SECONDS = 3600;
+const IMAGE_SIGNATURE_MAX_FUTURE_SECONDS = 600;
+const MAX_TOTAL_UPLOAD_BYTES = 40 * 1024 * 1024;
+const MAX_UPLOAD_TOKEN_LIFETIME_SECONDS = 15 * 60;
+const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif', 'image/avif']);
 const CLIENT_IMAGE_CACHE_SECONDS = 2592000; // 30 ngày
 const EDGE_IMAGE_CACHE_SECONDS = 31536000; // 1 năm
 
@@ -55,6 +58,17 @@ function isValidDriveFileId(fileId) {
 
 function isValidPostId(postId) {
   return /^[a-f\d]{24}$/i.test(postId);
+}
+
+function detectImageMime(bytes) {
+  if (bytes.length < 12) return null;
+  if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e && bytes[3] === 0x47) return 'image/png';
+  if (bytes[0] === 0xff && bytes[1] === 0xd8 && bytes[2] === 0xff) return 'image/jpeg';
+  if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x38) return 'image/gif';
+  const ascii = (start, end) => String.fromCharCode(...bytes.subarray(start, end));
+  if (ascii(0, 4) === 'RIFF' && ascii(8, 12) === 'WEBP') return 'image/webp';
+  if (ascii(4, 8) === 'ftyp' && (ascii(8, 12) === 'avif' || ascii(8, 12) === 'avis')) return 'image/avif';
+  return null;
 }
 
 function getOptionalEnv(env, keys) {
@@ -255,7 +269,7 @@ async function findFolderByPostId(accessToken, parentFolderId, postId) {
   return data.files?.[0] || null;
 }
 
-async function findFolderByTitle(accessToken, parentFolderId, title) {
+async function findFolderByTitle(accessToken, parentFolderId, title, postId) {
   const q = [
     `mimeType='${DRIVE_FOLDER_MIME_TYPE}'`,
     `name='${escapeDriveQueryValue(title)}'`,
@@ -265,13 +279,19 @@ async function findFolderByTitle(accessToken, parentFolderId, title) {
 
   const url = new URL('https://www.googleapis.com/drive/v3/files');
   url.searchParams.set('q', q);
-  url.searchParams.set('fields', 'files(id,name)');
-  url.searchParams.set('pageSize', '1');
+  url.searchParams.set('fields', 'files(id,name,appProperties)');
+  url.searchParams.set('pageSize', '10');
   url.searchParams.set('supportsAllDrives', 'true');
   url.searchParams.set('includeItemsFromAllDrives', 'true');
 
   const data = await driveFetch(accessToken, url.toString(), {}, 'Find Drive folder by title');
-  return data.files?.[0] || null;
+  // Không dùng chung thư mục với truyện khác trùng tên: chỉ nhận thư mục chưa gắn postId (dữ liệu cũ) hoặc đúng postId này
+  return (
+    (data.files || []).find((file) => {
+      const ownerId = file.appProperties?.sutiePostId;
+      return !ownerId || !postId || ownerId === postId;
+    }) || null
+  );
 }
 
 async function getOrCreateFolder(accessToken, parentFolderId, title, postId) {
@@ -279,7 +299,7 @@ async function getOrCreateFolder(accessToken, parentFolderId, title, postId) {
 
   let folder = postId ? await findFolderByPostId(accessToken, parentFolderId, postId) : null;
   if (!folder) {
-    folder = await findFolderByTitle(accessToken, parentFolderId, folderTitle);
+    folder = await findFolderByTitle(accessToken, parentFolderId, folderTitle, postId);
   }
 
   if (folder?.id) {
@@ -387,7 +407,7 @@ async function assertImageCanBeServed(accessToken, rootFolderId, fileId) {
     throw httpError('Image not found', 404);
   }
 
-  if (!metadata.mimeType || !metadata.mimeType.startsWith('image/')) {
+  if (!metadata.mimeType || !ALLOWED_IMAGE_MIME_TYPES.has(metadata.mimeType)) {
     throw httpError('Drive file is not an image', 415);
   }
 
@@ -404,7 +424,7 @@ async function assertImageCanBeServed(accessToken, rootFolderId, fileId) {
   return metadata;
 }
 
-function validateUploadFiles(files) {
+async function validateUploadFiles(files) {
   if (!files.length) {
     throw httpError('No files provided', 400);
   }
@@ -413,9 +433,20 @@ function validateUploadFiles(files) {
     throw httpError(`Too many files. Max ${MAX_FILES_PER_REQUEST} per request`, 400);
   }
 
-  const invalidFile = files.find((file) => !file.type.startsWith('image/') || file.size > MAX_FILE_SIZE_BYTES);
-  if (invalidFile) {
-    throw httpError(`Invalid image file: ${invalidFile.name}`, 400);
+  const totalBytes = files.reduce((sum, file) => sum + file.size, 0);
+  if (totalBytes > MAX_TOTAL_UPLOAD_BYTES) {
+    throw httpError('Upload too large', 413);
+  }
+
+  for (const file of files) {
+    if (!ALLOWED_IMAGE_MIME_TYPES.has(file.type) || file.size > MAX_FILE_SIZE_BYTES) {
+      throw httpError(`Invalid image file: ${file.name}`, 400);
+    }
+    // Không tin Content-Type do client khai báo (SVG/HTML giả dạng ảnh): kiểm tra chữ ký byte thực tế
+    const head = new Uint8Array(await file.slice(0, 16).arrayBuffer());
+    if (detectImageMime(head) !== file.type) {
+      throw httpError(`Invalid image content: ${file.name}`, 400);
+    }
   }
 }
 
@@ -439,6 +470,13 @@ async function verifyJwtToken(token, secretStr) {
 
   const [headerB64, payloadB64, sigB64] = parts;
   const encoder = new TextEncoder();
+
+  try {
+    const header = JSON.parse(new TextDecoder().decode(base64UrlDecode(headerB64)));
+    if (header.alg !== 'HS256') return null;
+  } catch {
+    return null;
+  }
   const secretKey = await crypto.subtle.importKey(
     'raw',
     encoder.encode(secretStr),
@@ -456,10 +494,11 @@ async function verifyJwtToken(token, secretStr) {
   const payloadJson = new TextDecoder().decode(base64UrlDecode(payloadB64));
   const payload = JSON.parse(payloadJson);
 
-  if (payload.exp && typeof payload.exp === 'number') {
-    const nowInSec = Math.floor(Date.now() / 1000);
-    if (nowInSec > payload.exp) return null;
-  }
+  // Bắt buộc có hạn dùng và hạn dùng phải ngắn: token không có `exp` sẽ có hiệu lực vĩnh viễn
+  if (typeof payload.exp !== 'number') return null;
+  const nowInSec = Math.floor(Date.now() / 1000);
+  if (nowInSec > payload.exp) return null;
+  if (payload.exp - nowInSec > MAX_UPLOAD_TOKEN_LIFETIME_SECONDS) return null;
 
   return payload;
 }
@@ -475,6 +514,31 @@ function authMatches(authHeader, expectedSecret) {
   return diff === 0;
 }
 
+/**
+ * Quyền upload/sync: bí mật dùng chung (server-to-server) HOẶC token ngắn hạn `scope: 'upload'` do /api/auth/token cấp cho admin.
+ * Token phiên đăng nhập thông thường (chỉ có `role: admin`) KHÔNG được chấp nhận: nó không bị thu hồi khi admin bị hạ quyền.
+ */
+async function isUploadAuthorized(request, env) {
+  const authHeader = (request.headers.get('Authorization') || '').trim();
+  const expectedSecret = (env.UPLOAD_SECRET || '').trim();
+  const jwtSecret = (env.UPLOAD_JWT_SECRET || env.JWT_SECRET || '').trim();
+
+  if (expectedSecret && authMatches(authHeader, expectedSecret)) {
+    return true;
+  }
+
+  if (authHeader.startsWith('Bearer ')) {
+    try {
+      const payload = await verifyJwtToken(authHeader.slice(7).trim(), jwtSecret);
+      return Boolean(payload && payload.scope === 'upload' && payload.role === 'admin');
+    } catch (jwtErr) {
+      console.warn('[CF WORKER] JWT verify error:', jwtErr);
+    }
+  }
+
+  return false;
+}
+
 const worker = {
   async fetch(request, env, ctx) {
     const url = new URL(request.url);
@@ -483,6 +547,8 @@ const worker = {
       'Access-Control-Allow-Methods': 'GET, POST, OPTIONS',
       'Access-Control-Allow-Headers': 'Content-Type, Authorization',
       'X-Content-Type-Options': 'nosniff',
+      'Content-Security-Policy': "default-src 'none'; sandbox",
+      'Cross-Origin-Resource-Policy': 'cross-origin',
     };
 
     if (request.method === 'OPTIONS') {
@@ -504,6 +570,8 @@ const worker = {
         }
 
         const accessToken = await getAccessToken(env);
+        // Chỉ phục vụ file ảnh nằm trong thư mục Drive được phép (không cho đọc file bất kỳ của tài khoản OAuth)
+        await assertImageCanBeServed(accessToken, getRootFolderId(env), fileId);
         const driveRes = await fetch(
           `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
           {
@@ -516,7 +584,10 @@ const worker = {
         }
 
         const edgeHeaders = new Headers(corsHeaders);
-        const contentType = driveRes.headers.get('content-type') || 'image/webp';
+        const contentType = (driveRes.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        if (!ALLOWED_IMAGE_MIME_TYPES.has(contentType)) {
+          throw httpError('Unsupported media type', 415);
+        }
         edgeHeaders.set('Content-Type', contentType);
         edgeHeaders.set('Cache-Control', `public, max-age=${EDGE_IMAGE_CACHE_SECONDS}, immutable`);
         edgeHeaders.set('Content-Disposition', 'inline; filename="avatar.webp"');
@@ -549,6 +620,8 @@ const worker = {
         }
 
         const accessToken = await getAccessToken(env);
+        // Chỉ phục vụ file ảnh nằm trong thư mục Drive được phép (không cho đọc file bất kỳ của tài khoản OAuth)
+        await assertImageCanBeServed(accessToken, getRootFolderId(env), fileId);
         const driveRes = await fetch(
           `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
           {
@@ -561,7 +634,10 @@ const worker = {
         }
 
         const edgeHeaders = new Headers(corsHeaders);
-        const contentType = driveRes.headers.get('content-type') || 'image/jpeg';
+        const contentType = (driveRes.headers.get('content-type') || '').split(';')[0].trim().toLowerCase();
+        if (!ALLOWED_IMAGE_MIME_TYPES.has(contentType)) {
+          throw httpError('Unsupported media type', 415);
+        }
         edgeHeaders.set('Content-Type', contentType);
         edgeHeaders.set('Cache-Control', `public, max-age=${EDGE_IMAGE_CACHE_SECONDS}, immutable`);
         edgeHeaders.set('Content-Disposition', 'inline; filename="image"');
@@ -571,32 +647,14 @@ const worker = {
         return imageResponseForClient(response, corsHeaders);
       } catch (error) {
         const status = getErrorStatus(error);
-        const message = status === 401 ? 'Unauthorized' : status === 404 ? 'Image not found' : status === 403 ? 'Forbidden' : 'Error loading image';
+        const message = status === 401 ? 'Unauthorized' : status === 404 ? 'Image not found' : status === 403 ? 'Forbidden' : status === 415 ? 'Unsupported media type' : 'Error loading image';
         console.error('[CF WORKER] Image request failed:', getErrorMessage(error));
         return new Response(message, { status, headers: corsHeaders });
       }
     }
 
     if (request.method === 'POST' && url.pathname === '/upload') {
-      const authHeader = (request.headers.get('Authorization') || '').trim();
-      let isAuthorized = false;
-
-      const expectedSecret = (env.UPLOAD_SECRET || '').trim();
-      const jwtSecret = (env.JWT_SECRET || expectedSecret || '').trim();
-
-      if (expectedSecret && authMatches(authHeader, expectedSecret)) {
-        isAuthorized = true;
-      } else if (authHeader.startsWith('Bearer ')) {
-        const token = authHeader.slice(7).trim();
-        try {
-          const payload = await verifyJwtToken(token, jwtSecret);
-          if (payload && (payload.role === 'admin' || payload.scope === 'upload')) {
-            isAuthorized = true;
-          }
-        } catch (jwtErr) {
-          console.warn('[CF WORKER] JWT verify error:', jwtErr);
-        }
-      }
+      const isAuthorized = await isUploadAuthorized(request, env);
 
       if (!isAuthorized) {
         console.warn('[CF WORKER] Unauthorized upload request');
@@ -623,7 +681,7 @@ const worker = {
           return jsonResponse({ error: 'Invalid postId' }, 400, corsHeaders);
         }
 
-        validateUploadFiles(files);
+        await validateUploadFiles(files);
 
         const accessToken = await getAccessToken(env);
         const parentFolderId = getRootFolderId(env);
@@ -636,14 +694,15 @@ const worker = {
 
         const imageBaseUrl = (env.PUBLIC_IMAGE_BASE_URL || url.origin).replace(/\/+$/, '');
 
-        const uploadPromises = files.map(async (file, i) => {
-          const fileId = await uploadFileToDrive(accessToken, targetFolderId, postId, file, i, files.length);
+        // Tải lần lượt (không Promise.all) để không giữ nhiều file lớn trong bộ nhớ Worker (giới hạn 128MB) cùng lúc
+        const uploadedUrls = [];
+        for (let i = 0; i < files.length; i++) {
+          const fileId = await uploadFileToDrive(accessToken, targetFolderId, postId, files[i], i, files.length);
           if (!isAvatar) {
             await assertImageCanBeServed(accessToken, parentFolderId, fileId);
           }
-          return isAvatar ? `${imageBaseUrl}/avatar/${fileId}` : `${imageBaseUrl}/image/${fileId}`;
-        });
-        const uploadedUrls = await Promise.all(uploadPromises);
+          uploadedUrls.push(isAvatar ? `${imageBaseUrl}/avatar/${fileId}` : `${imageBaseUrl}/image/${fileId}`);
+        }
 
         console.log(`[CF WORKER] Uploaded ${uploadedUrls.length}/${files.length} image(s)`);
         return jsonResponse({ urls: uploadedUrls }, 200, corsHeaders);
@@ -656,25 +715,7 @@ const worker = {
     }
 
     if (request.method === 'GET' && url.pathname === '/sync') {
-      const authHeader = (request.headers.get('Authorization') || '').trim();
-      let isAuthorized = false;
-
-      const expectedSecret = (env.UPLOAD_SECRET || '').trim();
-      const jwtSecret = (env.JWT_SECRET || expectedSecret || '').trim();
-
-      if (expectedSecret && authMatches(authHeader, expectedSecret)) {
-        isAuthorized = true;
-      } else if (authHeader.startsWith('Bearer ')) {
-        const token = authHeader.slice(7).trim();
-        try {
-          const payload = await verifyJwtToken(token, jwtSecret);
-          if (payload && (payload.role === 'admin' || payload.scope === 'upload')) {
-            isAuthorized = true;
-          }
-        } catch (jwtErr) {
-          console.warn('[CF WORKER] JWT verify error:', jwtErr);
-        }
-      }
+      const isAuthorized = await isUploadAuthorized(request, env);
 
       if (!isAuthorized) {
         console.warn('[CF WORKER] Unauthorized sync request');

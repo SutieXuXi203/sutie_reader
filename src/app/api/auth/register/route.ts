@@ -1,11 +1,13 @@
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { randomInt } from 'node:crypto';
 import { sendVerificationEmail } from '@/lib/mail';
 import { registerSchema } from '@/lib/validations';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
+import { getClientIp } from '@/lib/clientIp';
+import { consumeAttempt } from '@/lib/rateLimit';
+import { hashPassword } from '@/lib/password';
 export async function POST(request: NextRequest) {
     try {
         await connectDB();
@@ -37,18 +39,12 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Vui lòng sử dụng tài khoản Gmail hợp lệ' }, { status: 400 });
         }
 
-        // Chống spam đăng ký gửi mail hàng loạt bằng RateLimit
-        const forwardedFor = request.headers.get('x-forwarded-for');
-        const realIp = request.headers.get('x-real-ip');
-        const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : (realIp || 'unknown');
-        const rateLimitKey = `register:${ip}`;
-        const { RateLimit } = await import('@/models/RateLimit');
-        let rateLimit = await RateLimit.findOne({ ip: rateLimitKey });
-
-        if (rateLimit && rateLimit.lockUntil && rateLimit.lockUntil > new Date()) {
-            const waitMinutes = Math.ceil((rateLimit.lockUntil.getTime() - Date.now()) / 60000);
+        // Chống spam đăng ký gửi mail hàng loạt: đếm lượt nguyên tử theo IP (tối đa 5 lượt / 15 phút)
+        const ip = getClientIp(request.headers);
+        const registerAttempt = await consumeAttempt(`register:${ip}`);
+        if (!registerAttempt.allowed) {
             return NextResponse.json(
-                { error: `Bạn đã thực hiện đăng ký quá nhiều lần. Vui lòng thử lại sau ${waitMinutes} phút.` },
+                { error: `Bạn đã thực hiện đăng ký quá nhiều lần. Vui lòng thử lại sau ${registerAttempt.retryAfterMinutes} phút.` },
                 { status: 429 }
             );
         }
@@ -59,7 +55,7 @@ export async function POST(request: NextRequest) {
                 return NextResponse.json({ error: 'Email đã được sử dụng' }, { status: 400 });
             }
         }
-        const hashedPassword = await bcrypt.hash(password, 12);
+        const hashedPassword = await hashPassword(password, 12);
         const verificationCode = randomInt(100000, 1000000).toString();
         const verificationExpiresAt = new Date(Date.now() + 15 * 60 * 1000);
         if (user) {
@@ -76,7 +72,7 @@ export async function POST(request: NextRequest) {
                 email: normalizedEmail,
                 password: hashedPassword,
                 name,
-                avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${name}`,
+                avatar: avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(name)}`,
                 role: 'guest',
                 isVerified: false,
                 verificationCode,
@@ -84,20 +80,6 @@ export async function POST(request: NextRequest) {
                 verificationAttempts: 0,
             });
         }
-
-        if (!rateLimit) {
-            rateLimit = new RateLimit({ ip: rateLimitKey, attempts: 1 });
-        } else {
-            if (rateLimit.lockUntil && rateLimit.lockUntil <= new Date()) {
-                rateLimit.attempts = 0;
-                rateLimit.lockUntil = undefined;
-            }
-            rateLimit.attempts += 1;
-            if (rateLimit.attempts >= 5) {
-                rateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
-            }
-        }
-        await rateLimit.save();
 
         try {
             await sendVerificationEmail(normalizedEmail, verificationCode);

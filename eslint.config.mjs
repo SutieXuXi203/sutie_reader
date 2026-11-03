@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     "build/**",
     "next-env.d.ts",
     "remove-comments.js",
+    // Công cụ/skill của AI agent (mã bên thứ ba, không phải mã ứng dụng)
+    ".agents/**",
   ]),
 ]);
 

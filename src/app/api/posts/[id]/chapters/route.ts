@@ -3,19 +3,12 @@ import { Post } from '@/models/Post';
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
-import { canViewPost, canViewChapter } from '@/lib/permissions';
+import { canViewPost, canViewChapter, type PostContext } from '@/lib/permissions';
 import { getPostChapters, ensureScrambledImageUrl, type NormalizedPostChapter } from '@/lib/utils';
 import { invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
+import { normalizeImages } from '@/lib/imageUrls';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
-
-const normalizeImages = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((img): img is string => typeof img === 'string')
-    .map((img) => img.trim())
-    .filter(Boolean);
-};
 
 const toPlainPost = (postDoc: unknown): Record<string, unknown> => {
   if (postDoc && typeof postDoc === 'object') {
@@ -28,7 +21,15 @@ const toPlainPost = (postDoc: unknown): Record<string, unknown> => {
   return {};
 };
 
-const serializePost = (postDoc: unknown) => {
+type SerializedPost = PostContext & {
+  chapters: NormalizedPostChapter[];
+  chapterCount: number;
+  content: string;
+  images: string[];
+  accessedUsers?: unknown;
+};
+
+const serializePost = (postDoc: unknown): SerializedPost => {
   const post = toPlainPost(postDoc);
   const chapters = getPostChapters(post);
   const firstChapter = chapters[0];
@@ -59,7 +60,7 @@ export async function GET(
     }
 
     const user = await getAuthUser(request);
-    const serialized: any = serializePost(post);
+    const serialized = serializePost(post);
     const decision = canViewPost(user, serialized);
 
     if (!decision.allowed) {
@@ -78,12 +79,12 @@ export async function GET(
     
     // Kiểm tra quyền từng chương và lọc dữ liệu nhạy cảm
     const safeChapters = chapters.map((chapter) => {
-      const chDecision = canViewChapter(user, serialized, chapter as any);
+      const chDecision = canViewChapter(user, serialized, chapter);
       const isAllowed = chDecision.allowed;
       const sanitizedSharedWith = user?.role === 'admin'
         ? chapter.sharedWith
         : (Array.isArray(chapter.sharedWith) && userEmail
-            ? chapter.sharedWith.filter((s: any) => (s.email || '').toLowerCase().trim() === userEmail)
+            ? chapter.sharedWith.filter((s) => (s.email || '').toLowerCase().trim() === userEmail)
             : []);
 
       return {
@@ -130,11 +131,6 @@ export async function POST(
       return NextResponse.json({ error: 'ID bài viết không hợp lệ' }, { status: 400 });
     }
 
-    const post = await Post.findById(id);
-    if (!post) {
-      return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
-    }
-
     const payload = await request.json();
     const content = typeof payload?.content === 'string' ? payload.content.trim() : '';
     const images = normalizeImages(payload?.images);
@@ -146,75 +142,107 @@ export async function POST(
       );
     }
 
-    const currentChapters = getPostChapters(post.toObject());
-    const existingNumbers = new Set(currentChapters.map((chapter) => chapter.chapterNumber));
-    const maxChapterNumber = currentChapters.reduce(
-      (max, chapter) => Math.max(max, chapter.chapterNumber),
-      0
-    );
-
-    const payloadNumber =
-      typeof payload?.chapterNumber === 'number' && Number.isFinite(payload.chapterNumber)
+    const requestedNumber =
+      typeof payload?.chapterNumber === 'number' && Number.isFinite(payload.chapterNumber) && payload.chapterNumber > 0
         ? Math.floor(payload.chapterNumber)
-        : maxChapterNumber + 1;
-    const chapterNumber = payloadNumber > 0 ? payloadNumber : maxChapterNumber + 1;
-
-    if (existingNumbers.has(chapterNumber)) {
-      return NextResponse.json(
-        { error: `Chương ${chapterNumber} đã tồn tại` },
-        { status: 409 }
-      );
-    }
+        : null;
 
     const title =
       typeof payload?.title === 'string' && payload.title.trim()
         ? payload.title.trim().slice(0, 120)
-        : `Chuong ${chapterNumber}`;
-
-    const translator =
-      typeof payload?.translator === 'string' && payload.translator.trim()
-        ? payload.translator.trim().slice(0, 100)
-        : post.translator || '';
+        : '';
 
     const accessType =
       payload?.accessType && ['inherit', 'restricted', 'public'].includes(payload.accessType)
         ? payload.accessType
         : 'inherit';
 
-    const newChapter: NormalizedPostChapter = {
-      title,
-      chapterNumber,
-      content,
-      images,
-      translator,
-      accessType,
-      sharedWith: [],
-    };
+    // Thêm chương bằng thao tác nguyên tử có điều kiện "chưa có chương mang số này": hai request song song
+    // không thể cùng chèn một số chương. Nếu số chương do server tự cấp thì tính lại và thử lại khi bị tranh chấp.
+    let newChapter: NormalizedPostChapter | null = null;
+    let postTitle = '';
 
-    const updatedPost = await Post.findByIdAndUpdate(
-      id,
-      {
-        $push: { chapters: newChapter },
-      },
-      { returnDocument: 'after', runValidators: true }
-    );
+    for (let attempt = 0; attempt < 20 && !newChapter; attempt++) {
+      if (attempt > 0) {
+        // Lùi ngẫu nhiên ngắn để các request tranh chấp cùng số chương không va chạm lại ngay
+        await new Promise((resolve) => setTimeout(resolve, Math.random() * 25));
+      }
 
+      const post = await Post.findById(id).select('title translator chapters.chapterNumber').lean();
+      if (!post) {
+        return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
+      }
+      postTitle = post.title;
+
+      const existingNumbers = (post.chapters || []).map((chapter) => chapter.chapterNumber);
+      const maxChapterNumber = existingNumbers.reduce((max, number) => Math.max(max, number), 0);
+      const chapterNumber = requestedNumber ?? maxChapterNumber + 1;
+
+      if (existingNumbers.includes(chapterNumber)) {
+        if (requestedNumber !== null) {
+          return NextResponse.json(
+            { error: `Chương ${chapterNumber} đã tồn tại` },
+            { status: 409 }
+          );
+        }
+        continue;
+      }
+
+      const candidate: NormalizedPostChapter = {
+        title: title || `Chuong ${chapterNumber}`,
+        chapterNumber,
+        content,
+        images,
+        translator:
+          typeof payload?.translator === 'string' && payload.translator.trim()
+            ? payload.translator.trim().slice(0, 100)
+            : post.translator || '',
+        accessType,
+        sharedWith: [],
+      };
+
+      const pushed = await Post.updateOne(
+        { _id: id, 'chapters.chapterNumber': { $ne: chapterNumber } },
+        {
+          $push: {
+            chapters: { $each: [candidate], $sort: { chapterNumber: 1 } },
+          },
+        },
+        { runValidators: true }
+      );
+
+      if (pushed.matchedCount > 0) {
+        newChapter = candidate;
+      } else if (requestedNumber !== null) {
+        return NextResponse.json(
+          { error: `Chương ${chapterNumber} đã tồn tại` },
+          { status: 409 }
+        );
+      }
+    }
+
+    if (!newChapter) {
+      return NextResponse.json(
+        { error: 'Không thể cấp số chương do có nhiều thao tác đồng thời. Vui lòng thử lại.' },
+        { status: 409 }
+      );
+    }
+
+    // Đồng bộ nội dung/ảnh "chương đầu" (trường cũ) theo chương có số nhỏ nhất; thao tác này idempotent
+    const updatedPost = await Post.findById(id);
     if (!updatedPost) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
-
-    const sortedChapters = [...updatedPost.chapters].sort((a, b) => a.chapterNumber - b.chapterNumber);
-    const firstChapter = sortedChapters[0];
-
-    const finalPost = await Post.findByIdAndUpdate(
-      id,
-      {
-        chapters: sortedChapters,
-        content: firstChapter?.content || '',
-        images: firstChapter?.images || [],
-      },
-      { returnDocument: 'after' }
-    ) || updatedPost;
+    const firstChapter = [...updatedPost.chapters].sort((a, b) => a.chapterNumber - b.chapterNumber)[0];
+    const finalPost =
+      (await Post.findByIdAndUpdate(
+        id,
+        {
+          content: firstChapter?.content || '',
+          images: firstChapter?.images || [],
+        },
+        { returnDocument: 'after' }
+      )) || updatedPost;
 
     invalidateApiCache('posts:');
 
@@ -226,7 +254,7 @@ export async function POST(
       request,
       user: authUser,
       details: {
-        'Bộ truyện': post.title,
+        'Bộ truyện': postTitle,
         'Số chương': newChapter.chapterNumber,
         'Tiêu đề chương': newChapter.title,
         'Số lượng ảnh': newChapter.images?.length || 0,
@@ -246,10 +274,6 @@ export async function POST(
       request,
       statusCode: 500,
     });
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { error: 'Thêm chương không thành công', details: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Thêm chương không thành công' }, { status: 500 });
   }
 }

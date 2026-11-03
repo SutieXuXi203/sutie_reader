@@ -14,6 +14,7 @@ import { cn, getOptimizedImageUrl, extractDriveImageId } from '@/lib/utils';
 import { notify } from '@/lib/notify';
 import { GlareHover } from '@/components/GlareHover';
 import { parseScrambleParams } from '@/lib/scramble';
+import type { UpdatedPostPayload } from '@/components/EditPostForm';
 const ScrambledCanvas = dynamic(() => import('@/components/ScrambledCanvas').then(m => ({ default: m.ScrambledCanvas })), { ssr: false });
 const EditPostForm = dynamic(() => import('@/components/EditPostForm').then(m => ({ default: m.EditPostForm })), { ssr: false });
 const DeleteConfirmDialog = dynamic(() => import('@/components/DeleteConfirmDialog').then(m => ({ default: m.DeleteConfirmDialog })), { ssr: false });
@@ -42,7 +43,7 @@ interface Post {
 interface PostCardProps {
   post: Post;
   onDelete: (id: string) => void;
-  onUpdate?: (updatedPost?: any) => void;
+  onUpdate?: (updatedPost?: UpdatedPostPayload | null) => void;
   availableTags?: string[];
   compact?: boolean;
   priority?: boolean;
@@ -249,7 +250,6 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
     () => normalizedTags.slice(2),
     [normalizedTags]
   );
-  const mobileRemainingCount = mobileRemainingTags.length;
   const desktopRemainingCount = desktopRemainingTags.length;
 
   const targetChapter = post.accessibleChapterNumbers && post.accessibleChapterNumbers.length > 0
@@ -571,7 +571,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
         <>
           {isEditOpen && (
           <EditPostForm
-            post={post as any}
+            post={post as unknown as React.ComponentProps<typeof EditPostForm>['post']}
             open={isEditOpen}
             onOpenChange={setIsEditOpen}
             onPostUpdated={(updated) => { setIsEditOpen(false); onUpdate?.(updated); }}

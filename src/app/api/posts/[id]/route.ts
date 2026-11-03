@@ -4,11 +4,12 @@ import { Bookmark } from '@/models/Bookmark';
 import { NextRequest, NextResponse, after } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { isAdmin, getAuthUser } from '@/lib/auth';
-import { canViewPost, canViewChapter } from '@/lib/permissions';
+import { canViewPost, canViewChapter, type PostContext } from '@/lib/permissions';
 import { getPostChapters, ensureScrambledImageUrl, type NormalizedPostChapter } from '@/lib/utils';
-import { getApiCache, setApiCache, invalidateApiCache } from '@/lib/api-cache';
+import { invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
-import { sendTelegramMessage, formatters, logApiError, logApiAction } from '@/lib/telegram';
+import { normalizeImages } from '@/lib/imageUrls';
+import { sendTelegramMessage, formatters, logApiError } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
 export const maxDuration = 60;
@@ -39,27 +40,6 @@ const normalizeTags = (value: unknown): string[] => {
     if (tags.length >= 20) break;
   }
   return tags;
-};
-
-const normalizeImages = (value: unknown): string[] => {
-  if (!Array.isArray(value)) return [];
-  return value
-    .filter((img): img is string => typeof img === 'string')
-    .map((img) => {
-      const trimmed = img.trim();
-      if (!trimmed) return '';
-      try {
-        const parsed = new URL(trimmed, 'https://dummy.com');
-        if (parsed.searchParams.has('sig')) {
-          parsed.search = '';
-          return parsed.origin === 'https://dummy.com' ? parsed.pathname : parsed.toString();
-        }
-      } catch (e) {
-        // ignore
-      }
-      return trimmed;
-    })
-    .filter(Boolean);
 };
 
 const normalizeChapter = (
@@ -137,7 +117,15 @@ const toPlainPost = (postDoc: unknown): Record<string, unknown> => {
   return {};
 };
 
-const serializePost = (postDoc: unknown) => {
+type SerializedPost = PostContext & {
+  chapters: NormalizedPostChapter[];
+  chapterCount: number;
+  content: string;
+  images: string[];
+  accessedUsers?: unknown;
+};
+
+const serializePost = (postDoc: unknown): SerializedPost => {
   const post = toPlainPost(postDoc);
   const chapters = getPostChapters(post);
   const firstChapter = chapters[0];
@@ -347,7 +335,7 @@ export async function GET(
     if (!post) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
-    const serialized: any = serializePost(post);
+    const serialized = serializePost(post);
 
 
     const user = await getAuthUser(request);
@@ -369,9 +357,9 @@ export async function GET(
       user &&
       Array.isArray(serialized.sharedWith) &&
       serialized.sharedWith.some(
-        (s: any) =>
+        (s) =>
           s.email?.toLowerCase().trim() === userEmail ||
-          (s.userId && s.userId.toString() === user.id)
+          (s.userId && String(s.userId) === user.id)
       )
     );
 
@@ -379,12 +367,12 @@ export async function GET(
       user &&
       Array.isArray(serialized.chapters) &&
       serialized.chapters.some(
-        (ch: any) =>
+        (ch) =>
           Array.isArray(ch.sharedWith) &&
           ch.sharedWith.some(
-            (s: any) =>
+            (s) =>
               s.email?.toLowerCase().trim() === userEmail ||
-              (s.userId && s.userId.toString() === user.id)
+              (s.userId && String(s.userId) === user.id)
           )
       )
     );
@@ -397,7 +385,7 @@ export async function GET(
       sharedWith: user?.role === 'admin'
         ? serialized.sharedWith
         : (isShared && Array.isArray(serialized.sharedWith)
-            ? serialized.sharedWith.filter((s: any) => s.email?.toLowerCase().trim() === userEmail)
+            ? serialized.sharedWith.filter((s) => s.email?.toLowerCase().trim() === userEmail)
             : undefined),
       accessedUsers: user?.role === 'admin' ? serialized.accessedUsers : undefined,
     };
@@ -417,13 +405,13 @@ export async function GET(
             sharedWith: user?.role === 'admin'
               ? chapter.sharedWith
               : (Array.isArray(chapter.sharedWith) && userEmail
-                  ? chapter.sharedWith.filter((s: any) => s.email?.toLowerCase().trim() === userEmail)
+                  ? chapter.sharedWith.filter((s) => s.email?.toLowerCase().trim() === userEmail)
                   : []),
           };
         })
       : [];
 
-    const firstUnlocked = safeChapters.find((c: any) => !c.isLocked);
+    const firstUnlocked = safeChapters.find((c) => !c.isLocked);
 
     result = {
       ...result,
@@ -600,6 +588,17 @@ export async function PUT(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
+    // Phát hiện ghi đè: nếu client gửi `expectedUpdatedAt` mà bài đã bị sửa bởi người/tiến trình khác -> 409
+    if (typeof payload?.expectedUpdatedAt === 'string' && existingPost.updatedAt) {
+      const expected = new Date(payload.expectedUpdatedAt).getTime();
+      if (!Number.isNaN(expected) && expected !== existingPost.updatedAt.getTime()) {
+        return NextResponse.json(
+          { error: 'Bài viết đã được người khác cập nhật. Vui lòng tải lại trang rồi thử lại.' },
+          { status: 409 }
+        );
+      }
+    }
+
     const normalizedTags = normalizeTags(payload?.tags);
     const normalizedAuthor =
       typeof payload?.author === 'string' && payload.author.trim()
@@ -712,13 +711,20 @@ export async function PUT(
       updatePayload.description = payload.description.trim().slice(0, 300);
     }
 
-    const updated = await Post.findByIdAndUpdate(id, updatePayload, {
+    // So sánh-và-ghi theo updatedAt đã đọc: nếu có tiến trình khác ghi xen giữa (vd. thêm chương) thì không ghi đè mất dữ liệu
+    const updated = await Post.findOneAndUpdate({ _id: id, updatedAt: existingPost.updatedAt }, updatePayload, {
       returnDocument: 'after',
       runValidators: true,
     });
 
     if (!updated) {
-      return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
+      const stillExists = await Post.exists({ _id: id });
+      return stillExists
+        ? NextResponse.json(
+            { error: 'Bài viết vừa được cập nhật bởi thao tác khác. Vui lòng thử lại.' },
+            { status: 409 }
+          )
+        : NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
     // Gửi thông báo Telegram trực tiếp nếu không có tác vụ upload ảnh từ client (đảm bảo hoàn thành trước khi response kết thúc trên serverless)
@@ -782,11 +788,7 @@ export async function PUT(
       request,
       statusCode: 500,
     });
-    const message = error instanceof Error ? error.message : 'Unknown error';
-    return NextResponse.json(
-      { error: 'Cập nhật bài viết không thành công', details: message },
-      { status: 500 }
-    );
+    return NextResponse.json({ error: 'Cập nhật bài viết không thành công' }, { status: 500 });
   }
 }
 

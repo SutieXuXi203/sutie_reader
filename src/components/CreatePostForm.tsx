@@ -104,7 +104,7 @@ export function CreatePostForm({
     }
   };
 
-  const handleDialogOpenChange = (nextOpen: boolean, eventDetails?: any) => {
+  const handleDialogOpenChange = (nextOpen: boolean, eventDetails?: { reason?: string }) => {
     if (!nextOpen && (eventDetails?.reason === 'outsidePress' || eventDetails?.reason === 'outside-press')) {
       return;
     }

@@ -1,17 +1,48 @@
 import { z } from 'zod';
 
+const ALLOWED_AVATAR_HOSTS = ['api.dicebear.com', 'lh3.googleusercontent.com'];
+
+/** Avatar dạng URL chỉ được trỏ tới https và tên miền đã biết (không cho URL tùy ý / theo dõi / scheme nguy hiểm). */
+export function isAllowedAvatarUrl(value: string): boolean {
+  if (value.length > 500) return false;
+  try {
+    const parsed = new URL(value);
+    if (parsed.protocol !== 'https:') return false;
+
+    const host = parsed.hostname.toLowerCase();
+    if (ALLOWED_AVATAR_HOSTS.includes(host) || host.endsWith('.workers.dev')) return true;
+
+    const workerUrl = process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL;
+    if (workerUrl) {
+      try {
+        return host === new URL(workerUrl).hostname.toLowerCase();
+      } catch {
+        return false;
+      }
+    }
+    return false;
+  } catch {
+    return false;
+  }
+}
+
 export const loginSchema = z.object({
-  email: z.string().trim().min(1, 'Vui lòng nhập email hoặc tên đăng nhập'),
-  password: z.string().min(1, 'Vui lòng nhập mật khẩu'),
+  email: z.string().trim().min(1, 'Vui lòng nhập email hoặc tên đăng nhập').max(254, 'Email quá dài'),
+  password: z.string().min(1, 'Vui lòng nhập mật khẩu').max(128, 'Mật khẩu quá dài'),
   rememberMe: z.boolean().optional(),
-  pin: z.string().optional(),
+  pin: z.string().max(32, 'Mã PIN không hợp lệ').optional(),
 });
 
 export const registerSchema = z.object({
-  email: z.string().trim().email('Email không hợp lệ'),
-  password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự'),
+  email: z.string().trim().email('Email không hợp lệ').max(254, 'Email quá dài'),
+  // bcrypt chỉ xử lý 72 byte đầu của mật khẩu
+  password: z.string().min(6, 'Mật khẩu phải có ít nhất 6 ký tự').max(72, 'Mật khẩu không được vượt quá 72 ký tự'),
   name: z.string().trim().min(1, 'Vui lòng nhập tên').max(50, 'Tên không được vượt quá 50 ký tự'),
-  avatar: z.string().url().optional().or(z.literal('')),
+  avatar: z
+    .string()
+    .refine(isAllowedAvatarUrl, 'Ảnh đại diện không hợp lệ')
+    .optional()
+    .or(z.literal('')),
 });
 
 export const postSchema = z.object({
@@ -47,7 +78,7 @@ export const updateTagSchema = z.object({
 });
 
 export const contactSchema = z.object({
-  name: z.string().min(1, 'Vui lòng cung cấp đầy đủ tên'),
-  email: z.string().email('Email không hợp lệ'),
-  message: z.string().min(1, 'Vui lòng cung cấp đầy đủ tin nhắn'),
+  name: z.string().trim().min(1, 'Vui lòng cung cấp đầy đủ tên').max(100, 'Tên không được vượt quá 100 ký tự'),
+  email: z.string().trim().email('Email không hợp lệ').max(254, 'Email quá dài'),
+  message: z.string().trim().min(1, 'Vui lòng cung cấp đầy đủ tin nhắn').max(5000, 'Tin nhắn không được vượt quá 5000 ký tự'),
 });

@@ -7,47 +7,68 @@
 ## 1. Bản Quyền Ảnh Truyện & Chống Leech (Anti-Scraper)
 
 * **Cơ chế Canvas Scrambler**:
-  * Tất cả các ảnh chương truyện lưu trữ trên Cloudflare Worker / Google Drive đều bị cắt thành ma trận các ô nhỏ (ví dụ $4 \times 4$ hoặc $6 \times 6$) và xáo trộn vị trí ngẫu nhiên.
-  * Chỉ trình duyệt người dùng truy cập hợp lệ mới nhận được tham số giải mã ma trận và ghép lại hình ảnh nguyên vẹn trên HTML5 Canvas qua component `ScrambledCanvas.tsx`.
-  * Trình thu thập tự động (crawler/scraper bot) tải về link `.webp` chỉ nhận được ảnh nát vụn.
+  * Ảnh chương truyện được server (`/api/image/[id]`) cắt thành ma trận ô nhỏ (mặc định $8 \times 8$) và xáo trộn vị trí; trình duyệt ghép lại trên HTML5 Canvas qua `ScrambledCanvas.tsx`.
+  * Seed xáo trộn do **server tự suy ra** (`deriveScrambleSeed`); tham số `seed/rows/cols` từ client bị bỏ qua.
+  * ⚠️ **Giới hạn đã biết**: thuật toán và muối nằm trong bundle client nên xáo trộn chỉ là *obfuscation* chống crawler tự động đơn giản, KHÔNG chống được người dùng có tài khoản chủ động đảo ngược. Không được quảng bá nó như một cơ chế mã hóa.
 * **Quy tắc tuyệt đối**:
-  * **KHÔNG BAO GIỜ** tạo endpoint public trả về ảnh gốc chưa xáo trộn.
-  * Tham số `pre_scrambled=1` chỉ được kích hoạt duy nhất cho người dùng mang vai trò `admin` có phiên đăng nhập hợp lệ.
+  * **KHÔNG BAO GIỜ** trả URL Cloudflare Worker (`https://<worker>/image/...`) cho trình duyệt: Worker phục vụ **ảnh gốc**. Mọi API gửi ảnh cho client phải dùng `signImageUrls()` / `protectedImageUrl()` (trả `/api/image/<id>.webp?...&pid=`). `createSignedWorkerImageUrl()` chỉ dùng server-to-server.
+  * **KHÔNG BAO GIỜ** để lỗi xáo trộn dẫn tới việc trả ảnh gốc (fail-closed).
+  * Tham số `pre_scrambled=1` / `raw=1` chỉ được kích hoạt cho người dùng `admin` có phiên hợp lệ.
+  * `/api/og-image/[postId]` là endpoint công khai duy nhất trả ảnh không xáo trộn: chỉ cho truyện `public`, chương không bị hạn chế, 600px, có giới hạn tần suất theo IP.
 
 ---
 
-## 2. Ký Số Đường Dẫn Ảnh (HMAC Signed URLs)
+## 2. Ký Số Đường Dẫn Ảnh (HMAC Signed URLs — server-to-server)
 
-* Tất cả đường dẫn ảnh truyện phục vụ qua Cloudflare Worker đều phải đi kèm chữ ký HMAC:
-  * Thời gian sống ngắn: **TTL 120 giây** (`IMAGE_SIGNED_URL_TTL_SECONDS=120`).
-  * Gắn liền chữ ký với địa chỉ IP và định danh User ID.
-  * Hết thời hạn 120s, đường dẫn lập tức bị vô hiệu hóa để chống copy link chia sẻ ra diễn đàn bên ngoài.
-* Giới hạn tần suất gọi ảnh: **360 ảnh / 60 giây** (`IMAGE_RATE_LIMIT_MAX=360`).
+* URL Worker được ký HMAC-SHA256 gồm: method, đường dẫn, thời điểm hết hạn, `sub` (user id).
+  * TTL mặc định **120 giây**, tối đa **600 giây** (`IMAGE_SIGNED_URL_TTL_SECONDS`); Worker từ chối `exp` xa hơn 600s.
+  * Chữ ký **không gắn IP** (vì URL chỉ đi từ server Next tới Worker, không bao giờ tới trình duyệt).
+* Giới hạn tần suất gọi ảnh: **360 ảnh / 60 giây / (user, IP)** (`IMAGE_RATE_LIMIT_MAX=360`), lưu trong RAM của instance.
+* Worker chỉ phục vụ **ảnh (png/jpeg/webp/gif/avif) nằm trong thư mục Drive gốc**; SVG và file khác bị từ chối (cả `/image` và `/avatar`).
+* Upload lên Worker chỉ chấp nhận: bí mật dùng chung server-to-server, hoặc token `scope: 'upload'` ngắn hạn (≤15 phút, bắt buộc có `exp`) do `/api/auth/token` cấp cho admin. Token phiên đăng nhập thường **không** được chấp nhận. File upload được kiểm tra bằng magic bytes, không tin `Content-Type` client khai báo.
 
 ---
 
 ## 3. Phân Quyền Truy Cập Đa Cấp (Granular RBAC)
 
-* **3 Vai trò chính**: `guest` (khách), `user` (thành viên đã xác thực OTP), `admin` (quản trị viên).
+* **3 Vai trò chính**: `guest` (khách), `user` (thành viên chính thức, **toàn quyền đọc** mọi truyện/chương), `admin` (quản trị viên).
 * **Phân quyền cấp truyện (`Post.accessType`)**:
   * `public`: Ai cũng có thể đọc truyện.
-  * `restricted`: Chỉ những người dùng có trong danh sách chia sẻ `sharedWith` (theo email/userId) hoặc Admin mới được đọc.
+  * `restricted`: `guest` chỉ được đọc nếu có trong `sharedWith` (theo email/userId); `user` và `admin` luôn được đọc.
 * **Phân quyền cấp chương (`Chapter.accessType`)**:
   * `inherit`: Thừa hưởng phân quyền từ đầu truyện.
-  * `restricted`: Chỉ những độc giả được cấp quyền riêng ở chương này mới được đọc.
-  * `public`: Cho phép đọc công khai (dành cho các chương mở đọc thử).
-* **Bảo vệ danh sách độc giả (`accessedUsers`)**:
-  * Thuộc tính `accessedUsers` ghi nhận ai đã đọc truyện.
-  * **TUYỆT ĐỐI KHÔNG** trả về danh sách này cho người dùng thường hoặc người xem qua link chia sẻ. Thuộc tính này chỉ dành riêng cho Admin.
+  * `restricted`: Chỉ người được cấp quyền riêng ở chương này (và admin/user) mới được đọc.
+  * `public`: Cho phép đọc công khai (chương mở đọc thử).
+* **Kiểm quyền ảnh (`/api/image/[id]`, `src/lib/imageAccess.ts`)** — áp dụng cho `guest`:
+  * Ảnh phải thuộc đúng bài/chương chứa nó; `pid` từ client chỉ là gợi ý tra cứu, **không bao giờ được tin**.
+  * Quyền được tính theo **từng chương**; thumbnail (`thumb=1`) chỉ được miễn quyền chương với **ảnh bìa** của bài mà guest xem được.
+  * Cache quyền theo `(user, ảnh, thumb)` TTL 60 giây; **lỗi DB ⇒ 503 (fail-closed)**, không bao giờ mặc định cho phép.
+* **Bảo vệ danh sách độc giả (`accessedUsers`)**: **TUYỆT ĐỐI KHÔNG** trả cho người dùng thường hoặc người xem qua link chia sẻ — chỉ Admin.
 
 ---
 
 ## 4. Chống Timing Attack & Brute-Force
 
-* **So sánh an toàn thời gian (`crypto.timingSafeEqual`)**:
-  * Khi kiểm tra mã OTP xác thực email hoặc mã PIN mở khóa website, bắt buộc dùng `crypto.timingSafeEqual` để chống việc hacker phân tích thời gian phản hồi microsecond nhằm dò tìm ký tự.
-* **Chống Brute-force mật khẩu**:
-  * Mọi lần nhập sai mật khẩu đều được ghi nhận theo định dạng `pwd:login:${ip}:${email}`.
-  * Tự động khóa 15 phút nếu nhập sai quá 5 lần liên tiếp.
-* **Bảo vệ mã PIN mở khóa (`UNLOCK_PIN`)**:
-  * Cookie `site_access_token` phải là **Signed JWT Token** có scope `site_unlock`, thời hạn xác định, không lưu cookie dạng chuỗi plaintext.
+* **So sánh an toàn thời gian**: dùng `safeEqual()` (`src/lib/password.ts`) / `crypto.timingSafeEqual` cho OTP, mã PIN, mật khẩu admin/test từ biến môi trường.
+* **Khóa brute-force phải NGUYÊN TỬ** (`src/lib/rateLimit.ts`): luôn gọi `consumeAttempt(key)` **trước** khi kiểm tra thông tin xác thực, `resetAttempts(key)` khi thành công. Tuyệt đối không viết kiểu "đọc bản ghi → tăng biến → `save()`" (N request song song sẽ chỉ bị đếm 1 lần).
+  * Khóa 15 phút sau 5 lượt: `pwd:login:${ip}:${email}`, `pin:login:${ip}:${email}`, `site-pin:${ip}`, `register:${ip}`, `contact:${ip}`. Hết khóa thì bộ đếm được làm lại.
+  * OTP email: tối đa 5 lượt/mã, giữ chỗ lượt bằng `findOneAndUpdate` có điều kiện `verificationAttempts < 5`.
+* **IP client**: chỉ lấy qua `getClientIp()` (`src/lib/clientIp.ts`), lấy phần tử do proxy tin cậy nối vào cuối `X-Forwarded-For` (`TRUSTED_PROXY_COUNT`, mặc định 1 = Vercel). Không bao giờ lấy phần tử đầu tiên.
+* **Mã PIN toàn site (`UNLOCK_PIN`)**:
+  * Cookie `site_access_token` phải là **Signed JWT** scope `site_unlock` (30 ngày). Proxy **không** được so sánh cookie với chính mã PIN.
+  * PIN chỉ được kiểm tra qua `verifySitePin()` (dùng chung cho `/api/unlock` và Server Action) để cùng một bộ đếm khóa.
+  * Các trang công khai có chủ đích, không qua cổng PIN: `/`, `/posts/*`, `/contact`, `/unlock`. Quyền đọc truyện vẫn kiểm ở server.
+  * `/api/auth/me` và `/api/auth/refresh` **không** cấp `site_access_token`: người mới được nâng quyền phải tự nhập PIN.
+  * ⚠️ PIN là một giá trị dùng chung (6 số), chỉ đóng vai trò cổng site, **không phải xác thực 2 lớp** thực sự cho từng người.
+
+---
+
+## 5. Các Quy Tắc Khác
+
+* **Redirect**: mọi `callbackUrl` phải qua `getSafeCallbackUrl()` (`src/lib/safeRedirect.ts`); từ chối ký tự điều khiển, `\`, `//`, URL tuyệt đối.
+* **Avatar**: data URL chỉ png/jpeg/webp, tối đa 2MB, kiểm magic bytes; avatar dạng URL chỉ `https` và host trong danh sách cho phép (`isAllowedAvatarUrl`). Đổi hồ sơ giới hạn 10 lần / 10 phút.
+* **`/api/telegram/log`** công khai (trang lỗi dùng khi chưa đăng nhập) nhưng giới hạn: 5 req/phút/IP (20 nếu đã đăng nhập), body ≤ 8KB, cắt độ dài mọi trường.
+* **Không lộ lỗi nội bộ**: không trả `error.message` thô cho client (`details`).
+* **JWT_SECRET** tối thiểu 32 ký tự (production sẽ từ chối khởi động nếu ngắn hơn).
+* **Dữ liệu ghi đồng thời** phải dùng thao tác nguyên tử có điều kiện (`$push` kèm `$ne`, `$inc`, `findOneAndUpdate` theo `updatedAt`), không "đọc-rồi-ghi-cả-mảng".
+* **Cache RAM** (`api-cache`, rate-limit ảnh, cache user) đều có trần kích thước; cache có dữ liệu phân quyền giữ TTL ngắn vì mỗi instance serverless có bộ nhớ riêng.

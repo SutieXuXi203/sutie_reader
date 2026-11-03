@@ -1,6 +1,6 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { canViewPost, filterPostsForUser, type AuthUserContext, type PostContext } from './permissions';
+import { canViewPost, type AuthUserContext, type PostContext } from './permissions';
 import { loginSchema, registerSchema } from './validations';
 
 describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
@@ -38,7 +38,7 @@ describe('Bảo Mật Bổ Sung (Security Enhancements)', () => {
   describe('2. Giới hạn số lần nhập sai mã OTP email (Max 5 attempts)', () => {
     it('tăng số lần thử khi nhập sai OTP và còn dưới 5 lần', () => {
       let verificationAttempts = 0;
-      let verificationCode: string | undefined = '123456';
+      const verificationCode: string | undefined = '123456';
 
       // Nhập sai lần 1
       verificationAttempts += 1;

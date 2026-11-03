@@ -1,5 +1,6 @@
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
+import { Bookmark } from '@/models/Bookmark';
 import { NextRequest, NextResponse } from 'next/server';
 import { isAdmin, getAuthUser } from '@/lib/auth';
 import { canModifyTargetUser } from '@/lib/permissions';
@@ -39,6 +40,8 @@ export async function DELETE(
         }
 
         await User.findByIdAndDelete(id);
+        // Dọn dữ liệu mồ côi của tài khoản đã xóa
+        await Bookmark.deleteMany({ userId: id });
         clearUserCache(id);
         invalidateApiCache('admin:users');
 

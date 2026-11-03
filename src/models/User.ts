@@ -86,7 +86,7 @@ UserSchema.index(
 );
 
 if (mongoose.models.User) {
-    delete (mongoose.models as any).User;
+    delete (mongoose.models as Record<string, unknown>).User;
 }
 
 export const User = mongoose.models.User || mongoose.model<IUser>('User', UserSchema);

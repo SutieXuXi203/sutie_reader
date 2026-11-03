@@ -34,7 +34,7 @@ export const uploadImages = async (
       batchFiles.map(async (file) => {
         try {
           const isAlreadySmallWebp = file.type === 'image/webp' && file.size <= 400 * 1024;
-          if (isAlreadySmallWebp || (file as any).skipCompression) return file;
+          if (isAlreadySmallWebp || (file as File & { skipCompression?: boolean }).skipCompression) return file;
 
           const compressedBlob = await imageCompression(file, {
             maxSizeMB: 0.8,

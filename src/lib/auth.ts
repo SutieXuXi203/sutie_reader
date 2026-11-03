@@ -1,6 +1,6 @@
 import { NextRequest } from 'next/server';
 
-import { getCurrentUserFromToken, getSessionUserFromToken, type AuthUser } from '@/lib/server-auth';
+import { getCurrentUserFromToken, type AuthUser } from '@/lib/server-auth';
 
 export async function getAuthUser(request: NextRequest): Promise<AuthUser | null> {
     const token = request.cookies.get('token')?.value;

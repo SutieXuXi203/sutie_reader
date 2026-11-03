@@ -46,7 +46,8 @@ export async function connectDB() {
     cached.uri = MONGODB_URI;
     cached.promise = mongoose.connect(MONGODB_URI, {
       bufferCommands: false,
-      autoIndex: process.env.NODE_ENV !== 'production',
+      // Luôn đảm bảo index (unique email, unique rate-limit key, TTL) tồn tại; tắt bằng MONGOOSE_AUTO_INDEX=false nếu cần
+      autoIndex: process.env.MONGOOSE_AUTO_INDEX !== 'false',
       maxPoolSize: 10,
       serverSelectionTimeoutMS: 5000,
       connectTimeoutMS: 10000,

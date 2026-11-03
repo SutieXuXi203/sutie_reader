@@ -34,7 +34,7 @@ const RoleSchema = new Schema<IRole>(
 );
 
 if (mongoose.models.Role) {
-  delete (mongoose.models as any).Role;
+  delete (mongoose.models as Record<string, unknown>).Role;
 }
 
 export const Role = mongoose.models.Role || mongoose.model<IRole>('Role', RoleSchema, 'roles');

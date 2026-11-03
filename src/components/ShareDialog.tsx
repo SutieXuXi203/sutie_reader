@@ -4,7 +4,6 @@ import { useState, useEffect, useCallback, useMemo, useDeferredValue } from 'rea
 import {
   Dialog,
   DialogContent,
-  DialogHeader,
   DialogTitle,
   DialogDescription,
 } from '@/components/ui/dialog';
@@ -22,12 +21,9 @@ import {
   Globe,
   Link as LinkIcon,
   Check,
-  UserPlus,
   Trash2,
   Loader2,
   Shield,
-  HelpCircle,
-  ChevronDown,
   X,
   Users,
   Search,
@@ -35,7 +31,6 @@ import {
   Clock,
   UserX,
 } from 'lucide-react';
-import { AnimatedUser, AnimatedShare } from '@/components/animate-ui/icons/AnimateIcon';
 import { motion, AnimatePresence } from 'framer-motion';
 import Image from 'next/image';
 import { useAuth } from '@/providers/AuthContext';
@@ -160,8 +155,8 @@ export function ShareDialog({
         const err = await res.json().catch(() => ({}));
         notify.error(err.error || 'Không thể tải thông tin chia sẻ');
       }
-    } catch (err: any) {
-      if (err?.name === 'AbortError') return;
+    } catch (err: unknown) {
+      if ((err as { name?: string } | null)?.name === 'AbortError') return;
       console.error('Lỗi khi tải thông tin chia sẻ:', err);
       notify.error('Lỗi kết nối máy chủ');
     } finally {

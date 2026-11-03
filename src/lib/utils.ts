@@ -88,25 +88,32 @@ export function getOptimizedImageUrl(url: string): string {
   return url;
 }
 
-export function ensureScrambledImageUrl(url: string): string {
+/**
+ * URL ảnh truyện an toàn gửi cho trình duyệt: luôn đi qua `/api/image/<id>` (kiểm quyền + xáo trộn phía server).
+ * `postId` (nếu có) được đính kèm dưới dạng `pid` để route tra cứu bài viết bằng _id index; nếu không truyền,
+ * giữ lại `pid` đã có trong URL gốc.
+ */
+export function protectedImageUrl(url: string, postId?: string): string {
   if (!url) return '';
   const fileId = extractDriveImageId(url);
   if (!fileId) return url;
 
-  // Giữ lại `pid` nếu có trong URL gốc — image route dùng để tra cứu quyền O(1) thay vì $regex
-  let pidSuffix = '';
-  if (url.includes('pid=') || url.includes('?pid') || url.includes('&pid')) {
+  let pid = postId || '';
+  if (!pid && (url.includes('pid=') || url.includes('?pid') || url.includes('&pid'))) {
     try {
-      const u = new URL(url, 'http://localhost');
-      const pid = u.searchParams.get('pid');
-      if (pid) pidSuffix = `&pid=${encodeURIComponent(pid)}`;
+      pid = new URL(url, 'http://localhost').searchParams.get('pid') || '';
     } catch {
       // ignore
     }
   }
+  const pidSuffix = pid ? `&pid=${encodeURIComponent(pid)}` : '';
 
   // Comic chapter reader: full-resolution image URL (looks completely standard to crawlers, no scramble parameter)
   return `/api/image/${encodeURIComponent(fileId)}.webp?v=${PROTECTED_IMAGE_URL_VERSION}${pidSuffix}`;
+}
+
+export function ensureScrambledImageUrl(url: string): string {
+  return protectedImageUrl(url);
 }
 
 export function normalizeSearchText(value: string): string {
@@ -148,11 +155,25 @@ export type NormalizedPostChapter = {
   }>;
 };
 
-type PostChapterLike = Partial<NormalizedPostChapter> & {
+type PostShareLike = {
+  email?: unknown;
+  userId?: unknown;
+  role?: unknown;
+  addedAt?: unknown;
+};
+
+type PostChapterLike = Omit<
+  Partial<NormalizedPostChapter>,
+  "_id" | "images" | "translator" | "sharedWith"
+> & {
+  _id?: unknown;
   images?: unknown;
+  translator?: unknown;
+  sharedWith?: unknown;
 };
 
 type PostWithChaptersLike = {
+  translator?: unknown;
   chapters?: unknown;
   content?: unknown;
   images?: unknown;
@@ -190,14 +211,14 @@ export function getPostChapters(
           ? chapter.title.trim()
           : defaultTitle;
       const translator =
-        typeof (chapter as any).translator === "string" && (chapter as any).translator.trim()
-          ? (chapter as any).translator.trim()
-          : typeof (post as any)?.translator === "string" && (post as any).translator.trim()
-          ? (post as any).translator.trim()
+        typeof chapter.translator === "string" && chapter.translator.trim()
+          ? chapter.translator.trim()
+          : typeof post.translator === "string" && post.translator.trim()
+          ? post.translator.trim()
           : "";
-      const accessType = (chapter as any).accessType || "inherit";
-      const sharedWith = Array.isArray((chapter as any).sharedWith)
-        ? (chapter as any).sharedWith.map((s: any) => ({
+      const accessType = chapter.accessType || "inherit";
+      const sharedWith = Array.isArray(chapter.sharedWith)
+        ? (chapter.sharedWith as Array<PostShareLike | null | undefined>).map((s) => ({
             email: typeof s?.email === "string" ? s.email.trim() : "",
             userId: s?.userId ? String(s.userId) : undefined,
             role: typeof s?.role === "string" ? s.role : "viewer",
@@ -206,7 +227,7 @@ export function getPostChapters(
               : (typeof s?.addedAt === "string" ? s.addedAt : undefined),
           }))
         : [];
-      const chapterId = (chapter as any)._id ? String((chapter as any)._id) : undefined;
+      const chapterId = chapter._id ? String(chapter._id) : undefined;
 
       return {
         _id: chapterId,
@@ -239,7 +260,7 @@ export function getPostChapters(
       chapterNumber: 1,
       content: legacyContent,
       images: legacyImages,
-      translator: typeof (post as any)?.translator === "string" ? (post as any).translator.trim() : "",
+      translator: typeof post.translator === "string" ? post.translator.trim() : "",
       accessType: "inherit",
       sharedWith: [],
     },

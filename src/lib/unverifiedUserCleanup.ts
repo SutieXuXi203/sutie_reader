@@ -52,11 +52,15 @@ export async function handleExpiredUnverifiedUser(
 export async function cleanupExpiredUnverifiedUsers(
   trigger: AutoDeletionTrigger = 'system'
 ): Promise<{ deletedCount: number; backfilledCount: number }> {
-  const unverifiedUsers = await User.find({ isVerified: false });
+  // Chỉ lấy tài khoản đã hết hạn hoặc chưa có hạn (cần backfill); duyệt bằng cursor để không nạp toàn bộ vào RAM
+  const unverifiedUsers = User.find({
+    isVerified: false,
+    $or: [{ verificationExpiresAt: { $lte: new Date() } }, { verificationExpiresAt: { $exists: false } }],
+  }).cursor();
   let deletedCount = 0;
   let backfilledCount = 0;
 
-  for (const user of unverifiedUsers) {
+  for await (const user of unverifiedUsers) {
     const result = await handleExpiredUnverifiedUser(user, trigger);
 
     if (result.deleted) {

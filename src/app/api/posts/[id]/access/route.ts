@@ -1,10 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { ObjectId } from 'mongodb';
 import { connectDB } from '@/lib/db';
-import { Post } from '@/models/Post';
+import { Post, type IPostAccessedUser } from '@/models/Post';
 import { getAuthUser, isAdmin } from '@/lib/auth';
-import { canViewPost } from '@/lib/permissions';
+import { canViewPost, type PostContext } from '@/lib/permissions';
 import { logApiError } from '@/lib/telegramLogger';
+import { recordPostAccess } from '@/lib/trackAccess';
 
 export async function POST(
   request: NextRequest,
@@ -31,7 +32,7 @@ export async function POST(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
-    const decision = canViewPost(user, postForCheck as any);
+    const decision = canViewPost(user, postForCheck as PostContext);
     if (!decision.allowed) {
       return NextResponse.json(
         { error: decision.reason, message: decision.message },
@@ -39,61 +40,13 @@ export async function POST(
       );
     }
 
-    const normalizedEmail = user.email.toLowerCase().trim();
-    const now = new Date();
-    const displayName = user.name || normalizedEmail.split('@')[0];
-    const avatar = user.avatar || '';
-    const role = user.role || 'guest';
-    const userId = user.id && ObjectId.isValid(user.id) ? new ObjectId(user.id) : undefined;
-
-    // Kiểm tra xem user đã có trong accessedUsers chưa
-    const existingEntry = (postForCheck.accessedUsers || []).find(
-      (u: any) => u.email?.toLowerCase() === normalizedEmail
-    );
-
-    if (existingEntry !== undefined) {
-      // Cập nhật atomic bằng positional operator — chỉ ghi đúng record cần update
-      await Post.updateOne(
-        { _id: new ObjectId(id), 'accessedUsers.email': normalizedEmail },
-        {
-          $set: {
-            'accessedUsers.$.lastAccessedAt': now,
-            'accessedUsers.$.name': displayName,
-            'accessedUsers.$.avatar': avatar,
-            'accessedUsers.$.role': role,
-            ...(userId ? { 'accessedUsers.$.userId': userId } : {}),
-          },
-        }
-      );
-    } else {
-      // Thêm mới vào mảng — giữ tối đa 50 entries, sắp xếp giảm dần theo lastAccessedAt
-      const newEntry = {
-        ...(userId ? { userId } : {}),
-        email: normalizedEmail,
-        name: displayName,
-        avatar,
-        role,
-        lastAccessedAt: now,
-      };
-      await Post.updateOne(
-        { _id: new ObjectId(id) },
-        {
-          $push: {
-            accessedUsers: {
-              $each: [newEntry],
-              $sort: { lastAccessedAt: -1 },
-              $slice: 50,
-            },
-          },
-        }
-      );
-    }
+    await recordPostAccess(id, user);
 
     // Chỉ admin mới nhận danh sách đầy đủ — query lại sau khi update để dữ liệu chính xác
     let mappedAccessedUsers: object[] = [];
     if (user.role === 'admin') {
       const updated = await Post.findById(id).select('accessedUsers').lean();
-      mappedAccessedUsers = ((updated?.accessedUsers as any[]) || []).map((u: any) => ({
+      mappedAccessedUsers = ((updated?.accessedUsers as IPostAccessedUser[]) || []).map((u: IPostAccessedUser) => ({
         userId: u.userId ? u.userId.toString() : undefined,
         email: u.email,
         name: u.name || u.email.split('@')[0],
@@ -146,7 +99,7 @@ export async function GET(
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
     }
 
-    const mappedAccessedUsers = (post.accessedUsers || []).map((u: any) => ({
+    const mappedAccessedUsers = (post.accessedUsers || []).map((u: IPostAccessedUser) => ({
       userId: u.userId ? u.userId.toString() : undefined,
       email: u.email,
       name: u.name || u.email.split('@')[0],
