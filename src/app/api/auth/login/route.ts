@@ -1,15 +1,17 @@
 import { connectDB } from '@/lib/db';
 import { handleExpiredUnverifiedUser } from '@/lib/unverifiedUserCleanup';
 import { User } from '@/models/User';
-import { RateLimit } from '@/models/RateLimit';
 import { NextRequest, NextResponse } from 'next/server';
-import bcrypt from 'bcryptjs';
 import { SignJWT } from 'jose';
 import { loginSchema } from '@/lib/validations';
 import { getJwtSecret, createSiteAccessToken } from '@/lib/server-auth';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
+import { getClientIp } from '@/lib/clientIp';
+import { consumeAttempt, resetAttempts } from '@/lib/rateLimit';
+import { hashPassword, verifyPassword, safeEqual } from '@/lib/password';
 
-import crypto from 'node:crypto';
+// Hash giả để thời gian phản hồi của email không tồn tại gần bằng email tồn tại (chống dò tài khoản qua timing)
+const DUMMY_PASSWORD_HASH = '$2b$12$op7CDRh7QFJbwSmypJEMIOAsxUv6vUotgp0/ZbVpYJx5g9TALHTTe';
 
 export async function POST(request: NextRequest) {
   try {
@@ -21,37 +23,21 @@ export async function POST(request: NextRequest) {
     }
     const { email, password, rememberMe, pin } = parseResult.data;
 
-    const forwardedFor = request.headers.get('x-forwarded-for');
-    const realIp = request.headers.get('x-real-ip');
-    const ip = forwardedFor ? forwardedFor.split(',')[0].trim() : (realIp || 'unknown');
+    const ip = getClientIp(request.headers);
     const normalizedEmail = email.toLowerCase().trim();
     const pwdRateLimitKey = `pwd:login:${ip}:${normalizedEmail}`;
 
-    let pwdRateLimit = await RateLimit.findOne({ ip: pwdRateLimitKey });
-    if (pwdRateLimit && pwdRateLimit.lockUntil && pwdRateLimit.lockUntil > new Date()) {
-      const waitMinutes = Math.ceil((pwdRateLimit.lockUntil.getTime() - Date.now()) / 60000);
+    // Lượt thử được tính nguyên tử TRƯỚC khi kiểm tra mật khẩu: N request song song chỉ có tối đa 5 request được xử lý
+    const pwdAttempt = await consumeAttempt(pwdRateLimitKey);
+    if (!pwdAttempt.allowed) {
       return NextResponse.json(
-        { error: `Bạn đã nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau ${waitMinutes} phút.` },
+        { error: `Bạn đã nhập sai mật khẩu quá nhiều lần. Vui lòng thử lại sau ${pwdAttempt.retryAfterMinutes} phút.` },
         { status: 429 }
       );
     }
 
-    const recordFailedPassword = async () => {
-      if (!pwdRateLimit) {
-        pwdRateLimit = new RateLimit({ ip: pwdRateLimitKey, attempts: 1 });
-      } else {
-        if (pwdRateLimit.lockUntil && pwdRateLimit.lockUntil <= new Date()) {
-          pwdRateLimit.attempts = 0;
-          pwdRateLimit.lockUntil = undefined;
-        }
-        pwdRateLimit.attempts += 1;
-        if (pwdRateLimit.attempts >= 5) {
-          pwdRateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
-        }
-      }
-      await pwdRateLimit.save();
-
-      if (pwdRateLimit.attempts >= 5) {
+    const failedPasswordResponse = () => {
+      if (pwdAttempt.locked) {
         void logApiAction({
           module: 'Bảo mật tài khoản (Auth)',
           action: 'Khóa đăng nhập do nhập sai mật khẩu 5 lần',
@@ -70,7 +56,7 @@ export async function POST(request: NextRequest) {
         );
       }
       return NextResponse.json(
-        { error: `Email hoặc mật khẩu không đúng (còn ${5 - pwdRateLimit.attempts} lần thử)` },
+        { error: `Email hoặc mật khẩu không đúng (còn ${pwdAttempt.remaining} lần thử)` },
         { status: 401 }
       );
     };
@@ -83,8 +69,8 @@ export async function POST(request: NextRequest) {
     const isAdminAccount = Boolean(adminUsername && normalizedEmail === adminUsername);
     const isTestAccount = Boolean(testUsername && normalizedEmail === testUsername);
 
-    const isAdminInput = isAdminAccount && password === adminPassword;
-    const isTestInput = isTestAccount && password === testPassword;
+    const isAdminInput = isAdminAccount && Boolean(adminPassword) && safeEqual(password, adminPassword);
+    const isTestInput = isTestAccount && Boolean(testPassword) && safeEqual(password, testPassword);
 
     if (!isAdminAccount && !isTestAccount && !normalizedEmail.endsWith('@gmail.com')) {
       return NextResponse.json({ error: 'Vui lòng sử dụng tài khoản Gmail hợp lệ' }, { status: 400 });
@@ -97,7 +83,7 @@ export async function POST(request: NextRequest) {
       isMatch = true;
 
       if (!user) {
-        const hashedPassword = await bcrypt.hash(password, 12);
+        const hashedPassword = await hashPassword(password, 12);
         user = new User({
           email: normalizedEmail,
           password: hashedPassword,
@@ -115,7 +101,7 @@ export async function POST(request: NextRequest) {
       isMatch = true;
 
       if (!user) {
-        const hashedPassword = await bcrypt.hash(password, 12);
+        const hashedPassword = await hashPassword(password, 12);
         user = new User({
           email: normalizedEmail,
           password: hashedPassword,
@@ -134,9 +120,9 @@ export async function POST(request: NextRequest) {
           user.isVerified = true;
           shouldSave = true;
         }
-        const isDbPasswordMatch = user.password ? await bcrypt.compare(password, user.password) : false;
+        const isDbPasswordMatch = await verifyPassword(password, user.password);
         if (!isDbPasswordMatch) {
-          user.password = await bcrypt.hash(password, 12);
+          user.password = await hashPassword(password, 12);
           shouldSave = true;
         }
         if (shouldSave) {
@@ -145,10 +131,11 @@ export async function POST(request: NextRequest) {
       }
     } else {
       if (!user) {
-        return await recordFailedPassword();
+        await verifyPassword(password, DUMMY_PASSWORD_HASH);
+        return failedPasswordResponse();
       }
 
-      isMatch = await bcrypt.compare(password, user.password);
+      isMatch = await verifyPassword(password, user.password);
 
       if (isMatch && user.role !== 'admin' && !user.isVerified) {
         const isExpiredAccountDeleted = await handleExpiredUnverifiedUser(user, 'login');
@@ -171,32 +158,18 @@ export async function POST(request: NextRequest) {
     }
 
     if (!isMatch) {
-      return await recordFailedPassword();
+      return failedPasswordResponse();
     }
 
-    // Đăng nhập thành công mật khẩu -> xóa rate limit mật khẩu nếu có
-    if (pwdRateLimit) {
-      await RateLimit.deleteOne({ ip: pwdRateLimitKey });
-    }
+    // Đăng nhập thành công mật khẩu -> xóa bộ đếm sai mật khẩu
+    await resetAttempts(pwdRateLimitKey);
 
     // Kiểm tra yêu cầu mã PIN đối với role admin và user, hoặc tài khoản test
-    const SECRET_PIN = process.env.UNLOCK_PIN;
+    const SECRET_PIN = process.env.UNLOCK_PIN?.trim();
     const isFullAccessRole = user.role === 'admin' || user.role === 'user';
     const shouldRequirePin = (isFullAccessRole || isTestAccount) && Boolean(SECRET_PIN);
 
     if (shouldRequirePin && SECRET_PIN) {
-      const rateLimitKey = `pin:login:${ip}:${normalizedEmail}`;
-
-      let rateLimit = await RateLimit.findOne({ ip: rateLimitKey });
-
-      if (rateLimit && rateLimit.lockUntil && rateLimit.lockUntil > new Date()) {
-        const waitMinutes = Math.ceil((rateLimit.lockUntil.getTime() - Date.now()) / 60000);
-        return NextResponse.json(
-          { error: `Bạn đã nhập sai mã PIN quá nhiều lần. Vui lòng thử lại sau ${waitMinutes} phút.` },
-          { status: 429 }
-        );
-      }
-
       if (!pin) {
         return NextResponse.json({
           requirePin: true,
@@ -204,28 +177,18 @@ export async function POST(request: NextRequest) {
         });
       }
 
-      const pinBuffer = Buffer.from(pin.trim());
-      const secretBuffer = Buffer.from(SECRET_PIN.trim());
-      const isPinMatch =
-        pinBuffer.length === secretBuffer.length &&
-        crypto.timingSafeEqual(pinBuffer, secretBuffer);
+      const pinRateLimitKey = `pin:login:${ip}:${normalizedEmail}`;
+      const pinAttempt = await consumeAttempt(pinRateLimitKey);
 
-      if (!isPinMatch) {
-        if (!rateLimit) {
-          rateLimit = new RateLimit({ ip: rateLimitKey, attempts: 1 });
-        } else {
-          if (rateLimit.lockUntil && rateLimit.lockUntil <= new Date()) {
-            rateLimit.attempts = 0;
-            rateLimit.lockUntil = undefined;
-          }
-          rateLimit.attempts += 1;
-          if (rateLimit.attempts >= 5) {
-            rateLimit.lockUntil = new Date(Date.now() + 15 * 60 * 1000);
-          }
-        }
-        await rateLimit.save();
+      if (!pinAttempt.allowed) {
+        return NextResponse.json(
+          { error: `Bạn đã nhập sai mã PIN quá nhiều lần. Vui lòng thử lại sau ${pinAttempt.retryAfterMinutes} phút.` },
+          { status: 429 }
+        );
+      }
 
-        if (rateLimit.attempts >= 5) {
+      if (!safeEqual(pin.trim(), SECRET_PIN)) {
+        if (pinAttempt.locked) {
           void logApiAction({
             module: 'Bảo mật tài khoản (Auth)',
             action: 'Khóa đăng nhập do nhập sai mã PIN 5 lần',
@@ -245,14 +208,12 @@ export async function POST(request: NextRequest) {
         }
 
         return NextResponse.json(
-          { error: `Mã PIN bảo mật không chính xác (còn ${5 - rateLimit.attempts} lần thử)` },
+          { error: `Mã PIN bảo mật không chính xác (còn ${pinAttempt.remaining} lần thử)` },
           { status: 401 }
         );
       }
 
-      if (rateLimit) {
-        await RateLimit.deleteOne({ ip: rateLimitKey });
-      }
+      await resetAttempts(pinRateLimitKey);
     }
 
     const token = await new SignJWT({

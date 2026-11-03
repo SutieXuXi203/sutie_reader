@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { getAuthUser } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
-import { canViewPost } from '@/lib/permissions';
+import { canViewPost, type PostContext } from '@/lib/permissions';
 import { logApiError } from '@/lib/telegramLogger';
 
 type BookmarkLean = {
@@ -30,7 +30,7 @@ export async function GET(
         if (!post) {
             return NextResponse.json(null);
         }
-        const decision = canViewPost(user, post as any);
+        const decision = canViewPost(user, post as PostContext);
         if (!decision.allowed) {
             return NextResponse.json(null);
         }

@@ -1,9 +1,9 @@
 import { createHmac } from 'node:crypto';
-import { extractDriveImageId } from './utils';
+import { extractDriveImageId, protectedImageUrl } from './utils';
 
 const IMAGE_SIGNATURE_VERSION = 'v1';
-const DEFAULT_IMAGE_URL_TTL_SECONDS = 3600;
-const MAX_IMAGE_URL_TTL_SECONDS = 86400;
+const DEFAULT_IMAGE_URL_TTL_SECONDS = 120;
+const MAX_IMAGE_URL_TTL_SECONDS = 600;
 
 function getPositiveIntegerEnv(name: string, fallback: number): number {
   const raw = process.env[name];
@@ -58,6 +58,10 @@ export function signImageRequest(
     .digest('base64url');
 }
 
+/**
+ * Tạo URL Worker đã ký. CHỈ dùng phía server (server-to-server): Worker trả ảnh gốc chưa xáo trộn nên URL này
+ * tuyệt đối không được đưa vào phản hồi gửi cho trình duyệt.
+ */
 export function createSignedWorkerImageUrl({
   workerBaseUrl,
   fileId,
@@ -81,54 +85,14 @@ export function createSignedWorkerImageUrl({
 }
 
 /**
- * Tạo signed URL cho danh sách ảnh.
+ * Chuyển danh sách ảnh trong DB thành URL gửi cho client.
  *
- * @param postId - ID bài viết chứa ảnh. Khi được cung cấp, sẽ được đính kèm vào URL
- *   dưới dạng `?pid=` để image route (/api/image/[id]) có thể kiểm tra quyền
- *   bằng findById (O(1) index) thay vì $regex scan toàn collection.
+ * Trả về `/api/image/<id>.webp?...&pid=` (đi qua route kiểm quyền + xáo trộn phía server), KHÔNG trả URL Worker:
+ * Worker phục vụ ảnh gốc, nếu lộ ra client thì cơ chế xáo trộn chống leech bị vô hiệu.
+ *
+ * @param postId - ID bài viết, đính kèm dưới dạng `?pid=` để route ảnh tra cứu bài bằng _id index (O(1)).
  */
-export function signImageUrls(urls: string[], userId: string, postId?: string): string[] {
+export function signImageUrls(urls: string[], _userId: string, postId?: string): string[] {
   if (!urls || urls.length === 0) return [];
-  const workerBaseUrl =
-    process.env.CLOUDFLARE_WORKER_URL ||
-    process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
-    '';
-
-  return urls.map((url) => {
-    const fileId = extractDriveImageId(url);
-    if (!fileId) return url;
-    try {
-      const signed = createSignedWorkerImageUrl({
-        workerBaseUrl,
-        fileId,
-        subject: userId,
-      });
-
-      const signedUrl = new URL(signed);
-
-      // Merge params từ URL gốc (nếu có), không ghi đè params signing
-      if (url.includes('?')) {
-        try {
-          const originalUrl = new URL(url, 'http://localhost');
-          originalUrl.searchParams.forEach((val, key) => {
-            if (!signedUrl.searchParams.has(key)) {
-              signedUrl.searchParams.set(key, val);
-            }
-          });
-        } catch {
-          // ignore, dùng signed URL gốc
-        }
-      }
-
-      // Đính kèm postId để image route tra cứu bằng _id index thay vì $regex
-      if (postId) {
-        signedUrl.searchParams.set('pid', postId);
-      }
-
-      return signedUrl.toString();
-    } catch (e) {
-      console.error('Error signing image URL:', e);
-      return url;
-    }
-  });
+  return urls.map((url) => (extractDriveImageId(url) ? protectedImageUrl(url, postId) : url));
 }

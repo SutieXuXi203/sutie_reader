@@ -21,7 +21,6 @@ export const ScrambledCanvas = React.memo(function ScrambledCanvas({
   seedKey,
   rows = 8,
   cols = 8,
-  alt = 'Trang truyện',
   idx = 0,
   className = 'w-full h-auto block select-none',
   onLoad,

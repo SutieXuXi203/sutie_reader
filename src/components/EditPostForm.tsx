@@ -27,6 +27,15 @@ export interface ChapterImage {
   file?: File; // only present if isNew is true
 }
 
+interface ChapterShare {
+  email?: string;
+  userId?: string;
+  role?: string;
+  addedAt?: string;
+}
+
+type FileWithSkipCompression = File & { skipCompression?: boolean };
+
 interface Chapter {
   _id?: string;
   title: string;
@@ -35,7 +44,7 @@ interface Chapter {
   images: string[];
   translator?: string;
   accessType?: 'inherit' | 'restricted' | 'public';
-  sharedWith?: any[];
+  sharedWith?: ChapterShare[];
 }
 
 
@@ -55,14 +64,28 @@ interface EditPostFormProps {
   post: Post;
   open: boolean;
   onOpenChange: (open: boolean) => void;
-  onPostUpdated: (updatedPost?: any) => void;
+  onPostUpdated: (updatedPost?: UpdatedPostPayload | null) => void;
   availableTags?: string[];
+}
+
+export interface UpdatedPostPayload {
+  _id?: string;
+  title?: string;
+  description?: string;
+  tags?: string[];
+  author?: string;
+  translator?: string;
+  updatedAt?: string;
+  chapterCount?: number;
+  chapters?: Chapter[];
+  images?: string[];
 }
 
 interface PostDetailsResponse {
   content?: string;
   images?: string[];
   chapters?: Chapter[];
+  translator?: string;
 }
 
 interface ChapterEditState {
@@ -73,7 +96,7 @@ interface ChapterEditState {
   images: ChapterImage[];
   translator?: string;
   accessType?: 'inherit' | 'restricted' | 'public';
-  sharedWith?: any[];
+  sharedWith?: ChapterShare[];
 }
 
 
@@ -127,14 +150,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       Array.isArray(post.chapters) &&
       post.chapters.length > 0 &&
       post.chapters.some(
-        (ch: any) =>
+        (ch) =>
           (Array.isArray(ch.images) && ch.images.length > 0) ||
           (typeof ch.content === 'string' && ch.content.length > 0)
       );
 
     if (hasFullChapters && post.chapters) {
       setChapters(
-        post.chapters.map((ch: any, idx) => ({
+        post.chapters.map((ch, idx) => ({
           _id: ch._id,
           title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
           chapterNumber: ch.chapterNumber || idx + 1,
@@ -150,7 +173,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
       // Hiển thị ngay thông tin metadata của các chương (tiêu đề, số chương, dịch giả, quyền)
       if (Array.isArray(post.chapters) && post.chapters.length > 0) {
         setChapters(
-          post.chapters.map((ch: any, idx) => ({
+          post.chapters.map((ch, idx) => ({
             _id: ch._id,
             title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
             chapterNumber: ch.chapterNumber || idx + 1,
@@ -177,13 +200,13 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                     chapterNumber: 1,
                     content: data.content || post.content || '',
                     images: data.images || post.images || [],
-                    translator: (data as any).translator || post.translator || '',
+                    translator: data.translator || post.translator || '',
                     accessType: 'inherit',
                   },
                 ];
 
           setChapters(
-            fetchedChapters.map((ch: any, idx) => ({
+            fetchedChapters.map((ch, idx) => ({
               _id: ch._id,
               title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
               chapterNumber: ch.chapterNumber || idx + 1,
@@ -469,8 +492,8 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
         const response = await fetch(url);
         if (!response.ok) throw new Error(`Lỗi khi tải ảnh ${i + 1}`);
         const blob = await response.blob();
-        const file = new File([blob], fileName, { type: blob.type || 'image/webp' });
-        (file as any).skipCompression = true;
+        const file: FileWithSkipCompression = new File([blob], fileName, { type: blob.type || 'image/webp' });
+        file.skipCompression = true;
 
         processedImages.push({
           id: generateId(),
@@ -545,9 +568,9 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
             const ext = img.file.name.split('.').pop() || 'webp';
             const formattedIndex = String(idx + 1).padStart(3, '0');
             const fileName = `${sanitizedTitle}_chap_${ch.chapterNumber}_${formattedIndex}.${ext}`;
-            const newFile = new File([img.file], fileName, { type: img.file.type });
-            if ((img.file as any).skipCompression) {
-              (newFile as any).skipCompression = true;
+            const newFile: FileWithSkipCompression = new File([img.file], fileName, { type: img.file.type });
+            if ((img.file as FileWithSkipCompression).skipCompression) {
+              newFile.skipCompression = true;
             }
             newFiles.push(newFile);
           }
@@ -749,7 +772,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     setExpandedImageLimit(0);
   };
 
-  const handleDialogOpenChange = (nextOpen: boolean, eventDetails?: any) => {
+  const handleDialogOpenChange = (nextOpen: boolean, eventDetails?: { reason?: string }) => {
     if (!nextOpen && (eventDetails?.reason === 'outsidePress' || eventDetails?.reason === 'outside-press')) {
       return;
     }
@@ -907,14 +930,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                   </label>
                   <Select
                     value={activeChapter.accessType || 'inherit'}
-                    onValueChange={(val: any) =>
-                      updateActiveChapter((ch) => ({ ...ch, accessType: val }))
+                    onValueChange={(val) =>
+                      updateActiveChapter((ch) => ({ ...ch, accessType: val as ChapterEditState['accessType'] }))
                     }
                     disabled={isSubmitting || isLoadingDetails}
                   >
                     <SelectTrigger className="w-full rounded-[8px] h-9 text-xs bg-background flex items-center justify-between cursor-pointer px-3">
                       <SelectValue placeholder="Chọn quyền">
-                        {(val: any) => {
+                        {(val: unknown) => {
                           const v = val || activeChapter.accessType || 'inherit';
                           if (v === 'public') return 'Công khai (Mọi người đọc được)';
                           if (v === 'restricted') return 'Giới hạn (Chỉ người được cấp quyền)';

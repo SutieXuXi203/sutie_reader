@@ -22,6 +22,7 @@ import Image from 'next/image';
 import { cn, getOptimizedImageUrl, normalizeSearchText } from '@/lib/utils';
 import { Footer } from '@/components/Footer';
 import { PostCard } from '@/components/PostCard';
+import type { UpdatedPostPayload } from '@/components/EditPostForm';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { useSearchParams } from 'next/navigation';
@@ -416,7 +417,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     setPosts(newPosts);
   }, [posts]);
 
-  const handlePostUpdated = useCallback((updatedPost?: any) => {
+  const handlePostUpdated = useCallback((updatedPost?: UpdatedPostPayload | null) => {
     if (updatedPost && updatedPost._id) {
       setPosts((prev) => {
         const next = prev.map((p) => {

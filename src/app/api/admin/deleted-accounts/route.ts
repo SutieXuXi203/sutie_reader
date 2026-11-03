@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       : 200;
 
     const cacheKey = `admin:deleted-accounts:${limit}`;
-    const cached = getApiCache<any[]>(cacheKey);
+    const cached = getApiCache<unknown>(cacheKey);
     if (cached) {
       return NextResponse.json(cached, {
         headers: {

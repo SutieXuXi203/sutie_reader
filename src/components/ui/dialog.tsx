@@ -21,7 +21,7 @@ function Dialog({
           !open &&
           disablePointerDismissal &&
           (eventDetails?.reason === 'outside-press' ||
-            (eventDetails as any)?.reason === 'outsidePress')
+            (eventDetails?.reason as string | undefined) === 'outsidePress')
         ) {
           return;
         }

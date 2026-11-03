@@ -19,7 +19,6 @@ export async function scrambleImageBuffer(
   const rows = Math.min(Math.max(options.rows || DEFAULT_SCRAMBLE_ROWS, 2), 16);
   const cols = Math.min(Math.max(options.cols || DEFAULT_SCRAMBLE_COLS, 2), 16);
   const totalTiles = rows * cols;
-  const quality = options.quality ?? 95;
 
   const metadata = await sharp(inputBuffer).metadata();
   if (!metadata.width || !metadata.height) {

@@ -17,6 +17,8 @@ import {
   type ChapterContext,
 } from './permissions';
 
+type ChapterWithShares = { sharedWith: Array<{ email?: string }> };
+
 describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
   // Mock users
   const adminUser: AuthUserContext = {
@@ -481,20 +483,20 @@ describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
 
       // Admin thấy đủ
       const adminFiltered = filterPostPrivacyForUser(postWithChapterShares, adminUser);
-      assert.equal((adminFiltered.chapters as any[])[0].sharedWith.length, 2);
+      assert.equal((adminFiltered.chapters as ChapterWithShares[])[0].sharedWith.length, 2);
 
       // Guest chỉ thấy email của chính mình trong chương đó
       const guestFiltered = filterPostPrivacyForUser(postWithChapterShares, guestUserShared);
-      assert.equal((guestFiltered.chapters as any[])[0].sharedWith.length, 1);
-      assert.equal((guestFiltered.chapters as any[])[0].sharedWith[0].email, guestUserShared.email);
+      assert.equal((guestFiltered.chapters as ChapterWithShares[])[0].sharedWith.length, 1);
+      assert.equal((guestFiltered.chapters as ChapterWithShares[])[0].sharedWith[0].email, guestUserShared.email);
 
       // Member không thấy ai
       const memberFiltered = filterPostPrivacyForUser(postWithChapterShares, memberUser);
-      assert.equal((memberFiltered.chapters as any[])[0].sharedWith.length, 0);
+      assert.equal((memberFiltered.chapters as ChapterWithShares[])[0].sharedWith.length, 0);
 
       // Khách vãng lai không thấy ai
       const nullFiltered = filterPostPrivacyForUser(postWithChapterShares, null);
-      assert.equal((nullFiltered.chapters as any[])[0].sharedWith.length, 0);
+      assert.equal((nullFiltered.chapters as ChapterWithShares[])[0].sharedWith.length, 0);
     });
   });
 

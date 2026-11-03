@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Không có quyền truy cập' }, { status: 403 });
     }
 
-    const cached = getApiCache<any[]>(ADMIN_USERS_CACHE_KEY);
+    const cached = getApiCache<unknown>(ADMIN_USERS_CACHE_KEY);
     if (cached) {
       return NextResponse.json(cached, {
         headers: {

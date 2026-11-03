@@ -14,10 +14,19 @@ export interface AuthUser {
   role: 'guest' | 'user' | 'admin';
 }
 
+const MIN_JWT_SECRET_LENGTH = 32;
+
 export function getJwtSecret(): Uint8Array {
   const secret = process.env.JWT_SECRET;
   if (!secret) {
     throw new Error('JWT_SECRET environment variable is missing');
+  }
+  if (secret.length < MIN_JWT_SECRET_LENGTH) {
+    const message = `JWT_SECRET must be at least ${MIN_JWT_SECRET_LENGTH} characters`;
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(message);
+    }
+    console.warn(`[security] ${message}`);
   }
   return new TextEncoder().encode(secret);
 }
@@ -100,7 +109,24 @@ export async function getSessionUserFromToken(token?: string | null): Promise<Au
 }
 
 const USER_CACHE_TTL_MS = 15_000;
+const USER_CACHE_MAX_ENTRIES = 5_000;
 const userMemoryCache = new Map<string, { user: AuthUser | null; expiresAt: number }>();
+
+function setUserCache(token: string, user: AuthUser | null, ttlMs: number) {
+  userMemoryCache.delete(token);
+  if (userMemoryCache.size >= USER_CACHE_MAX_ENTRIES) {
+    const now = Date.now();
+    for (const [key, entry] of userMemoryCache) {
+      if (entry.expiresAt <= now) userMemoryCache.delete(key);
+    }
+    while (userMemoryCache.size >= USER_CACHE_MAX_ENTRIES) {
+      const oldest = userMemoryCache.keys().next().value;
+      if (oldest === undefined) break;
+      userMemoryCache.delete(oldest);
+    }
+  }
+  userMemoryCache.set(token, { user, expiresAt: Date.now() + ttlMs });
+}
 
 export const getCurrentUserFromToken = cache(async (token?: string | null): Promise<AuthUser | null> => {
   if (!token) return null;
@@ -121,11 +147,11 @@ export const getCurrentUserFromToken = cache(async (token?: string | null): Prom
       .lean()) as LeanAuthUser | null;
 
     if (!user || !user.email || !user.role) {
-      userMemoryCache.set(token, { user: null, expiresAt: now + 10_000 });
+      setUserCache(token, null, 10_000);
       return null;
     }
     if (user.role !== 'admin' && user.isVerified !== true) {
-      userMemoryCache.set(token, { user: null, expiresAt: now + 10_000 });
+      setUserCache(token, null, 10_000);
       return null;
     }
 
@@ -137,7 +163,7 @@ export const getCurrentUserFromToken = cache(async (token?: string | null): Prom
       role: user.role,
     };
 
-    userMemoryCache.set(token, { user: authUser, expiresAt: now + USER_CACHE_TTL_MS });
+    setUserCache(token, authUser, USER_CACHE_TTL_MS);
     return authUser;
   } catch {
     return null;

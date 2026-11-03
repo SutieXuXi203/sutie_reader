@@ -3,7 +3,7 @@ import { getAuthUser } from '@/lib/auth';
 import { connectDB } from '@/lib/db';
 import { Bookmark } from '@/models/Bookmark';
 import { signImageUrls } from '@/lib/image-signing';
-import { canViewPost } from '@/lib/permissions';
+import { canViewPost, type PostContext, type ChapterContext } from '@/lib/permissions';
 import { logApiError } from '@/lib/telegramLogger';
 
 type BookmarkLean = {
@@ -47,13 +47,13 @@ export async function POST(request: NextRequest) {
         if (!post) {
             return NextResponse.json({ error: 'Post not found' }, { status: 404 });
         }
-        const decision = canViewPost(user, post as any);
+        const decision = canViewPost(user, post as PostContext);
         if (!decision.allowed) {
             return NextResponse.json({ error: decision.message || 'Forbidden' }, { status: 403 });
         }
         if (Array.isArray(post.chapters) && post.chapters[normalizedChapterIndex]) {
             const { canViewChapter } = await import('@/lib/permissions');
-            const chapDecision = canViewChapter(user, post as any, post.chapters[normalizedChapterIndex] as any);
+            const chapDecision = canViewChapter(user, post as PostContext, post.chapters[normalizedChapterIndex] as ChapterContext);
             if (!chapDecision.allowed) {
                 return NextResponse.json({ error: chapDecision.message || 'Forbidden' }, { status: 403 });
             }
@@ -114,7 +114,7 @@ export async function GET(request: NextRequest) {
             .map((b) => {
                 const post = postMap.get(b.postId.toString());
                 if (!post) return null;
-                const decision = canViewPost(user, post as any);
+                const decision = canViewPost(user, post as PostContext);
                 if (!decision.allowed) return null;
                 const coverImage = typeof post.coverImage === 'string' && post.coverImage.trim()
                     ? post.coverImage

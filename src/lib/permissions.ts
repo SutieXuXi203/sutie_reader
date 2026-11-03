@@ -8,15 +8,15 @@ export interface AuthUserContext {
 }
 
 export interface PostShareItem {
-  email: string;
-  userId?: string;
+  email?: string;
+  userId?: unknown;
   role?: 'viewer' | string;
   addedAt?: Date | string;
 }
 
 export interface PostAccessedItem {
   email: string;
-  userId?: string;
+  userId?: unknown;
   name?: string;
   avatar?: string;
   role?: string;
@@ -24,12 +24,14 @@ export interface PostAccessedItem {
 }
 
 export interface PostContext {
-  _id?: string;
+  _id?: unknown;
   title?: string;
+  translator?: string;
   accessType?: 'restricted' | 'public';
   sharedWith?: PostShareItem[];
   accessedUsers?: PostAccessedItem[];
-  [key: string]: unknown;
+  chapters?: ChapterContext[];
+  chapterCount?: number;
 }
 
 export type AccessDecision = {
@@ -86,9 +88,9 @@ export function canViewPost(
     }
 
     // Kiểm tra nếu người dùng được cấp quyền vào bất kỳ chương cụ thể nào (Phương án 2)
-    const isSharedInAnyChapter = Array.isArray(post.chapters) && (post.chapters as any[]).some((ch) => {
+    const isSharedInAnyChapter = Array.isArray(post.chapters) && (post.chapters as ChapterContext[]).some((ch) => {
       const isPublicChap = ch.accessType === 'public';
-      const isSharedChap = Array.isArray(ch.sharedWith) && ch.sharedWith.some((s: any) => {
+      const isSharedChap = Array.isArray(ch.sharedWith) && ch.sharedWith.some((s) => {
         const shareEmail = (s.email || '').toLowerCase().trim();
         const shareUserId = s.userId ? String(s.userId) : '';
         return (shareEmail && shareEmail === userEmail) || (shareUserId && shareUserId === userId);
@@ -115,13 +117,12 @@ export function canViewPost(
 }
 
 export interface ChapterContext {
-  _id?: string;
+  _id?: unknown;
   chapterNumber?: number;
   title?: string;
   translator?: string;
   accessType?: 'inherit' | 'restricted' | 'public';
   sharedWith?: PostShareItem[];
-  [key: string]: unknown;
 }
 
 /**
@@ -212,7 +213,7 @@ export function canViewChapter(
         message: 'Vui lòng đăng nhập để đọc chương này',
       };
     }
-    const translatorName = chapter.translator || (post as any)?.translator || 'Dịch giả';
+    const translatorName = chapter.translator || post.translator || 'Dịch giả';
     return {
       allowed: false,
       reason: 'ACCESS_DENIED',
@@ -267,9 +268,9 @@ export function filterPostsForUser<T extends PostContext>(
       });
       if (isSharedInPost) return true;
 
-      const isSharedInAnyChapter = Array.isArray(post.chapters) && (post.chapters as any[]).some((ch) => {
+      const isSharedInAnyChapter = Array.isArray(post.chapters) && (post.chapters as ChapterContext[]).some((ch) => {
         const isPublicChap = ch.accessType === 'public';
-        const isSharedChap = Array.isArray(ch.sharedWith) && ch.sharedWith.some((s: any) => {
+        const isSharedChap = Array.isArray(ch.sharedWith) && ch.sharedWith.some((s) => {
           const shareEmail = (s.email || '').toLowerCase().trim();
           const shareUserId = s.userId ? String(s.userId) : '';
           return (shareEmail && shareEmail === userEmail) || (shareUserId && shareUserId === userId);
@@ -336,7 +337,7 @@ export function getAccessibleChapterInfo(
   }
 
   // Khách chỉ được chia sẻ theo từng chương cụ thể
-  const accessibleChapters = chapters.filter((ch, idx) => {
+  const accessibleChapters = chapters.filter((ch) => {
     if (ch.accessType === 'public') return true;
     if (!user) return false;
     return (

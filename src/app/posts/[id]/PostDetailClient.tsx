@@ -16,7 +16,7 @@ import {
 } from '@/components/animate-ui/icons/AnimateIcon';
 import { Loader2, ChevronDown, Play, Pause, Settings, Check } from 'lucide-react';
 import Link from 'next/link';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
 import { cn } from '@/lib/utils';
@@ -117,7 +117,6 @@ export default function PostDetailClient({
   initialPost: Post | null;
   initialChapterNumber?: number;
 }) {
-  const params = useParams();
   const router = useRouter();
   const [post, setPost] = useState<Post | null>(initialPost);
 
@@ -130,7 +129,7 @@ export default function PostDetailClient({
   const { user, isAdmin, isLoading: isAuthLoading, logout } = useAuth();
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
-  const [accessedUsers, setAccessedUsers] = useState<any[]>(initialPost?.accessedUsers || []);
+  const [accessedUsers, setAccessedUsers] = useState<NonNullable<Post['accessedUsers']>>(initialPost?.accessedUsers || []);
 
   useEffect(() => {
     if (initialPost?.accessedUsers) {

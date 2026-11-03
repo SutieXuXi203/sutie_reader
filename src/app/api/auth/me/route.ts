@@ -2,45 +2,59 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
-import { getCurrentUserFromToken, getJwtSecret, createSiteAccessToken, clearUserCache } from '@/lib/server-auth';
+import { getCurrentUserFromToken, getJwtSecret, clearUserCache } from '@/lib/server-auth';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
+import { checkMemoryRateLimit } from '@/lib/memoryRateLimit';
+import { isAllowedAvatarUrl } from '@/lib/validations';
+import { detectImageType, IMAGE_MIME_BY_TYPE, type DetectedImageType } from '@/lib/imageMagic';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
 
-function getDataUrlByteSize(dataUrl: string): number {
-  const commaIndex = dataUrl.indexOf(',');
-  if (commaIndex === -1) return 0;
+const MAX_NAME_LENGTH = 50;
+const DATA_URL_PATTERN = /^data:image[/](?:png|jpeg|webp);base64,([A-Za-z0-9+/]+={0,2})$/;
 
-  const base64 = dataUrl.slice(commaIndex + 1);
-  const paddingMatch = base64.match(/=*$/);
-  const padding = paddingMatch ? paddingMatch[0].length : 0;
+class AvatarValidationError extends Error {}
 
-  return Math.ceil((base64.length * 3) / 4) - padding;
+/** Giải mã và xác thực avatar dạng data URL: chỉ png/jpeg/webp, kiểm magic bytes, tối đa 2MB (SVG bị từ chối). */
+function decodeAvatarDataUrl(dataUrl: string): { buffer: Buffer; type: DetectedImageType } {
+  const match = dataUrl.match(DATA_URL_PATTERN);
+  if (!match) {
+    throw new AvatarValidationError('Du lieu anh dai dien khong hop le');
+  }
+
+  // Ước lượng kích thước trước khi giải mã để tránh cấp phát bộ nhớ lớn
+  const estimatedBytes = Math.ceil((match[1].length * 3) / 4);
+  if (estimatedBytes > MAX_AVATAR_BYTES) {
+    throw new AvatarValidationError('Anh dai dien sau khi cat vuot qua 2MB, vui long chon vung anh nho hon.');
+  }
+
+  const buffer = Buffer.from(match[1], 'base64');
+  const type = detectImageType(buffer);
+  if (!type || type === 'gif') {
+    throw new AvatarValidationError('Du lieu anh dai dien khong hop le');
+  }
+  return { buffer, type };
 }
 
-async function uploadAvatarToCloudflareWorker(dataUrl: string, userId: string): Promise<string> {
+async function uploadAvatarToCloudflareWorker(
+  image: { buffer: Buffer; type: DetectedImageType },
+  userId: string
+): Promise<string> {
   const workerUrl = (
     process.env.CLOUDFLARE_WORKER_URL ||
     process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
     ''
-  ).replace(/\/+$/, '');
+  ).replace(/[/]+$/, '');
   const uploadSecret = process.env.CLOUDFLARE_UPLOAD_SECRET;
 
   if (!workerUrl || !uploadSecret) {
-    console.warn('[AVATAR UPLOAD] Worker URL or upload secret not configured, fallback to dataUrl');
-    return dataUrl;
+    throw new Error('Chua cau hinh luu tru anh dai dien');
   }
 
-  const matches = dataUrl.match(/^data:([A-Za-z-+\/]+);base64,(.+)$/);
-  if (!matches || matches.length !== 3) {
-    return dataUrl;
-  }
-
-  const mimeType = matches[1];
-  const buffer = Buffer.from(matches[2], 'base64');
-  const extension = mimeType.includes('png') ? 'png' : mimeType.includes('webp') ? 'webp' : 'jpg';
+  const mimeType = IMAGE_MIME_BY_TYPE[image.type];
+  const extension = image.type === 'jpeg' ? 'jpg' : image.type;
   const fileName = `avatar-${userId}-${Date.now()}.${extension}`;
 
-  const blob = new Blob([buffer], { type: mimeType });
+  const blob = new Blob([new Uint8Array(image.buffer)], { type: mimeType });
   const formData = new FormData();
   formData.append('title', 'Avatars');
   formData.append('isAvatar', 'true');
@@ -57,7 +71,7 @@ async function uploadAvatarToCloudflareWorker(dataUrl: string, userId: string): 
   if (!res.ok) {
     const errData = await res.json().catch(() => ({}));
     console.error('[AVATAR UPLOAD] Worker upload error:', errData);
-    throw new Error(errData?.error || 'Lỗi khi tải ảnh đại diện lên Cloudflare');
+    throw new Error('Lỗi khi tải ảnh đại diện lên Cloudflare');
   }
 
   const data = await res.json();
@@ -110,13 +124,6 @@ export async function GET(request: NextRequest) {
 
         response.cookies.set('token', newToken, cookieOptions);
 
-        const testUsername = (process.env.TEST_USERNAME || '').toLowerCase().trim();
-        const isTestAccount = Boolean(testUsername && user.email.toLowerCase().trim() === testUsername);
-
-        if ((user.role === 'admin' || user.role === 'user' || isTestAccount) && process.env.UNLOCK_PIN) {
-          const siteToken = await createSiteAccessToken();
-          response.cookies.set('site_access_token', siteToken, cookieOptions);
-        }
       }
     } catch {
       // Bỏ qua lỗi verify token phụ, vẫn trả về user hợp lệ
@@ -141,6 +148,15 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Token khong hop le' }, { status: 401 });
     }
 
+    // Mỗi lần đổi avatar có thể tải file lên Drive: giới hạn 10 lần / 10 phút cho mỗi tài khoản
+    const profileLimit = checkMemoryRateLimit(`profile-update:${String(payload.id)}`, 10, 10 * 60_000);
+    if (!profileLimit.allowed) {
+      return NextResponse.json(
+        { error: 'Ban thao tac qua nhanh, vui long thu lai sau.' },
+        { status: 429, headers: { 'Retry-After': String(profileLimit.retryAfter) } }
+      );
+    }
+
     await connectDB();
 
     const body = (await request.json().catch(() => ({}))) as {
@@ -150,6 +166,9 @@ export async function PUT(request: NextRequest) {
 
     if (typeof body.name !== 'string' || !body.name.trim()) {
       return NextResponse.json({ error: 'Ten khong duoc de trong' }, { status: 400 });
+    }
+    if (body.name.trim().length > MAX_NAME_LENGTH) {
+      return NextResponse.json({ error: 'Ten khong duoc vuot qua 50 ky tu' }, { status: 400 });
     }
 
     if (
@@ -163,19 +182,6 @@ export async function PUT(request: NextRequest) {
       );
     }
 
-    if (typeof body.avatar === 'string' && body.avatar.startsWith('data:image')) {
-      const avatarBytes = getDataUrlByteSize(body.avatar);
-      if (avatarBytes > MAX_AVATAR_BYTES) {
-        return NextResponse.json(
-          {
-            error:
-              'Anh dai dien sau khi cat vuot qua 2MB, vui long chon vung anh nho hon.',
-          },
-          { status: 413 }
-        );
-      }
-    }
-
     const user = await User.findById(payload.id);
     if (!user) {
       return NextResponse.json({ error: 'Khong tim thay nguoi dung' }, { status: 404 });
@@ -184,9 +190,12 @@ export async function PUT(request: NextRequest) {
     user.name = body.name.trim();
 
     if (body.avatar !== undefined) {
-      if (typeof body.avatar === 'string' && body.avatar.startsWith('data:image')) {
+      const nextAvatar = typeof body.avatar === 'string' ? body.avatar : '';
+
+      if (nextAvatar.startsWith('data:')) {
+        const decoded = decodeAvatarDataUrl(nextAvatar);
         try {
-          user.avatar = await uploadAvatarToCloudflareWorker(body.avatar, user._id.toString());
+          user.avatar = await uploadAvatarToCloudflareWorker(decoded, user._id.toString());
         } catch (uploadError) {
           console.error('Lỗi upload avatar lên Cloudflare Worker:', uploadError);
           void logApiError({
@@ -196,13 +205,12 @@ export async function PUT(request: NextRequest) {
             user: { email: user.email, id: user._id.toString(), role: user.role, name: user.name },
             statusCode: 500,
           });
-          return NextResponse.json(
-            { error: uploadError instanceof Error ? uploadError.message : 'Không thể tải ảnh lên Cloudflare' },
-            { status: 500 }
-          );
+          return NextResponse.json({ error: 'Không thể tải ảnh lên Cloudflare' }, { status: 500 });
         }
+      } else if (nextAvatar === '' || nextAvatar === user.avatar || isAllowedAvatarUrl(nextAvatar)) {
+        user.avatar = nextAvatar;
       } else {
-        user.avatar = typeof body.avatar === 'string' ? body.avatar : '';
+        return NextResponse.json({ error: 'Du lieu anh dai dien khong hop le' }, { status: 400 });
       }
     }
 
@@ -257,7 +265,10 @@ export async function PUT(request: NextRequest) {
 
     return response;
   } catch (error) {
-    const details = error instanceof Error ? error.message : 'Unknown error';
+    if (error instanceof AvatarValidationError) {
+      const status = error.message.includes('2MB') ? 413 : 400;
+      return NextResponse.json({ error: error.message }, { status });
+    }
     console.error('Loi cap nhat ho so:', error);
     void logApiError({
       module: '[PUT] /api/auth/me',
@@ -266,7 +277,7 @@ export async function PUT(request: NextRequest) {
       statusCode: 500,
     });
     return NextResponse.json(
-      { error: 'Cap nhat khong thanh cong', details },
+      { error: 'Cap nhat khong thanh cong' },
       { status: 500 }
     );
   }

@@ -1,5 +1,18 @@
 import type { NextConfig } from "next";
 
+// Chỉ cho phép tối ưu ảnh từ đúng host Worker đã cấu hình (không mở cho mọi *.workers.dev)
+function getWorkerHostname(): string | null {
+  const raw = process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL || process.env.CLOUDFLARE_WORKER_URL;
+  if (!raw) return null;
+  try {
+    return new URL(raw).hostname;
+  } catch {
+    return null;
+  }
+}
+
+const workerHostname = getWorkerHostname();
+
 const nextConfig: NextConfig = {
   reactStrictMode: true,
   compress: true,
@@ -19,10 +32,7 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'lh3.googleusercontent.com',
       },
-      {
-        protocol: 'https',
-        hostname: '**.workers.dev',
-      },
+      ...(workerHostname ? [{ protocol: 'https' as const, hostname: workerHostname }] : []),
     ],
     localPatterns: [
       {
@@ -47,7 +57,6 @@ const nextConfig: NextConfig = {
       {
         source: '/(.*)',
         headers: [
-          { key: 'X-XSS-Protection', value: '1; mode=block' },
           { key: 'X-Frame-Options', value: 'DENY' },
           { key: 'X-Content-Type-Options', value: 'nosniff' },
           { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },

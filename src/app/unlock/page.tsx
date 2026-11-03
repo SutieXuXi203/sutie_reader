@@ -2,10 +2,11 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Lock, Unlock, ArrowRight, ShieldCheck, Loader2, Delete } from 'lucide-react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { Lock, ArrowRight, ShieldCheck, Loader2 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { gooeyToast } from 'goey-toast';
 import { unlockSiteAction } from '@/actions/authActions';
+import { getSafeCallbackUrl } from '@/lib/safeRedirect';
 
 export default function UnlockPage() {
   return (
@@ -19,21 +20,6 @@ export default function UnlockPage() {
   );
 }
 
-function getSafeCallbackUrl(url: string | null): string {
-  if (!url || typeof url !== 'string') return '/';
-  const trimmed = url.trim();
-  if (
-    trimmed.startsWith('/') &&
-    !trimmed.startsWith('//') &&
-    !trimmed.startsWith('/\\') &&
-    !trimmed.includes('\\') &&
-    !/^[a-zA-Z][a-zA-Z0-9+.-]*:/.test(trimmed)
-  ) {
-    return trimmed;
-  }
-  return '/';
-}
-
 function UnlockForm() {
   const [pin, setPin] = useState('');
   const [isFocused, setIsFocused] = useState(false);
@@ -42,7 +28,6 @@ function UnlockForm() {
   const [isError, setIsError] = useState(false);
   
   const inputRef = useRef<HTMLInputElement | null>(null);
-  const router = useRouter();
   const searchParams = useSearchParams();
   
   const callbackUrl = getSafeCallbackUrl(searchParams.get('callbackUrl'));
@@ -75,24 +60,6 @@ function UnlockForm() {
     inputRef.current?.focus();
   };
 
-  const handleKeyPress = (digit: string) => {
-    if (isLoading || isSuccess) return;
-    if (pin.length < 6) {
-      const nextPin = pin + digit;
-      setPin(nextPin);
-      setIsError(false);
-      if (nextPin.length === 6) {
-        handleSubmit(nextPin);
-      }
-    }
-  };
-
-  const handleDelete = () => {
-    if (isLoading || isSuccess || pin.length === 0) return;
-    setPin((prev) => prev.slice(0, -1));
-    setIsError(false);
-  };
-
   const handleSubmit = async (fullPin: string) => {
     if (fullPin.length !== 6 || isLoading || isSuccess) return;
     
@@ -122,7 +89,7 @@ function UnlockForm() {
           inputRef.current?.focus();
         }, 100);
       }
-    } catch (error) {
+    } catch {
       setIsError(true);
       setIsLoading(false);
       gooeyToast.error('Đã xảy ra lỗi', {

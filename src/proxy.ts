@@ -2,19 +2,28 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { jwtVerify } from 'jose';
 
+const STATIC_FILE_PATTERN =
+  /\.(?:png|jpe?g|gif|webp|avif|svg|ico|css|js|mjs|map|txt|xml|json|webmanifest|woff2?|ttf|otf|eot|mp4|webm|mp3)$/i;
+
+/**
+ * Các trang CÔNG KHAI có chủ đích, không bị chặn bởi mã PIN toàn site:
+ * trang chủ, trang đọc truyện (/posts, cần để chia sẻ link và xem trước OG), trang liên hệ và trang nhập PIN.
+ * Quyền đọc từng truyện/chương vẫn được kiểm tra ở tầng server (permissions.ts).
+ */
+function isPublicPath(pathname: string): boolean {
+  return (
+    pathname === '/' ||
+    pathname.startsWith('/unlock') ||
+    pathname.startsWith('/posts') ||
+    pathname.startsWith('/contact')
+  );
+}
+
 export async function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // Bỏ qua các tệp tĩnh, tài nguyên hệ thống Next.js và API routes
-  if (
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/api') ||
-    pathname.includes('.') ||
-    pathname.startsWith('/unlock') ||
-    pathname.startsWith('/posts') ||
-    pathname === '/' ||
-    pathname.startsWith('/contact')
-  ) {
+  // Bỏ qua tài nguyên hệ thống Next.js, API routes và các tệp tĩnh thật sự (không bỏ qua mọi đường dẫn có dấu chấm)
+  if (pathname.startsWith('/_next') || pathname.startsWith('/api') || STATIC_FILE_PATTERN.test(pathname)) {
     return NextResponse.next();
   }
 
@@ -39,6 +48,10 @@ export async function proxy(request: NextRequest) {
     }
   }
 
+  if (isPublicPath(pathname)) {
+    return NextResponse.next();
+  }
+
   // Chặn truy cập các trang nội bộ nếu chưa đăng nhập
   if (pathname.startsWith('/products')) {
     const token = request.cookies.get('token')?.value;
@@ -55,8 +68,9 @@ export async function proxy(request: NextRequest) {
     return NextResponse.next();
   }
 
+  // Chỉ chấp nhận JWT có chữ ký hợp lệ, scope `site_unlock`. Tuyệt đối không so sánh cookie với chính mã PIN:
+  // cách đó cho phép dò PIN không giới hạn số lần (không đi qua bộ đếm khóa brute-force).
   const cookie = request.cookies.get(ACCESS_COOKIE_NAME);
-  
   if (cookie?.value) {
     try {
       const secret = new TextEncoder().encode(process.env.JWT_SECRET || '');
@@ -65,16 +79,13 @@ export async function proxy(request: NextRequest) {
         return NextResponse.next();
       }
     } catch {
-      // Fallback cho cookie plaintext cũ trong thời gian chuyển tiếp
-      if (cookie.value === SECRET_TOKEN) {
-        return NextResponse.next();
-      }
+      // Cookie không hợp lệ -> chuyển sang trang nhập PIN
     }
   }
 
   const unlockUrl = new URL('/unlock', request.url);
   unlockUrl.searchParams.set('callbackUrl', request.nextUrl.pathname);
-  
+
   return NextResponse.redirect(unlockUrl);
 }
 

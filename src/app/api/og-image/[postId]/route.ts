@@ -4,6 +4,8 @@ import { Post } from '@/models/Post';
 import { ObjectId } from 'mongodb';
 import { extractDriveImageId } from '@/lib/utils';
 import { createSignedWorkerImageUrl } from '@/lib/image-signing';
+import { checkMemoryRateLimit } from '@/lib/memoryRateLimit';
+import { getClientIp } from '@/lib/clientIp';
 import sharp from 'sharp';
 
 export const runtime = 'nodejs';
@@ -22,13 +24,22 @@ function getWorkerBaseUrl(): string {
 
 /**
  * Serve ảnh bìa truyện dưới dạng thumbnail cho OG / social media crawlers.
- * KHÔNG yêu cầu auth — chỉ serve ảnh bìa (chương đầu) ở chất lượng thấp.
+ * KHÔNG yêu cầu auth nên CHỈ phục vụ truyện công khai (accessType = public), ảnh bìa lấy từ chương không bị hạn chế,
+ * chất lượng thấp (600px) và có giới hạn tần suất theo IP (mỗi request tải ảnh và xử lý bằng sharp).
  */
 export async function GET(
-  _request: NextRequest,
+  request: NextRequest,
   context: { params: Promise<{ postId: string }> }
 ) {
   const { postId } = await context.params;
+
+  const limit = checkMemoryRateLimit(`og:${getClientIp(request.headers)}`, 30, 60_000);
+  if (!limit.allowed) {
+    return NextResponse.json(
+      { error: 'Too many requests' },
+      { status: 429, headers: { 'Retry-After': String(limit.retryAfter) } }
+    );
+  }
 
   if (!ObjectId.isValid(postId)) {
     return NextResponse.json({ error: 'Invalid post id' }, { status: 400 });
@@ -37,22 +48,24 @@ export async function GET(
   try {
     await connectDB();
     const post = await Post.findById(postId)
-      .select('images chapters.images')
+      .select('accessType images chapters.images chapters.accessType')
       .lean();
 
-    if (!post) {
+    if (!post || (post as { accessType?: string }).accessType !== 'public') {
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    // Tìm ảnh bìa: post.images[0] → chapters[0].images[0]
-    const postImages = (post as any).images || [];
-    const chapters = (post as any).chapters || [];
-    let coverUrl =
-      (postImages[0] && typeof postImages[0] === 'string' && postImages[0].trim()) || '';
+    // Tìm ảnh bìa: post.images[0] → ảnh đầu của chương đầu tiên không bị hạn chế quyền
+    const postImages = ((post as { images?: unknown[] }).images || []) as unknown[];
+    const chapters = ((post as { chapters?: { images?: unknown[]; accessType?: string }[] }).chapters || []).filter(
+      (chapter) => chapter.accessType !== 'restricted'
+    );
+    const firstString = (value: unknown): string =>
+      typeof value === 'string' ? value.trim() : '';
+    let coverUrl = firstString(postImages[0]);
     if (!coverUrl && chapters.length > 0) {
       const firstChapterImages = chapters[0]?.images || [];
-      coverUrl =
-        (firstChapterImages[0] && typeof firstChapterImages[0] === 'string' && firstChapterImages[0].trim()) || '';
+      coverUrl = firstString(firstChapterImages[0]);
     }
 
     if (!coverUrl) {
@@ -60,20 +73,9 @@ export async function GET(
     }
 
     // Trích fileId từ URL (Google Drive hoặc internal)
-    let fileId = extractDriveImageId(coverUrl);
-    if (!fileId) {
-      // Thử parse từ /api/image/[id] path
-      const match = coverUrl.match(/\/api\/image\/([a-zA-Z0-9_-]+)/);
-      if (match) {
-        fileId = match[1];
-      }
-    }
+    const fileId = extractDriveImageId(coverUrl);
 
     if (!fileId || !DRIVE_FILE_ID_PATTERN.test(fileId)) {
-      // Nếu là URL trực tiếp, redirect
-      if (coverUrl.startsWith('http')) {
-        return NextResponse.redirect(coverUrl, 302);
-      }
       return NextResponse.json({ error: 'Cannot resolve cover image' }, { status: 404 });
     }
 
@@ -107,7 +109,7 @@ export async function GET(
       status: 200,
       headers: {
         'Content-Type': 'image/webp',
-        'Cache-Control': 'public, max-age=86400, s-maxage=86400',
+        'Cache-Control': 'public, max-age=3600, s-maxage=86400, stale-while-revalidate=86400',
         'X-Content-Type-Options': 'nosniff',
       },
     });

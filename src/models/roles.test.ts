@@ -5,27 +5,32 @@ import { Role } from './Role';
 import { Post } from './Post';
 import { DeletedAccount } from './DeletedAccount';
 
+interface SchemaPathInfo {
+  enumValues?: unknown[];
+  defaultValue?: unknown;
+}
+
 describe('Kiểm thử Ràng Buộc Schema & Vai Trò (Model Constraints)', () => {
   describe('User Model', () => {
     it('vai trò (role) chỉ cho phép: guest, user, admin', () => {
-      const roleField = User.schema.path('role') as any;
+      const roleField = User.schema.path('role') as SchemaPathInfo;
       assert.ok(roleField, 'Field "role" phải tồn tại trong User schema');
       const enumValues = roleField.enumValues;
       assert.deepEqual(enumValues, ['guest', 'user', 'admin']);
     });
 
     it('vai trò mặc định (default role) của tài khoản mới phải là "guest"', () => {
-      const roleField = User.schema.path('role') as any;
+      const roleField = User.schema.path('role') as SchemaPathInfo;
       assert.equal(roleField.defaultValue, 'guest');
     });
 
     it('trường isVerified mặc định là false khi đăng ký', () => {
-      const isVerifiedField = User.schema.path('isVerified') as any;
+      const isVerifiedField = User.schema.path('isVerified') as SchemaPathInfo;
       assert.equal(isVerifiedField.defaultValue, false);
     });
 
     it('trường verificationAttempts mặc định là 0 khi tạo tài khoản', () => {
-      const attemptsField = User.schema.path('verificationAttempts') as any;
+      const attemptsField = User.schema.path('verificationAttempts') as SchemaPathInfo;
       assert.ok(attemptsField, 'Field "verificationAttempts" phải tồn tại trong User schema');
       assert.equal(attemptsField.defaultValue, 0);
     });
@@ -33,7 +38,7 @@ describe('Kiểm thử Ràng Buộc Schema & Vai Trò (Model Constraints)', () =
 
   describe('Role Model', () => {
     it('danh sách tên vai trò chuẩn trong Role schema là: guest, user, admin', () => {
-      const nameField = Role.schema.path('name') as any;
+      const nameField = Role.schema.path('name') as SchemaPathInfo;
       assert.ok(nameField, 'Field "name" phải tồn tại trong Role schema');
       const enumValues = nameField.enumValues;
       assert.deepEqual(enumValues, ['guest', 'user', 'admin']);
@@ -42,28 +47,28 @@ describe('Kiểm thử Ràng Buộc Schema & Vai Trò (Model Constraints)', () =
 
   describe('DeletedAccount Model', () => {
     it('vai trò (role) trong DeletedAccount phải hỗ trợ cả "guest", "user", "admin"', () => {
-      const roleField = DeletedAccount.schema.path('role') as any;
+      const roleField = DeletedAccount.schema.path('role') as SchemaPathInfo;
       assert.ok(roleField, 'Field "role" phải tồn tại trong DeletedAccount schema');
       const enumValues = roleField.enumValues;
       assert.deepEqual(enumValues, ['guest', 'user', 'admin']);
     });
 
     it('vai trò mặc định trong DeletedAccount là "guest"', () => {
-      const roleField = DeletedAccount.schema.path('role') as any;
+      const roleField = DeletedAccount.schema.path('role') as SchemaPathInfo;
       assert.equal(roleField.defaultValue, 'guest');
     });
   });
 
   describe('Post Model Phân Quyền', () => {
     it('chế độ truy cập accessType chỉ cho phép: restricted, public', () => {
-      const accessTypeField = Post.schema.path('accessType') as any;
+      const accessTypeField = Post.schema.path('accessType') as SchemaPathInfo;
       assert.ok(accessTypeField, 'Field "accessType" phải tồn tại trong Post schema');
       const enumValues = accessTypeField.enumValues;
       assert.deepEqual(enumValues, ['restricted', 'public']);
     });
 
     it('mặc định truyện mới tạo phải ở chế độ "restricted" để đảm bảo an toàn', () => {
-      const accessTypeField = Post.schema.path('accessType') as any;
+      const accessTypeField = Post.schema.path('accessType') as SchemaPathInfo;
       assert.equal(accessTypeField.defaultValue, 'restricted');
     });
   });

@@ -4,18 +4,28 @@
 
 ---
 
-## 1. Bộ Kiểm Thử Bảo Mật & Ràng Buộc Schema (105 Tests)
+## 1. Bộ Kiểm Thử Bảo Mật & Ràng Buộc Schema (148 Tests + 17 Tests tích hợp)
 
-Dự án sở hữu bộ **105 bài kiểm thử tự động** bao phủ toàn diện các ranh giới an toàn:
+Dự án sở hữu bộ **148 bài kiểm thử đơn vị** (không cần DB) và **17 bài kiểm thử tích hợp** bao phủ các ranh giới an toàn:
 * `src/lib/security.test.ts`: Kiểm thử chống timing attacks, rate limiting, xáo trộn ảnh Scramble, ký số URL, bypass tham số `pre_scrambled`, mở khóa mã PIN.
 * `src/lib/permissions.test.ts`: Kiểm thử quyền hạn xem truyện, đọc chương phân lập, chia sẻ email độc giả, thu hồi quyền Admin.
 * `src/models/roles.test.ts`: Kiểm thử ràng buộc schema User, Role, Post, DeletedAccount.
+* `src/proxy.test.ts`: chạy `proxy.ts` thật (cổng PIN, /admin, ngoại lệ đường dẫn).
+* `src/lib/helpers.test.ts`, `src/lib/imageAccess.test.ts`: redirect an toàn, IP client, magic bytes, validation, `signImageUrls`, phân quyền ảnh.
+* `src/worker.test.ts`: chạy Cloudflare Worker thật với Drive giả lập (chữ ký, thư mục, upload).
+* `tests/integration/security-routes.test.ts`: gọi **route handler thật trên MongoDB thật** (khóa brute-force song song, IDOR ảnh, chương song song...).
+  ```bash
+  MONGODB_TEST_URI=mongodb://127.0.0.1:27017/sutie_test npm run test:integration
+  ```
+  ⚠️ Database trong `MONGODB_TEST_URI` bị xóa sau khi chạy — chỉ dùng database dành riêng cho test.
+
+> Lưu ý: một số test cũ trong `security.test.ts` mô phỏng lại logic nội tuyến thay vì gọi mã thật. Khi sửa tính năng bảo mật, hãy thêm test gọi route/hàm thật.
 
 ### Lệnh chạy kiểm thử:
 ```bash
 npm test
 ```
-* **Tiêu chuẩn nghiệm thu**: Toàn bộ **105 tests** phải đạt trạng thái **PASS 100%**. Nếu có bất kỳ test nào fail, Agent phải sửa chữa ngay lập tức trước khi thông báo hoàn tất.
+* **Tiêu chuẩn nghiệm thu**: Toàn bộ **148 tests** (và 17 tests tích hợp khi có MongoDB test) phải đạt trạng thái **PASS 100%**. Nếu có bất kỳ test nào fail, Agent phải sửa chữa ngay lập tức trước khi thông báo hoàn tất.
 
 ---
 

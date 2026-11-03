@@ -62,7 +62,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [name, setName] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [pin, setPin] = useState('');
-    const [rememberMe, setRememberMe] = useState(true);
+    const [rememberMe] = useState(true);
 
     const resetState = () => {
         setError('');

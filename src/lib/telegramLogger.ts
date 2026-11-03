@@ -1,6 +1,6 @@
 import https from 'https';
 import type { NextRequest } from 'next/server';
-import { getAuthUser } from '@/lib/auth';
+import { getClientIp } from '@/lib/clientIp';
 
 /**
  * Lấy cấu hình Telegram từ biến môi trường
@@ -182,12 +182,7 @@ export const getVietnamTimeString = (date = new Date()): string => {
  */
 export const extractClientIp = (request?: Request | NextRequest | null): string => {
   if (!request) return 'N/A';
-  const headers = request.headers;
-  const forwardedFor = headers.get('x-forwarded-for');
-  if (forwardedFor) {
-    return forwardedFor.split(',')[0].trim();
-  }
-  return headers.get('x-real-ip') || headers.get('cf-connecting-ip') || 'unknown';
+  return getClientIp(request.headers);
 };
 
 /**
@@ -295,8 +290,8 @@ export const logApiError = async ({
     let method = 'N/A';
     if (request) {
       method = request.method || 'N/A';
-      if ('nextUrl' in request && (request as any).nextUrl) {
-        url = (request as any).nextUrl.toString();
+      if ('nextUrl' in request && (request as NextRequest).nextUrl) {
+        url = (request as NextRequest).nextUrl.toString();
       } else if (request.url) {
         url = request.url;
       }

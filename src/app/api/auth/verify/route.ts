@@ -49,20 +49,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const userCodeBuffer = Buffer.from(user.verificationCode);
+    // Giữ chỗ một lượt thử một cách NGUYÊN TỬ trước khi so khớp mã: nhiều request song song không thể
+    // "gom" nhiều lần đoán vào một lần đếm (điều kiện $lt: 5 chặn lượt thứ 6 trở đi).
+    const MAX_VERIFICATION_ATTEMPTS = 5;
+    const reserved = await User.findOneAndUpdate(
+      {
+        _id: user._id,
+        isVerified: false,
+        verificationCode: { $exists: true },
+        verificationAttempts: { $lt: MAX_VERIFICATION_ATTEMPTS },
+      },
+      { $inc: { verificationAttempts: 1 } },
+      { returnDocument: 'after' }
+    ).select('+verificationCode');
+
+    if (!reserved || !reserved.verificationCode) {
+      return NextResponse.json(
+        { error: 'Mã xác thực đã bị vô hiệu hóa do nhập sai nhiều lần hoặc đã được xác thực. Vui lòng đăng ký lại để nhận mã mới.' },
+        { status: 429 }
+      );
+    }
+
+    const userCodeBuffer = Buffer.from(reserved.verificationCode);
     const inputCodeBuffer = Buffer.from(code);
     const isCodeValid =
       userCodeBuffer.length === inputCodeBuffer.length &&
       crypto.timingSafeEqual(userCodeBuffer, inputCodeBuffer);
 
     if (!isCodeValid) {
-      const attempts = (user.verificationAttempts || 0) + 1;
-      user.verificationAttempts = attempts;
+      const attempts = reserved.verificationAttempts || MAX_VERIFICATION_ATTEMPTS;
 
-      if (attempts >= 5) {
-        user.verificationCode = undefined;
-        user.verificationAttempts = 0;
-        await user.save();
+      if (attempts >= MAX_VERIFICATION_ATTEMPTS) {
+        await User.updateOne(
+          { _id: user._id },
+          { $unset: { verificationCode: 1 }, $set: { verificationAttempts: 0 } }
+        );
 
         void logApiAction({
           module: 'Xác thực tài khoản (Verify)',
@@ -80,19 +101,19 @@ export async function POST(request: NextRequest) {
         );
       }
 
-      await user.save();
-      const remaining = 5 - attempts;
       return NextResponse.json(
-        { error: `Mã xác thực không chính xác (còn ${remaining} lần thử)` },
+        { error: `Mã xác thực không chính xác (còn ${MAX_VERIFICATION_ATTEMPTS - attempts} lần thử)` },
         { status: 400 }
       );
     }
 
-    user.isVerified = true;
-    user.verificationCode = undefined;
-    user.verificationExpiresAt = undefined;
-    user.verificationAttempts = 0;
-    await user.save();
+    await User.updateOne(
+      { _id: user._id },
+      {
+        $set: { isVerified: true, verificationAttempts: 0 },
+        $unset: { verificationCode: 1, verificationExpiresAt: 1 },
+      }
+    );
 
     // Ghi nhận log xác thực tài khoản thành công
     void logApiAction({

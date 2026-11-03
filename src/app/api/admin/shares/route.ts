@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { connectDB } from '@/lib/db';
-import { Post } from '@/models/Post';
+import { Post, type IPostAccessedUser } from '@/models/Post';
 import { User } from '@/models/User';
 import { isAdmin } from '@/lib/auth';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const cached = getApiCache<any>(ADMIN_SHARES_CACHE_KEY);
+    const cached = getApiCache<unknown>(ADMIN_SHARES_CACHE_KEY);
     if (cached) {
       return NextResponse.json(cached, {
         headers: {
@@ -78,7 +78,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Filter visitors who have role 'guest' (either recorded in accessedUsers or current DB role)
-      const guestUsers = post.accessedUsers.filter((u: any) => {
+      const guestUsers = post.accessedUsers.filter((u: IPostAccessedUser) => {
         const email = (u.email || '').toLowerCase().trim();
         const dbProfile = userMap.get(email);
         const currentRole = dbProfile?.role || u.role || 'guest';
@@ -90,7 +90,7 @@ export async function GET(request: NextRequest) {
       }
 
       // Sort guest users by lastAccessedAt descending
-      guestUsers.sort((a: any, b: any) => {
+      guestUsers.sort((a: IPostAccessedUser, b: IPostAccessedUser) => {
         const timeA = a.lastAccessedAt ? new Date(a.lastAccessedAt).getTime() : 0;
         const timeB = b.lastAccessedAt ? new Date(b.lastAccessedAt).getTime() : 0;
         return timeB - timeA;
@@ -100,7 +100,7 @@ export async function GET(request: NextRequest) {
         ? new Date(guestUsers[0].lastAccessedAt).toISOString()
         : (post.createdAt ? new Date(post.createdAt).toISOString() : new Date().toISOString());
 
-      const mappedGuestUsers = guestUsers.map((u: any) => {
+      const mappedGuestUsers = guestUsers.map((u: IPostAccessedUser) => {
         const email = (u.email || '').toLowerCase().trim();
         const dbProfile = userMap.get(email);
         uniqueGuestEmails.add(email);
