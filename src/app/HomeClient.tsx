@@ -221,12 +221,9 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
       return;
     }
     try {
-      setPosts((currentPosts) => {
-        if (currentPosts.length === 0 && cachedPosts.length === 0) {
-          setIsLoading(true);
-        }
-        return currentPosts;
-      });
+      if (force || cachedPosts.length === 0) {
+        setIsLoading(true);
+      }
 
       const requestOptions: RequestInit = {
         credentials: 'same-origin',
@@ -301,6 +298,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
       cachedPosts = [];
       cachedPostsKey = '';
       lastFetchTime = 0;
+      setIsLoading(true);
       if (userId) {
         cachedBookmarks = [];
         void fetchBookmarks();
@@ -311,12 +309,24 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
         if (initialPosts.length > 0) {
           setPosts(initialPosts);
           setStandaloneTags(initialTags);
+          setIsLoading(false);
         } else {
           void fetchPosts(true, currentCacheKey);
         }
       }
     }
   }, [userId, userRole, initialPosts, initialTags, initialPostState.length, fetchBookmarks, fetchPosts, fetchTags]);
+
+  const prevInitialPostsRef = useRef(initialPosts);
+  useEffect(() => {
+    if (prevInitialPostsRef.current !== initialPosts) {
+      prevInitialPostsRef.current = initialPosts;
+      if (initialPosts.length > 0) {
+        setPosts(initialPosts);
+        setIsLoading(false);
+      }
+    }
+  }, [initialPosts]);
 
   useEffect(() => {
     setSearchTerm(tagParam || '');
