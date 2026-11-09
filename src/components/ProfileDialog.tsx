@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -50,14 +50,16 @@ export function ProfileDialog({ open, onOpenChange }: ProfileDialogProps) {
   const [zoom, setZoom] = useState(1);
   const [croppedAreaPixels, setCroppedAreaPixels] = useState<Area | null>(null);
 
-  useEffect(() => {
-    if (user && open) {
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open && user) {
       setName(user.name || '');
       setAvatarUrl(user.avatar || '');
       setImageSrc(null);
       setZoom(1);
     }
-  }, [user, open]);
+  }
 
   const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];

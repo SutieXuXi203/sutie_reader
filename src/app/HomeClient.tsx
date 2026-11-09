@@ -315,22 +315,22 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
         }
       }
     }
-  }, [userId, userRole, initialPosts, initialTags, initialPostState.length, fetchBookmarks, fetchPosts, fetchTags]);
+  }, [userId, userRole, initialPosts, initialTags, initialPostState.length, fetchBookmarks, fetchPosts, fetchTags, currentCacheKey]);
 
-  const prevInitialPostsRef = useRef(initialPosts);
-  useEffect(() => {
-    if (prevInitialPostsRef.current !== initialPosts) {
-      prevInitialPostsRef.current = initialPosts;
-      if (initialPosts.length > 0) {
-        setPosts(initialPosts);
-        setIsLoading(false);
-      }
+  const [prevInitialPosts, setPrevInitialPosts] = useState(initialPosts);
+  if (prevInitialPosts !== initialPosts) {
+    setPrevInitialPosts(initialPosts);
+    if (initialPosts.length > 0) {
+      setPosts(initialPosts);
+      setIsLoading(false);
     }
-  }, [initialPosts]);
+  }
 
-  useEffect(() => {
+  const [prevTagParam, setPrevTagParam] = useState(tagParam);
+  if (prevTagParam !== tagParam) {
+    setPrevTagParam(tagParam);
     setSearchTerm(tagParam || '');
-  }, [tagParam]);
+  }
 
   const isFirstRender = useRef(true);
   useEffect(() => {

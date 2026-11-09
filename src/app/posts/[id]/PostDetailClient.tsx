@@ -119,23 +119,21 @@ export default function PostDetailClient({
 }) {
   const router = useRouter();
   const [post, setPost] = useState<Post | null>(initialPost);
-
-  useEffect(() => {
-    if (initialPost) {
-      setPost(initialPost);
-    }
-  }, [initialPost]);
-
   const { user, isAdmin, isLoading: isAuthLoading, logout } = useAuth();
   const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [accessedUsers, setAccessedUsers] = useState<NonNullable<Post['accessedUsers']>>(initialPost?.accessedUsers || []);
 
-  useEffect(() => {
-    if (initialPost?.accessedUsers) {
-      setAccessedUsers(initialPost.accessedUsers);
+  const [prevInitialPost, setPrevInitialPost] = useState(initialPost);
+  if (prevInitialPost !== initialPost) {
+    setPrevInitialPost(initialPost);
+    if (initialPost) {
+      setPost(initialPost);
+      if (initialPost.accessedUsers) {
+        setAccessedUsers(initialPost.accessedUsers);
+      }
     }
-  }, [initialPost?.accessedUsers]);
+  }
 
   const uniqueAccessedUsers = useMemo(() => {
     const seen = new Set<string>();
@@ -264,9 +262,10 @@ export default function PostDetailClient({
     }
   }, [user, post?._id, post?.chapters]);
 
+  const currentPostId = post?._id;
   const handleCopyLink = useCallback(async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
-    const shareUrl = post?._id ? `${origin}/posts/${post._id}` : (typeof window !== 'undefined' ? window.location.href : '');
+    const shareUrl = currentPostId ? `${origin}/posts/${currentPostId}` : (typeof window !== 'undefined' ? window.location.href : '');
 
     let success = false;
     try {
@@ -313,7 +312,7 @@ export default function PostDetailClient({
     } else {
       notify.error('Không thể sao chép liên kết');
     }
-  }, [post?._id]);
+  }, [currentPostId]);
 
   const toggleEyeCareMode = () => {
     setIsEyeCareMode((prev) => {
@@ -468,7 +467,7 @@ export default function PostDetailClient({
       document.documentElement.scrollTop = 0;
       document.body.scrollTop = 0;
     },
-    [activeChapterIndex, chapters]
+    [activeChapterIndex, chapters, router]
   );
 
   useEffect(() => {

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useDeferredValue } from 'react';
+import { useState, useEffect, useCallback, useMemo, useDeferredValue, useSyncExternalStore } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -128,20 +128,20 @@ export function ShareDialog({
   const [hasCopied, setHasCopied] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [visitorSearch, setVisitorSearch] = useState('');
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useSyncExternalStore(
+    (callback: () => void) => {
+      if (typeof window === 'undefined') return () => {};
+      const mediaQuery = window.matchMedia('(max-width: 767px)');
+      mediaQuery.addEventListener('change', callback);
+      return () => mediaQuery.removeEventListener('change', callback);
+    },
+    () => typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false,
+    () => false
+  );
   const [selectedVisitor, setSelectedVisitor] = useState<AccessedUserItem | null>(null);
   const [isRevokingVisitor, setIsRevokingVisitor] = useState(false);
 
   const deferredSearch = useDeferredValue(visitorSearch);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(max-width: 767px)');
-    setIsMobile(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, []);
 
   const fetchShareData = useCallback(async (signal?: AbortSignal) => {
     if (!postId) return;
@@ -164,15 +164,22 @@ export function ShareDialog({
     }
   }, [postId]);
 
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setEmailInput('');
+      setSelectedScope('all');
+      setHasCopied(false);
+      setIsSidebarOpen(false);
+      setVisitorSearch('');
+      setSelectedVisitor(null);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
-    setEmailInput('');
-    setSelectedScope('all');
-    setHasCopied(false);
-    setIsSidebarOpen(false);
-    setVisitorSearch('');
-    setSelectedVisitor(null);
     fetchShareData(controller.signal);
     return () => controller.abort();
   }, [open, fetchShareData]);

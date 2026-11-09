@@ -6,7 +6,7 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint",
+    "lint": "eslint src",
     "test": "tsx --test \"src/**/*.test.ts\"",
     "test:integration": "tsx --conditions=react-server --test \"tests/integration/**/*.test.ts\""
   },
