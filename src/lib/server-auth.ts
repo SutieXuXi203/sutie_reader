@@ -3,8 +3,13 @@ import 'server-only';
 import { cookies } from 'next/headers';
 import { jwtVerify, SignJWT } from 'jose';
 import { cache } from 'react';
+import { createHash } from 'node:crypto';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
+import { redisGet, redisSet, redisDelByPattern } from './redis';
+import { revokeToken, isTokenRevoked } from './tokenBlacklist';
+
+export { revokeToken, isTokenRevoked };
 
 export interface AuthUser {
   id: string;
@@ -109,8 +114,13 @@ export async function getSessionUserFromToken(token?: string | null): Promise<Au
 }
 
 const USER_CACHE_TTL_MS = 15_000;
+const USER_REDIS_TTL_MS = 60_000;
 const USER_CACHE_MAX_ENTRIES = 5_000;
 const userMemoryCache = new Map<string, { user: AuthUser | null; expiresAt: number }>();
+
+function hashToken(token: string): string {
+  return createHash('sha256').update(token).digest('hex').slice(0, 32);
+}
 
 function setUserCache(token: string, user: AuthUser | null, ttlMs: number) {
   userMemoryCache.delete(token);
@@ -131,10 +141,31 @@ function setUserCache(token: string, user: AuthUser | null, ttlMs: number) {
 export const getCurrentUserFromToken = cache(async (token?: string | null): Promise<AuthUser | null> => {
   if (!token) return null;
 
+  // L1: RAM Memory Cache
   const now = Date.now();
   const cached = userMemoryCache.get(token);
   if (cached && cached.expiresAt > now) {
     return cached.user;
+  }
+
+  // Kiểm tra Token Blacklist (nếu có Redis)
+  if (await isTokenRevoked(token)) {
+    setUserCache(token, null, 10_000);
+    return null;
+  }
+
+  // L2: Redis User Session Cache
+  const tokenHash = hashToken(token);
+  const sessionKey = `session:user:${tokenHash}`;
+  const redisVal = await redisGet(sessionKey);
+  if (redisVal !== null) {
+    try {
+      const user = JSON.parse(redisVal) as AuthUser | null;
+      setUserCache(token, user, USER_CACHE_TTL_MS);
+      return user;
+    } catch {
+      // Bỏ qua lỗi parse và truy vấn tiếp DB
+    }
   }
 
   const payload = await getSessionPayload(token);
@@ -148,10 +179,12 @@ export const getCurrentUserFromToken = cache(async (token?: string | null): Prom
 
     if (!user || !user.email || !user.role) {
       setUserCache(token, null, 10_000);
+      void redisSet(sessionKey, JSON.stringify(null), 10_000);
       return null;
     }
     if (user.role !== 'admin' && user.isVerified !== true) {
       setUserCache(token, null, 10_000);
+      void redisSet(sessionKey, JSON.stringify(null), 10_000);
       return null;
     }
 
@@ -164,6 +197,7 @@ export const getCurrentUserFromToken = cache(async (token?: string | null): Prom
     };
 
     setUserCache(token, authUser, USER_CACHE_TTL_MS);
+    void redisSet(sessionKey, JSON.stringify(authUser), USER_REDIS_TTL_MS);
     return authUser;
   } catch {
     return null;
@@ -173,13 +207,15 @@ export const getCurrentUserFromToken = cache(async (token?: string | null): Prom
 export function clearUserCache(userId?: string): void {
   if (!userId) {
     userMemoryCache.clear();
-    return;
-  }
-  for (const [token, entry] of userMemoryCache.entries()) {
-    if (entry.user && entry.user.id === userId) {
-      userMemoryCache.delete(token);
+  } else {
+    for (const [token, entry] of userMemoryCache.entries()) {
+      if (entry.user && entry.user.id === userId) {
+        userMemoryCache.delete(token);
+      }
     }
   }
+  // Xóa session cache trên Redis để toàn bộ các serverless instance khác đồng bộ lập tức
+  void redisDelByPattern('session:user:*');
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {

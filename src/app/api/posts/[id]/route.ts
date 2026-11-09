@@ -771,7 +771,7 @@ export async function PUT(
       });
     }
 
-    invalidateApiCache('posts:');
+    await invalidateApiCache('posts:');
     try {
       revalidatePath(`/posts/${id}`);
       revalidatePath('/');
@@ -842,7 +842,7 @@ export async function DELETE(
       }
     });
 
-    invalidateApiCache('posts:');
+    await invalidateApiCache('posts:');
     try {
       revalidatePath(`/posts/${id}`);
       revalidatePath('/');

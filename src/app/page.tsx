@@ -68,7 +68,7 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
   initialPosts: InitialPost[];
   initialTags: InitialTag[];
 }> {
-  const cached = getApiCache<{ posts: CatalogPostAggregate[]; tags: TagLean[] }>(POSTS_CATALOG_CACHE_KEY);
+  const cached = await getApiCache<{ posts: CatalogPostAggregate[]; tags: TagLean[] }>(POSTS_CATALOG_CACHE_KEY);
   let posts: CatalogPostAggregate[];
   let tags: TagLean[];
 
@@ -117,7 +117,7 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
       Tag.find({}).sort({ name: 1 }).lean<TagLean[]>(),
     ]);
 
-    setApiCache(POSTS_CATALOG_CACHE_KEY, { posts, tags }, POSTS_CATALOG_TTL_MS);
+    await setApiCache(POSTS_CATALOG_CACHE_KEY, { posts, tags }, POSTS_CATALOG_TTL_MS);
   }
 
   const visiblePosts = filterPostsForUser(posts as unknown as PostContext[], user) as unknown as CatalogPostAggregate[];

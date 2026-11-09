@@ -4,7 +4,7 @@ import { Post } from '@/models/Post';
 import { ObjectId } from 'mongodb';
 import { extractDriveImageId } from '@/lib/utils';
 import { createSignedWorkerImageUrl } from '@/lib/image-signing';
-import { checkMemoryRateLimit } from '@/lib/memoryRateLimit';
+import { checkRateLimit } from '@/lib/memoryRateLimit';
 import { getClientIp } from '@/lib/clientIp';
 import sharp from 'sharp';
 
@@ -33,7 +33,7 @@ export async function GET(
 ) {
   const { postId } = await context.params;
 
-  const limit = checkMemoryRateLimit(`og:${getClientIp(request.headers)}`, 30, 60_000);
+  const limit = await checkRateLimit(`og:${getClientIp(request.headers)}`, 30, 60_000);
   if (!limit.allowed) {
     return NextResponse.json(
       { error: 'Too many requests' },

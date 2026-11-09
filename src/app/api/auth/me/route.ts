@@ -4,7 +4,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
 import { getCurrentUserFromToken, getJwtSecret, clearUserCache } from '@/lib/server-auth';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
-import { checkMemoryRateLimit } from '@/lib/memoryRateLimit';
+import { checkRateLimit } from '@/lib/memoryRateLimit';
 import { isAllowedAvatarUrl } from '@/lib/validations';
 import { detectImageType, IMAGE_MIME_BY_TYPE, type DetectedImageType } from '@/lib/imageMagic';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -149,7 +149,7 @@ export async function PUT(request: NextRequest) {
     }
 
     // Mỗi lần đổi avatar có thể tải file lên Drive: giới hạn 10 lần / 10 phút cho mỗi tài khoản
-    const profileLimit = checkMemoryRateLimit(`profile-update:${String(payload.id)}`, 10, 10 * 60_000);
+    const profileLimit = await checkRateLimit(`profile-update:${String(payload.id)}`, 10, 10 * 60_000);
     if (!profileLimit.allowed) {
       return NextResponse.json(
         { error: 'Ban thao tac qua nhanh, vui long thu lai sau.' },

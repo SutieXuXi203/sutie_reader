@@ -244,7 +244,7 @@ export async function POST(
         { returnDocument: 'after' }
       )) || updatedPost;
 
-    invalidateApiCache('posts:');
+    await invalidateApiCache('posts:');
 
     // Ghi nhận log thêm chương mới lên Telegram
     const authUser = await getAuthUser(request);

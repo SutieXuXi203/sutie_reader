@@ -6,7 +6,7 @@ import { getCurrentUserFromToken } from '@/lib/server-auth';
 import { scrambleImageBuffer } from '@/lib/scramble-server';
 import { deriveScrambleSeed, DEFAULT_SCRAMBLE_ROWS, DEFAULT_SCRAMBLE_COLS } from '@/lib/scramble';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
-import { checkMemoryRateLimit } from '@/lib/memoryRateLimit';
+import { checkRateLimit } from '@/lib/memoryRateLimit';
 import { getClientIp } from '@/lib/clientIp';
 import { authorizeGuestImage, locateImageInPost, type ImageOwnerPost } from '@/lib/imageAccess';
 import { connectDB } from '@/lib/db';
@@ -103,7 +103,7 @@ export async function GET(
     return imageError('Unauthorized', 401);
   }
 
-  const rateLimit = checkMemoryRateLimit(
+  const rateLimit = await checkRateLimit(
     `img:${user.id}:${getClientIp(request.headers)}`,
     getPositiveIntegerEnv('IMAGE_RATE_LIMIT_MAX', DEFAULT_RATE_LIMIT_MAX),
     getPositiveIntegerEnv('IMAGE_RATE_LIMIT_WINDOW_MS', DEFAULT_RATE_LIMIT_WINDOW_MS)
@@ -121,13 +121,13 @@ export async function GET(
   if (user.role === 'guest') {
     const accessCacheKey = `img_access:${user.id}:${id}:${isThumb ? 't' : 'f'}`;
 
-    let isAllowed = getApiCache<boolean>(accessCacheKey);
+    let isAllowed = await getApiCache<boolean>(accessCacheKey);
     if (isAllowed === null) {
       try {
         await connectDB();
         const post = await findOwnerPost(id, request.nextUrl.searchParams.get('pid'));
         isAllowed = authorizeGuestImage(user, post, id, { thumb: isThumb });
-        setApiCache(accessCacheKey, isAllowed, ACCESS_CACHE_TTL_MS);
+        await setApiCache(accessCacheKey, isAllowed, ACCESS_CACHE_TTL_MS);
       } catch (err) {
         // Fail-closed: không kiểm tra được quyền thì từ chối, tuyệt đối không mặc định cho phép
         console.error('Lỗi kiểm tra quyền xem ảnh:', err);

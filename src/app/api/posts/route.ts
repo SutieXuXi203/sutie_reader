@@ -199,7 +199,7 @@ type PostListItem = {
 
 export async function GET(request: NextRequest) {
   try {
-    const cachedPosts = getApiCache<PostListItem[]>(POSTS_LIST_CACHE_KEY);
+    const cachedPosts = await getApiCache<PostListItem[]>(POSTS_LIST_CACHE_KEY);
     let allPosts: PostListItem[];
 
     if (cachedPosts) {
@@ -283,7 +283,7 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      setApiCache(POSTS_LIST_CACHE_KEY, allPosts, POSTS_LIST_CACHE_TTL_MS);
+      await setApiCache(POSTS_LIST_CACHE_KEY, allPosts, POSTS_LIST_CACHE_TTL_MS);
     }
 
     const user = await getAuthUser(request);
@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
     });
 
     const savedPost = await post.save();
-    invalidateApiCache('posts:');
+    await invalidateApiCache('posts:');
 
     // Ghi nhận log tạo truyện mới lên Telegram
     const authUser = await getAuthUser(request);
