@@ -376,14 +376,14 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               )}
               title={post.isPartialAccess ? `Bạn được cấp quyền: ${post.accessibleChapterLabel}` : `Bộ truyện: ${post.accessibleChapterLabel}`}
             >
-              <BookOpen className={cn("shrink-0", compact ? "w-3 h-3" : "w-3.5 h-3.5", post.isPartialAccess ? "text-amber-950" : "text-primary")} />
+              <BookOpen className={cn("shrink-0", compact ? "w-3 h-3" : "w-3.5 h-3.5", post.isPartialAccess ? "text-amber-950" : "text-white/90")} />
               <span className="truncate max-w-[120px]">{post.accessibleChapterLabel}</span>
             </div>
           ) : post.chapterCount && post.chapterCount > 0 ? (
             <div
               className="absolute top-2 left-2 z-[6] inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 bg-black/70 text-white/95 border border-white/15 backdrop-blur-xs text-[9.5px] sm:text-[10px] font-medium shadow-md select-none pointer-events-none"
             >
-              <BookOpen className={cn("shrink-0 text-primary", compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
+              <BookOpen className={cn("shrink-0 text-white/90", compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
               <span>{post.chapterCount} chương</span>
             </div>
           ) : null}
