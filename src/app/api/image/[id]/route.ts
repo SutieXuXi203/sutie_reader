@@ -19,7 +19,7 @@ export const maxDuration = 60;
 
 const DRIVE_FILE_ID_PATTERN = /^[a-zA-Z0-9_-]{10,}$/;
 const DEFAULT_RATE_LIMIT_WINDOW_MS = 60_000;
-const DEFAULT_RATE_LIMIT_MAX = 360;
+const DEFAULT_RATE_LIMIT_MAX = 800;
 const MAX_UPSTREAM_BYTES = 25 * 1024 * 1024;
 // Quyền được cache ngắn: instance khác (serverless) không nhận được lệnh invalidate khi admin đổi quyền chia sẻ
 const ACCESS_CACHE_TTL_MS = 60_000;

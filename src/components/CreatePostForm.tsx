@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState, DragEvent } from 'react';
+import { useRef, useState, useEffect, DragEvent } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -63,6 +63,24 @@ export function CreatePostForm({
   const draftPostIdRef = useRef<string | null>(null);
   const createdChapterCountRef = useRef(0);
   const isSavingChapterRef = useRef(false);
+  const imagePreviewsRef = useRef(imagePreviews);
+  imagePreviewsRef.current = imagePreviews;
+
+  useEffect(() => {
+    return () => {
+      imagePreviewsRef.current.forEach((url) => {
+        if (url?.startsWith('blob:')) URL.revokeObjectURL(url);
+      });
+    };
+  }, []);
+
+  const revokePreviews = (urls: string[]) => {
+    urls.forEach((url) => {
+      if (url?.startsWith('blob:')) {
+        URL.revokeObjectURL(url);
+      }
+    });
+  };
 
   const resetStoryFields = () => {
     setTitle('');
@@ -75,7 +93,10 @@ export function CreatePostForm({
     setChapterTranslator('');
     setChapterContent('');
     setImageFiles([]);
-    setImagePreviews([]);
+    setImagePreviews((prev) => {
+      revokePreviews(prev);
+      return [];
+    });
     setDraggedIdx(null);
     setDragOverIdx(null);
     setDragOverPosition(null);
@@ -117,7 +138,7 @@ export function CreatePostForm({
     onOpenChange(nextOpen);
   };
 
-  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     if (!selectedFiles.length) return;
 
@@ -129,21 +150,22 @@ export function CreatePostForm({
 
     setImageFiles(allFiles);
 
-    const previewPromises = allFiles.map((file) => {
-      return new Promise<string>((resolve) => {
-        const reader = new FileReader();
-        reader.onloadend = () => resolve(reader.result as string);
-        reader.readAsDataURL(file);
-      });
+    // Dùng URL.createObjectURL thay vì FileReader.readAsDataURL để tránh ngốn gigabytes RAM khi tải 500 ảnh
+    setImagePreviews((prev) => {
+      revokePreviews(prev);
+      return allFiles.map((file) => URL.createObjectURL(file));
     });
-
-    const sortedPreviews = await Promise.all(previewPromises);
-    setImagePreviews(sortedPreviews);
   };
 
   const removeImage = (index: number) => {
     setImageFiles((prev) => prev.filter((_, i) => i !== index));
-    setImagePreviews((prev) => prev.filter((_, i) => i !== index));
+    setImagePreviews((prev) => {
+      const urlToRevoke = prev[index];
+      if (urlToRevoke?.startsWith('blob:')) {
+        URL.revokeObjectURL(urlToRevoke);
+      }
+      return prev.filter((_, i) => i !== index);
+    });
   };
 
   const handleDragStart = (e: DragEvent<HTMLDivElement>, index: number) => {
@@ -521,6 +543,7 @@ export function CreatePostForm({
                             alt={`Xem trước ${index + 1}`}
                             fill
                             className="object-cover transition-transform duration-300 group-hover:scale-105"
+                            unoptimized
                           />
                           <button
                             type="button"

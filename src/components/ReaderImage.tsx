@@ -36,6 +36,7 @@ export const ReaderImage = React.memo(function ReaderImage({
   const [isInViewportOrNear, setIsInViewportOrNear] = useState(
     () => priority || (typeof window !== 'undefined' && typeof IntersectionObserver === 'undefined')
   );
+  const [measuredHeight, setMeasuredHeight] = useState<number | null>(null);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const retryTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -51,29 +52,33 @@ export const ReaderImage = React.memo(function ReaderImage({
     }
   }
 
-  // Smart Preload Observer: Preload when image is within 1200px (approx 2-3 screen heights) of viewport
+  // Virtual Windowing Observer:
+  // Tự động giải phóng Canvas khỏi RAM khi cuộn xa quá 2500px, và vẽ lại tức thì khi cuộn lại gần.
+  // Giúp trình duyệt (đặc biệt là iOS Safari) không bao giờ bị tràn VRAM khi đọc chương 500 ảnh.
   useEffect(() => {
-    if (priority || isInViewportOrNear) return;
+    if (priority) {
+      setIsInViewportOrNear(true);
+      return;
+    }
 
     const el = containerRef.current;
     if (!el) return;
 
     if (typeof IntersectionObserver === 'undefined') {
-      const timer = setTimeout(() => setIsInViewportOrNear(true), 0);
-      return () => clearTimeout(timer);
+      setIsInViewportOrNear(true);
+      return;
     }
 
     const observer = new IntersectionObserver(
       (entries) => {
         const entry = entries[0];
-        if (entry && (entry.isIntersecting || entry.intersectionRatio > 0)) {
-          setIsInViewportOrNear(true);
-          observer.disconnect();
-        }
+        if (!entry) return;
+        const isNear = entry.isIntersecting || entry.intersectionRatio > 0;
+        setIsInViewportOrNear(isNear);
       },
       {
-        rootMargin: '2400px 0px 2400px 0px',
-        threshold: 0.01,
+        rootMargin: '2500px 0px 2500px 0px',
+        threshold: 0,
       }
     );
 
@@ -82,7 +87,7 @@ export const ReaderImage = React.memo(function ReaderImage({
     return () => {
       observer.disconnect();
     };
-  }, [priority, isInViewportOrNear]);
+  }, [priority]);
 
   useEffect(() => {
     return () => {
@@ -130,6 +135,12 @@ export const ReaderImage = React.memo(function ReaderImage({
 
   const handleLoaded = useCallback(() => {
     setStatus('loaded');
+    if (containerRef.current) {
+      const h = containerRef.current.offsetHeight;
+      if (h > 50) {
+        setMeasuredHeight(h);
+      }
+    }
     onLoad?.();
   }, [onLoad]);
 
@@ -138,6 +149,7 @@ export const ReaderImage = React.memo(function ReaderImage({
   return (
     <div
       ref={containerRef}
+      style={measuredHeight ? { minHeight: `${measuredHeight}px` } : undefined}
       className={`relative w-full overflow-hidden flex items-center justify-center ${
         status === 'loaded' ? '' : 'min-h-[300px] bg-muted/10'
       }`}

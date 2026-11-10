@@ -1,6 +1,16 @@
 import imageCompression from 'browser-image-compression';
 import { getOptimizedImageUrl } from '@/lib/utils';
 
+const fetchUploadToken = async (): Promise<string> => {
+  const tokenRes = await fetch('/api/auth/token');
+  if (!tokenRes.ok) {
+    const errData = await tokenRes.json().catch(() => ({}));
+    throw new Error(errData?.error || 'Không lấy được phiên đăng nhập Admin');
+  }
+  const { token } = await tokenRes.json();
+  return token as string;
+};
+
 export const uploadImages = async (
   files: File[],
   uploadTitle: string,
@@ -10,12 +20,9 @@ export const uploadImages = async (
 ): Promise<string[]> => {
   if (!files.length) return [];
 
-  const tokenRes = await fetch('/api/auth/token');
-  if (!tokenRes.ok) {
-    const errData = await tokenRes.json().catch(() => ({}));
-    throw new Error(errData?.error || 'Không lấy được phiên đăng nhập Admin');
-  }
-  const { token } = await tokenRes.json();
+  let currentToken = await fetchUploadToken();
+  let tokenFetchedAt = Date.now();
+  const TOKEN_REFRESH_INTERVAL_MS = 7 * 60 * 1000; // Làm mới token sau mỗi 7 phút (token hết hạn ở 10 phút)
 
   const workerUrl = (
     process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||
@@ -24,10 +31,20 @@ export const uploadImages = async (
 
   const sortedFiles = [...files];
 
-  const BATCH_SIZE = 2;
+  const BATCH_SIZE = 6;
   const allUrls: string[] = [];
 
   for (let i = 0; i < sortedFiles.length; i += BATCH_SIZE) {
+    // Tự động làm mới token nếu quá trình upload kéo dài trên 7 phút
+    if (Date.now() - tokenFetchedAt > TOKEN_REFRESH_INTERVAL_MS) {
+      try {
+        currentToken = await fetchUploadToken();
+        tokenFetchedAt = Date.now();
+      } catch (err) {
+        console.warn('Không thể làm mới token trước batch, thử dùng tiếp token hiện tại:', err);
+      }
+    }
+
     const batchFiles = sortedFiles.slice(i, i + BATCH_SIZE);
 
     const compressedBatch = await Promise.all(
@@ -62,13 +79,30 @@ export const uploadImages = async (
       formData.append('files', file, file.name)
     );
 
-    const res = await fetch(`${workerUrl}/upload`, {
+    let res = await fetch(`${workerUrl}/upload`, {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${token}`,
+        Authorization: `Bearer ${currentToken}`,
       },
       body: formData,
     });
+
+    // Nếu token bị hết hạn giữa chừng (401), làm mới token ngay và thử lại 1 lần
+    if (res.status === 401) {
+      try {
+        currentToken = await fetchUploadToken();
+        tokenFetchedAt = Date.now();
+        res = await fetch(`${workerUrl}/upload`, {
+          method: 'POST',
+          headers: {
+            Authorization: `Bearer ${currentToken}`,
+          },
+          body: formData,
+        });
+      } catch {
+        // Tiếp tục để xử lý lỗi bên dưới
+      }
+    }
 
     if (!res.ok) {
       const data = await res.json().catch(() => ({}));
@@ -142,12 +176,7 @@ export const syncDriveImages = async (
   postId: string,
   chapter?: string
 ): Promise<string[]> => {
-  const tokenRes = await fetch('/api/auth/token');
-  if (!tokenRes.ok) {
-    const errData = await tokenRes.json().catch(() => ({}));
-    throw new Error(errData?.error || 'Không lấy được phiên đăng nhập Admin');
-  }
-  const { token } = await tokenRes.json();
+  const token = await fetchUploadToken();
 
   const workerUrl = (
     process.env.NEXT_PUBLIC_CLOUDFLARE_WORKER_URL ||

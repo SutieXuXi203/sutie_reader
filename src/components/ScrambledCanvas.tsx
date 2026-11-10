@@ -131,6 +131,13 @@ export const ScrambledCanvas = React.memo(function ScrambledCanvas({
       cancelled = true;
       img.onload = null;
       img.onerror = null;
+      // Giải phóng GPU VRAM và bộ nhớ Canvas lập tức khi unmount
+      const canvas = canvasRef.current;
+      if (canvas) {
+        canvas.width = 0;
+        canvas.height = 0;
+      }
+      rawImgRef.current = null;
     };
   }, [src, drawReconstructedImage]);
 
