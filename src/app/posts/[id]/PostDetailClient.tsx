@@ -180,7 +180,6 @@ export default function PostDetailClient({
   const [autoMode, setAutoMode] = useState<'scroll' | 'flip'>('scroll');
   const [autoSpeed, setAutoSpeed] = useState<number>(1);
   const [isEyeCareMode, setIsEyeCareMode] = useState(false);
-  const [scrollBtnPos, setScrollBtnPos] = useState({ x: 20, y: 100 });
   const [isAutoScrollSettingsOpen, setIsAutoScrollSettingsOpen] = useState(false);
   const [mounted, setMounted] = useState(false);
 
@@ -196,8 +195,6 @@ export default function PostDetailClient({
     };
   }, []);
 
-  const dragRef = useRef<{ startX: number; startY: number; initialX: number; initialY: number; currentX?: number; currentY?: number } | null>(null);
-  const isDraggedRef = useRef(false);
   const autoScrollMenuRef = useRef<HTMLDivElement | null>(null);
 
   const [pendingResume, setPendingResume] = useState<{
@@ -211,6 +208,9 @@ export default function PostDetailClient({
   const initialScrollDone = useRef(false);
   const chapterSelectRef = useRef<HTMLDivElement | null>(null);
   const showUIRef = useRef(showUI);
+  const isInteractingWithBarRef = useRef(false);
+  const isChapterMenuOpenRef = useRef(isChapterMenuOpen);
+  const isAutoScrollSettingsOpenRef = useRef(isAutoScrollSettingsOpen);
   const scrollRafRef = useRef<number | null>(null);
   const chapters = useMemo(() => normalizeChapters(post), [post]);
 
@@ -322,104 +322,78 @@ export default function PostDetailClient({
     });
   };
 
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setScrollBtnPos({ x: window.innerWidth - 70, y: window.innerHeight / 2 - 18 });
-      
-      const handleResize = () => {
-        setScrollBtnPos((prev) => ({
-          x: Math.max(0, Math.min(prev.x, window.innerWidth - 65)),
-          y: Math.max(0, Math.min(prev.y, window.innerHeight - 40)),
-        }));
-      };
-      
-      window.addEventListener('resize', handleResize);
-      return () => window.removeEventListener('resize', handleResize);
-    }
-  }, []);
 
-  const handleScrollBtnPointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
-    if (e.button !== 0) return;
-    
-    dragRef.current = {
-      startX: e.clientX,
-      startY: e.clientY,
-      initialX: scrollBtnPos.x,
-      initialY: scrollBtnPos.y,
-    };
-    isDraggedRef.current = false;
-
-    const handleMove = (ev: PointerEvent) => {
-      if (!dragRef.current) return;
-      const dx = ev.clientX - dragRef.current.startX;
-      const dy = ev.clientY - dragRef.current.startY;
-      if (Math.abs(dx) > 3 || Math.abs(dy) > 3) {
-        isDraggedRef.current = true;
-      }
-      
-      const clampX = Math.max(0, Math.min(dragRef.current.initialX + dx, window.innerWidth - 65));
-      const clampY = Math.max(0, Math.min(dragRef.current.initialY + dy, window.innerHeight - 40));
-      
-      dragRef.current.currentX = clampX;
-      dragRef.current.currentY = clampY;
-      
-      if (autoScrollMenuRef.current) {
-        autoScrollMenuRef.current.style.transform = `translate3d(${clampX}px, ${clampY}px, 0)`;
-      }
-    };
-
-    const handleUp = () => {
-      if (dragRef.current) {
-        if (dragRef.current.currentX !== undefined && dragRef.current.currentY !== undefined) {
-          setScrollBtnPos({ x: dragRef.current.currentX, y: dragRef.current.currentY });
-        }
-        dragRef.current = null;
-      }
-      window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
-    };
-
-    window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp);
-  };
-
-  const handleScrollBtnClick = (e: React.MouseEvent) => {
-    if (isDraggedRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      return;
-    }
-    setIsAutoPlaying(!isAutoPlaying);
-  };
 
   useEffect(() => {
     showUIRef.current = showUI;
   }, [showUI]);
 
+  const resetUiTimer = useCallback((delayOrEvent?: number | unknown) => {
+    const delay = typeof delayOrEvent === 'number' ? delayOrEvent : 3000;
+    if (!showUIRef.current) {
+      showUIRef.current = true;
+      setShowUI(true);
+    }
+    if (uiTimer.current) {
+      clearTimeout(uiTimer.current);
+      uiTimer.current = null;
+    }
+
+    // Nếu người dùng đang tương tác với thanh điều hướng hoặc menu đang mở, TUYỆT ĐỐI KHÔNG tắt!
+    if (
+      isInteractingWithBarRef.current ||
+      isChapterMenuOpenRef.current ||
+      isAutoScrollSettingsOpenRef.current
+    ) {
+      return;
+    }
+
+    uiTimer.current = setTimeout(() => {
+      if (
+        isInteractingWithBarRef.current ||
+        isChapterMenuOpenRef.current ||
+        isAutoScrollSettingsOpenRef.current
+      ) {
+        return;
+      }
+      showUIRef.current = false;
+      setShowUI(false);
+    }, delay);
+  }, []);
+
   useEffect(() => {
+    isAutoScrollSettingsOpenRef.current = isAutoScrollSettingsOpen;
+    if (isAutoScrollSettingsOpen) {
+      if (!showUIRef.current) {
+        showUIRef.current = true;
+        setShowUI(true);
+      }
+      if (uiTimer.current) {
+        clearTimeout(uiTimer.current);
+        uiTimer.current = null;
+      }
+    } else if (!isInteractingWithBarRef.current) {
+      resetUiTimer(3000);
+    }
+
     if (!isAutoScrollSettingsOpen) return;
     const handleOutsideClick = (e: PointerEvent) => {
       if (!autoScrollMenuRef.current?.contains(e.target as Node)) {
         setIsAutoScrollSettingsOpen(false);
       }
     };
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        setIsAutoScrollSettingsOpen(false);
+      }
+    };
     document.addEventListener('pointerdown', handleOutsideClick);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
       document.removeEventListener('pointerdown', handleOutsideClick);
+      document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isAutoScrollSettingsOpen]);
-
-  const resetUiTimer = useCallback(() => {
-    if (!showUIRef.current) {
-      showUIRef.current = true;
-      setShowUI(true);
-    }
-    if (uiTimer.current) clearTimeout(uiTimer.current);
-    uiTimer.current = setTimeout(() => {
-      showUIRef.current = false;
-      setShowUI(false);
-    }, 2000);
-  }, []);
+  }, [isAutoScrollSettingsOpen, resetUiTimer]);
 
   const removeBookmark = useCallback(async () => {
     if (!post) return;
@@ -590,21 +564,28 @@ export default function PostDetailClient({
   }, [currentPage, activeChapterIndex, post, user, hasBookmark, removeBookmark, chapters]);
 
   useEffect(() => {
-    uiTimer.current = setTimeout(() => {
-      showUIRef.current = false;
-      setShowUI(false);
-    }, 2000);
+    resetUiTimer(3500);
     return () => {
       if (uiTimer.current) clearTimeout(uiTimer.current);
     };
-  }, []);
+  }, [resetUiTimer]);
 
   useEffect(() => {
-    if (!isChapterMenuOpen) return;
+    isChapterMenuOpenRef.current = isChapterMenuOpen;
+    if (isChapterMenuOpen) {
+      if (!showUIRef.current) {
+        showUIRef.current = true;
+        setShowUI(true);
+      }
+      if (uiTimer.current) {
+        clearTimeout(uiTimer.current);
+        uiTimer.current = null;
+      }
+    } else if (!isInteractingWithBarRef.current) {
+      resetUiTimer(3000);
+    }
 
-    setShowUI(true);
-    showUIRef.current = true;
-    if (uiTimer.current) clearTimeout(uiTimer.current);
+    if (!isChapterMenuOpen) return;
 
     const handlePointerDown = (event: PointerEvent) => {
       if (!chapterSelectRef.current?.contains(event.target as Node)) {
@@ -625,7 +606,7 @@ export default function PostDetailClient({
       document.removeEventListener('pointerdown', handlePointerDown);
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [isChapterMenuOpen]);
+  }, [isChapterMenuOpen, resetUiTimer]);
 
   useEffect(() => {
     if (!post) return;
@@ -1255,26 +1236,78 @@ export default function PostDetailClient({
       </div>
 
       <div
-        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 pointer-events-none ${showUI ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
-          }`}
+        className={`fixed bottom-6 left-1/2 -translate-x-1/2 z-50 transition-all duration-500 pointer-events-none ${
+          showUI ? 'opacity-100 translate-y-0' : 'opacity-0 translate-y-4'
+        }`}
       >
-        <div className="flex items-center gap-1.5 bg-background p-1 rounded-[8px] border border-border shadow-2xl pointer-events-auto">
+        <div
+          className="flex items-center gap-1.5 bg-background/95 backdrop-blur-md p-1.5 rounded-[10px] border border-border shadow-2xl pointer-events-auto"
+          onPointerEnter={() => {
+            isInteractingWithBarRef.current = true;
+            if (uiTimer.current) {
+              clearTimeout(uiTimer.current);
+              uiTimer.current = null;
+            }
+            if (!showUIRef.current) {
+              showUIRef.current = true;
+              setShowUI(true);
+            }
+          }}
+          onPointerLeave={() => {
+            isInteractingWithBarRef.current = false;
+            resetUiTimer(2500);
+          }}
+          onPointerDown={() => {
+            isInteractingWithBarRef.current = true;
+            if (uiTimer.current) {
+              clearTimeout(uiTimer.current);
+              uiTimer.current = null;
+            }
+            if (!showUIRef.current) {
+              showUIRef.current = true;
+              setShowUI(true);
+            }
+          }}
+          onTouchStart={() => {
+            isInteractingWithBarRef.current = true;
+            if (uiTimer.current) {
+              clearTimeout(uiTimer.current);
+              uiTimer.current = null;
+            }
+            if (!showUIRef.current) {
+              showUIRef.current = true;
+              setShowUI(true);
+            }
+          }}
+          onTouchEnd={() => {
+            isInteractingWithBarRef.current = false;
+            resetUiTimer(4000);
+          }}
+        >
+          {/* Nút Chương trước */}
           <button
+            type="button"
             onClick={() => goToChapter(activeChapterIndex - 1)}
             disabled={activeChapterIndex === 0}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-background text-foreground disabled:text-muted-foreground cursor-pointer disabled:cursor-not-allowed text-[11px] md:text-xs font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 h-8 rounded-[8px] border border-border bg-background hover:bg-muted text-foreground disabled:text-muted-foreground cursor-pointer disabled:cursor-not-allowed text-[11px] md:text-xs font-medium transition-colors disabled:opacity-50"
+            title="Chương trước"
           >
             <AnimatedArrowLeft className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Chương trước</span>
           </button>
+
+          {/* Chọn chương dropdown */}
           <div ref={chapterSelectRef} className="relative">
             <button
               type="button"
               aria-haspopup="listbox"
               aria-expanded={isChapterMenuOpen}
               aria-label="Chọn chương"
-              onClick={() => setIsChapterMenuOpen((open) => !open)}
-              className="inline-flex h-8 min-w-[104px] items-center justify-between gap-2 rounded-[8px] border border-border bg-background px-3.5 text-[11px] font-semibold text-foreground shadow-sm transition-colors hover:bg-muted focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring/30 md:text-xs"
+              onClick={() => {
+                setIsChapterMenuOpen((open) => !open);
+                setIsAutoScrollSettingsOpen(false);
+              }}
+              className="inline-flex h-8 min-w-[96px] sm:min-w-[104px] items-center justify-between gap-1.5 sm:gap-2 rounded-[8px] border border-border bg-background px-3 text-[11px] font-semibold text-foreground shadow-xs transition-colors hover:bg-muted focus-visible:border-primary/50 focus-visible:ring-2 focus-visible:ring-ring/30 md:text-xs cursor-pointer"
             >
               <span className="truncate">Chương {activeChapter?.chapterNumber || activeChapterIndex + 1}</span>
               <ChevronDown
@@ -1325,106 +1358,116 @@ export default function PostDetailClient({
               </div>
             )}
           </div>
+
+          {/* Nút Chương sau */}
           <button
+            type="button"
             onClick={() => goToChapter(activeChapterIndex + 1)}
             disabled={activeChapterIndex >= chapters.length - 1}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[8px] border border-border bg-background text-foreground disabled:text-muted-foreground cursor-pointer disabled:cursor-not-allowed text-[11px] md:text-xs font-medium transition-colors disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3 py-1.5 h-8 rounded-[8px] border border-border bg-background hover:bg-muted text-foreground disabled:text-muted-foreground cursor-pointer disabled:cursor-not-allowed text-[11px] md:text-xs font-medium transition-colors disabled:opacity-50"
+            title="Chương sau"
           >
             <span className="hidden sm:inline">Chương sau</span>
             <AnimatedArrowRight className="w-3.5 h-3.5" />
           </button>
 
+          {/* Đường phân cách */}
+          <div className="w-[1px] h-5 bg-border mx-0.5 shrink-0" />
+
+          {/* Nút Tự động đọc / cuộn (Play/Pause) */}
+          <button
+            type="button"
+            onClick={() => setIsAutoPlaying((prev) => !prev)}
+            title={isAutoPlaying ? "Tạm dừng tự động cuộn (Space)" : "Bật tự động cuộn (Space)"}
+            className={cn(
+              "flex items-center justify-center h-8 w-8 rounded-[8px] border transition-all cursor-pointer text-xs font-medium shrink-0",
+              isAutoPlaying
+                ? "bg-primary text-primary-foreground border-primary shadow-sm active:scale-95"
+                : "border-border bg-background hover:bg-muted text-foreground active:scale-95"
+            )}
+          >
+            {isAutoPlaying ? <Pause className="w-3.5 h-3.5" /> : <Play className="w-3.5 h-3.5 ml-0.5" />}
+          </button>
+
+          {/* Nút Cài đặt đọc truyện (Settings) */}
+          <div ref={autoScrollMenuRef} className="relative">
+            <button
+              type="button"
+              onClick={() => {
+                setIsAutoScrollSettingsOpen((prev) => !prev);
+                setIsChapterMenuOpen(false);
+              }}
+              title="Cài đặt đọc truyện"
+              className={cn(
+                "flex items-center justify-center h-8 w-8 rounded-[8px] border transition-all cursor-pointer text-xs font-medium group shrink-0",
+                isAutoScrollSettingsOpen
+                  ? "bg-muted border-primary/50 text-primary ring-1 ring-primary/20"
+                  : "border-border bg-background hover:bg-muted text-foreground active:scale-95"
+              )}
+            >
+              <Settings
+                className={cn(
+                  "w-3.5 h-3.5 transition-transform duration-500 ease-out group-hover:rotate-90",
+                  isAutoScrollSettingsOpen && "rotate-90 text-primary"
+                )}
+              />
+            </button>
+
+            {/* Menu Popup Cài đặt */}
+            {isAutoScrollSettingsOpen && (
+              <div
+                className="absolute bottom-full right-0 z-50 mb-2 w-48 rounded-[10px] border border-border bg-background/98 backdrop-blur-md p-2.5 shadow-2xl flex flex-col gap-2.5 text-xs animate-in fade-in zoom-in-95 duration-150"
+              >
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[11px] font-semibold text-muted-foreground">Chế độ</span>
+                  <button
+                    type="button"
+                    onClick={() => setAutoMode((m) => (m === 'scroll' ? 'flip' : 'scroll'))}
+                    className="px-2 py-1 rounded-[6px] bg-secondary hover:bg-muted text-foreground text-[11px] font-bold transition-colors cursor-pointer"
+                  >
+                    {autoMode === 'scroll' ? 'Cuộn' : 'Nhảy'}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[11px] font-semibold text-muted-foreground">Tốc độ</span>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const speeds = [0.25, 0.5, 1, 1.25, 1.5, 2];
+                      setAutoSpeed((s) => {
+                        const nextIndex = (speeds.indexOf(s) + 1) % speeds.length;
+                        return speeds[nextIndex];
+                      });
+                    }}
+                    className="px-2 py-1 rounded-[6px] bg-secondary hover:bg-muted text-foreground text-[11px] font-bold transition-colors min-w-[42px] text-center select-none cursor-pointer"
+                  >
+                    x{autoSpeed}
+                  </button>
+                </div>
+                <div className="w-full h-[1px] bg-border my-0.5" />
+                <div className="flex items-center justify-between gap-3">
+                  <span className="text-[11px] font-semibold text-muted-foreground">Bảo vệ mắt</span>
+                  <button
+                    type="button"
+                    onClick={toggleEyeCareMode}
+                    className={cn(
+                      "relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none",
+                      isEyeCareMode ? "bg-primary" : "bg-muted"
+                    )}
+                  >
+                    <span
+                      className={cn(
+                        "inline-block h-3 w-3 transform rounded-full bg-white transition duration-200 ease-in-out",
+                        isEyeCareMode ? "translate-x-1.5" : "-translate-x-1.5"
+                      )}
+                    />
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
         </div>
       </div>
-
-      {mounted && typeof document !== 'undefined' && createPortal(
-        <div
-          ref={autoScrollMenuRef}
-          className="fixed top-0 left-0 z-[99999] flex flex-col gap-1 select-none"
-          style={{
-            transform: `translate3d(${scrollBtnPos.x}px, ${scrollBtnPos.y}px, 0)`,
-            willChange: 'transform'
-          }}
-        >
-          <div
-            className={`flex items-center rounded-full border shadow-[0_0_15px_rgba(0,0,0,0.2)] transition-colors cursor-grab active:cursor-grabbing touch-none ${
-              isAutoPlaying ? 'bg-primary text-primary-foreground border-primary' : 'bg-background text-foreground border-border'
-            }`}
-            onPointerDown={handleScrollBtnPointerDown}
-          >
-            <button
-              className="w-9 h-9 flex items-center justify-center rounded-l-full group"
-              onClick={handleScrollBtnClick}
-              title="Bật/Tắt tự động cuộn (Kéo để di chuyển)"
-            >
-              <div className="transition-transform duration-300 group-hover:scale-110 group-active:scale-75">
-                {isAutoPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4 ml-0.5" />}
-              </div>
-            </button>
-            <div className={`w-[1px] h-5 ${isAutoPlaying ? 'bg-primary-foreground/30' : 'bg-border'}`}></div>
-            <button
-              className={`w-7 h-9 flex items-center justify-center rounded-r-full transition-colors group ${
-                isAutoPlaying ? 'hover:bg-primary-foreground/10' : 'hover:bg-muted'
-              }`}
-              onClick={(e) => {
-                if (isDraggedRef.current) {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  return;
-                }
-                setIsAutoScrollSettingsOpen(!isAutoScrollSettingsOpen);
-              }}
-              title="Cài đặt cuộn"
-            >
-              <Settings className={`w-3.5 h-3.5 transition-transform duration-500 ease-out group-hover:rotate-90 group-active:scale-75 ${isAutoScrollSettingsOpen ? 'rotate-90' : ''}`} />
-            </button>
-          </div>
-          
-          <div
-            className={`absolute top-full mt-2 right-0 bg-background border border-border rounded-[12px] p-2 shadow-xl flex flex-col gap-2 min-w-[120px] origin-top-right transition-all duration-300 ease-[cubic-bezier(0.23,1,0.32,1)] ${
-              isAutoScrollSettingsOpen
-                ? 'opacity-100 scale-100 translate-y-0 pointer-events-auto'
-                : 'opacity-0 scale-90 -translate-y-2 pointer-events-none'
-            }`}
-          >
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-[11px] font-semibold text-muted-foreground">Chế độ</span>
-                <button
-                  onClick={() => setAutoMode(m => m === 'scroll' ? 'flip' : 'scroll')}
-                  className="px-2 py-1 rounded-[6px] bg-secondary hover:bg-muted text-foreground text-[11px] font-bold transition-colors"
-                >
-                  {autoMode === 'scroll' ? 'Cuộn' : 'Nhảy'}
-                </button>
-              </div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[11px] font-semibold text-muted-foreground">Tốc độ</span>
-                <button
-                  onClick={() => {
-                    const speeds = [0.25, 0.5, 1, 1.25, 1.5, 2];
-                    setAutoSpeed(s => {
-                      const nextIndex = (speeds.indexOf(s) + 1) % speeds.length;
-                      return speeds[nextIndex];
-                    });
-                  }}
-                  className="px-2 py-1 rounded-[6px] bg-secondary hover:bg-muted text-foreground text-[11px] font-bold transition-colors min-w-[42px] text-center select-none"
-                >
-                  x{autoSpeed}
-                </button>
-              </div>
-              <div className="w-full h-[1px] bg-border my-0.5"></div>
-              <div className="flex items-center justify-between gap-3">
-                <span className="text-[11px] font-semibold text-muted-foreground">Bảo vệ mắt</span>
-                <button
-                  onClick={toggleEyeCareMode}
-                  className={`relative inline-flex h-4 w-7 shrink-0 cursor-pointer items-center justify-center rounded-full transition-colors duration-200 ease-in-out focus:outline-none ${isEyeCareMode ? 'bg-primary' : 'bg-muted'}`}
-                >
-                  <span className={`inline-block h-3 w-3 transform rounded-full bg-white transition duration-200 ease-in-out ${isEyeCareMode ? 'translate-x-1.5' : '-translate-x-1.5'}`} />
-                </button>
-              </div>
-            </div>
-        </div>,
-        document.body
-      )}
 
       {isShareOpen && post && (
         <ShareDialog
