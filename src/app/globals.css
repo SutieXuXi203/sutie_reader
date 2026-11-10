@@ -502,13 +502,25 @@ html.lenis body {
 }
 
 .app-toast .gooey-wrapper {
-  border-radius: 8px !important;
-  overflow: hidden !important;
+  border-radius: 10px !important;
+  overflow: visible !important;
+  height: auto !important;
+  width: auto !important;
+  max-width: 100% !important;
+  display: flex !important;
+  justify-content: center !important;
+  align-items: center !important;
 }
 
+.app-toast .gooey-content,
 .app-toast .gooey-contentCompact,
 .app-toast .gooey-contentExpanded,
 .app-toast-content {
+  clip-path: none !important;
+  -webkit-clip-path: none !important;
+  max-height: none !important;
+  overflow: visible !important;
+  box-sizing: border-box !important;
   border-radius: 10px !important;
   background: var(--card) !important;
   color: var(--foreground) !important;
@@ -516,7 +528,8 @@ html.lenis body {
   backdrop-filter: blur(16px) !important;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.25) !important;
   padding: 8px 16px !important;
-  min-height: 40px !important;
+  min-height: 38px !important;
+  height: auto !important;
   display: flex !important;
   flex-direction: row !important;
   align-items: center !important;
@@ -526,6 +539,10 @@ html.lenis body {
   width: max-content !important;
   max-width: min(92vw, 480px) !important;
   margin: 0 auto !important;
+}
+
+.app-toast .gooey-contentCompact .gooey-progressWrapper {
+  display: none !important;
 }
 
 .app-toast .gooey-header {
@@ -664,7 +681,16 @@ html.lenis body {
 
 .app-toast--success .gooey-contentCompact,
 .app-toast--success .gooey-contentExpanded,
-.app-toast--success .app-toast-content {
+.app-toast--success .app-toast-content,
+.app-toast--info .gooey-contentCompact,
+.app-toast--info .gooey-contentExpanded,
+.app-toast--info .app-toast-content,
+.app-toast--warning .gooey-contentCompact,
+.app-toast--warning .gooey-contentExpanded,
+.app-toast--warning .app-toast-content,
+.app-toast--error .gooey-contentCompact,
+.app-toast--error .gooey-contentExpanded,
+.app-toast--error .app-toast-content {
   background: var(--card) !important;
   color: var(--foreground) !important;
   border: 1px solid var(--primary) !important;
@@ -711,12 +737,15 @@ html.lenis body {
   justify-content: flex-start !important;
 }
 
+[data-sonner-toaster] [data-sonner-toast],
 [data-sonner-toaster][data-x-position='center'] [data-sonner-toast] {
   background: transparent !important;
   border: none !important;
   box-shadow: none !important;
-  border-radius: 8px !important;
-  overflow: hidden !important;
+  border-radius: 10px !important;
+  overflow: visible !important;
+  height: auto !important;
+  min-height: auto !important;
   left: 50% !important;
   right: auto !important;
   transform: translateX(-50%) !important;
