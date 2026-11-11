@@ -9,8 +9,9 @@ export interface ScrambleOptions {
 }
 
 /**
- * Fast in-memory raw pixel scrambler using Sharp.
- * Operates in ~50-90ms by extracting raw RGBA pixels and copying tile row slices.
+ * In-memory raw pixel scrambler using Sharp (giải mã -> hoán đổi ô -> mã hóa WebP lossless 1:1).
+ * Đo thực tế trên ảnh 1200x1800–1600x2048 đã nén WebP: ~0,5–1,4 giây CPU/ảnh (bước mã hóa lossless chiếm phần lớn),
+ * nên route `/api/image/[id]` dùng `scrambledImageCache` để không tính lại cho mỗi lần xem.
  */
 export async function scrambleImageBuffer(
   inputBuffer: Buffer,

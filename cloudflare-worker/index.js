@@ -9,9 +9,17 @@ const ALLOWED_IMAGE_MIME_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp
 const CLIENT_IMAGE_CACHE_SECONDS = 2592000; // 30 ngày
 const EDGE_IMAGE_CACHE_SECONDS = 31536000; // 1 năm
 
+// Số file tải lên Drive song song trong MỘT request (giữ thấp để không chạm giới hạn tốc độ của Drive và bộ nhớ 128MB của Worker)
+const UPLOAD_CONCURRENCY_PER_REQUEST = 2;
+const DRIVE_MAX_ATTEMPTS = 4;
+const DRIVE_RETRY_BASE_MS = 400;
+const FOLDER_CACHE_TTL_MS = 5 * 60 * 1000;
+
 let cachedAccessToken = null;
 let tokenExpiry = 0;
 const metadataCache = new Map();
+// Cache id thư mục (lưu Promise để các request song song dùng chung một lần tra cứu/tạo thư mục)
+const folderCache = new Map();
 
 function jsonResponse(payload, status, corsHeaders) {
   return new Response(JSON.stringify(payload), {
@@ -333,7 +341,61 @@ async function getOrCreateFolder(accessToken, parentFolderId, title, postId) {
   return data.id;
 }
 
-async function uploadFileToDrive(accessToken, folderId, postId, file, index, total) {
+/** Tra cứu/tạo thư mục có cache: 500 ảnh chia thành ~84 request nhưng chỉ cần tra cứu thư mục một lần */
+function getOrCreateFolderCached(accessToken, parentFolderId, title, postId) {
+  const key = `${parentFolderId}\n${postId || ''}\n${title}`;
+  const now = Date.now();
+  const hit = folderCache.get(key);
+  if (hit && hit.expiresAt > now) return hit.promise;
+
+  const promise = getOrCreateFolder(accessToken, parentFolderId, title, postId);
+  folderCache.set(key, { promise, expiresAt: now + FOLDER_CACHE_TTL_MS });
+  promise.catch(() => {
+    if (folderCache.get(key)?.promise === promise) folderCache.delete(key);
+  });
+
+  if (folderCache.size > 500) {
+    folderCache.delete(folderCache.keys().next().value);
+  }
+  return promise;
+}
+
+function sleep(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+/** Lỗi tạm thời của Drive (quá tải, giới hạn tốc độ) đáng để thử lại; lỗi còn lại (400, 404...) thì không */
+async function isRetryableDriveResponse(res) {
+  if (res.status === 429 || res.status === 408 || res.status >= 500) return true;
+  if (res.status !== 403) return false;
+  const data = await res.clone().json().catch(() => ({}));
+  const reasons = (data?.error?.errors || []).map((e) => String(e?.reason || ''));
+  return reasons.some((reason) => /rateLimitExceeded|userRateLimitExceeded|quotaExceeded/i.test(reason));
+}
+
+async function runWithConcurrency(items, limit, task) {
+  const results = new Array(items.length);
+  let nextIndex = 0;
+  let failed = false;
+
+  const runners = Array.from({ length: Math.min(limit, items.length) }, async () => {
+    while (!failed) {
+      const index = nextIndex++;
+      if (index >= items.length) return;
+      try {
+        results[index] = await task(items[index], index);
+      } catch (error) {
+        failed = true;
+        throw error;
+      }
+    }
+  });
+
+  await Promise.all(runners);
+  return results;
+}
+
+async function uploadFileToDrive(accessToken, folderId, postId, file, index, total, retryBaseMs = DRIVE_RETRY_BASE_MS) {
   console.log(`[CF WORKER] Uploading image ${index + 1}/${total}: ${file.name} (${Math.round(file.size / 1024)} KB)`);
 
   const boundary = '-------314159265358979323846';
@@ -357,14 +419,23 @@ async function uploadFileToDrive(accessToken, folderId, postId, file, index, tot
     closeDelim,
   ]);
 
-  const uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id', {
-    method: 'POST',
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': `multipart/related; boundary=${boundary}`,
-    },
-    body: multipartBody,
-  });
+  let uploadRes;
+  for (let attempt = 1; ; attempt++) {
+    uploadRes = await fetch('https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${accessToken}`,
+        'Content-Type': `multipart/related; boundary=${boundary}`,
+      },
+      body: multipartBody,
+    });
+
+    if (uploadRes.ok || attempt >= DRIVE_MAX_ATTEMPTS || !(await isRetryableDriveResponse(uploadRes))) break;
+
+    const delay = retryBaseMs * 2 ** (attempt - 1) + Math.floor(Math.random() * retryBaseMs);
+    console.warn(`[CF WORKER] Drive trả ${uploadRes.status} cho ${file.name}, thử lại lần ${attempt}/${DRIVE_MAX_ATTEMPTS - 1} sau ${delay}ms`);
+    await sleep(delay);
+  }
 
   const fileData = await readJson(uploadRes, `Upload Drive file ${file.name}`);
   if (!fileData.id) {
@@ -685,28 +756,42 @@ const worker = {
 
         const accessToken = await getAccessToken(env);
         const parentFolderId = getRootFolderId(env);
-        const storyFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
-        
+        const storyFolderId = await getOrCreateFolderCached(accessToken, parentFolderId, title, postId);
+
         let targetFolderId = storyFolderId;
         if (chapter) {
-          targetFolderId = await getOrCreateFolder(accessToken, storyFolderId, chapter, null);
+          targetFolderId = await getOrCreateFolderCached(accessToken, storyFolderId, chapter, null);
         }
 
         const imageBaseUrl = (env.PUBLIC_IMAGE_BASE_URL || url.origin).replace(/\/+$/, '');
+        const configuredRetryMs = Number(env.DRIVE_RETRY_BASE_MS);
+        const retryBaseMs = Number.isFinite(configuredRetryMs) && configuredRetryMs >= 0 ? configuredRetryMs : DRIVE_RETRY_BASE_MS;
 
-        // Tải lần lượt (không Promise.all) để không giữ nhiều file lớn trong bộ nhớ Worker (giới hạn 128MB) cùng lúc
-        const uploadedUrls = [];
-        for (let i = 0; i < files.length; i++) {
-          const fileId = await uploadFileToDrive(accessToken, targetFolderId, postId, files[i], i, files.length);
+        // Tải song song có giới hạn (giữ nguyên thứ tự kết quả) để 500 ảnh không phải chờ từng file một
+        const uploadedUrls = await runWithConcurrency(files, UPLOAD_CONCURRENCY_PER_REQUEST, async (file, i) => {
+          const fileId = await uploadFileToDrive(accessToken, targetFolderId, postId, file, i, files.length, retryBaseMs);
           if (!isAvatar) {
-            await assertImageCanBeServed(accessToken, parentFolderId, fileId);
+            // File vừa tạo trực tiếp trong thư mục thuộc thư mục gốc được phép nên không cần hỏi lại Drive
+            // (trước đây tốn thêm 2–3 lượt gọi API cho mỗi ảnh): chỉ ghi nhớ siêu dữ liệu đã biết để lần đọc đầu tiên nhanh hơn.
+            metadataCache.set(fileId, {
+              id: fileId,
+              name: sanitizeFileName(file.name),
+              mimeType: file.type,
+              parents: [targetFolderId],
+              trashed: false,
+            });
+            if (metadataCache.size > 2000) {
+              metadataCache.delete(metadataCache.keys().next().value);
+            }
           }
-          uploadedUrls.push(isAvatar ? `${imageBaseUrl}/avatar/${fileId}` : `${imageBaseUrl}/image/${fileId}`);
-        }
+          return isAvatar ? `${imageBaseUrl}/avatar/${fileId}` : `${imageBaseUrl}/image/${fileId}`;
+        });
 
         console.log(`[CF WORKER] Uploaded ${uploadedUrls.length}/${files.length} image(s)`);
         return jsonResponse({ urls: uploadedUrls }, 200, corsHeaders);
       } catch (error) {
+        // Thư mục đã cache có thể đã bị xóa/di chuyển trên Drive: bỏ cache để lần thử lại tra cứu lại từ đầu
+        folderCache.clear();
         const errorStatus = getErrorStatus(error);
         const status = errorStatus >= 400 && errorStatus < 500 ? errorStatus : 500;
         console.error('[CF WORKER] Upload request failed:', getErrorMessage(error));
@@ -733,11 +818,11 @@ const worker = {
 
         const accessToken = await getAccessToken(env);
         const parentFolderId = getRootFolderId(env);
-        const storyFolderId = await getOrCreateFolder(accessToken, parentFolderId, title, postId);
-        
+        const storyFolderId = await getOrCreateFolderCached(accessToken, parentFolderId, title, postId);
+
         let targetFolderId = storyFolderId;
         if (chapter) {
-          targetFolderId = await getOrCreateFolder(accessToken, storyFolderId, chapter, null);
+          targetFolderId = await getOrCreateFolderCached(accessToken, storyFolderId, chapter, null);
         }
 
         const imageBaseUrl = (env.PUBLIC_IMAGE_BASE_URL || url.origin).replace(/\/+$/, '');

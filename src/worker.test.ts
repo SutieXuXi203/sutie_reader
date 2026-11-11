@@ -142,3 +142,130 @@ describe('Cloudflare Worker — chạy mã thật với Drive giả lập', () =
     assert.notEqual(res.status, 400);
   });
 });
+
+describe('Cloudflare Worker — upload nhiều ảnh (Drive giả lập có trạng thái)', () => {
+  const calls: string[] = [];
+  let maxInFlight = 0;
+  let inFlight = 0;
+  let failUploadsWith: number[] = [];
+  let storyFolderLookups = 0;
+
+  function multiUploadRequest(token: string, names: string[], title = 'Story') {
+    const form = new FormData();
+    form.append('title', title);
+    form.append('postId', 'a'.repeat(24));
+    for (const name of names) form.append('files', new Blob([PNG], { type: 'image/png' }), name);
+    return new Request('https://worker.test/upload', { method: 'POST', headers: { Authorization: `Bearer ${token}` }, body: form });
+  }
+
+  before(() => {
+    globals.caches = { default: { match: async () => undefined, put: async () => {} } };
+    globalThis.fetch = (async (input: RequestInfo | URL, init?: RequestInit) => {
+      const url = typeof input === 'string' ? input : input instanceof URL ? input.href : input.url;
+      if (url.startsWith('https://oauth2.googleapis.com/token')) {
+        return new Response(JSON.stringify({ access_token: 'tok', expires_in: 3600 }), { status: 200 });
+      }
+      if (url.includes('/upload/drive/v3/files')) {
+        calls.push('upload');
+        // Đọc tên file từ phần metadata của multipart để trả id gắn với đúng file
+        const bodyText = init?.body instanceof Blob ? await init.body.text() : '';
+        const name = /"name":"([^"]+)"/.exec(bodyText)?.[1] || 'unknown';
+        inFlight += 1;
+        maxInFlight = Math.max(maxInFlight, inFlight);
+        // File đầu tiên hoàn thành chậm nhất: nếu code ghép kết quả theo thứ tự hoàn thành thì thứ tự URL sẽ sai
+        await new Promise((resolve) => setTimeout(resolve, name === 'page-0.png' ? 60 : 8));
+        inFlight -= 1;
+        const failure = failUploadsWith.shift();
+        if (failure) {
+          return new Response(JSON.stringify({ error: { message: 'rate', errors: [{ reason: 'userRateLimitExceeded' }] } }), { status: failure });
+        }
+        return new Response(JSON.stringify({ id: `ID-${name.replace(/\W/g, '')}` }), { status: 200 });
+      }
+      if (url.includes('drive/v3/files?')) {
+        // Tra cứu thư mục (list) hoặc tạo thư mục (POST)
+        const q = new URL(url).searchParams.get('q') || '';
+        if (q.includes('sutiePostId')) storyFolderLookups += 1;
+        calls.push('folder-lookup');
+        return new Response(JSON.stringify({ files: [{ id: 'STORYFOLDER0001', name: 'Story' }] }), { status: 200 });
+      }
+      if (/drive\/v3\/files\/[^?/]+\?/.test(url)) {
+        calls.push('file-metadata');
+        return new Response(JSON.stringify({ id: 'x', mimeType: 'image/png', parents: ['STORYFOLDER0001'] }), { status: 200 });
+      }
+      return new Response('{}', { status: 404 });
+    }) as typeof fetch;
+  });
+
+  after(() => {
+    globalThis.fetch = realFetch;
+    globals.caches = realCaches;
+  });
+
+  it('trả URL đúng thứ tự file gửi lên dù tải song song', async () => {
+    calls.length = 0;
+    const token = await jwt({ role: 'admin', scope: 'upload' });
+    const names = Array.from({ length: 6 }, (_, i) => `page-${i}.png`);
+
+    const res = await w.fetch(multiUploadRequest(token, names), { ...ENV, DRIVE_RETRY_BASE_MS: '1' }, ctx);
+    assert.equal(res.status, 200);
+
+    const { urls } = (await res.json()) as { urls: string[] };
+    assert.deepEqual(
+      urls.map((u) => u.split('/image/')[1]),
+      names.map((n) => `ID-${n.replace(/\W/g, '')}`),
+      'URL phải đúng thứ tự file gửi lên dù file đầu hoàn thành chậm nhất'
+    );
+  });
+
+  it('có song song nhưng không vượt giới hạn mỗi request', async () => {
+    calls.length = 0;
+    maxInFlight = 0;
+    const token = await jwt({ role: 'admin', scope: 'upload' });
+    const res = await w.fetch(
+      multiUploadRequest(token, Array.from({ length: 6 }, (_, i) => `p-${i}.png`)),
+      { ...ENV, DRIVE_RETRY_BASE_MS: '1' },
+      ctx
+    );
+    assert.equal(res.status, 200);
+    assert.ok(maxInFlight >= 2, `maxInFlight=${maxInFlight}`);
+    assert.ok(maxInFlight <= 2, `maxInFlight=${maxInFlight}`);
+  });
+
+  it('không gọi lại Drive để kiểm tra metadata sau mỗi lần upload và chỉ tra cứu thư mục một lần cho các batch sau', async () => {
+    const token = await jwt({ role: 'admin', scope: 'upload' });
+    const env = { ...ENV, DRIVE_RETRY_BASE_MS: '1' };
+    // Lần đầu làm ấm cache thư mục
+    await w.fetch(multiUploadRequest(token, ['a.png'], 'Cached Story'), env, ctx);
+
+    calls.length = 0;
+    storyFolderLookups = 0;
+    const res = await w.fetch(multiUploadRequest(token, ['b.png', 'c.png', 'd.png'], 'Cached Story'), env, ctx);
+    assert.equal(res.status, 200);
+
+    assert.equal(storyFolderLookups, 0, 'batch sau phải dùng cache thư mục');
+    assert.equal(calls.filter((c) => c === 'file-metadata').length, 0, 'không được hỏi metadata từng ảnh vừa upload');
+    assert.equal(calls.filter((c) => c === 'upload').length, 3);
+  });
+
+  it('thử lại khi Drive báo giới hạn tốc độ (403 rateLimit / 429) rồi vẫn thành công', async () => {
+    calls.length = 0;
+    failUploadsWith = [403, 429];
+    const token = await jwt({ role: 'admin', scope: 'upload' });
+
+    const res = await w.fetch(multiUploadRequest(token, ['retry.png']), { ...ENV, DRIVE_RETRY_BASE_MS: '1' }, ctx);
+    assert.equal(res.status, 200);
+    assert.equal(calls.filter((c) => c === 'upload').length, 3, '2 lần lỗi + 1 lần thành công');
+    failUploadsWith = [];
+  });
+
+  it('không thử lại vô hạn: lỗi giới hạn tốc độ kéo dài cuối cùng vẫn trả lỗi', async () => {
+    calls.length = 0;
+    failUploadsWith = [429, 429, 429, 429, 429, 429];
+    const token = await jwt({ role: 'admin', scope: 'upload' });
+
+    const res = await w.fetch(multiUploadRequest(token, ['fail.png']), { ...ENV, DRIVE_RETRY_BASE_MS: '1' }, ctx);
+    assert.ok(res.status >= 400);
+    assert.equal(calls.filter((c) => c === 'upload').length, 4, 'tối đa 4 lần thử');
+    failUploadsWith = [];
+  });
+});

@@ -12,6 +12,7 @@ import { authorizeGuestImage, locateImageInPost, type ImageOwnerPost } from '@/l
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { logApiError } from '@/lib/telegramLogger';
+import { getCachedScrambled, getOrCreateScrambled } from '@/lib/scrambledImageCache';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -87,6 +88,51 @@ async function findOwnerPost(imageId: string, postIdHint: string | null): Promis
     .lean()) as ImageOwnerPost | null;
 }
 
+/** Lỗi có mã trạng thái HTTP rõ ràng, được chia sẻ giữa các request cùng chờ một lần xáo trộn */
+class ImageRouteError extends Error {
+  status: number;
+
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ImageRouteError';
+    this.status = status;
+  }
+}
+
+/** Tải ảnh gốc từ Worker bằng URL ký số (chỉ server-to-server) và kiểm tra loại/kích thước */
+async function fetchUpstreamImage(fileId: string, subject: string) {
+  const signedWorkerUrl = createSignedWorkerImageUrl({
+    workerBaseUrl: getWorkerBaseUrl(),
+    fileId,
+    subject,
+  });
+
+  const upstreamHeaders = new Headers();
+  upstreamHeaders.set('X-Sutie-Image-Proxy', 'next-api');
+
+  const upstream = await fetch(signedWorkerUrl, {
+    headers: upstreamHeaders,
+    cache: 'no-store',
+  });
+
+  if (!upstream.ok || !upstream.body) {
+    const upstreamStatus = upstream.status === 404 || upstream.status === 403 ? upstream.status : 502;
+    throw new ImageRouteError('Image unavailable', upstreamStatus);
+  }
+
+  const upstreamType = (upstream.headers.get('content-type') || '').toLowerCase();
+  if (!upstreamType.startsWith('image/') || upstreamType.includes('svg')) {
+    throw new ImageRouteError('Unsupported media type', 415);
+  }
+
+  const declaredLength = Number(upstream.headers.get('content-length') || 0);
+  if (declaredLength > MAX_UPSTREAM_BYTES) {
+    throw new ImageRouteError('Image too large', 413);
+  }
+
+  return { upstream, upstreamType };
+}
+
 export async function GET(
   request: NextRequest,
   context: { params: Promise<{ id: string }> }
@@ -147,39 +193,57 @@ export async function GET(
     }
   }
 
+  const isAdmin = user.role === 'admin';
+  const isPreScrambled = request.nextUrl.searchParams.get('pre_scrambled') === '1' && isAdmin;
+  const isRaw = request.nextUrl.searchParams.get('raw') === '1' && isAdmin;
+  // Chế độ đọc truyện thông thường (xáo trộn trên server): đúng nhánh cuối của hàm này
+  const isScrambledRead = !isRaw && !isPreScrambled && !isThumb;
+
+  // Quyền truy cập đã được kiểm tra ở trên. Kết quả xáo trộn giống hệt nhau cho mọi người đọc nên dùng chung cache RAM:
+  // tránh giải mã + mã hóa lại ~1 giây CPU cho mỗi lần xem.
+  if (isScrambledRead) {
+    const cached = getCachedScrambled(id);
+    if (cached) {
+      return new NextResponse(new Uint8Array(cached), { status: 200, headers: privateImageHeaders() });
+    }
+  }
+
   try {
-    const signedWorkerUrl = createSignedWorkerImageUrl({
-      workerBaseUrl: getWorkerBaseUrl(),
-      fileId: id,
-      subject: user.id,
-    });
+    if (isScrambledRead) {
+      const scrambledBuffer = await getOrCreateScrambled(id, async () => {
+        const { upstream } = await fetchUpstreamImage(id, user.id);
 
-    const upstreamHeaders = new Headers();
-    upstreamHeaders.set('X-Sutie-Image-Proxy', 'next-api');
+        const rawBuffer = Buffer.from(await upstream.arrayBuffer());
+        if (rawBuffer.length > MAX_UPSTREAM_BYTES) {
+          throw new ImageRouteError('Image too large', 413);
+        }
 
-    const upstream = await fetch(signedWorkerUrl, {
-      headers: upstreamHeaders,
-      cache: 'no-store',
-    });
+        // Chế độ đọc truyện: xáo trộn ảnh trên server (seed do server suy ra, không nhận tham số từ client)
+        try {
+          return await scrambleImageBuffer(rawBuffer, {
+            seed: deriveScrambleSeed(id),
+            rows: DEFAULT_SCRAMBLE_ROWS,
+            cols: DEFAULT_SCRAMBLE_COLS,
+            quality: 95,
+          });
+        } catch (scrambleErr) {
+          // Fail-closed: lỗi xáo trộn không bao giờ được phép trả ảnh gốc cho người dùng
+          console.error('Lỗi khi xáo trộn ảnh trên server:', scrambleErr);
+          void logApiError({
+            module: '[GET] /api/image/[id] (scramble)',
+            error: scrambleErr,
+            request,
+            metadata: { imageId: id },
+            statusCode: 500,
+          });
+          throw new ImageRouteError('Image unavailable', 500);
+        }
+      });
 
-    if (!upstream.ok || !upstream.body) {
-      const upstreamStatus = upstream.status === 404 || upstream.status === 403 ? upstream.status : 502;
-      return imageError('Image unavailable', upstreamStatus);
+      return new NextResponse(new Uint8Array(scrambledBuffer), { status: 200, headers: privateImageHeaders() });
     }
 
-    const upstreamType = (upstream.headers.get('content-type') || '').toLowerCase();
-    if (!upstreamType.startsWith('image/') || upstreamType.includes('svg')) {
-      return imageError('Unsupported media type', 415);
-    }
-
-    const declaredLength = Number(upstream.headers.get('content-length') || 0);
-    if (declaredLength > MAX_UPSTREAM_BYTES) {
-      return imageError('Image too large', 413);
-    }
-
-    const isAdmin = user.role === 'admin';
-    const isPreScrambled = request.nextUrl.searchParams.get('pre_scrambled') === '1' && isAdmin;
-    const isRaw = request.nextUrl.searchParams.get('raw') === '1' && isAdmin;
+    const { upstream, upstreamType } = await fetchUpstreamImage(id, user.id);
 
     // Admin xem ảnh gốc / ảnh đã xáo trộn sẵn: chuyển tiếp nguyên trạng
     if (isRaw || isPreScrambled) {
@@ -195,44 +259,23 @@ export async function GET(
       return imageError('Image too large', 413);
     }
 
-    // 1. Thumbnail: WebP thu nhỏ (tối đa 480px), không xáo trộn. Đã qua kiểm quyền ở trên.
-    if (isThumb) {
-      try {
-        const thumbBuffer = await sharp(rawBuffer)
-          .resize({ width: 480, withoutEnlargement: true })
-          .webp({ quality: 85 })
-          .toBuffer();
-
-        return new NextResponse(new Uint8Array(thumbBuffer), { status: 200, headers: privateImageHeaders() });
-      } catch (thumbErr) {
-        console.error('Error generating thumbnail in image route:', thumbErr);
-        return imageError('Image unavailable', 500);
-      }
-    }
-
-    // 2. Chế độ đọc truyện: xáo trộn ảnh trên server (seed do server suy ra, không nhận tham số từ client)
+    // Thumbnail: WebP thu nhỏ (tối đa 480px), không xáo trộn. Đã qua kiểm quyền ở trên.
     try {
-      const scrambledBuffer = await scrambleImageBuffer(rawBuffer, {
-        seed: deriveScrambleSeed(id),
-        rows: DEFAULT_SCRAMBLE_ROWS,
-        cols: DEFAULT_SCRAMBLE_COLS,
-        quality: 95,
-      });
+      const thumbBuffer = await sharp(rawBuffer)
+        .resize({ width: 480, withoutEnlargement: true })
+        .webp({ quality: 85 })
+        .toBuffer();
 
-      return new NextResponse(new Uint8Array(scrambledBuffer), { status: 200, headers: privateImageHeaders() });
-    } catch (scrambleErr) {
-      // Fail-closed: lỗi xáo trộn không bao giờ được phép trả ảnh gốc cho người dùng
-      console.error('Lỗi khi xáo trộn ảnh trên server:', scrambleErr);
-      void logApiError({
-        module: '[GET] /api/image/[id] (scramble)',
-        error: scrambleErr,
-        request,
-        metadata: { imageId: id },
-        statusCode: 500,
-      });
+      return new NextResponse(new Uint8Array(thumbBuffer), { status: 200, headers: privateImageHeaders() });
+    } catch (thumbErr) {
+      console.error('Error generating thumbnail in image route:', thumbErr);
       return imageError('Image unavailable', 500);
     }
   } catch (error) {
+    if (error instanceof ImageRouteError) {
+      return imageError(error.message, error.status);
+    }
+
     console.error('Error serving signed image:', error);
     void logApiError({
       module: '[GET] /api/image/[id]',
