@@ -59,6 +59,10 @@ export function CreatePostForm({
   const [uploadMode, setUploadMode] = useState<'images' | 'zip'>('images');
   const [isExtractingZip, setIsExtractingZip] = useState(false);
   const [zipProgress, setZipProgress] = useState<ZipExtractProgress | null>(null);
+  const [isDraggingZip, setIsDraggingZip] = useState(false);
+  const [isDraggingImages, setIsDraggingImages] = useState(false);
+  const zipDragCounterRef = useRef(0);
+  const imagesDragCounterRef = useRef(0);
 
   const [draggedIdx, setDraggedIdx] = useState<number | null>(null);
   const [dragOverIdx, setDragOverIdx] = useState<number | null>(null);
@@ -108,6 +112,10 @@ export function CreatePostForm({
     setDragOverPosition(null);
     setIsExtractingZip(false);
     setZipProgress(null);
+    setIsDraggingZip(false);
+    setIsDraggingImages(false);
+    zipDragCounterRef.current = 0;
+    imagesDragCounterRef.current = 0;
   };
 
   const resetAll = () => {
@@ -212,16 +220,111 @@ export function CreatePostForm({
     await processZipFile(file);
   };
 
-  const handleUploadDrop = async (e: DragEvent<HTMLDivElement>) => {
+  const handleZipDragEnter = (e: DragEvent<HTMLDivElement>) => {
     e.preventDefault();
     e.stopPropagation();
+    if (isSubmitting || isExtractingZip) return;
+    zipDragCounterRef.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingZip(true);
+    }
+  };
+
+  const handleZipDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zipDragCounterRef.current -= 1;
+    if (zipDragCounterRef.current <= 0) {
+      zipDragCounterRef.current = 0;
+      setIsDraggingZip(false);
+    }
+  };
+
+  const handleZipDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isSubmitting || isExtractingZip) return;
+    e.dataTransfer.dropEffect = 'copy';
+    if (!isDraggingZip) setIsDraggingZip(true);
+  };
+
+  const handleZipDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    zipDragCounterRef.current = 0;
+    setIsDraggingZip(false);
     if (isSubmitting || isExtractingZip) return;
 
     const files = Array.from(e.dataTransfer.files || []);
     if (!files.length) return;
 
     const zipFiles = files.filter(isZipFile);
-    const regularImages = files.filter((f) => !isZipFile(f) && (f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|bmp)$/i.test(f.name)));
+    const regularImages = files.filter(
+      (f) => !isZipFile(f) && (f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|bmp)$/i.test(f.name))
+    );
+
+    if (zipFiles.length > 0) {
+      for (const zip of zipFiles) {
+        await processZipFile(zip);
+      }
+    }
+
+    if (regularImages.length > 0) {
+      setImageFiles((prev) => {
+        const allFiles = [...prev, ...regularImages].sort((a, b) =>
+          a.name.localeCompare(b.name, undefined, { numeric: true, sensitivity: 'base' })
+        );
+        setImagePreviews((prevPreviews) => {
+          revokePreviews(prevPreviews);
+          return allFiles.map((file) => URL.createObjectURL(file));
+        });
+        return allFiles;
+      });
+    }
+  };
+
+  const handleImagesDragEnter = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isSubmitting || isExtractingZip) return;
+    imagesDragCounterRef.current += 1;
+    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
+      setIsDraggingImages(true);
+    }
+  };
+
+  const handleImagesDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    imagesDragCounterRef.current -= 1;
+    if (imagesDragCounterRef.current <= 0) {
+      imagesDragCounterRef.current = 0;
+      setIsDraggingImages(false);
+    }
+  };
+
+  const handleImagesDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (isSubmitting || isExtractingZip) return;
+    e.dataTransfer.dropEffect = 'copy';
+    if (!isDraggingImages) setIsDraggingImages(true);
+  };
+
+  const handleImagesDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    imagesDragCounterRef.current = 0;
+    setIsDraggingImages(false);
+    if (isSubmitting || isExtractingZip) return;
+
+    const files = Array.from(e.dataTransfer.files || []);
+    if (!files.length) return;
+
+    const zipFiles = files.filter(isZipFile);
+    const regularImages = files.filter(
+      (f) => !isZipFile(f) && (f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|bmp)$/i.test(f.name))
+    );
 
     if (zipFiles.length > 0) {
       for (const zip of zipFiles) {
@@ -624,9 +727,16 @@ export function CreatePostForm({
 
               {uploadMode === 'images' ? (
                 <div
-                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                  onDrop={handleUploadDrop}
-                  className="border border-dashed border-input rounded-[8px] p-6 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors bg-background/50"
+                  onDragEnter={handleImagesDragEnter}
+                  onDragLeave={handleImagesDragLeave}
+                  onDragOver={handleImagesDragOver}
+                  onDrop={handleImagesDrop}
+                  className={cn(
+                    "border-2 border-dashed rounded-[10px] p-6 text-center transition-all duration-200 relative",
+                    isDraggingImages
+                      ? "border-primary bg-primary/10 dark:bg-primary/20 scale-[1.01] shadow-lg shadow-primary/10 ring-2 ring-primary/20"
+                      : "border-input hover:border-foreground/30 hover:bg-secondary/60 dark:hover:bg-secondary/40 bg-background/50"
+                  )}
                 >
                   <input
                     type="file"
@@ -637,21 +747,42 @@ export function CreatePostForm({
                     className="hidden"
                     id="chapter-image-input"
                   />
-                  <label htmlFor="chapter-image-input" className="cursor-pointer block">
-                    <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
-                    <p className="text-sm font-medium text-foreground/80">
-                      Nhấn để tải ảnh lên
-                    </p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      PNG, JPG, WEBP, GIF tối đa 50MB (hoặc thả file .ZIP vào đây)
-                    </p>
+                  <label htmlFor="chapter-image-input" className="cursor-pointer block select-none">
+                    {isDraggingImages ? (
+                      <div className="pointer-events-none py-1 flex flex-col items-center">
+                        <Upload className="h-8 w-8 text-primary animate-bounce mb-2" />
+                        <p className="text-sm font-semibold text-primary">
+                          Thả ảnh hoặc tệp .ZIP vào đây!
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Hệ thống sẽ thêm ảnh vào danh sách chương
+                        </p>
+                      </div>
+                    ) : (
+                      <>
+                        <Upload className="h-6 w-6 mx-auto mb-2 text-muted-foreground" />
+                        <p className="text-sm font-medium text-foreground/80">
+                          Nhấn để chọn hoặc kéo thả ảnh vào đây
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          PNG, JPG, WEBP, GIF tối đa 50MB (hoặc kéo thả file .ZIP)
+                        </p>
+                      </>
+                    )}
                   </label>
                 </div>
               ) : (
                 <div
-                  onDragOver={(e) => { e.preventDefault(); e.stopPropagation(); }}
-                  onDrop={handleUploadDrop}
-                  className="border border-dashed border-primary/40 rounded-[8px] p-6 text-center hover:bg-primary/5 transition-colors bg-primary/[0.02]"
+                  onDragEnter={handleZipDragEnter}
+                  onDragLeave={handleZipDragLeave}
+                  onDragOver={handleZipDragOver}
+                  onDrop={handleZipDrop}
+                  className={cn(
+                    "border-2 border-dashed rounded-[10px] p-6 text-center transition-all duration-200 relative",
+                    isDraggingZip
+                      ? "border-primary bg-primary/10 dark:bg-primary/20 scale-[1.01] shadow-lg shadow-primary/10 ring-2 ring-primary/20"
+                      : "border-primary/40 hover:border-primary/70 hover:bg-primary/5 bg-primary/[0.02]"
+                  )}
                 >
                   <input
                     type="file"
@@ -663,7 +794,10 @@ export function CreatePostForm({
                   />
                   <label
                     htmlFor="chapter-zip-input"
-                    className={cn("block", isExtractingZip ? "cursor-wait" : "cursor-pointer")}
+                    className={cn(
+                      "block select-none",
+                      isExtractingZip ? "cursor-wait" : "cursor-pointer"
+                    )}
                   >
                     {isExtractingZip ? (
                       <div className="flex flex-col items-center py-1">
@@ -689,11 +823,21 @@ export function CreatePostForm({
                           )}
                         </p>
                       </div>
+                    ) : isDraggingZip ? (
+                      <div className="pointer-events-none py-1 flex flex-col items-center">
+                        <FileArchive className="h-8 w-8 text-primary animate-bounce mb-2" />
+                        <p className="text-sm font-semibold text-primary">
+                          Thả tệp .ZIP vào đây để giải nén ngay!
+                        </p>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          Các ảnh sẽ được tự động giải nén và sắp xếp theo số trang
+                        </p>
+                      </div>
                     ) : (
                       <>
-                        <FileArchive className="h-6 w-6 mx-auto mb-2 text-primary" />
+                        <FileArchive className="h-7 w-7 mx-auto mb-2 text-primary" />
                         <p className="text-sm font-medium text-foreground/80">
-                          Nhấn để chọn tệp .ZIP
+                          Nhấn để chọn hoặc kéo thả tệp .ZIP vào đây
                         </p>
                         <p className="text-xs text-muted-foreground mt-1">
                           Tự động giải nén và sắp xếp ảnh theo thứ tự số trang
