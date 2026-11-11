@@ -1,7 +1,7 @@
 'use server';
 
 import { cookies, headers } from 'next/headers';
-import { createSiteAccessToken, getCurrentUser } from '@/lib/server-auth';
+import { createSiteAccessToken, getCurrentUser, revokeToken } from '@/lib/server-auth';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
 import { getClientIp } from '@/lib/clientIp';
 import { verifySitePin } from '@/lib/sitePin';
@@ -57,6 +57,8 @@ export async function getCurrentUserAction() {
 export async function logoutAction(): Promise<{ success: boolean }> {
   try {
     const cookieStore = await cookies();
+    // Thu hồi token phía server (blacklist) chứ không chỉ xóa cookie: cookie bị sao chép sẽ không còn dùng được
+    await revokeToken(cookieStore.get('token')?.value);
     const clearOptions = {
       path: '/',
       maxAge: 0,

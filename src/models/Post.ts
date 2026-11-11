@@ -1,4 +1,5 @@
 import mongoose, { Schema, Document } from 'mongoose';
+import { collectImageIds } from '@/lib/imageIds';
 
 export interface IPostShareUser {
   userId?: mongoose.Types.ObjectId;
@@ -36,6 +37,7 @@ export interface IPost extends Document {
   content: string;
   images: string[];
   chapters: IPostChapter[];
+  imageIds?: string[];
   author: string;
   translator?: string;
   accessType: 'restricted' | 'public';
@@ -139,6 +141,13 @@ const PostSchema = new Schema<IPost>(
       type: [ShareUserSchema],
       default: [],
     },
+    // Id file Drive của mọi ảnh trong bài (ảnh cấp bài + các chương): chỉ phục vụ tra cứu "ảnh thuộc bài nào" bằng index.
+    // Được duy trì bởi pre('save'), PUT/POST /api/posts..., và `backfillImageIds` cho dữ liệu cũ. Không bao giờ trả ra client.
+    imageIds: {
+      type: [String],
+      select: false,
+      default: undefined,
+    },
     accessedUsers: {
       type: [
         new Schema<IPostAccessedUser>(
@@ -164,6 +173,14 @@ PostSchema.index({ tags: 1 });
 PostSchema.index({ accessType: 1 });
 PostSchema.index({ 'sharedWith.email': 1 });
 PostSchema.index({ 'accessedUsers.email': 1 });
+PostSchema.index({ imageIds: 1 });
+
+PostSchema.pre('save', function (this: IPost) {
+  // Chỉ tính lại khi đã tải đủ dữ liệu ảnh (tránh ghi đè bằng mảng rỗng khi bài được tải một phần bằng .select())
+  if (this.isSelected('images') && this.isSelected('chapters')) {
+    this.set('imageIds', collectImageIds(this.images, this.chapters));
+  }
+});
 
 if (process.env.NODE_ENV !== 'production' && mongoose.models && mongoose.models.Post) {
   delete (mongoose.models as Record<string, unknown>).Post;

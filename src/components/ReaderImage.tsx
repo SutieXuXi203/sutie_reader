@@ -101,7 +101,8 @@ export const ReaderImage = React.memo(function ReaderImage({
     if (retryCount === 0 && fileId) {
       // First retry: switch to internal proxy endpoint which generates fresh server signature on the fly
       setRetryCount(1);
-      setCurrentSrc(`/api/image/${encodeURIComponent(fileId)}?v=2&retry=1&t=${Date.now()}`);
+      // Giữ nguyên pid (gợi ý bài viết) của URL gốc để server tra quyền bằng _id thay vì phải tìm ảnh theo id
+      setCurrentSrc(`${ensureScrambledImageUrl(src)}&retry=1&t=${Date.now()}`);
       setStatus('loading');
     } else if (retryCount < 3 && fileId) {
       // Subsequent auto retries with slight delay for network jitter
@@ -109,7 +110,7 @@ export const ReaderImage = React.memo(function ReaderImage({
       if (retryTimeoutRef.current) clearTimeout(retryTimeoutRef.current);
       retryTimeoutRef.current = setTimeout(() => {
         setRetryCount((prev) => prev + 1);
-        setCurrentSrc(`/api/image/${encodeURIComponent(fileId)}?v=2&retry=${retryCount + 1}&t=${Date.now()}`);
+        setCurrentSrc(`${ensureScrambledImageUrl(src)}&retry=${retryCount + 1}&t=${Date.now()}`);
         setIsRetrying(false);
         setStatus('loading');
       }, 1000);
@@ -126,7 +127,7 @@ export const ReaderImage = React.memo(function ReaderImage({
     setRetryCount(1);
 
     if (fileId) {
-      setCurrentSrc(`/api/image/${encodeURIComponent(fileId)}.webp?v=2&manual=1&t=${Date.now()}`);
+      setCurrentSrc(`${ensureScrambledImageUrl(src)}&manual=1&t=${Date.now()}`);
     } else {
       setCurrentSrc(`${src}${src.includes('?') ? '&' : '?'}t=${Date.now()}`);
     }

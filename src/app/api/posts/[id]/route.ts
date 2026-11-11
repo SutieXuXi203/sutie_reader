@@ -9,6 +9,7 @@ import { getPostChapters, ensureScrambledImageUrl, type NormalizedPostChapter } 
 import { invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
 import { normalizeImages } from '@/lib/imageUrls';
+import { collectImageIds } from '@/lib/imageIds';
 import { sendTelegramMessage, formatters, logApiError } from '@/lib/telegram';
 import { revalidatePath } from 'next/cache';
 
@@ -352,6 +353,8 @@ export async function GET(
       );
     }
 
+    const lite = request.nextUrl.searchParams.get('lite') === '1';
+
     const userEmail = user?.email?.toLowerCase().trim();
     const isSharedInPost = Boolean(
       user &&
@@ -399,9 +402,18 @@ export async function GET(
             lockReason: chDecision.reason,
             lockMessage: chDecision.message,
             content: chDecision.allowed ? chapter.content : '',
-            images: chDecision.allowed
-              ? (user ? signImageUrls(chapter.images || [], user.id, id) : (chapter.images || []).map(ensureScrambledImageUrl))
-              : [],
+            // lite=1 (trình đọc): không gửi danh sách ảnh của mọi chương; client tải theo từng chương qua /api/posts/[id]/chapters/[n]
+            ...(lite
+              ? {
+                  images: [],
+                  imageCount: chDecision.allowed ? (chapter.images || []).length : 0,
+                  imagesLoaded: !chDecision.allowed || (chapter.images || []).length === 0,
+                }
+              : {
+                  images: chDecision.allowed
+                    ? (user ? signImageUrls(chapter.images || [], user.id, id) : (chapter.images || []).map(ensureScrambledImageUrl))
+                    : [],
+                }),
             sharedWith: user?.role === 'admin'
               ? chapter.sharedWith
               : (Array.isArray(chapter.sharedWith) && userEmail
@@ -696,6 +708,7 @@ export async function PUT(
       chapters: NormalizedPostChapter[];
       content: string;
       images: string[];
+      imageIds: string[];
       description?: string;
     } = {
       title,
@@ -705,6 +718,7 @@ export async function PUT(
       chapters: nextChapters,
       content: firstChapter?.content || '',
       images: firstChapter?.images || [],
+      imageIds: collectImageIds(firstChapter?.images, nextChapters),
     };
 
     if (typeof payload?.description === 'string') {

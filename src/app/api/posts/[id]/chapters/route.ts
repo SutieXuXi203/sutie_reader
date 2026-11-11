@@ -8,6 +8,7 @@ import { getPostChapters, ensureScrambledImageUrl, type NormalizedPostChapter } 
 import { invalidateApiCache } from '@/lib/api-cache';
 import { signImageUrls } from '@/lib/image-signing';
 import { normalizeImages } from '@/lib/imageUrls';
+import { collectImageIds } from '@/lib/imageIds';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
 
 const toPlainPost = (postDoc: unknown): Record<string, unknown> => {
@@ -200,6 +201,14 @@ export async function POST(
         accessType,
         sharedWith: [],
       };
+
+      // Đăng ký id ảnh TRƯỚC khi chương xuất hiện (id thừa vô hại vì quyền luôn được kiểm theo chương thực sự chứa ảnh).
+      // Chỉ áp dụng cho bài đã có `imageIds`: bài cũ chưa có sẽ được `backfillImageIds` điền đầy đủ (gồm cả chương mới này),
+      // nếu tạo mảng chỉ chứa id mới ở đây thì bài sẽ bị coi nhầm là đã điền xong.
+      await Post.updateOne(
+        { _id: id, imageIds: { $exists: true } },
+        { $addToSet: { imageIds: { $each: collectImageIds(images) } } }
+      );
 
       const pushed = await Post.updateOne(
         { _id: id, 'chapters.chapterNumber': { $ne: chapterNumber } },

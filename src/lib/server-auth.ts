@@ -6,10 +6,18 @@ import { cache } from 'react';
 import { createHash } from 'node:crypto';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { redisGet, redisSet, redisDelByPattern } from './redis';
-import { revokeToken, isTokenRevoked } from './tokenBlacklist';
+import { redisGet, redisSet, redisDel, redisDelByPattern, redisSAdd, redisPopSet, getRedisClient } from './redis';
+import { revokeToken as revokeTokenInStore, isTokenRevoked, isTokenRevokedInDb } from './tokenBlacklist';
 
-export { revokeToken, isTokenRevoked };
+export { isTokenRevoked };
+
+/**
+ * Thu hồi token và xóa luôn bản cache RAM của instance hiện tại (nếu không, instance này vẫn trả phiên cũ tới 15 giây).
+ */
+export async function revokeToken(token?: string | null, ttlSeconds?: number): Promise<void> {
+  if (token) userMemoryCache.delete(token);
+  await revokeTokenInStore(token, ttlSeconds);
+}
 
 export interface AuthUser {
   id: string;
@@ -173,6 +181,11 @@ export const getCurrentUserFromToken = cache(async (token?: string | null): Prom
 
   try {
     await connectDB();
+    // Có Redis thì isTokenRevoked ở trên chỉ tra Redis: ở đường đi tới DB (cache phiên đã mất/hết hạn) tra thêm danh sách thu hồi bền vững
+    if (getRedisClient() && (await isTokenRevokedInDb(token))) {
+      setUserCache(token, null, 10_000);
+      return null;
+    }
     const user = (await User.findById(payload.id)
       .select('email name avatar role isVerified')
       .lean()) as LeanAuthUser | null;
@@ -198,6 +211,8 @@ export const getCurrentUserFromToken = cache(async (token?: string | null): Prom
 
     setUserCache(token, authUser, USER_CACHE_TTL_MS);
     void redisSet(sessionKey, JSON.stringify(authUser), USER_REDIS_TTL_MS);
+    // Chỉ mục user -> khóa phiên: để clearUserCache(userId) xóa đúng các khóa của người đó. Hạn dài hơn hạn của khóa phiên.
+    void redisSAdd(`session:uidx:${authUser.id}`, tokenHash, USER_REDIS_TTL_MS * 5);
     return authUser;
   } catch {
     return null;
@@ -214,8 +229,23 @@ export function clearUserCache(userId?: string): void {
       }
     }
   }
-  // Xóa session cache trên Redis để toàn bộ các serverless instance khác đồng bộ lập tức
-  void redisDelByPattern('session:user:*');
+  void clearRedisUserSessions(userId);
+}
+
+/**
+ * Xóa session cache trên Redis để các serverless instance khác đồng bộ lập tức.
+ * Có userId: chỉ xóa các khóa của người đó nhờ chỉ mục `session:uidx:<userId>` (không SCAN toàn bộ keyspace, không làm
+ * mọi người dùng khác phải truy vấn lại MongoDB). Không có userId: xóa tất cả.
+ */
+async function clearRedisUserSessions(userId?: string): Promise<void> {
+  if (!userId) {
+    await redisDelByPattern('session:user:*');
+    return;
+  }
+  const hashes = await redisPopSet(`session:uidx:${userId}`);
+  if (hashes.length > 0) {
+    await redisDel(...hashes.map((hash) => `session:user:${hash}`));
+  }
 }
 
 export async function getCurrentUser(): Promise<AuthUser | null> {

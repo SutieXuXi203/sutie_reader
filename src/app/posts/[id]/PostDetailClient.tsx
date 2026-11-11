@@ -40,7 +40,15 @@ interface Chapter {
   lockReason?: string;
   lockMessage?: string;
   sharedWith?: Array<{ email: string; userId?: string; role?: string; addedAt?: string }>;
+  /** Số ảnh của chương (server gửi sẵn để biết số trang mà không cần tải danh sách ảnh) */
+  imageCount?: number;
+  /** false = danh sách ảnh chưa được tải (tải theo từng chương qua /api/posts/[id]/chapters/[n]); undefined = đã đầy đủ */
+  imagesLoaded?: boolean;
 }
+
+/** Số trang của chương, kể cả khi danh sách ảnh chưa được tải */
+const chapterPageCount = (chapter: Chapter | undefined): number =>
+  !chapter ? 0 : chapter.imagesLoaded === false ? chapter.imageCount ?? 0 : chapter.images.length;
 
 interface Post {
   _id: string;
@@ -244,7 +252,8 @@ export default function PostDetailClient({
       const fetchFullPost = async () => {
         try {
           setIsLoading(true);
-          const res = await fetch(`/api/posts/${post._id}`);
+          // lite=1: không kèm ảnh của mọi chương; ảnh của chương đang đọc được tải riêng (xem loadChapterImages)
+          const res = await fetch(`/api/posts/${post._id}?lite=1`);
           if (res.ok && !isCancelled) {
             const data = await res.json();
             setPost(data);
@@ -263,6 +272,65 @@ export default function PostDetailClient({
   }, [user, post?._id, post?.chapters]);
 
   const currentPostId = post?._id;
+
+  // Tải danh sách ảnh theo từng chương (server không gửi ảnh của mọi chương trong một lần để payload không phình theo cả bộ truyện)
+  const inflightChapters = useRef<Set<number>>(new Set());
+  const [failedChapters, setFailedChapters] = useState<Record<number, string>>({});
+
+  const loadChapterImages = useCallback(
+    async (chapterNumber: number) => {
+      if (!currentPostId || inflightChapters.current.has(chapterNumber)) return;
+      inflightChapters.current.add(chapterNumber);
+      try {
+        const res = await fetch(`/api/posts/${currentPostId}/chapters/${chapterNumber}`);
+        if (!res.ok) {
+          const errorBody = await res.json().catch(() => ({}));
+          throw new Error(errorBody?.message || errorBody?.error || `Không tải được chương (${res.status})`);
+        }
+        const data = (await res.json()) as { images?: string[] };
+        const images = Array.isArray(data.images) ? data.images : [];
+        setPost((prev) =>
+          prev
+            ? {
+                ...prev,
+                chapters: prev.chapters?.map((c) =>
+                  c.chapterNumber === chapterNumber ? { ...c, images, imageCount: images.length, imagesLoaded: true } : c
+                ),
+              }
+            : prev
+        );
+        setFailedChapters((prev) => {
+          if (!(chapterNumber in prev)) return prev;
+          const next = { ...prev };
+          delete next[chapterNumber];
+          return next;
+        });
+      } catch (error) {
+        setFailedChapters((prev) => ({
+          ...prev,
+          [chapterNumber]: error instanceof Error ? error.message : 'Không tải được chương',
+        }));
+      } finally {
+        inflightChapters.current.delete(chapterNumber);
+      }
+    },
+    [currentPostId]
+  );
+
+  // Chương đang đọc được tải trước; khi nó xong thì tải sẵn chương kế tiếp để chuyển chương không phải chờ
+  useEffect(() => {
+    if (!user) return;
+    const active = chapters[activeChapterIndex];
+    if (active && !active.isLocked && active.imagesLoaded === false) {
+      if (!failedChapters[active.chapterNumber]) void loadChapterImages(active.chapterNumber);
+      return;
+    }
+    const next = chapters[activeChapterIndex + 1];
+    if (next && !next.isLocked && next.imagesLoaded === false && !failedChapters[next.chapterNumber]) {
+      void loadChapterImages(next.chapterNumber);
+    }
+  }, [user, chapters, activeChapterIndex, failedChapters, loadChapterImages]);
+
   const handleCopyLink = useCallback(async () => {
     const origin = typeof window !== 'undefined' ? window.location.origin : '';
     const shareUrl = currentPostId ? `${origin}/posts/${currentPostId}` : (typeof window !== 'undefined' ? window.location.href : '');
@@ -467,8 +535,14 @@ export default function PostDetailClient({
     }
   }, [post, isLoading, router]);
 
+  // `post` đổi mỗi khi một chương tải xong ảnh: chỉ lấy lại bookmark khi cấu trúc chương (số chương/trạng thái khóa) thật sự đổi
+  const bookmarkKeyRef = useRef('');
+
   useEffect(() => {
     if (!post || !user) return;
+    const structureKey = `${post._id}:${user.email}:${chapters.map((c) => (c.isLocked ? 'L' : 'U')).join('')}`;
+    if (bookmarkKeyRef.current === structureKey) return;
+    bookmarkKeyRef.current = structureKey;
     const fetchBookmark = async () => {
       try {
         const data = (await getBookmarkAction(post._id)) as BookmarkData | null;
@@ -479,8 +553,7 @@ export default function PostDetailClient({
               initialScrollDone.current = true;
               return;
             }
-            const chapterImages = targetChap?.images || [];
-            const maxPage = Math.max(chapterImages.length - 1, 0);
+            const maxPage = Math.max(chapterPageCount(targetChap) - 1, 0);
             const savedPage = clamp(data.currentPage ?? 0, 0, maxPage);
 
             if (savedChapter > 0 || savedPage > 0) {
@@ -507,6 +580,8 @@ export default function PostDetailClient({
     if (pendingResume.chapterIndex !== activeChapterIndex) return;
 
     const activeChapter = chapters[activeChapterIndex];
+    // Chương đang được tải ảnh: chờ có ảnh rồi mới cuộn tới trang đã lưu (effect chạy lại khi `chapters` đổi)
+    if (activeChapter?.imagesLoaded === false) return;
     const timer = setTimeout(() => {
       const targetRef = imageRefs.current[pendingResume.page];
       if (targetRef) {
@@ -1105,6 +1180,25 @@ export default function PostDetailClient({
                 </div>
               )}
             </div>
+          ) : activeChapter?.imagesLoaded === false ? (
+            failedChapters[activeChapter.chapterNumber] ? (
+              <div className="w-full max-w-3xl mt-16 rounded-[8px] border border-border bg-card/50 p-8 text-center">
+                <p className="text-foreground font-semibold mb-2">Không thể tải chương này</p>
+                <p className="text-sm text-muted-foreground mb-4">{failedChapters[activeChapter.chapterNumber]}</p>
+                <button
+                  type="button"
+                  onClick={() => setFailedChapters({})}
+                  className="px-4 py-2 rounded-[8px] bg-primary text-primary-foreground text-xs font-semibold hover:bg-primary/90 active:scale-95 transition-all cursor-pointer"
+                >
+                  Thử lại
+                </button>
+              </div>
+            ) : (
+              <div className="w-full max-w-3xl mt-16 flex flex-col items-center gap-3 p-8 text-center text-muted-foreground">
+                <Loader2 className="w-8 h-8 animate-spin" />
+                <p className="text-sm">Đang tải chương...</p>
+              </div>
+            )
           ) : chapterImages.length > 0 ? (
             chapterImages.map((img, idx) => (
               <div

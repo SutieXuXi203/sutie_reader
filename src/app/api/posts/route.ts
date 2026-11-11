@@ -302,7 +302,7 @@ export async function GET(request: NextRequest) {
         isPartialAccess: chapterInfo.isPartialAccess,
         // Khách vãng lai chỉ thấy truyện công khai: dùng route OG công khai (ảnh bìa nhỏ), không lộ file id của Drive
         images: user
-          ? signImageUrls(post.images || [], user.id)
+          ? signImageUrls(post.images || [], user.id, post._id)
           : (post.images || []).length > 0
             ? [`/api/og-image/${post._id}`]
             : [],

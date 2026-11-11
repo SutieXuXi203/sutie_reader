@@ -5,6 +5,10 @@ import crypto from 'node:crypto';
 import { NextRequest, NextResponse } from 'next/server';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
 import { z } from 'zod';
+import { getClientIp } from '@/lib/clientIp';
+import { consumeAttempt } from '@/lib/rateLimit';
+
+const MAX_VERIFY_ATTEMPTS_PER_IP = 20;
 
 const verifySchema = z.object({
   email: z.string().trim().email('Email không hợp lệ'),
@@ -21,6 +25,18 @@ export async function POST(request: NextRequest) {
     }
     const { email, code } = parseResult.data;
     const normalizedEmail = email.toLowerCase().trim();
+
+    // Giới hạn theo IP (ngoài giới hạn 5 lượt/mã theo tài khoản): chặn việc dò mã OTP của nhiều tài khoản từ một nguồn
+    // và chặn việc đốt hết lượt thử của tài khoản người khác. Không reset khi thành công để kẻ tấn công không tự xóa bộ đếm.
+    const verifyAttempt = await consumeAttempt(`verify:${getClientIp(request.headers)}`, {
+      max: MAX_VERIFY_ATTEMPTS_PER_IP,
+    });
+    if (!verifyAttempt.allowed) {
+      return NextResponse.json(
+        { error: `Bạn đã thử xác thực quá nhiều lần. Vui lòng thử lại sau ${verifyAttempt.retryAfterMinutes} phút.` },
+        { status: 429 }
+      );
+    }
 
     const user = await User.findOne({ email: normalizedEmail }).select('+verificationCode');
     if (!user) {

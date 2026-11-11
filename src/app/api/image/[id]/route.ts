@@ -13,6 +13,7 @@ import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { logApiError } from '@/lib/telegramLogger';
 import { getCachedScrambled, getOrCreateScrambled } from '@/lib/scrambledImageCache';
+import { getImageIndexStatus } from '@/lib/imageIndex';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -24,6 +25,7 @@ const DEFAULT_RATE_LIMIT_MAX = 800;
 const MAX_UPSTREAM_BYTES = 25 * 1024 * 1024;
 // Quyền được cache ngắn: instance khác (serverless) không nhận được lệnh invalidate khi admin đổi quyền chia sẻ
 const ACCESS_CACHE_TTL_MS = 60_000;
+const MAX_OWNER_POSTS = 5;
 
 function getWorkerBaseUrl(): string {
   return (
@@ -67,25 +69,38 @@ function privateImageHeaders(): Headers {
 }
 
 /**
- * Tìm bài viết thực sự chứa ảnh. `pid` chỉ là gợi ý để tra cứu nhanh (O(1) theo _id): nếu ảnh không thuộc bài `pid`
- * thì bỏ qua và quét theo file id, nên không thể dùng `pid` của một bài công khai để đọc ảnh của bài bị hạn chế.
+ * Tìm các bài viết thực sự chứa ảnh. `pid` chỉ là gợi ý để tra cứu nhanh (O(1) theo _id): nếu ảnh không thuộc bài `pid`
+ * thì bỏ qua, nên không thể dùng `pid` của một bài công khai để đọc ảnh của bài bị hạn chế.
+ *
+ * Tra cứu theo multikey index `Post.imageIds` (không quét collection). `$regex` quét toàn bộ chỉ còn là đường dự phòng trong lúc
+ * `imageIds` chưa được điền đủ cho dữ liệu cũ (`getImageIndexStatus() !== 'ready'`), nên khách không thể dùng id ngẫu nhiên để
+ * bắt DB quét collection nhiều lần. Một ảnh có thể nằm trong nhiều bài: trả về tất cả (tối đa MAX_OWNER_POSTS), được phép nếu BẤT KỲ bài nào cho phép.
  */
-async function findOwnerPost(imageId: string, postIdHint: string | null): Promise<ImageOwnerPost | null> {
+async function findOwnerPosts(imageId: string, postIdHint: string | null): Promise<ImageOwnerPost[]> {
   const projection = 'accessType sharedWith images chapters';
 
   if (postIdHint && ObjectId.isValid(postIdHint)) {
     const hinted = (await Post.findById(postIdHint).select(projection).lean()) as ImageOwnerPost | null;
     if (hinted && locateImageInPost(hinted, imageId).found) {
-      return hinted;
+      return [hinted];
     }
   }
 
-  // imageId đã được kiểm tra bởi DRIVE_FILE_ID_PATTERN nên chỉ gồm [a-zA-Z0-9_-], an toàn khi dùng trong regex
-  return (await Post.findOne({
+  const indexed = (await Post.find({ imageIds: imageId })
+    .select(projection)
+    .limit(MAX_OWNER_POSTS)
+    .lean()) as ImageOwnerPost[];
+  if (indexed.length > 0 || getImageIndexStatus() === 'ready') {
+    return indexed;
+  }
+
+  // Dự phòng (chỉ khi index chưa sẵn sàng): imageId đã được kiểm tra bởi DRIVE_FILE_ID_PATTERN nên chỉ gồm [a-zA-Z0-9_-], an toàn khi dùng trong regex
+  return (await Post.find({
     $or: [{ images: { $regex: imageId } }, { 'chapters.images': { $regex: imageId } }],
   })
     .select(projection)
-    .lean()) as ImageOwnerPost | null;
+    .limit(MAX_OWNER_POSTS)
+    .lean()) as ImageOwnerPost[];
 }
 
 /** Lỗi có mã trạng thái HTTP rõ ràng, được chia sẻ giữa các request cùng chờ một lần xáo trộn */
@@ -171,8 +186,8 @@ export async function GET(
     if (isAllowed === null) {
       try {
         await connectDB();
-        const post = await findOwnerPost(id, request.nextUrl.searchParams.get('pid'));
-        isAllowed = authorizeGuestImage(user, post, id, { thumb: isThumb });
+        const posts = await findOwnerPosts(id, request.nextUrl.searchParams.get('pid'));
+        isAllowed = posts.some((post) => authorizeGuestImage(user, post, id, { thumb: isThumb }));
         await setApiCache(accessCacheKey, isAllowed, ACCESS_CACHE_TTL_MS);
       } catch (err) {
         // Fail-closed: không kiểm tra được quyền thì từ chối, tuyệt đối không mặc định cho phép

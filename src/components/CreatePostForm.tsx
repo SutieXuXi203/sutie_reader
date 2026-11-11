@@ -64,7 +64,9 @@ export function CreatePostForm({
   const createdChapterCountRef = useRef(0);
   const isSavingChapterRef = useRef(false);
   const imagePreviewsRef = useRef(imagePreviews);
-  imagePreviewsRef.current = imagePreviews;
+  useEffect(() => {
+    imagePreviewsRef.current = imagePreviews;
+  }, [imagePreviews]);
 
   useEffect(() => {
     return () => {

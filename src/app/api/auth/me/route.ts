@@ -2,7 +2,7 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
-import { getCurrentUserFromToken, getJwtSecret, clearUserCache } from '@/lib/server-auth';
+import { getCurrentUserFromToken, getJwtSecret, clearUserCache, isTokenRevoked } from '@/lib/server-auth';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
 import { checkRateLimit } from '@/lib/memoryRateLimit';
 import { isAllowedAvatarUrl } from '@/lib/validations';
@@ -146,6 +146,11 @@ export async function PUT(request: NextRequest) {
     const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload || !payload.id) {
       return NextResponse.json({ error: 'Token khong hop le' }, { status: 401 });
+    }
+
+    // Token đã đăng xuất/bị thu hồi không được dùng để sửa hồ sơ hay đúc token mới
+    if (await isTokenRevoked(token, { durable: true })) {
+      return NextResponse.json({ error: 'Phien dang nhap da het han' }, { status: 401 });
     }
 
     // Mỗi lần đổi avatar có thể tải file lên Drive: giới hạn 10 lần / 10 phút cho mỗi tài khoản

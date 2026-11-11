@@ -6,6 +6,7 @@ import { extractDriveImageId } from '@/lib/utils';
 import { createSignedWorkerImageUrl } from '@/lib/image-signing';
 import { checkRateLimit } from '@/lib/memoryRateLimit';
 import { getClientIp } from '@/lib/clientIp';
+import { pickPublicCoverUrl } from '@/lib/ogCover';
 import sharp from 'sharp';
 
 export const runtime = 'nodejs';
@@ -55,18 +56,10 @@ export async function GET(
       return NextResponse.json({ error: 'Post not found' }, { status: 404 });
     }
 
-    // Tìm ảnh bìa: post.images[0] → ảnh đầu của chương đầu tiên không bị hạn chế quyền
-    const postImages = ((post as { images?: unknown[] }).images || []) as unknown[];
-    const chapters = ((post as { chapters?: { images?: unknown[]; accessType?: string }[] }).chapters || []).filter(
-      (chapter) => chapter.accessType !== 'restricted'
+    // Chỉ lấy ảnh bìa thuộc chương KHÔNG bị hạn chế (post.images là bản sao chương 1, có thể đang bị khóa)
+    const coverUrl = pickPublicCoverUrl(
+      post as { images?: unknown[]; chapters?: { images?: unknown[]; accessType?: string }[] }
     );
-    const firstString = (value: unknown): string =>
-      typeof value === 'string' ? value.trim() : '';
-    let coverUrl = firstString(postImages[0]);
-    if (!coverUrl && chapters.length > 0) {
-      const firstChapterImages = chapters[0]?.images || [];
-      coverUrl = firstString(firstChapterImages[0]);
-    }
 
     if (!coverUrl) {
       return NextResponse.json({ error: 'No cover image' }, { status: 404 });
