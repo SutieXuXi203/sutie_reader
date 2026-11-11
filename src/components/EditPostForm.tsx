@@ -133,9 +133,7 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const [isExtractingZip, setIsExtractingZip] = useState(false);
   const [zipProgress, setZipProgress] = useState<ZipExtractProgress | null>(null);
   const [isDraggingZip, setIsDraggingZip] = useState(false);
-  const [isDraggingImages, setIsDraggingImages] = useState(false);
   const zipDragCounterRef = useRef(0);
-  const imagesDragCounterRef = useRef(0);
   const [reuploadingState, setReuploadingState] = useState<{ current: number, total: number } | null>(null);
   const chaptersRef = useRef<ChapterEditState[]>([]);
 
@@ -343,34 +341,34 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     }
   };
 
-  const handleImageSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleImageSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const selectedFiles = Array.from(e.target.files || []);
     if (!selectedFiles.length) return;
 
     e.target.value = '';
 
     const zipFiles = selectedFiles.filter(isZipFile);
-    const regularImages = selectedFiles.filter((f) => !isZipFile(f));
-
     if (zipFiles.length > 0) {
-      for (const zip of zipFiles) {
-        await processZipFile(zip);
-      }
+      notify.error('Mục này chỉ hỗ trợ tải ảnh. Vui lòng chuyển sang tab "File .ZIP" để tải file zip.');
     }
 
-    if (regularImages.length > 0) {
-      const newImages = regularImages.map<ChapterImage>((file) => ({
-        id: generateId(),
-        isNew: true,
-        url: URL.createObjectURL(file),
-        file,
-      }));
+    const regularImages = selectedFiles.filter(
+      (f) => !isZipFile(f) && (f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|bmp)$/i.test(f.name))
+    );
 
-      updateActiveChapter((ch) => ({
-        ...ch,
-        images: [...ch.images, ...newImages],
-      }));
-    }
+    if (regularImages.length === 0) return;
+
+    const newImages = regularImages.map<ChapterImage>((file) => ({
+      id: generateId(),
+      isNew: true,
+      url: URL.createObjectURL(file),
+      file,
+    }));
+
+    updateActiveChapter((ch) => ({
+      ...ch,
+      images: [...ch.images, ...newImages],
+    }));
   };
 
   const handleZipInputChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -413,70 +411,6 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     e.stopPropagation();
     zipDragCounterRef.current = 0;
     setIsDraggingZip(false);
-    if (isSubmitting || isExtractingZip) return;
-
-    const files = Array.from(e.dataTransfer.files || []);
-    if (!files.length) return;
-
-    const zipFiles = files.filter(isZipFile);
-    const regularImages = files.filter(
-      (f) => !isZipFile(f) && (f.type.startsWith('image/') || /\.(jpe?g|png|webp|gif|avif|bmp)$/i.test(f.name))
-    );
-
-    if (zipFiles.length > 0) {
-      for (const zip of zipFiles) {
-        await processZipFile(zip);
-      }
-    }
-
-    if (regularImages.length > 0) {
-      const newImages = regularImages.map<ChapterImage>((file) => ({
-        id: generateId(),
-        isNew: true,
-        url: URL.createObjectURL(file),
-        file,
-      }));
-
-      updateActiveChapter((ch) => ({
-        ...ch,
-        images: [...ch.images, ...newImages],
-      }));
-    }
-  };
-
-  const handleImagesDragEnter = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isSubmitting || isExtractingZip) return;
-    imagesDragCounterRef.current += 1;
-    if (e.dataTransfer.items && e.dataTransfer.items.length > 0) {
-      setIsDraggingImages(true);
-    }
-  };
-
-  const handleImagesDragLeave = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    imagesDragCounterRef.current -= 1;
-    if (imagesDragCounterRef.current <= 0) {
-      imagesDragCounterRef.current = 0;
-      setIsDraggingImages(false);
-    }
-  };
-
-  const handleImagesDragOver = (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (isSubmitting || isExtractingZip) return;
-    e.dataTransfer.dropEffect = 'copy';
-    if (!isDraggingImages) setIsDraggingImages(true);
-  };
-
-  const handleImagesDrop = async (e: DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    imagesDragCounterRef.current = 0;
-    setIsDraggingImages(false);
     if (isSubmitting || isExtractingZip) return;
 
     const files = Array.from(e.dataTransfer.files || []);
@@ -1275,22 +1209,11 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                 </div>
 
                 {uploadMode === 'images' ? (
-                  <div
-                    onDragEnter={handleImagesDragEnter}
-                    onDragLeave={handleImagesDragLeave}
-                    onDragOver={handleImagesDragOver}
-                    onDrop={handleImagesDrop}
-                    className={cn(
-                      "border-2 border-dashed rounded-[10px] p-6 text-center transition-all duration-200 relative",
-                      isDraggingImages
-                        ? "border-primary bg-primary/10 dark:bg-primary/20 scale-[1.01] shadow-lg shadow-primary/10 ring-2 ring-primary/20"
-                        : "border-input hover:border-foreground/30 hover:bg-secondary/60 dark:hover:bg-secondary/40 bg-background"
-                    )}
-                  >
+                  <div className="border border-dashed border-input rounded-[8px] p-6 text-center hover:bg-secondary/60 dark:hover:bg-secondary/40 transition-colors bg-background">
                     <input
                       type="file"
                       multiple
-                      accept="image/*,.zip,application/zip,application/x-zip-compressed"
+                      accept="image/*"
                       onChange={handleImageSelect}
                       disabled={isSubmitting || isExtractingZip}
                       className="hidden"
@@ -1300,27 +1223,11 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
                       htmlFor={`edit-image-input-${selectedChapterIndex}`}
                       className="cursor-pointer block select-none"
                     >
-                      {isDraggingImages ? (
-                        <div className="pointer-events-none py-1 flex flex-col items-center">
-                          <Upload className="h-7 w-7 text-primary animate-bounce mb-1.5" />
-                          <p className="text-xs font-semibold text-primary">
-                            Thả ảnh hoặc tệp .ZIP vào đây!
-                          </p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            Hệ thống sẽ thêm ảnh vào danh sách chương
-                          </p>
-                        </div>
-                      ) : (
-                        <>
-                          <Upload className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground" />
-                          <p className="text-xs font-medium text-foreground/80">
-                            Click để chọn hoặc kéo thả ảnh vào đây
-                          </p>
-                          <p className="text-[11px] text-muted-foreground mt-0.5">
-                            PNG, JPG, WEBP, GIF tối đa 50MB (hoặc kéo thả file .ZIP)
-                          </p>
-                        </>
-                      )}
+                      <Upload className="h-5 w-5 mx-auto mb-1.5 text-muted-foreground" />
+                      <p className="text-xs font-medium text-foreground/80">Click để chọn ảnh tải lên</p>
+                      <p className="text-[11px] text-muted-foreground mt-0.5">
+                        PNG, JPG, WEBP, GIF tối đa 50MB
+                      </p>
                     </label>
                   </div>
                 ) : (
