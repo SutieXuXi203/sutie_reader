@@ -14,6 +14,7 @@ import { Post } from '@/models/Post';
 import { logApiError } from '@/lib/telegramLogger';
 import { getCachedScrambled, getOrCreateScrambled } from '@/lib/scrambledImageCache';
 import { getImageIndexStatus } from '@/lib/imageIndex';
+import { isRetryableUpstreamStatus, isTransientNetworkError, withRetry } from '@/lib/upstreamRetry';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -26,6 +27,10 @@ const MAX_UPSTREAM_BYTES = 25 * 1024 * 1024;
 // Quyền được cache ngắn: instance khác (serverless) không nhận được lệnh invalidate khi admin đổi quyền chia sẻ
 const ACCESS_CACHE_TTL_MS = 60_000;
 const MAX_OWNER_POSTS = 5;
+// Tối đa ~3 x 12s + backoff (300ms, 600ms) ≈ 37s, nằm trong maxDuration = 60s
+const UPSTREAM_ATTEMPT_TIMEOUT_MS = 12_000;
+const UPSTREAM_MAX_ATTEMPTS = 3;
+const UPSTREAM_RETRY_BASE_MS = 300;
 
 function getWorkerBaseUrl(): string {
   return (
@@ -106,16 +111,22 @@ async function findOwnerPosts(imageId: string, postIdHint: string | null): Promi
 /** Lỗi có mã trạng thái HTTP rõ ràng, được chia sẻ giữa các request cùng chờ một lần xáo trộn */
 class ImageRouteError extends Error {
   status: number;
+  /** Lỗi tạm thời phía upstream (429/5xx): đáng thử lại */
+  retryable: boolean;
+  /** Lỗi mạng gốc khi đã hết lượt thử: dùng để báo về Telegram */
+  originalError?: unknown;
 
-  constructor(message: string, status: number) {
+  constructor(message: string, status: number, options: { retryable?: boolean; originalError?: unknown } = {}) {
     super(message);
     this.name = 'ImageRouteError';
     this.status = status;
+    this.retryable = options.retryable ?? false;
+    this.originalError = options.originalError;
   }
 }
 
 /** Tải ảnh gốc từ Worker bằng URL ký số (chỉ server-to-server) và kiểm tra loại/kích thước */
-async function fetchUpstreamImage(fileId: string, subject: string) {
+async function fetchUpstreamImage(fileId: string, subject: string, signal: AbortSignal) {
   const signedWorkerUrl = createSignedWorkerImageUrl({
     workerBaseUrl: getWorkerBaseUrl(),
     fileId,
@@ -128,11 +139,16 @@ async function fetchUpstreamImage(fileId: string, subject: string) {
   const upstream = await fetch(signedWorkerUrl, {
     headers: upstreamHeaders,
     cache: 'no-store',
+    signal,
   });
 
   if (!upstream.ok || !upstream.body) {
     const upstreamStatus = upstream.status === 404 || upstream.status === 403 ? upstream.status : 502;
-    throw new ImageRouteError('Image unavailable', upstreamStatus);
+    // Hủy body để giải phóng socket trước khi thử lại
+    void upstream.body?.cancel().catch(() => {});
+    throw new ImageRouteError('Image unavailable', upstreamStatus, {
+      retryable: isRetryableUpstreamStatus(upstream.status),
+    });
   }
 
   const upstreamType = (upstream.headers.get('content-type') || '').toLowerCase();
@@ -146,6 +162,39 @@ async function fetchUpstreamImage(fileId: string, subject: string) {
   }
 
   return { upstream, upstreamType };
+}
+
+/**
+ * Tải trọn ảnh gốc về RAM, tự thử lại khi gặp lỗi mạng thoáng qua (`fetch failed`, `terminated`, timeout, 429/5xx).
+ * Mỗi lần thử có timeout riêng bao cả bước kết nối lẫn bước đọc body, nên socket treo cũng không giữ request quá lâu.
+ * Lỗi có chủ đích (404/403/415/413) trả ngay, không retry. Hết lượt thử vì lỗi mạng -> 502 (không phải 500).
+ */
+async function fetchUpstreamBuffer(fileId: string, subject: string) {
+  try {
+    return await withRetry(
+      async () => {
+        const signal = AbortSignal.timeout(UPSTREAM_ATTEMPT_TIMEOUT_MS);
+        const { upstream, upstreamType } = await fetchUpstreamImage(fileId, subject, signal);
+
+        const rawBuffer = Buffer.from(await upstream.arrayBuffer());
+        if (rawBuffer.length > MAX_UPSTREAM_BYTES) {
+          throw new ImageRouteError('Image too large', 413);
+        }
+        return { rawBuffer, upstreamType };
+      },
+      {
+        attempts: UPSTREAM_MAX_ATTEMPTS,
+        baseDelayMs: UPSTREAM_RETRY_BASE_MS,
+        isRetryable: (error) => (error instanceof ImageRouteError ? error.retryable : isTransientNetworkError(error)),
+      }
+    );
+  } catch (error) {
+    if (error instanceof ImageRouteError) throw error;
+    if (isTransientNetworkError(error)) {
+      throw new ImageRouteError('Image unavailable', 502, { originalError: error });
+    }
+    throw error;
+  }
 }
 
 export async function GET(
@@ -226,12 +275,7 @@ export async function GET(
   try {
     if (isScrambledRead) {
       const scrambledBuffer = await getOrCreateScrambled(id, async () => {
-        const { upstream } = await fetchUpstreamImage(id, user.id);
-
-        const rawBuffer = Buffer.from(await upstream.arrayBuffer());
-        if (rawBuffer.length > MAX_UPSTREAM_BYTES) {
-          throw new ImageRouteError('Image too large', 413);
-        }
+        const { rawBuffer } = await fetchUpstreamBuffer(id, user.id);
 
         // Chế độ đọc truyện: xáo trộn ảnh trên server (seed do server suy ra, không nhận tham số từ client)
         try {
@@ -258,7 +302,7 @@ export async function GET(
       return new NextResponse(new Uint8Array(scrambledBuffer), { status: 200, headers: privateImageHeaders() });
     }
 
-    const { upstream, upstreamType } = await fetchUpstreamImage(id, user.id);
+    const { rawBuffer, upstreamType } = await fetchUpstreamBuffer(id, user.id);
 
     // Admin xem ảnh gốc / ảnh đã xáo trộn sẵn: chuyển tiếp nguyên trạng
     if (isRaw || isPreScrambled) {
@@ -266,12 +310,7 @@ export async function GET(
       responseHeaders.set('Content-Type', upstreamType);
       responseHeaders.set('Cache-Control', 'private, no-store');
       responseHeaders.set('X-Content-Type-Options', 'nosniff');
-      return new NextResponse(upstream.body, { status: 200, headers: responseHeaders });
-    }
-
-    const rawBuffer = Buffer.from(await upstream.arrayBuffer());
-    if (rawBuffer.length > MAX_UPSTREAM_BYTES) {
-      return imageError('Image too large', 413);
+      return new NextResponse(new Uint8Array(rawBuffer), { status: 200, headers: responseHeaders });
     }
 
     // Thumbnail: WebP thu nhỏ (tối đa 480px), không xáo trộn. Đã qua kiểm quyền ở trên.
@@ -288,6 +327,17 @@ export async function GET(
     }
   } catch (error) {
     if (error instanceof ImageRouteError) {
+      if (error.originalError) {
+        // Đã thử lại hết lượt mà upstream vẫn lỗi mạng: báo Telegram (kèm lỗi gốc) nhưng trả 502 cho client
+        console.error('Upstream image unreachable after retries:', error.originalError);
+        void logApiError({
+          module: '[GET] /api/image/[id] (upstream)',
+          error: error.originalError,
+          request,
+          metadata: { imageId: id, attempts: UPSTREAM_MAX_ATTEMPTS },
+          statusCode: error.status,
+        });
+      }
       return imageError(error.message, error.status);
     }
 
