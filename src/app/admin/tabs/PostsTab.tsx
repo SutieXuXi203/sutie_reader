@@ -3,6 +3,7 @@
 import { useState, useMemo, memo } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/Pagination';
 import { FileText, Pencil, Trash2, Loader2, Tag } from 'lucide-react';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { Post } from '../types';
@@ -325,31 +326,16 @@ export const PostsTab = memo(
                                         <option value="all">Tất cả ({filteredPosts.length})</option>
                                     </select>
                                 </div>
-                                {postsPerPage !== 'all' && totalPostsPages > 1 && (
-                                    <div className="flex items-center gap-1.5">
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 rounded-[8px]"
-                                            onClick={() => setPostsPage((prev) => Math.max(1, prev - 1))}
-                                            disabled={postsPage === 1}
-                                        >
-                                            Trước
-                                        </Button>
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="outline"
-                                            className="h-8 rounded-[8px]"
-                                            onClick={() => setPostsPage((prev) => Math.min(totalPostsPages, prev + 1))}
-                                            disabled={postsPage >= totalPostsPages}
-                                        >
-                                            Sau
-                                        </Button>
-                                    </div>
-                                )}
                             </div>
+                        </div>
+                    )}
+                    {filteredPosts.length > 0 && postsPerPage !== 'all' && totalPostsPages > 1 && (
+                        <div className="px-3 sm:px-5 pb-4">
+                            <Pagination
+                                page={postsPage}
+                                totalPages={totalPostsPages}
+                                onPageChange={setPostsPage}
+                            />
                         </div>
                     )}
                 </div>

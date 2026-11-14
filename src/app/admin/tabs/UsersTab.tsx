@@ -3,6 +3,7 @@
 import { useState, useMemo, memo, useEffect, useCallback } from 'react';
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/Pagination';
 import {
     Users,
     User,
@@ -462,28 +463,15 @@ export const UsersTab = memo(
                             <p className="text-xs text-muted-foreground">
                                 Trang {usersPage}/{totalUsersPages} • Hiển thị {paginatedUsers.length}/{filteredUsers.length} tài khoản
                             </p>
-                            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
-                                    onClick={() => setUsersPage((prev) => Math.max(1, prev - 1))}
-                                    disabled={usersPage === 1}
-                                >
-                                    Trước
-                                </Button>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
-                                    onClick={() => setUsersPage((prev) => Math.min(totalUsersPages, prev + 1))}
-                                    disabled={usersPage >= totalUsersPages}
-                                >
-                                    Sau
-                                </Button>
-                            </div>
+                        </div>
+                    )}
+                    {filteredUsers.length > 0 && totalUsersPages > 1 && (
+                        <div className="px-3 sm:px-5 pb-4">
+                            <Pagination
+                                page={usersPage}
+                                totalPages={totalUsersPages}
+                                onPageChange={setUsersPage}
+                            />
                         </div>
                     )}
                 </div>
@@ -631,28 +619,15 @@ export const UsersTab = memo(
                             <p className="text-xs text-muted-foreground">
                                 Trang {deletedAccountsPage}/{totalDeletedAccountsPages} • Hiển thị {paginatedDeletedAccounts.length}/{filteredDeletedAccounts.length} tài khoản
                             </p>
-                            <div className="grid w-full grid-cols-2 gap-2 sm:flex sm:w-auto sm:items-center">
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
-                                    onClick={() => setDeletedAccountsPage((prev) => Math.max(1, prev - 1))}
-                                    disabled={deletedAccountsPage === 1}
-                                >
-                                    Trước
-                                </Button>
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="outline"
-                                    className="h-9 sm:h-8 w-full sm:w-auto rounded-[8px]"
-                                    onClick={() => setDeletedAccountsPage((prev) => Math.min(totalDeletedAccountsPages, prev + 1))}
-                                    disabled={deletedAccountsPage >= totalDeletedAccountsPages}
-                                >
-                                    Sau
-                                </Button>
-                            </div>
+                        </div>
+                    )}
+                    {filteredDeletedAccounts.length > 0 && totalDeletedAccountsPages > 1 && (
+                        <div className="px-3 sm:px-5 pb-4">
+                            <Pagination
+                                page={deletedAccountsPage}
+                                totalPages={totalDeletedAccountsPages}
+                                onPageChange={setDeletedAccountsPage}
+                            />
                         </div>
                     )}
                 </div>

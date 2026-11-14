@@ -24,7 +24,7 @@ import { Footer } from '@/components/Footer';
 import { PostCard } from '@/components/PostCard';
 import type { UpdatedPostPayload } from '@/components/EditPostForm';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/Pagination';
 import { useSearchParams } from 'next/navigation';
 import {
   Select,
@@ -680,29 +680,12 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                     ))}
                   </div>
 
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center mt-8 gap-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        Trước
-                      </Button>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Trang {currentPage} / {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        Sau
-                      </Button>
-                    </div>
-                  )}
+                  <Pagination
+                    className="mt-8"
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
                 </>
               )}
             </div>
