@@ -61,6 +61,12 @@
       "sourceType": "autoskills-registry",
       "computedHash": ""
     },
+    "motion-prompt": {
+      "source": "showheyohtaki/motion-prompt",
+      "sourceType": "github",
+      "skillPath": "skills/motion-prompt/SKILL.md",
+      "computedHash": "388cee891649473d60f5aaba0f5d4e9fe57e0476be121d283a8cc21a9abe7bd7"
+    },
     "next-best-practices": {
       "source": "vercel-labs/next-skills",
       "sourceType": "autoskills-registry",
