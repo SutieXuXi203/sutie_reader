@@ -31,7 +31,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
     return (
       <div
         className={cn(
-          'flex !h-8 h-8 w-full items-center justify-between gap-1.5 rounded-[8px] border border-border/80 bg-card/60 backdrop-blur-md px-2 sm:px-2.5 text-xs text-muted-foreground opacity-80 shadow-sm',
+          'flex !h-8 h-8 w-full items-center justify-between gap-1.5 rounded-[8px] border border-border/80 bg-secondary/60 px-2 sm:px-2.5 text-xs text-muted-foreground opacity-80 shadow-xs',
           className
         )}
       >
@@ -56,7 +56,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
       <SelectTrigger
         size="sm"
         className={cn(
-          '!h-8 h-8 w-full rounded-[8px] bg-card/60 hover:bg-card/90 backdrop-blur-md border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all px-2 sm:px-2.5 py-0 flex items-center justify-between gap-1 cursor-pointer [&_svg]:size-3.5',
+          '!h-8 h-8 w-full rounded-[8px] bg-secondary/60 hover:bg-secondary/90 border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-xs transition-all px-2 sm:px-2.5 py-0 flex items-center justify-between gap-1 cursor-pointer [&_svg]:size-3.5',
           className
         )}
         title="Chế độ che mờ thumbnail"

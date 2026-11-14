@@ -472,7 +472,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
         <div id="main-content" className="space-y-8">
 
           {user && bookmarks.length > 0 && (
-            <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
+            <div className="reveal border border-border rounded-[8px] bg-card p-5 md:p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <AnimatedBookmarkCheck className="w-4 h-4 text-primary" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Đang đọc dở</h3>
@@ -548,7 +548,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           )}
 
           {user && (
-            <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
+            <div className="reveal border border-border rounded-[8px] bg-card p-5 md:p-6 shadow-sm">
               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-3.5 sm:gap-4 border-b border-border/50 pb-4">
                 <div className="shrink-0">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
@@ -575,17 +575,21 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                       autoComplete="off"
                       aria-label="Tìm kiếm truyện tranh"
                       placeholder={isSearchFocused ? "Tìm theo tiêu đề, tác giả..." : undefined}
-                      className="h-8 rounded-[8px] pl-8 sm:pl-9 pr-7 sm:pr-8 text-xs border-border/80 bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/60 hover:bg-card/80 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all w-full"
+                      className="h-8 rounded-[8px] pl-8 sm:pl-9 pr-7 sm:pr-8 text-xs border border-border/80 bg-secondary/60 hover:bg-secondary/80 text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary focus-visible:ring-primary/20 shadow-xs transition-all w-full"
                     />
                     <TypewriterPlaceholder
                       visible={!searchTerm && !isSearchFocused}
                       className="left-8 sm:left-9 right-8 text-xs"
+                      prefix="Tìm kiếm theo "
                       placeholders={[
-                        'Tìm theo tên truyện...',
-                        'Tìm theo tác giả...',
-                        'Tìm theo thể loại...',
-                        'Tìm theo dịch giả...',
+                        'tên truyện...',
+                        'tác giả...',
+                        'dịch giả...',
                       ]}
+                      typingSpeed={65}
+                      deleteSpeed={35}
+                      holdDuration={3000}
+                      pauseDuration={900}
                     />
                     {searchTerm && (
                       <button
@@ -616,7 +620,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                     >
                       <SelectTrigger
                         size="sm"
-                        className="!h-8 h-8 w-full rounded-[8px] bg-card/60 hover:bg-card/90 backdrop-blur-md border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all px-2 sm:px-2.5 py-0 flex items-center justify-between gap-1 cursor-pointer [&_svg]:size-3.5"
+                        className="!h-8 h-8 w-full rounded-[8px] bg-secondary/60 hover:bg-secondary/90 border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-xs transition-all px-2 sm:px-2.5 py-0 flex items-center justify-between gap-1 cursor-pointer [&_svg]:size-3.5"
                       >
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                           {(() => {
