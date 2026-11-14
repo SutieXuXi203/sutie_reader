@@ -7,10 +7,13 @@ import { Button } from '@/components/ui/button';
 import { useAuth } from '@/providers/AuthContext';
 import { notify } from '@/lib/notify';
 import { Footer } from '@/components/Footer';
+import { TypewriterPlaceholder } from '@/components/TypewriterPlaceholder';
 
 export default function ContactPage() {
   const { user } = useAuth();
   const [isSending, setIsSending] = useState(false);
+  const [message, setMessage] = useState('');
+  const [isMessageFocused, setIsMessageFocused] = useState(false);
 
   const handleContactSubmit = useCallback(async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -18,15 +21,16 @@ export default function ContactPage() {
     const formData = new FormData(e.currentTarget);
     const name = formData.get('name') as string || user?.name || '';
     const email = formData.get('email') as string || user?.email || '';
-    const message = formData.get('message') as string;
+    const msg = formData.get('message') as string || message;
     try {
       const response = await fetch('/api/contact', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, message }),
+        body: JSON.stringify({ name, email, message: msg }),
       });
       if (response.ok) {
         (e.target as HTMLFormElement).reset();
+        setMessage('');
         notify.success('Đã gửi tin nhắn', 'Cảm ơn bạn, tôi sẽ phản hồi sớm nhất có thể.');
       } else {
         const errorData = await response.json();
@@ -38,7 +42,7 @@ export default function ContactPage() {
     } finally {
       setIsSending(false);
     }
-  }, [user]);
+  }, [user, message]);
 
   return (
     <div className="min-h-screen text-foreground transition-colors pt-24 pb-0 flex flex-col justify-between relative">
@@ -123,13 +127,29 @@ export default function ContactPage() {
             </div>
             <div>
               <label className="block text-[10px] font-bold uppercase text-foreground mb-1">Tin nhắn</label>
-              <textarea
-                required
-                name="message"
-                rows={4}
-                placeholder="Nội dung tin nhắn..."
-                className="w-full px-3 py-2 border border-border rounded-[8px] bg-background text-foreground text-xs focus:outline-none focus:border-primary transition-colors resize-none"
-              />
+              <div className="relative">
+                <textarea
+                  required
+                  name="message"
+                  rows={4}
+                  value={message}
+                  onChange={(e) => setMessage(e.target.value)}
+                  onFocus={() => setIsMessageFocused(true)}
+                  onBlur={() => setIsMessageFocused(false)}
+                  aria-label="Nội dung tin nhắn"
+                  placeholder={isMessageFocused ? "Nội dung tin nhắn..." : undefined}
+                  className="w-full px-3 py-2 border border-border rounded-[8px] bg-background text-foreground text-xs focus:outline-none focus:border-primary transition-colors resize-none placeholder:text-muted-foreground/60"
+                />
+                <TypewriterPlaceholder
+                  visible={!message && !isMessageFocused}
+                  className="left-3 top-2.5 items-start text-xs pointer-events-none"
+                  placeholders={[
+                    'Nhập nội dung tin nhắn của bạn...',
+                    'Góp ý về truyện hoặc tính năng website...',
+                    'Báo lỗi ảnh hoặc chương truyện cần hỗ trợ...',
+                  ]}
+                />
+              </div>
             </div>
             <Button type="submit" disabled={isSending} className="w-full h-9 rounded-[8px] bg-primary text-primary-foreground hover:bg-primary/90 text-xs font-bold disabled:opacity-50 transition-colors">
               {isSending ? 'Đang gửi...' : 'Gửi tin nhắn'}

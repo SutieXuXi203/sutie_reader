@@ -25,6 +25,7 @@ import { PostCard } from '@/components/PostCard';
 import type { UpdatedPostPayload } from '@/components/EditPostForm';
 import { Input } from '@/components/ui/input';
 import { Pagination } from '@/components/Pagination';
+import { TypewriterPlaceholder } from '@/components/TypewriterPlaceholder';
 import { useSearchParams } from 'next/navigation';
 import {
   Select,
@@ -174,6 +175,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
 
   const itemsPerPage = 12;
   const [isSearchComposing, setIsSearchComposing] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(initialPostState.length === 0);
 
   const searchParams = useSearchParams();
@@ -563,14 +565,27 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      onFocus={() => setIsSearchFocused(true)}
+                      onBlur={() => setIsSearchFocused(false)}
                       onCompositionStart={() => setIsSearchComposing(true)}
                       onCompositionEnd={() => setIsSearchComposing(false)}
                       spellCheck={false}
                       autoCorrect="off"
                       autoCapitalize="none"
                       autoComplete="off"
-                      placeholder="Tìm theo tiêu đề, mô tả..."
-                      className="h-8 rounded-[8px] pl-8 sm:pl-9 pr-7 sm:pr-8 text-xs border-border/80 bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 hover:bg-card/80 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all w-full"
+                      aria-label="Tìm kiếm truyện tranh"
+                      placeholder={isSearchFocused ? "Tìm theo tiêu đề, tác giả..." : undefined}
+                      className="h-8 rounded-[8px] pl-8 sm:pl-9 pr-7 sm:pr-8 text-xs border-border/80 bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/60 hover:bg-card/80 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all w-full"
+                    />
+                    <TypewriterPlaceholder
+                      visible={!searchTerm && !isSearchFocused}
+                      className="left-8 sm:left-9 right-8 text-xs"
+                      placeholders={[
+                        'Tìm theo tên truyện...',
+                        'Tìm theo tác giả...',
+                        'Tìm theo thể loại...',
+                        'Tìm theo dịch giả...',
+                      ]}
                     />
                     {searchTerm && (
                       <button
