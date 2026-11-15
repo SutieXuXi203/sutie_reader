@@ -466,7 +466,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   }
 
   return (
-    <div className="min-h-screen text-foreground transition-colors relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20 pt-20 pb-0 flex flex-col justify-between">
+    <div className="min-h-screen text-foreground relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20 pt-20 pb-0 flex flex-col justify-between">
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1">
 
         <div id="main-content" className="space-y-8">
@@ -678,7 +678,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                   ))}
                 </div>
               ) : filteredPosts.length === 0 ? (
-                <div className="text-center py-20 px-6 bg-card/30 backdrop-blur-sm border border-border rounded-[8px]">
+                <div className="text-center py-20 px-6 bg-card border border-border rounded-[8px]">
                   <p className="text-muted-foreground text-sm">
                     {!isAdmin ? 'Chưa có truyện nào được chia sẻ với bạn.' : 'Danh sách đang trống.'}
                   </p>
@@ -711,7 +711,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           )}
 
           {!user && (
-            <div className="reveal flex flex-col items-center justify-center py-20 px-6 bg-card/50 backdrop-blur-md border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
+            <div className="reveal flex flex-col items-center justify-center py-20 px-6 bg-card border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
               <div className="relative z-10 w-16 h-16 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                 <AnimatedLock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors" animation="bounce" />

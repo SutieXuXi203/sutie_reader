@@ -149,8 +149,8 @@
   --accent: oklch(0.269 0 0);
   --accent-foreground: oklch(0.985 0 0);
   --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
+  --border: oklch(0.26 0 0);
+  --input: oklch(0.28 0 0);
   --ring: oklch(0.556 0 0);
   --sidebar: oklch(0.205 0 0);
   --sidebar-foreground: oklch(0.985 0 0);
@@ -370,6 +370,32 @@ html.lenis body {
 
 .reveal-delay-4 {
   transition-delay: 0.40s;
+}
+
+/* Card hover animation strictly isolated to devices with pointer / hover capability */
+.card-hover-effect {
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+}
+
+@media (hover: hover) and (pointer: fine) {
+  .card-hover-effect {
+    transition: transform 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                box-shadow 0.3s cubic-bezier(0.16, 1, 0.3, 1),
+                border-color 0.2s ease;
+  }
+
+  .card-hover-effect:hover {
+    transform: translateY(-4px);
+    box-shadow: 0 8px 30px rgba(140, 47, 57, 0.18);
+    border-color: color-mix(in oklab, var(--primary) 40%, transparent);
+  }
+}
+
+/* Mobile responsive touch optimization */
+@media (max-width: 768px) {
+  a, button, input, select, [role="button"] {
+    touch-action: manipulation;
+  }
 }
 
 .section-fullscreen {

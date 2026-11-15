@@ -264,7 +264,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
       <Link
         href={postDetailHref}
         prefetch={false}
-        className="group/card flex flex-col h-full bg-card/60 backdrop-blur-md border border-border rounded-[8px] overflow-hidden hover:shadow-[0_8px_30px_rgba(140,47,57,0.18)] hover:-translate-y-1 transition-all duration-500 cursor-pointer relative"
+        className="group/card flex flex-col h-full bg-card border border-border rounded-[8px] overflow-hidden card-hover-effect cursor-pointer relative"
       >
         <div
           className={cn(
@@ -275,7 +275,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           <GlareHover width="100%" height="100%" borderRadius="0" borderColor="transparent" glareOpacity={0.3} glareSize={250}>
           {post.images.length > 0 ? (
             imgError ? (
-              <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-card/60 backdrop-blur-xs select-none">
+              <div className="w-full h-full flex flex-col items-center justify-center p-3 text-center bg-card select-none">
                 <div className="w-9 h-9 rounded-full bg-primary/10 flex items-center justify-center mb-2 text-primary">
                   <RefreshCw className={cn("w-4 h-4", isRetrying && "animate-spin")} />
                 </div>
@@ -304,7 +304,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                       cols={scrambleMeta.cols}
                       alt={post.title}
                       className={cn(
-                        "w-full h-full object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
+                        "w-full h-full object-cover transition-[transform,filter] duration-500 [@media(hover:hover)]:group-hover/card:scale-105",
                         compact && "object-top",
                         blurMode === 'blur' && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
                         isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
@@ -319,7 +319,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                     fill
                     sizes={compact ? "(max-width: 768px) 50vw, (max-width: 1024px) 33vw, (max-width: 1280px) 25vw, 16vw" : "(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"}
                     className={cn(
-                      "object-cover transition-[transform,filter] duration-700 group-hover/card:scale-105",
+                      "object-cover transition-[transform,filter] duration-500 [@media(hover:hover)]:group-hover/card:scale-105",
                       compact && "object-top",
                       blurMode === 'blur' && !isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75 group-hover/card:blur-none group-hover/card:brightness-100 group-hover/card:saturate-100",
                       isNsfwLocked && "blur-xl scale-110 brightness-90 saturate-75"
@@ -344,14 +344,14 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
                 src="/blurImg/blur.png"
                 alt="Thumbnail obscured"
                 fill
-                className="object-cover transition-transform duration-700 group-hover/card:scale-105"
+                className="object-cover transition-transform duration-500 [@media(hover:hover)]:group-hover/card:scale-105"
                 unoptimized
               />
             </div>
           )}
           {isNSFW && !nsfwRevealed && (
             <div
-              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/88 dark:bg-background/82 backdrop-blur-md cursor-pointer transition-all duration-300"
+              className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/95 cursor-pointer transition-colors duration-200"
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
@@ -371,8 +371,8 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               className={cn(
                 "absolute top-2 left-2 z-[6] inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 font-bold shadow-md select-none transition-transform pointer-events-none",
                 post.isPartialAccess
-                  ? "bg-amber-500/95 text-amber-950 border border-amber-300/40 backdrop-blur-xs text-[10px] sm:text-[11px]"
-                  : "bg-black/70 text-white/95 border border-white/15 backdrop-blur-xs text-[9.5px] sm:text-[10px]"
+                  ? "bg-amber-500 text-amber-950 border border-amber-300/40 text-[10px] sm:text-[11px]"
+                  : "bg-black/80 text-white/95 border border-white/15 text-[9.5px] sm:text-[10px]"
               )}
               title={post.isPartialAccess ? `Bạn được cấp quyền: ${post.accessibleChapterLabel}` : `Bộ truyện: ${post.accessibleChapterLabel}`}
             >
@@ -381,7 +381,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
             </div>
           ) : post.chapterCount && post.chapterCount > 0 ? (
             <div
-              className="absolute top-2 left-2 z-[6] inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 bg-black/70 text-white/95 border border-white/15 backdrop-blur-xs text-[9.5px] sm:text-[10px] font-medium shadow-md select-none pointer-events-none"
+              className="absolute top-2 left-2 z-[6] inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 bg-black/80 text-white/95 border border-white/15 text-[9.5px] sm:text-[10px] font-medium shadow-md select-none pointer-events-none"
             >
               <BookOpen className={cn("shrink-0 text-white/90", compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
               <span>{post.chapterCount} chương</span>
