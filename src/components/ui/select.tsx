@@ -96,7 +96,7 @@ function SelectContent({
           data-slot="select-content"
           data-align-trigger={alignItemWithTrigger}
           className={cn(
-            "relative isolate z-50 max-h-(--available-height) min-w-(--anchor-width) w-auto min-w-36 max-w-[calc(100vw-2rem)] origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md bg-popover text-popover-foreground border border-border shadow-2xl",
+            "relative isolate z-50 max-h-(--available-height) min-w-(--anchor-width) w-auto max-w-[calc(100vw-2rem)] origin-(--transform-origin) overflow-x-hidden overflow-y-auto rounded-md bg-popover text-popover-foreground border border-border shadow-2xl",
             // Motion Prompt #053: Open 0->1 over 150ms with easeOut, dropping 6px; closes over 100ms with easeInOut
             "data-[align-trigger=true]:animate-none motion-reduce:animate-none",
             "data-open:animate-in data-open:fade-in-0 data-open:zoom-in-98 data-open:duration-150 data-open:ease-out",

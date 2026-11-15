@@ -76,9 +76,9 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
       </SelectTrigger>
 
       <SelectContent
-        align="end"
+        align="start"
         alignItemWithTrigger={false}
-        className="rounded-[10px] border border-border bg-popover p-1 w-[160px] sm:w-[170px] max-w-[calc(100vw-2rem)] shadow-2xl z-50"
+        className="rounded-[10px] border border-border bg-popover p-1 w-(--anchor-width) min-w-(--anchor-width) max-w-[calc(100vw-2rem)] shadow-2xl z-50"
       >
         <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
           Chế độ che ảnh
@@ -86,7 +86,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
         <SelectItem
           value="off"
           className={cn(
-            "flex items-center gap-2.5 rounded-[6px] py-1.5 px-2.5 text-xs cursor-pointer transition-colors my-0.5 font-medium",
+            "flex items-center gap-2.5 rounded-[6px] py-1.5 pl-2.5 pr-8 text-xs cursor-pointer transition-colors my-0.5 font-medium",
             blurMode === 'off' ? "bg-primary/15 text-primary" : "text-foreground hover:bg-accent hover:text-accent-foreground"
           )}
         >
@@ -96,7 +96,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
         <SelectItem
           value="blur"
           className={cn(
-            "flex items-center gap-2.5 rounded-[6px] py-1.5 px-2.5 text-xs cursor-pointer transition-colors my-0.5 font-medium",
+            "flex items-center gap-2.5 rounded-[6px] py-1.5 pl-2.5 pr-8 text-xs cursor-pointer transition-colors my-0.5 font-medium",
             blurMode === 'blur' ? "bg-primary/15 text-primary" : "text-foreground hover:bg-accent hover:text-accent-foreground"
           )}
         >
@@ -106,7 +106,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
         <SelectItem
           value="cover"
           className={cn(
-            "flex items-center gap-2.5 rounded-[6px] py-1.5 px-2.5 text-xs cursor-pointer transition-colors my-0.5 font-medium",
+            "flex items-center gap-2.5 rounded-[6px] py-1.5 pl-2.5 pr-8 text-xs cursor-pointer transition-colors my-0.5 font-medium",
             blurMode === 'cover' ? "bg-primary/15 text-primary" : "text-foreground hover:bg-accent hover:text-accent-foreground"
           )}
         >
