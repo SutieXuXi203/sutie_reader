@@ -35,6 +35,7 @@ export function SiteNav() {
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   const isPostReaderPage = pathname.startsWith('/posts/');
+  const isHomeGuest = pathname === '/' && !user;
   const showProfileMenu = Boolean(user && isProfileMenuOpen);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function SiteNav() {
     return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
-  if (isPostReaderPage) return null;
+  if (isPostReaderPage || isHomeGuest) return null;
 
   return (
     <>
@@ -70,9 +71,9 @@ export function SiteNav() {
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
           
           {/* Logo / Brand */}
-          <Link href="/" className="flex items-center gap-2 text-primary hover:opacity-90 transition-opacity">
-            <span className="font-extrabold text-sm sm:text-base tracking-tight text-foreground">
-              LuBu
+          <Link href="/" className="flex items-center gap-2 select-none" aria-label="Sutie Trang chủ">
+            <span className="sutie-logo-effect text-[22px] sm:text-[24px] tracking-wide">
+              Sutie
             </span>
           </Link>
 

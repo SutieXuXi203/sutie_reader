@@ -2,6 +2,7 @@
 import { ThemeProvider } from 'next-themes';
 import { AuthProvider, type User } from './AuthContext';
 import { ThumbnailBlurProvider } from './ThumbnailBlurProvider';
+import { PreloaderProvider } from './PreloaderContext';
 
 export function Providers({
   children,
@@ -14,7 +15,9 @@ export function Providers({
     <AuthProvider initialUser={initialUser}>
       <ThemeProvider attribute="class" defaultTheme="dark">
         <ThumbnailBlurProvider>
-          {children}
+          <PreloaderProvider>
+            {children}
+          </PreloaderProvider>
         </ThumbnailBlurProvider>
       </ThemeProvider>
     </AuthProvider>

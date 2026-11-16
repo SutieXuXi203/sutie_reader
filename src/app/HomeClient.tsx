@@ -2,7 +2,7 @@
 import { useState, useEffect, useCallback, useDeferredValue, useMemo, Suspense, useRef } from 'react';
 import dynamic from 'next/dynamic';
 import {
-  AnimatedBookOpen, AnimatedBookmarkCheck, AnimatedLock
+  AnimatedBookOpen, AnimatedBookmarkCheck
 } from '@/components/animate-ui/icons/AnimateIcon';
 import { 
   ChevronRight, 
@@ -15,12 +15,12 @@ import {
   ArrowUpAZ 
 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
+import { usePreloader } from '@/providers/PreloaderContext';
 import { useThumbnailBlur } from '@/providers/ThumbnailBlurProvider';
 import { ThumbnailBlurToggle } from '@/components/ThumbnailBlurToggle';
 import Link from 'next/link';
 import Image from 'next/image';
 import { cn, getOptimizedImageUrl, normalizeSearchText } from '@/lib/utils';
-import { Footer } from '@/components/Footer';
 import { PostCard } from '@/components/PostCard';
 import type { UpdatedPostPayload } from '@/components/EditPostForm';
 import { Input } from '@/components/ui/input';
@@ -123,8 +123,20 @@ interface HomeContentProps {
 }
 
 function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) {
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
   const { user, isLoading: isAuthLoading, isAdmin } = useAuth();
+  const { isPreloading } = usePreloader();
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+
+  useEffect(() => {
+    if (user) {
+      setIsAuthDialogOpen(false);
+      return;
+    }
+    if (!isPreloading && !isAuthLoading && !user) {
+      setIsAuthDialogOpen(true);
+    }
+  }, [user, isPreloading, isAuthLoading]);
+
   const { blurMode } = useThumbnailBlur();
   const currentCacheKey = user ? `${user.id}:${user.role}` : ':guest';
   const initialPostState =
@@ -459,8 +471,29 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
 
   if (isAuthLoading) {
     return (
-      <div className="min-h-screen text-foreground flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      <div className="fixed inset-0 z-40 bg-black flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-white"></div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div
+        className="fixed inset-0 z-40 bg-white dark:bg-black flex items-center justify-center select-none transition-colors duration-200 cursor-default"
+        onClick={() => {
+          if (!isAuthDialogOpen && !isPreloading) setIsAuthDialogOpen(true);
+        }}
+      >
+        {/* Background kẻ caro đặc trưng của dự án */}
+        <div className="absolute inset-0 pointer-events-none z-0 overflow-hidden" aria-hidden="true">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,theme(colors.primary)_1px,transparent_0)] bg-[size:28px_28px] opacity-[0.06] dark:opacity-[0.04]" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,theme(colors.foreground)_1px,transparent_1px),linear-gradient(theme(colors.foreground)_1px,transparent_1px)] bg-[size:180px_180px] opacity-[0.03] dark:opacity-[0.04]" />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/5 dark:to-white/5" />
+        </div>
+
+        {/* Hiển thị trực tiếp popup đăng nhập / đăng ký trên màn hình */}
+        <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />
       </div>
     );
   }
@@ -710,29 +743,9 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
             </div>
           )}
 
-          {!user && (
-            <div className="reveal flex flex-col items-center justify-center py-20 px-6 bg-card border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
-              <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
-              <div className="relative z-10 w-16 h-16 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
-                <AnimatedLock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors" animation="bounce" />
-              </div>
-              <h3 className="relative z-10 text-xl font-bold text-foreground mb-2">Nội dung đã bị khóa</h3>
-              <p className="relative z-10 text-muted-foreground max-w-sm mb-8">
-                Bạn cần đăng nhập hoặc tạo tài khoản mới để có thể xem được danh sách tất cả các bài viết.
-              </p>
-              <button
-                onClick={() => setIsAuthDialogOpen(true)}
-                className="relative z-10 rounded-[8px] px-8 py-3 bg-primary text-primary-foreground hover:bg-primary/90 shadow-xl shadow-primary/20 text-base font-bold transition-all cursor-pointer border-0 outline-none active:scale-95"
-              >
-                Đăng nhập ngay
-              </button>
-            </div>
-          )}
-
         </div>
       </div>
 
-      <Footer />
 
       {isAuthDialogOpen && (
         <AuthDialog open={isAuthDialogOpen} onOpenChange={setIsAuthDialogOpen} />

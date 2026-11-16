@@ -9,7 +9,7 @@ import { useAuth } from '@/providers/AuthContext';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
 import { normalizeSearchText } from '@/lib/utils';
-import { Footer } from '@/components/Footer';
+
 
 const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
 const CreatePostForm = dynamic(() => import('@/components/CreatePostForm').then(m => ({ default: m.CreatePostForm })), { ssr: false });
@@ -314,7 +314,7 @@ export default function ProductsPage() {
                 />
             )}
 
-            <Footer />
+
         </div>
     );
 }
