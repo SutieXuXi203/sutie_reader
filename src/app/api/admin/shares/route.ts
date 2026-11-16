@@ -20,7 +20,7 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const cached = getApiCache<unknown>(ADMIN_SHARES_CACHE_KEY);
+    const cached = await getApiCache<unknown>(ADMIN_SHARES_CACHE_KEY);
     if (cached) {
       return NextResponse.json(cached, {
         headers: {
@@ -150,7 +150,7 @@ export async function GET(request: NextRequest) {
       },
     };
 
-    setApiCache(ADMIN_SHARES_CACHE_KEY, responseData, ADMIN_SHARES_CACHE_TTL);
+    await setApiCache(ADMIN_SHARES_CACHE_KEY, responseData, ADMIN_SHARES_CACHE_TTL);
 
     return NextResponse.json(responseData, {
       headers: {

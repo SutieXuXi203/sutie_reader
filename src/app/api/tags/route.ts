@@ -15,7 +15,7 @@ type MongoDuplicateKeyError = Error & { code?: number };
 
 export async function GET() {
     try {
-        const cachedTags = getApiCache<unknown[]>(TAGS_LIST_CACHE_KEY);
+        const cachedTags = await getApiCache<unknown[]>(TAGS_LIST_CACHE_KEY);
         if (cachedTags) {
             return NextResponse.json(cachedTags, {
                 headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300', 'X-Sutie-Cache': 'HIT' },
@@ -24,7 +24,7 @@ export async function GET() {
 
         await connectDB();
         const tags = await Tag.find({}).sort({ name: 1 }).lean();
-        setApiCache(TAGS_LIST_CACHE_KEY, tags, TAGS_LIST_CACHE_TTL_MS);
+        await setApiCache(TAGS_LIST_CACHE_KEY, tags, TAGS_LIST_CACHE_TTL_MS);
         return NextResponse.json(tags, {
             headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300', 'X-Sutie-Cache': 'MISS' },
         });
@@ -59,7 +59,7 @@ export async function POST(request: NextRequest) {
             return NextResponse.json({ error: 'Tag này đã tồn tại.' }, { status: 409 });
         }
         const newTag = await Tag.create({ name: normalizedName });
-        invalidateApiCache('tags:');
+        await invalidateApiCache('tags:');
 
         // Ghi nhận log tạo tag mới lên Telegram
         void logApiAction({
@@ -112,7 +112,6 @@ export async function PUT(request: NextRequest) {
                 { status: 400 }
             );
         }
-        const postsWithOldTag = await Post.find({ tags: { $regex: new RegExp(`^${escapeRegExp(nOldTag)}$`, 'i') } });
         const currentTag = await Tag.findOne({ name: nOldTag });
         if (currentTag) {
             currentTag.name = nNewTag;
@@ -120,18 +119,37 @@ export async function PUT(request: NextRequest) {
         } else {
             await Tag.updateOne({ name: nNewTag }, { $set: { name: nNewTag } }, { upsert: true });
         }
-        let updatedCount = 0;
-        for (const post of postsWithOldTag) {
-            const updatedTags = post.tags?.filter(t => t.toLowerCase() !== nOldTag) || [];
-            if (!updatedTags.some(t => t.toLowerCase() === nNewTag)) {
-                updatedTags.push(nNewTag);
-            }
-            post.tags = updatedTags;
-            await post.save();
-            updatedCount++;
-        }
-        invalidateApiCache('tags:');
-        invalidateApiCache('posts:');
+        // Một lệnh updateMany (pipeline) thay vì tải từng bài đầy đủ (kèm mọi chương/ảnh) rồi save() lần lượt:
+        // bỏ tag cũ (không phân biệt hoa thường), thêm tag mới nếu bài chưa có, giữ nguyên thứ tự còn lại.
+        const renameResult = await Post.collection.updateMany(
+            { tags: { $regex: new RegExp(`^${escapeRegExp(nOldTag)}$`, 'i') } },
+            [
+                {
+                    $set: {
+                        tags: {
+                            $let: {
+                                vars: {
+                                    kept: {
+                                        $filter: { input: '$tags', as: 't', cond: { $ne: [{ $toLower: '$$t' }, nOldTag] } },
+                                    },
+                                },
+                                in: {
+                                    $cond: [
+                                        { $in: [nNewTag, { $map: { input: '$$kept', as: 'k', in: { $toLower: '$$k' } } }] },
+                                        '$$kept',
+                                        { $concatArrays: ['$$kept', [nNewTag]] },
+                                    ],
+                                },
+                            },
+                        },
+                        updatedAt: '$$NOW',
+                    },
+                },
+            ]
+        );
+        const updatedCount = renameResult.modifiedCount;
+        await invalidateApiCache('tags:');
+        await invalidateApiCache('posts:');
 
         // Ghi nhận log sửa tag lên Telegram
         void logApiAction({
@@ -174,15 +192,17 @@ export async function DELETE(request: NextRequest) {
         }
         const nTag = normalizeTag(tagToRemove);
         await Tag.deleteOne({ name: nTag });
-        const postsWithTag = await Post.find({ tags: { $regex: new RegExp(`^${escapeRegExp(nTag)}$`, 'i') } });
-        let updatedCount = 0;
-        for (const post of postsWithTag) {
-            post.tags = post.tags?.filter(t => t.toLowerCase() !== nTag) || [];
-            await post.save();
-            updatedCount++;
-        }
-        invalidateApiCache('tags:');
-        invalidateApiCache('posts:');
+        // Một lệnh updateMany với $pull thay vì tải từng bài đầy đủ rồi save() lần lượt
+        const removeResult = await Post.collection.updateMany(
+            { tags: { $regex: new RegExp(`^${escapeRegExp(nTag)}$`, 'i') } },
+            {
+                $pull: { tags: { $regex: new RegExp(`^${escapeRegExp(nTag)}$`, 'i') } },
+                $currentDate: { updatedAt: true },
+            } as never
+        );
+        const updatedCount = removeResult.modifiedCount;
+        await invalidateApiCache('tags:');
+        await invalidateApiCache('posts:');
 
         // Ghi nhận log xóa tag lên Telegram
         void logApiAction({

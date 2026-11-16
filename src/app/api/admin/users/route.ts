@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Không có quyền truy cập' }, { status: 403 });
     }
 
-    const cached = getApiCache<unknown>(ADMIN_USERS_CACHE_KEY);
+    const cached = await getApiCache<unknown>(ADMIN_USERS_CACHE_KEY);
     if (cached) {
       return NextResponse.json(cached, {
         headers: {
@@ -44,7 +44,7 @@ export async function GET(request: NextRequest) {
       .sort({ createdAt: -1 })
       .lean();
 
-    setApiCache(ADMIN_USERS_CACHE_KEY, users, ADMIN_USERS_CACHE_TTL);
+    await setApiCache(ADMIN_USERS_CACHE_KEY, users, ADMIN_USERS_CACHE_TTL);
 
     return NextResponse.json(users, {
       headers: {

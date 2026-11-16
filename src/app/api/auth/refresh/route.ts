@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
 import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
-import { getJwtSecret, clearUserCache } from '@/lib/server-auth';
+import { getJwtSecret, clearUserCache, isTokenRevoked } from '@/lib/server-auth';
 import { getSafeCallbackUrl } from '@/lib/safeRedirect';
 
 export async function GET(request: NextRequest) {
@@ -18,6 +18,11 @@ export async function GET(request: NextRequest) {
 
     const { payload } = await jwtVerify(token, getJwtSecret());
     if (!payload || !payload.id) {
+      return NextResponse.redirect(fallbackUrl);
+    }
+
+    // Token đã đăng xuất/bị thu hồi không được đổi lấy token mới
+    if (await isTokenRevoked(token, { durable: true })) {
       return NextResponse.redirect(fallbackUrl);
     }
 

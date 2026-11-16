@@ -23,7 +23,8 @@ import { cn, getOptimizedImageUrl, normalizeSearchText } from '@/lib/utils';
 import { PostCard } from '@/components/PostCard';
 import type { UpdatedPostPayload } from '@/components/EditPostForm';
 import { Input } from '@/components/ui/input';
-import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/Pagination';
+import { TypewriterPlaceholder } from '@/components/TypewriterPlaceholder';
 import { useSearchParams } from 'next/navigation';
 import {
   Select,
@@ -173,6 +174,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
 
   const itemsPerPage = 12;
   const [isSearchComposing, setIsSearchComposing] = useState(false);
+  const [isSearchFocused, setIsSearchFocused] = useState(false);
   const [isLoading, setIsLoading] = useState(initialPostState.length === 0);
 
   const searchParams = useSearchParams();
@@ -220,12 +222,9 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
       return;
     }
     try {
-      setPosts((currentPosts) => {
-        if (currentPosts.length === 0 && cachedPosts.length === 0) {
-          setIsLoading(true);
-        }
-        return currentPosts;
-      });
+      if (force || cachedPosts.length === 0) {
+        setIsLoading(true);
+      }
 
       const requestOptions: RequestInit = {
         credentials: 'same-origin',
@@ -300,6 +299,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
       cachedPosts = [];
       cachedPostsKey = '';
       lastFetchTime = 0;
+      setIsLoading(true);
       if (userId) {
         cachedBookmarks = [];
         void fetchBookmarks();
@@ -310,16 +310,28 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
         if (initialPosts.length > 0) {
           setPosts(initialPosts);
           setStandaloneTags(initialTags);
+          setIsLoading(false);
         } else {
           void fetchPosts(true, currentCacheKey);
         }
       }
     }
-  }, [userId, userRole, initialPosts, initialTags, initialPostState.length, fetchBookmarks, fetchPosts, fetchTags]);
+  }, [userId, userRole, initialPosts, initialTags, initialPostState.length, fetchBookmarks, fetchPosts, fetchTags, currentCacheKey]);
 
-  useEffect(() => {
+  const [prevInitialPosts, setPrevInitialPosts] = useState(initialPosts);
+  if (prevInitialPosts !== initialPosts) {
+    setPrevInitialPosts(initialPosts);
+    if (initialPosts.length > 0) {
+      setPosts(initialPosts);
+      setIsLoading(false);
+    }
+  }
+
+  const [prevTagParam, setPrevTagParam] = useState(tagParam);
+  if (prevTagParam !== tagParam) {
+    setPrevTagParam(tagParam);
     setSearchTerm(tagParam || '');
-  }, [tagParam]);
+  }
 
   const isFirstRender = useRef(true);
   useEffect(() => {
@@ -453,13 +465,13 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   }
 
   return (
-    <div className="min-h-screen text-foreground transition-colors relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20 pt-20 pb-0 flex flex-col justify-between">
+    <div className="min-h-screen text-foreground relative selection:bg-primary/30 selection:text-primary-foreground dark:selection:bg-primary/20 pt-20 pb-0 flex flex-col justify-between">
       <div className="relative z-10 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 w-full flex-1">
 
         <div id="main-content" className="space-y-8">
 
           {user && bookmarks.length > 0 && (
-            <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
+            <div className="reveal border border-border rounded-[8px] bg-card p-5 md:p-6 shadow-sm">
               <div className="flex items-center gap-2 mb-4">
                 <AnimatedBookmarkCheck className="w-4 h-4 text-primary" />
                 <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">Đang đọc dở</h3>
@@ -535,7 +547,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
           )}
 
           {user && (
-            <div className="reveal border border-border rounded-[8px] bg-card/40 p-5 md:p-6 shadow-sm">
+            <div className="reveal border border-border rounded-[8px] bg-card p-5 md:p-6 shadow-sm">
               <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-6 gap-3.5 sm:gap-4 border-b border-border/50 pb-4">
                 <div className="shrink-0">
                   <h3 className="text-xs font-bold uppercase tracking-wider text-primary mb-1">Thư viện</h3>
@@ -552,14 +564,31 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                       type="text"
                       value={searchTerm}
                       onChange={(e) => setSearchTerm(e.target.value)}
+                      onFocus={() => setIsSearchFocused(true)}
+                      onBlur={() => setIsSearchFocused(false)}
                       onCompositionStart={() => setIsSearchComposing(true)}
                       onCompositionEnd={() => setIsSearchComposing(false)}
                       spellCheck={false}
                       autoCorrect="off"
                       autoCapitalize="none"
                       autoComplete="off"
-                      placeholder="Tìm theo tiêu đề, mô tả..."
-                      className="h-8 rounded-[8px] pl-8 sm:pl-9 pr-7 sm:pr-8 text-xs border-border/80 bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 hover:bg-card/80 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all w-full"
+                      aria-label="Tìm kiếm truyện tranh"
+                      placeholder={isSearchFocused ? "Tìm theo tiêu đề, tác giả..." : undefined}
+                      className="h-8 rounded-[8px] pl-8 sm:pl-9 pr-7 sm:pr-8 text-xs border border-border/80 bg-secondary/60 hover:bg-secondary/80 text-foreground placeholder:text-muted-foreground/60 focus-visible:border-primary focus-visible:ring-primary/20 shadow-xs transition-all w-full"
+                    />
+                    <TypewriterPlaceholder
+                      visible={!searchTerm && !isSearchFocused}
+                      className="left-8 sm:left-9 right-8 text-xs"
+                      prefix="Tìm kiếm theo "
+                      placeholders={[
+                        'tên truyện...',
+                        'tác giả...',
+                        'dịch giả...',
+                      ]}
+                      typingSpeed={65}
+                      deleteSpeed={35}
+                      holdDuration={3000}
+                      pauseDuration={900}
                     />
                     {searchTerm && (
                       <button
@@ -574,11 +603,11 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                   </div>
 
                   <div className="grid grid-cols-2 sm:flex sm:items-center gap-2 sm:gap-2.5 shrink-0">
-                    <div className="w-full sm:w-[130px] md:w-[140px]">
+                    <div className="w-full sm:w-[145px] md:w-[150px]">
                       <ThumbnailBlurToggle />
                     </div>
 
-                    <div className="w-full sm:w-[130px] md:w-[140px]">
+                    <div className="w-full sm:w-[145px] md:w-[150px]">
                       <Select
                       value={sortOption}
                       onValueChange={(val: SortOption | null) => {
@@ -590,7 +619,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                     >
                       <SelectTrigger
                         size="sm"
-                        className="!h-8 h-8 w-full rounded-[8px] bg-card/60 hover:bg-card/90 backdrop-blur-md border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all px-2 sm:px-2.5 py-0 flex items-center justify-between gap-1 cursor-pointer [&_svg]:size-3.5"
+                        className="!h-8 h-8 w-full rounded-[8px] bg-secondary/60 hover:bg-secondary/90 border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-xs transition-all px-2 sm:px-2.5 py-0 flex items-center justify-between gap-1 cursor-pointer [&_svg]:size-3.5"
                       >
                         <div className="flex items-center gap-1.5 min-w-0 flex-1 overflow-hidden">
                           {(() => {
@@ -607,9 +636,9 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                         </div>
                       </SelectTrigger>
                       <SelectContent
-                        align="end"
+                        align="start"
                         alignItemWithTrigger={false}
-                        className="rounded-[10px] border border-border bg-popover p-1 w-[160px] sm:w-[170px] max-w-[calc(100vw-2rem)] shadow-2xl z-50"
+                        className="rounded-[10px] border border-border bg-popover p-1 w-(--anchor-width) min-w-(--anchor-width) max-w-[calc(100vw-2rem)] shadow-2xl z-50"
                       >
                         <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
                           Sắp xếp theo
@@ -623,7 +652,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                               key={key}
                               value={key}
                               className={cn(
-                                "flex items-center gap-2.5 rounded-[6px] py-1.5 px-2.5 text-xs cursor-pointer transition-colors my-0.5 font-medium",
+                                "flex items-center gap-2.5 rounded-[6px] py-1.5 pl-2.5 pr-8 text-xs cursor-pointer transition-colors my-0.5 font-medium",
                                 isSelected
                                   ? "bg-primary/15 text-primary"
                                   : "text-foreground hover:bg-accent hover:text-accent-foreground"
@@ -648,7 +677,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                   ))}
                 </div>
               ) : filteredPosts.length === 0 ? (
-                <div className="text-center py-20 px-6 bg-card/30 backdrop-blur-sm border border-border rounded-[8px]">
+                <div className="text-center py-20 px-6 bg-card border border-border rounded-[8px]">
                   <p className="text-muted-foreground text-sm">
                     {!isAdmin ? 'Chưa có truyện nào được chia sẻ với bạn.' : 'Danh sách đang trống.'}
                   </p>
@@ -669,36 +698,19 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                     ))}
                   </div>
 
-                  {totalPages > 1 && (
-                    <div className="flex items-center justify-center mt-8 gap-4">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                        disabled={currentPage === 1}
-                      >
-                        Trước
-                      </Button>
-                      <span className="text-sm font-medium text-muted-foreground">
-                        Trang {currentPage} / {totalPages}
-                      </span>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                        disabled={currentPage === totalPages}
-                      >
-                        Sau
-                      </Button>
-                    </div>
-                  )}
+                  <Pagination
+                    className="mt-8"
+                    page={currentPage}
+                    totalPages={totalPages}
+                    onPageChange={setCurrentPage}
+                  />
                 </>
               )}
             </div>
           )}
 
           {!user && (
-            <div className="reveal flex flex-col items-center justify-center py-20 px-6 bg-card/50 backdrop-blur-md border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
+            <div className="reveal flex flex-col items-center justify-center py-20 px-6 bg-card border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
               <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
               <div className="relative z-10 w-16 h-16 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                 <AnimatedLock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors" animation="bounce" />

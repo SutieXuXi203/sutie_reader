@@ -2,9 +2,9 @@ import { connectDB } from '@/lib/db';
 import { User } from '@/models/User';
 import { NextRequest, NextResponse } from 'next/server';
 import { jwtVerify, SignJWT } from 'jose';
-import { getCurrentUserFromToken, getJwtSecret, clearUserCache } from '@/lib/server-auth';
+import { getCurrentUserFromToken, getJwtSecret, clearUserCache, isTokenRevoked } from '@/lib/server-auth';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
-import { checkMemoryRateLimit } from '@/lib/memoryRateLimit';
+import { checkRateLimit } from '@/lib/memoryRateLimit';
 import { isAllowedAvatarUrl } from '@/lib/validations';
 import { detectImageType, IMAGE_MIME_BY_TYPE, type DetectedImageType } from '@/lib/imageMagic';
 const MAX_AVATAR_BYTES = 2 * 1024 * 1024;
@@ -148,8 +148,13 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'Token khong hop le' }, { status: 401 });
     }
 
+    // Token đã đăng xuất/bị thu hồi không được dùng để sửa hồ sơ hay đúc token mới
+    if (await isTokenRevoked(token, { durable: true })) {
+      return NextResponse.json({ error: 'Phien dang nhap da het han' }, { status: 401 });
+    }
+
     // Mỗi lần đổi avatar có thể tải file lên Drive: giới hạn 10 lần / 10 phút cho mỗi tài khoản
-    const profileLimit = checkMemoryRateLimit(`profile-update:${String(payload.id)}`, 10, 10 * 60_000);
+    const profileLimit = await checkRateLimit(`profile-update:${String(payload.id)}`, 10, 10 * 60_000);
     if (!profileLimit.allowed) {
       return NextResponse.json(
         { error: 'Ban thao tac qua nhanh, vui long thu lai sau.' },

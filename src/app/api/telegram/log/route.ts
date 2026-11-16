@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logApiError, logApiAction } from '@/lib/telegramLogger';
 import { getAuthUser } from '@/lib/auth';
-import { checkMemoryRateLimit } from '@/lib/memoryRateLimit';
+import { checkRateLimit } from '@/lib/memoryRateLimit';
 import { getClientIp } from '@/lib/clientIp';
 
 const MAX_BODY_BYTES = 8 * 1024;
@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     const user = await getAuthUser(request);
     const ip = getClientIp(request.headers);
 
-    const limit = checkMemoryRateLimit(`tglog:${user?.id ?? ip}`, user ? 20 : 5, 60_000);
+    const limit = await checkRateLimit(`tglog:${user?.id ?? ip}`, user ? 20 : 5, 60_000);
     if (!limit.allowed) {
       return NextResponse.json(
         { success: false },

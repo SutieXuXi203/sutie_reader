@@ -25,6 +25,7 @@
   * Chữ ký **không gắn IP** (vì URL chỉ đi từ server Next tới Worker, không bao giờ tới trình duyệt).
 * Giới hạn tần suất gọi ảnh: **360 ảnh / 60 giây / (user, IP)** (`IMAGE_RATE_LIMIT_MAX=360`), lưu trong RAM của instance.
 * Worker chỉ phục vụ **ảnh (png/jpeg/webp/gif/avif) nằm trong thư mục Drive gốc**; SVG và file khác bị từ chối (cả `/image` và `/avatar`).
+* `/avatar/<id>` của Worker **không có chữ ký**, nên chỉ được phục vụ file thật sự là avatar (nhãn `appProperties.sutieKind=avatar`, hoặc file cũ nằm trực tiếp trong thư mục gốc `Avatars`); trang truyện qua endpoint này bị 404. Cache edge của `/avatar` dùng namespace riêng (`?cv=2`).
 * Upload lên Worker chỉ chấp nhận: bí mật dùng chung server-to-server, hoặc token `scope: 'upload'` ngắn hạn (≤15 phút, bắt buộc có `exp`) do `/api/auth/token` cấp cho admin. Token phiên đăng nhập thường **không** được chấp nhận. File upload được kiểm tra bằng magic bytes, không tin `Content-Type` client khai báo.
 
 ---
@@ -64,6 +65,13 @@
 ---
 
 ## 5. Các Quy Tắc Khác
+
+* **Tra "ảnh thuộc bài nào"** (`/api/image/[id]`) phải dùng multikey index `Post.imageIds` (không `$regex` quét collection). Mọi đường ghi ảnh phải duy trì trường này: `pre('save')` của model, `PUT /api/posts/[id]` (đặt lại đầy đủ), `POST /api/posts/[id]/chapters` (`$addToSet`, chỉ khi bài đã có trường), và `backfillImageIds` cho dữ liệu cũ. Đường `$regex` chỉ còn là dự phòng khi `getImageIndexStatus() !== 'ready'`. Mọi URL ảnh gửi cho client nên kèm `pid`.
+* **Ảnh theo từng chương**: trình đọc không nhận ảnh của mọi chương cùng lúc. Trang `/posts/[id]` chỉ gửi ảnh của chương đang mở; các chương còn lại được tải qua `GET /api/posts/[id]/chapters/[n]`, route này kiểm `canViewPost` rồi `canViewChapter` (403/401 khi không có quyền, không trả ảnh) và chỉ trả URL `/api/image/...` (kèm `pid`). `GET /api/posts/[id]?lite=1` bỏ ảnh của mọi chương; không có `lite` vẫn trả đầy đủ (trang sửa bài của admin dùng).
+* **Đăng xuất = thu hồi token**: mọi đường đăng xuất (Server Action `logoutAction` và `/api/auth/logout`) phải gọi `revokeToken()`; mọi route tự `jwtVerify` (`/api/auth/refresh`, `PUT /api/auth/me`) phải kiểm `isTokenRevoked()` trước khi đúc token mới. `revokeToken` ghi cả Redis (nhanh, dùng chung) lẫn MongoDB `revoked_tokens` (bền vững, TTL theo hạn token) nên vẫn đúng khi không có Redis hoặc Redis mất dữ liệu; `isTokenRevoked(token, { durable: true })` luôn tra thêm MongoDB.
+* **Trang `/posts/[id]` và metadata** phải gọi `canViewPost` giống `GET /api/posts/[id]`: người chưa có quyền chỉ nhận khung "bị khóa", không nhận tiêu đề/mô tả/thẻ/danh sách chương.
+* **`/api/og-image`** chỉ lấy ảnh bìa từ chương không `restricted` (`pickPublicCoverUrl`); `post.images` là bản sao chương 1 nên không được tin.
+* **`/api/auth/verify`** có giới hạn 20 lượt / 15 phút / IP (ngoài 5 lượt / mã theo tài khoản).
 
 * **Redirect**: mọi `callbackUrl` phải qua `getSafeCallbackUrl()` (`src/lib/safeRedirect.ts`); từ chối ký tự điều khiển, `\`, `//`, URL tuyệt đối.
 * **Avatar**: data URL chỉ png/jpeg/webp, tối đa 2MB, kiểm magic bytes; avatar dạng URL chỉ `https` và host trong danh sách cho phép (`isAllowedAvatarUrl`). Đổi hồ sơ giới hạn 10 lần / 10 phút.

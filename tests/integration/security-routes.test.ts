@@ -206,6 +206,19 @@ describe('Tích hợp: route handler thật + MongoDB', { skip }, () => {
     assert.equal(user?.isVerified, false);
   });
 
+  it('xác thực OTP: một IP không thể thử quá 20 lần trên nhiều tài khoản khác nhau (giới hạn theo IP)', async () => {
+    const { POST } = await import('@/app/api/auth/verify/route');
+    const results = await Promise.all(
+      Array.from({ length: 40 }, (_, i) =>
+        POST(jsonRequest('/api/auth/verify', { email: `nobody${i}@gmail.com`, code: '000000' }, '3.3.3.3')).then((r) => r.status)
+      )
+    );
+    const tally = statuses(results);
+    assert.equal(tally[500] ?? 0, 0, JSON.stringify(tally));
+    assert.equal(tally[404] ?? 0, 20, `đúng 20 lượt được xử lý: ${JSON.stringify(tally)}`);
+    assert.equal(tally[429] ?? 0, 20, JSON.stringify(tally));
+  });
+
   describe('route ảnh /api/image/[id] và API bài viết', () => {
     let guestToken: string;
     let adminToken: string;

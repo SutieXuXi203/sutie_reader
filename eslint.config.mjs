@@ -11,11 +11,20 @@ const eslintConfig = defineConfig([
     ".next/**",
     "out/**",
     "build/**",
+    "dist/**",
+    "coverage/**",
     "next-env.d.ts",
     "remove-comments.js",
-    // Công cụ/skill của AI agent (mã bên thứ ba, không phải mã ứng dụng)
+    // Công cụ/skill của AI agent và workspace
     ".agents/**",
+    ".gemini/**",
+    "public/**",
   ]),
+  {
+    rules: {
+      "react-hooks/set-state-in-effect": "warn",
+    },
+  },
 ]);
 
 export default eslintConfig;

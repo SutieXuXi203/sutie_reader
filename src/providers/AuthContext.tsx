@@ -41,9 +41,29 @@ export function AuthProvider({
     }, []);
     useEffect(() => {
         if (!hasInitialAuth) {
-            checkAuth();
+            let active = true;
+            void getCurrentUserAction()
+                .then((authUser) => {
+                    if (active) {
+                        setUser(authUser as User | null);
+                    }
+                })
+                .catch((error) => {
+                    console.error('Failed to check auth', error);
+                    if (active) {
+                        setUser(null);
+                    }
+                })
+                .finally(() => {
+                    if (active) {
+                        setIsLoading(false);
+                    }
+                });
+            return () => {
+                active = false;
+            };
         }
-    }, [checkAuth, hasInitialAuth]);
+    }, [hasInitialAuth]);
 
     // Tự động kiểm tra và đồng bộ lại vai trò khi người dùng quay lại tab trình duyệt
     useEffect(() => {

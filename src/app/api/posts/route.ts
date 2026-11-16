@@ -199,7 +199,7 @@ type PostListItem = {
 
 export async function GET(request: NextRequest) {
   try {
-    const cachedPosts = getApiCache<PostListItem[]>(POSTS_LIST_CACHE_KEY);
+    const cachedPosts = await getApiCache<PostListItem[]>(POSTS_LIST_CACHE_KEY);
     let allPosts: PostListItem[];
 
     if (cachedPosts) {
@@ -283,7 +283,7 @@ export async function GET(request: NextRequest) {
         };
       });
 
-      setApiCache(POSTS_LIST_CACHE_KEY, allPosts, POSTS_LIST_CACHE_TTL_MS);
+      await setApiCache(POSTS_LIST_CACHE_KEY, allPosts, POSTS_LIST_CACHE_TTL_MS);
     }
 
     const user = await getAuthUser(request);
@@ -302,7 +302,7 @@ export async function GET(request: NextRequest) {
         isPartialAccess: chapterInfo.isPartialAccess,
         // Khách vãng lai chỉ thấy truyện công khai: dùng route OG công khai (ảnh bìa nhỏ), không lộ file id của Drive
         images: user
-          ? signImageUrls(post.images || [], user.id)
+          ? signImageUrls(post.images || [], user.id, post._id)
           : (post.images || []).length > 0
             ? [`/api/og-image/${post._id}`]
             : [],
@@ -377,7 +377,7 @@ export async function POST(request: NextRequest) {
     });
 
     const savedPost = await post.save();
-    invalidateApiCache('posts:');
+    await invalidateApiCache('posts:');
 
     // Ghi nhận log tạo truyện mới lên Telegram
     const authUser = await getAuthUser(request);

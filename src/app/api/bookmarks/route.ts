@@ -98,7 +98,18 @@ export async function GET(request: NextRequest) {
                         tags: 1,
                         accessType: 1,
                         sharedWith: 1,
-                        chapters: 1,
+                        // Chỉ giữ trường cần cho kiểm tra quyền: KHÔNG tải nội dung/ảnh của mọi chương (có thể hàng trăm ảnh mỗi chương)
+                        chapters: {
+                            $map: {
+                                input: { $ifNull: ['$chapters', []] },
+                                as: 'c',
+                                in: {
+                                    chapterNumber: '$c.chapterNumber',
+                                    accessType: '$c.accessType',
+                                    sharedWith: '$c.sharedWith',
+                                },
+                            },
+                        },
                         coverImage: {
                             $ifNull: [
                                 { $arrayElemAt: [{ $arrayElemAt: ['$chapters.images', 0] }, 0] },
@@ -121,7 +132,7 @@ export async function GET(request: NextRequest) {
                     : '';
                 let coverImages = coverImage ? [coverImage] : [];
                 if (user) {
-                    coverImages = signImageUrls(coverImages, user.id);
+                    coverImages = signImageUrls(coverImages, user.id, String(post._id));
                 }
                 return {
                     _id: String(b._id),

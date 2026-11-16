@@ -6,7 +6,7 @@ import { getPostChapters, protectedImageUrl, getOptimizedImageUrl } from '@/lib/
 import PostDetailClient from './PostDetailClient';
 import { notFound } from 'next/navigation';
 import { getCurrentUser } from '@/lib/server-auth';
-import { canViewChapter } from '@/lib/permissions';
+import { canViewChapter, canViewPost, type PostContext } from '@/lib/permissions';
 
 export const maxDuration = 60;
 export const dynamic = 'force-dynamic';
@@ -26,11 +26,17 @@ export async function generateMetadata({
 
   await connectDB();
   const post = await Post.findById(id)
-    .select('title description')
+    .select('title description accessType sharedWith chapters.accessType chapters.sharedWith')
     .lean();
 
   if (!post) {
     return { title: SITE_NAME };
+  }
+
+  // Không lộ tiêu đề/mô tả của truyện hạn chế cho người chưa có quyền xem (thẻ <title>, OG, Twitter)
+  const viewer = await getCurrentUser();
+  if (!canViewPost(viewer, post as unknown as PostContext).allowed) {
+    return { title: SITE_NAME, robots: { index: false, follow: false } };
   }
 
   const title = post.title || SITE_NAME;
@@ -191,6 +197,44 @@ export default async function PostPage({
 
 
   const user = await getCurrentUser();
+
+  // Khớp với GET /api/posts/[id]: người chưa có quyền xem truyện không nhận bất kỳ thông tin nào về truyện
+  // (tiêu đề, mô tả, thẻ, dịch giả, danh sách chương). Chỉ trả khung "bị khóa" để giao diện hiện màn hình đăng nhập/xin quyền.
+  const postDecision = canViewPost(user, serialized as unknown as PostContext);
+  if (!postDecision.allowed) {
+    const lockedPost = {
+      _id: id,
+      title: 'Nội dung bị hạn chế',
+      description: '',
+      tags: [],
+      author: '',
+      translator: '',
+      accessType: 'restricted' as const,
+      sharedWith: [],
+      accessedUsers: [],
+      content: '',
+      images: [],
+      createdAt: '',
+      updatedAt: '',
+      chapterCount: 1,
+      chapters: [
+        {
+          chapterNumber: 1,
+          title: 'Nội dung bị hạn chế',
+          translator: '',
+          accessType: 'restricted' as const,
+          isLocked: true,
+          lockReason: postDecision.reason,
+          lockMessage: postDecision.message,
+          sharedWith: [],
+          content: '',
+          images: [],
+        },
+      ],
+    };
+    return <PostDetailClient initialPost={lockedPost} initialChapterNumber={undefined} />;
+  }
+
   const userEmail = user?.email?.toLowerCase().trim();
   const userId = user?.id ? String(user.id) : '';
 
@@ -220,8 +264,18 @@ export default async function PostPage({
 
   const isShared = isSharedInPost || isSharedInAnyChapter;
 
+  // Chỉ chương đang mở đầu tiên được gửi kèm danh sách ảnh; các chương khác được client tải theo từng chương
+  // (/api/posts/[id]/chapters/[n]) để payload không phình theo tổng số ảnh của cả bộ truyện. Quy tắc chọn chương khớp với client.
+  const allChapters = serialized.chapters || [];
+  const requestedIndex =
+    typeof requestedChapterNum === 'number' && !isNaN(requestedChapterNum)
+      ? allChapters.findIndex((c, i) => (c.chapterNumber ?? i + 1) === requestedChapterNum)
+      : -1;
+  const firstUnlockedIndex = allChapters.findIndex((c) => canViewChapter(user, serialized, c).allowed);
+  const initialChapterIdx = requestedIndex >= 0 ? requestedIndex : Math.max(firstUnlockedIndex, 0);
+
   // Lọc dữ liệu chương an toàn theo từng chương (Phương án 2)
-  const safeChapters = (serialized.chapters || []).map((ch, idx) => {
+  const safeChapters = allChapters.map((ch, idx) => {
     const chDecision = canViewChapter(user, serialized, ch);
     const translator = ch.translator || serialized.translator || '';
 
@@ -238,6 +292,8 @@ export default async function PostPage({
         sharedWith: [],
         content: '',
         images: [],
+        imageCount: 0,
+        imagesLoaded: true,
       };
     }
 
@@ -263,7 +319,17 @@ export default async function PostPage({
       isLocked: false,
       sharedWith: sanitizedSharedWith,
       content: ch.content || '',
-      images: (ch.images || []).map((img: string) => protectedImageUrl(img, id)),
+      ...(idx === initialChapterIdx
+        ? {
+            images: (ch.images || []).map((img: string) => protectedImageUrl(img, id)),
+            imageCount: (ch.images || []).length,
+            imagesLoaded: true,
+          }
+        : {
+            images: [] as string[],
+            imageCount: (ch.images || []).length,
+            imagesLoaded: (ch.images || []).length === 0,
+          }),
     };
   });
 

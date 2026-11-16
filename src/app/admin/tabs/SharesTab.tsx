@@ -4,6 +4,7 @@ import { useState, useMemo, memo } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/Pagination';
 import {
     Share2,
     Lock,
@@ -375,30 +376,15 @@ export const SharesTab = memo(
                             <p className="text-xs text-muted-foreground">
                                 Trang {sharesPage}/{totalSharesPages} • Hiển thị {paginatedSharedPosts.length}/{filteredSharedPosts.length} bộ truyện
                             </p>
-                            {totalSharesPages > 1 && (
-                                <div className="flex items-center gap-1.5">
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-8 rounded-[8px]"
-                                        onClick={() => setSharesPage((prev) => Math.max(1, prev - 1))}
-                                        disabled={sharesPage === 1}
-                                    >
-                                        Trước
-                                    </Button>
-                                    <Button
-                                        type="button"
-                                        size="sm"
-                                        variant="outline"
-                                        className="h-8 rounded-[8px]"
-                                        onClick={() => setSharesPage((prev) => Math.min(totalSharesPages, prev + 1))}
-                                        disabled={sharesPage >= totalSharesPages}
-                                    >
-                                        Sau
-                                    </Button>
-                                </div>
-                            )}
+                        </div>
+                    )}
+                    {filteredSharedPosts.length > 0 && totalSharesPages > 1 && (
+                        <div className="px-3 sm:px-5 pb-4">
+                            <Pagination
+                                page={sharesPage}
+                                totalPages={totalSharesPages}
+                                onPageChange={setSharesPage}
+                            />
                         </div>
                     )}
                 </div>

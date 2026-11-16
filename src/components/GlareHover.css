@@ -10,25 +10,31 @@
   place-items: center;
 }
 
+/* By default (touch / mobile devices), hide glare glow to eliminate 200% compositor layer overhead */
 .glare-hover-glow {
-  position: absolute;
-  top: -50%;
-  left: -50%;
-  width: 200%;
-  height: 200%;
-  background: linear-gradient(
-    var(--gh-angle),
-    hsla(0, 0%, 0%, 0) 35%,
-    var(--gh-rgba) 50%,
-    hsla(0, 0%, 0%, 0) 65%
-  );
-  pointer-events: none;
-  z-index: 10;
-  transform: translate3d(-50%, -50%, 0);
-  transition: transform var(--gh-duration) ease;
+  display: none;
 }
 
-@media (hover: hover) {
+@media (hover: hover) and (pointer: fine) {
+  .glare-hover-glow {
+    display: block;
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: linear-gradient(
+      var(--gh-angle),
+      hsla(0, 0%, 0%, 0) 35%,
+      var(--gh-rgba) 50%,
+      hsla(0, 0%, 0%, 0) 65%
+    );
+    pointer-events: none;
+    z-index: 10;
+    transform: translate3d(-50%, -50%, 0);
+    transition: transform var(--gh-duration) ease;
+  }
+
   .glare-hover:hover {
     cursor: pointer;
   }

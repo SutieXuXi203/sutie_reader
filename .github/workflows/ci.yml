@@ -8,6 +8,14 @@ on:
 jobs:
   verify:
     runs-on: ubuntu-latest
+    services:
+      # Database/Redis dùng một lần cho kiểm thử tích hợp (route handler thật). Dữ liệu bị xóa sau khi chạy.
+      mongo:
+        image: mongo:7
+        ports: ['27017:27017']
+      redis:
+        image: redis:7
+        ports: ['6379:6379']
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -17,14 +25,20 @@ jobs:
       - run: npm ci
       - name: Unit & security tests
         run: npm test
+      - name: Integration tests (route handlers + MongoDB + Redis)
+        run: npm run test:integration
+        env:
+          MONGODB_TEST_URI: mongodb://127.0.0.1:27017/sutie_ci_test
+          REDIS_TEST_URL: redis://127.0.0.1:6379
       - name: Type check
         run: npx tsc --noEmit
+      - name: Lint (errors fail the build)
+        run: npm run lint
       - name: Build
         run: npm run build
         env:
           MONGODB_URI: mongodb://127.0.0.1:27017/ci
           JWT_SECRET: ci-only-secret-ci-only-secret-ci-only-secret
           NEXT_PUBLIC_SITE_URL: http://localhost:3000
-      - name: Dependency audit (production)
+      - name: Dependency audit (production, fails on high/critical)
         run: npm audit --omit=dev --audit-level=high
-        continue-on-error: true

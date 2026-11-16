@@ -1,8 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { logApiError } from '@/lib/telegramLogger';
+import { revokeToken } from '@/lib/server-auth';
 
 export async function POST(request: NextRequest) {
   try {
+    const token = request.cookies.get('token')?.value;
+    if (token) {
+      await revokeToken(token);
+    }
+
     const response = NextResponse.json({ message: 'Đăng xuất thành công' });
     const clearOptions = {
       path: '/',

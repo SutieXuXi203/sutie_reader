@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useDeferredValue } from 'react';
+import { useState, useEffect, useCallback, useMemo, useDeferredValue, useSyncExternalStore } from 'react';
 import {
   Dialog,
   DialogContent,
@@ -36,6 +36,7 @@ import Image from 'next/image';
 import { useAuth } from '@/providers/AuthContext';
 import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
+import { MotionSpinnerOverlay } from '@/components/MotionSpinnerOverlay';
 
 interface SharedUserItem {
   email: string;
@@ -128,20 +129,21 @@ export function ShareDialog({
   const [hasCopied, setHasCopied] = useState(false);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [visitorSearch, setVisitorSearch] = useState('');
-  const [isMobile, setIsMobile] = useState(false);
+  const isMobile = useSyncExternalStore(
+    (callback: () => void) => {
+      if (typeof window === 'undefined') return () => {};
+      const mediaQuery = window.matchMedia('(max-width: 767px)');
+      mediaQuery.addEventListener('change', callback);
+      return () => mediaQuery.removeEventListener('change', callback);
+    },
+    () => typeof window !== 'undefined' ? window.matchMedia('(max-width: 767px)').matches : false,
+    () => false
+  );
   const [selectedVisitor, setSelectedVisitor] = useState<AccessedUserItem | null>(null);
   const [isRevokingVisitor, setIsRevokingVisitor] = useState(false);
+  const [isCompleting, setIsCompleting] = useState(false);
 
   const deferredSearch = useDeferredValue(visitorSearch);
-
-  useEffect(() => {
-    if (typeof window === 'undefined') return;
-    const mediaQuery = window.matchMedia('(max-width: 767px)');
-    setIsMobile(mediaQuery.matches);
-    const handler = (e: MediaQueryListEvent) => setIsMobile(e.matches);
-    mediaQuery.addEventListener('change', handler);
-    return () => mediaQuery.removeEventListener('change', handler);
-  }, []);
 
   const fetchShareData = useCallback(async (signal?: AbortSignal) => {
     if (!postId) return;
@@ -164,15 +166,25 @@ export function ShareDialog({
     }
   }, [postId]);
 
+  const [prevOpen, setPrevOpen] = useState(open);
+  if (open !== prevOpen) {
+    setPrevOpen(open);
+    if (open) {
+      setEmailInput('');
+      setSelectedScope('all');
+      setHasCopied(false);
+      setIsSidebarOpen(false);
+      setVisitorSearch('');
+      setSelectedVisitor(null);
+      setIsCompleting(false);
+    } else {
+      setIsCompleting(false);
+    }
+  }
+
   useEffect(() => {
     if (!open) return;
     const controller = new AbortController();
-    setEmailInput('');
-    setSelectedScope('all');
-    setHasCopied(false);
-    setIsSidebarOpen(false);
-    setVisitorSearch('');
-    setSelectedVisitor(null);
     fetchShareData(controller.signal);
     return () => controller.abort();
   }, [open, fetchShareData]);
@@ -515,6 +527,14 @@ export function ShareDialog({
           )}
           showCloseButton={false}
         >
+          {/* Motion Prompt #070: Spinner & Success check on completion */}
+          <MotionSpinnerOverlay
+            active={isCompleting}
+            onComplete={() => {
+              setIsCompleting(false);
+              onOpenChange(false);
+            }}
+          />
           <div className="flex flex-col md:flex-row w-full divide-y md:divide-y-0 md:divide-x divide-border flex-1 min-h-0 overflow-y-auto md:overflow-visible custom-scrollbar">
             {/* Main Share Dialog Panel */}
             <div className="flex-1 min-w-0 flex flex-col">
@@ -1041,8 +1061,9 @@ export function ShareDialog({
               <Button
                 type="button"
                 size="sm"
-                onClick={() => onOpenChange(false)}
-                className="h-9 sm:h-10 px-5 sm:px-6 rounded-[8px] text-xs sm:text-sm font-medium bg-[#1a73e8] hover:bg-[#1557b0] text-white transition-all cursor-pointer shadow-none shrink-0"
+                onClick={() => setIsCompleting(true)}
+                disabled={isCompleting}
+                className="h-9 sm:h-10 px-5 sm:px-6 rounded-[8px] text-xs sm:text-sm font-semibold bg-primary hover:bg-primary/90 text-primary-foreground transition-all cursor-pointer shadow-xs shrink-0 disabled:opacity-70"
               >
                 Xong
               </Button>

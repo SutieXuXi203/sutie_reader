@@ -31,7 +31,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
     return (
       <div
         className={cn(
-          'flex !h-8 h-8 w-full items-center justify-between gap-1.5 rounded-[8px] border border-border/80 bg-card/60 backdrop-blur-md px-2 sm:px-2.5 text-xs text-muted-foreground opacity-80 shadow-sm',
+          'flex !h-8 h-8 w-full items-center justify-between gap-1.5 rounded-[8px] border border-border/80 bg-secondary/60 px-2 sm:px-2.5 text-xs text-muted-foreground opacity-80 shadow-xs',
           className
         )}
       >
@@ -56,7 +56,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
       <SelectTrigger
         size="sm"
         className={cn(
-          '!h-8 h-8 w-full rounded-[8px] bg-card/60 hover:bg-card/90 backdrop-blur-md border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all px-2 sm:px-2.5 py-0 flex items-center justify-between gap-1 cursor-pointer [&_svg]:size-3.5',
+          '!h-8 h-8 w-full rounded-[8px] bg-secondary/60 hover:bg-secondary/90 border border-border/80 hover:border-primary/40 text-xs text-foreground focus-visible:border-primary focus-visible:ring-primary/20 shadow-xs transition-all px-2 sm:px-2.5 py-0 flex items-center justify-between gap-1 cursor-pointer [&_svg]:size-3.5',
           className
         )}
         title="Chế độ che mờ thumbnail"
@@ -76,9 +76,9 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
       </SelectTrigger>
 
       <SelectContent
-        align="end"
+        align="start"
         alignItemWithTrigger={false}
-        className="rounded-[10px] border border-border bg-popover p-1 w-[160px] sm:w-[170px] max-w-[calc(100vw-2rem)] shadow-2xl z-50"
+        className="rounded-[10px] border border-border bg-popover p-1 w-(--anchor-width) min-w-(--anchor-width) max-w-[calc(100vw-2rem)] shadow-2xl z-50"
       >
         <div className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider text-muted-foreground/70">
           Chế độ che ảnh
@@ -86,7 +86,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
         <SelectItem
           value="off"
           className={cn(
-            "flex items-center gap-2.5 rounded-[6px] py-1.5 px-2.5 text-xs cursor-pointer transition-colors my-0.5 font-medium",
+            "flex items-center gap-2.5 rounded-[6px] py-1.5 pl-2.5 pr-8 text-xs cursor-pointer transition-colors my-0.5 font-medium",
             blurMode === 'off' ? "bg-primary/15 text-primary" : "text-foreground hover:bg-accent hover:text-accent-foreground"
           )}
         >
@@ -96,7 +96,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
         <SelectItem
           value="blur"
           className={cn(
-            "flex items-center gap-2.5 rounded-[6px] py-1.5 px-2.5 text-xs cursor-pointer transition-colors my-0.5 font-medium",
+            "flex items-center gap-2.5 rounded-[6px] py-1.5 pl-2.5 pr-8 text-xs cursor-pointer transition-colors my-0.5 font-medium",
             blurMode === 'blur' ? "bg-primary/15 text-primary" : "text-foreground hover:bg-accent hover:text-accent-foreground"
           )}
         >
@@ -106,7 +106,7 @@ export function ThumbnailBlurToggle({ className }: { className?: string }) {
         <SelectItem
           value="cover"
           className={cn(
-            "flex items-center gap-2.5 rounded-[6px] py-1.5 px-2.5 text-xs cursor-pointer transition-colors my-0.5 font-medium",
+            "flex items-center gap-2.5 rounded-[6px] py-1.5 pl-2.5 pr-8 text-xs cursor-pointer transition-colors my-0.5 font-medium",
             blurMode === 'cover' ? "bg-primary/15 text-primary" : "text-foreground hover:bg-accent hover:text-accent-foreground"
           )}
         >

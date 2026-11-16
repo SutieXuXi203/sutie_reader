@@ -3,6 +3,7 @@ import { useState, useEffect, useDeferredValue, useMemo, useCallback, useRef } f
 import { useRouter } from 'next/navigation';
 import { Search, Lock, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Pagination } from '@/components/Pagination';
 import { PostCard } from '@/components/PostCard';
 import { useAuth } from '@/providers/AuthContext';
 import dynamic from 'next/dynamic';
@@ -220,7 +221,7 @@ export default function ProductsPage() {
                                             autoCapitalize="none"
                                             autoComplete="off"
                                             placeholder="Tìm theo tiêu đề, mô tả..."
-                                            className="h-8 rounded-[8px] pl-10 pr-3 text-xs border-border bg-card/60 backdrop-blur-md text-foreground placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-primary/20 shadow-sm transition-all"
+                                            className="h-8 rounded-[8px] pl-10 pr-3 text-xs border border-border/80 bg-secondary/60 hover:bg-secondary/80 text-foreground placeholder:text-muted-foreground/70 focus-visible:border-primary focus-visible:ring-primary/20 shadow-xs transition-all"
                                         />
                                     </div>
                                 </div>
@@ -246,7 +247,7 @@ export default function ProductsPage() {
                             ))}
                         </div>
                     ) : !user ? (
-                        <div className="flex flex-col items-center justify-center py-20 px-6 bg-card/50 backdrop-blur-md border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
+                        <div className="flex flex-col items-center justify-center py-20 px-6 bg-card border border-border rounded-[8px] text-center shadow-lg group relative overflow-hidden">
                             <div className="absolute inset-0 bg-gradient-to-br from-primary/5 to-transparent pointer-events-none" />
                             <div className="relative z-10 w-16 h-16 flex items-center justify-center mb-6 group-hover:scale-110 transition-transform duration-500">
                                 <Lock className="w-8 h-8 text-primary group-hover:brightness-110 transition-colors group-hover:animate-bounce" />
@@ -263,7 +264,7 @@ export default function ProductsPage() {
                             </Button>
                         </div>
                     ) : filteredPosts.length === 0 ? (
-                        <div className="text-center py-20 px-6 bg-card/30 backdrop-blur-sm border border-border rounded-[8px]">
+                        <div className="text-center py-20 px-6 bg-card border border-border rounded-[8px]">
                             <p className="text-muted-foreground text-sm">
                                 Danh sách đang trống.
                             </p>
@@ -284,29 +285,12 @@ export default function ProductsPage() {
                                 ))}
                             </div>
 
-                            {totalPages > 1 && (
-                                <div className="flex items-center justify-center mt-8 gap-4">
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                                        disabled={currentPage === 1}
-                                    >
-                                        Trước
-                                    </Button>
-                                    <span className="text-sm font-medium text-muted-foreground">
-                                        Trang {currentPage} / {totalPages}
-                                    </span>
-                                    <Button
-                                        variant="outline"
-                                        size="sm"
-                                        onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                                        disabled={currentPage === totalPages}
-                                    >
-                                        Sau
-                                    </Button>
-                                </div>
-                            )}
+                            <Pagination
+                                className="mt-8"
+                                page={currentPage}
+                                totalPages={totalPages}
+                                onPageChange={setCurrentPage}
+                            />
                         </>
                     )}
                 </div>

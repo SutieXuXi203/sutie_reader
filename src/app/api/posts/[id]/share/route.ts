@@ -179,8 +179,8 @@ export async function POST(
       if (!updated) {
         return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
       }
-      invalidateApiCache('posts:');
-      invalidateApiCache('img_access:');
+      await invalidateApiCache('posts:');
+      await invalidateApiCache('img_access:');
 
       return NextResponse.json({
         message: 'Đã cập nhật quyền truy cập chung',
@@ -236,8 +236,8 @@ export async function POST(
       }
 
       await post.save();
-      invalidateApiCache('posts:');
-      invalidateApiCache('img_access:');
+      await invalidateApiCache('posts:');
+      await invalidateApiCache('img_access:');
 
       // Ghi nhận log chia sẻ quyền đọc lên Telegram
       const authUser = await getAuthUser(request);
@@ -344,8 +344,8 @@ export async function DELETE(
       );
     }
 
-    invalidateApiCache('posts:');
-    invalidateApiCache('img_access:');
+    await invalidateApiCache('posts:');
+    await invalidateApiCache('img_access:');
 
     // Ghi nhận log gỡ quyền đọc lên Telegram
     const authUser = await getAuthUser(request);

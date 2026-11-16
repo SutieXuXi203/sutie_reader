@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -49,6 +50,7 @@ interface AuthDialogProps {
 }
 
 export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDialogProps) {
+    const router = useRouter();
     const [mode, setMode] = useState<'login' | 'register' | 'forgot-password' | 'verify' | 'pin'>(initialMode);
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
@@ -153,6 +155,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 notify.success(data.message || 'Đăng nhập thành công');
                 login(data.user);
                 onOpenChange(false);
+                router.refresh();
             } else if (mode === 'register') {
                 notify.success(
                     data.requireVerification

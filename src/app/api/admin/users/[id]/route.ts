@@ -43,7 +43,7 @@ export async function DELETE(
         // Dọn dữ liệu mồ côi của tài khoản đã xóa
         await Bookmark.deleteMany({ userId: id });
         clearUserCache(id);
-        invalidateApiCache('admin:users');
+        await invalidateApiCache('admin:users');
 
         // Ghi nhận log xóa tài khoản người dùng
         void logApiAction({
@@ -110,7 +110,7 @@ export async function PATCH(
         targetUser.role = role;
         await targetUser.save();
         clearUserCache(id);
-        invalidateApiCache('admin:users');
+        await invalidateApiCache('admin:users');
 
         // Ghi nhận log thay đổi vai trò người dùng
         void logApiAction({
