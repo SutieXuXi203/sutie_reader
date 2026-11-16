@@ -446,7 +446,7 @@ export function SakugaProgressBar({
       const wData = WORDS[name];
       if (!wData) return null;
       const [w, h, d] = wData;
-      const pad = 16;
+      const pad = 26; // Đệm 26px đảm bảo không bị cắt mất nét viền chữ ở các mép
       const e = w * 0.035;
       c = document.createElement('canvas');
       c.width = w + pad * 2;
@@ -496,10 +496,12 @@ export function SakugaProgressBar({
       lastTime = now;
       s.t += dt;
 
-      // Handle canvas resize and DPR
+      // Handle canvas resize and DPR với đệm ngang 100px mỗi bên để hiệu ứng không bao giờ bị cắt
       const rect = containerRef.current?.getBoundingClientRect();
-      const w = rect?.width || 280;
-      const h = 150;
+      const barW = rect?.width || 380;
+      const padX = 100; // Đệm ngang 100px ở cả 2 phía trái và phải
+      const w = barW + padX * 2;
+      const h = 170;
       const dpr = Math.min(2.5, window.devicePixelRatio || 1);
 
       if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
@@ -512,13 +514,12 @@ export function SakugaProgressBar({
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
 
-      // Bar geometry in local canvas coordinates
+      // Bar geometry in local canvas coordinates:
       const barH = 22;
-      const barW = Math.max(160, w - 24);
       const cx = w / 2;
-      const cy = 75; // Centered on the bar (leaving top 75px for manga SFX lettering without clipping or touching sticker)
-      const L = cx - barW / 2;
-      const R = cx + barW / 2;
+      const cy = 88; // Trọng tâm thanh tiến trình (đủ 88px chiều cao cho chữ manga mà không đè sticker)
+      const L = padX; // Mép trái chuẩn xác của thanh tiến trình DOM
+      const R = padX + barW; // Mép phải chuẩn xác của thanh tiến trình DOM
       const gy = cy + barH / 2 + 13; // Ground line y
 
       // Progress ease calculation
@@ -640,12 +641,12 @@ export function SakugaProgressBar({
           }
         }
 
-        // Manga rumble SFX: gogo (ゴゴゴゴ) - placed safely in the gap
+        // Manga rumble SFX: gogo (ゴゴゴゴ) - nâng cao cy - 54 để đám mây cuộn không đè lên chữ theo chiều ngang
         if (!s.said && p > 0.35 && p < 0.85) {
           s.said = true;
-          sfx('gogo', cx - 18, cy - 36, { size: 85, rot: -0.08, life: 2.0 });
-          ticks(cx + 36, cy - 44, { dir: -0.5, n: 2, r: 3, len: 7, life: 0.5 });
-          ticks(L + 6, cy - 26, { dir: Math.PI + 0.3, n: 2, r: 3, len: 7, life: 0.5 });
+          sfx('gogo', cx - 18, cy - 54, { size: 90, rot: -0.08, life: 2.0 });
+          ticks(cx + 40, cy - 64, { dir: -0.5, n: 2, r: 3, len: 7, life: 0.5 });
+          ticks(L + 6, cy - 40, { dir: Math.PI + 0.3, n: 2, r: 3, len: 7, life: 0.5 });
         }
       }
 
@@ -653,11 +654,11 @@ export function SakugaProgressBar({
       if (!s.doneAt && (p >= 0.995 || (s.goal >= 1.0 && p >= 0.985))) {
         s.p = 1.0;
         s.doneAt = s.t;
-        burst(R - 35, cy, { r: 42, spikes: 12, life: 0.5 });
-        shards(R - 25, cy, { n: 8, speed: 170, size: 4.8, life: 0.8 });
-        sfx('don', cx - 10, cy - 36, { size: 95, rot: -0.08, life: 1.8 });
+        burst(R - 15, cy, { r: 44, spikes: 12, life: 0.5 });
+        shards(R - 10, cy, { n: 8, speed: 180, size: 4.8, life: 0.8 });
+        sfx('don', cx - 10, cy - 54, { size: 98, rot: -0.08, life: 1.8 });
         for (let i = 0; i < 5; i++) {
-          kira(cx + rnd(-50, 50), cy - rnd(20, 38), {
+          kira(cx + rnd(-50, 50), cy - rnd(30, 56), {
             r: rnd(5, 8.5),
             life: rnd(0.5, 0.9),
           });
@@ -703,15 +704,15 @@ export function SakugaProgressBar({
     <div
       ref={containerRef}
       className={cn(
-        "relative flex flex-col items-center justify-center select-none w-60 sm:w-68 max-w-full",
+        "relative flex flex-col items-center justify-center select-none w-full max-w-[340px] sm:max-w-[440px]",
         className
       )}
     >
       {/* VFX Canvas overlay for clouds, speed lines, pebbles, stars and manga SFX */}
       <canvas
         ref={canvasRef}
-        className="pointer-events-none absolute -top-16 left-1/2 -translate-x-1/2 z-20"
-        style={{ width: '100%', height: '150px' }}
+        className="pointer-events-none absolute -top-20 left-1/2 -translate-x-1/2 z-20"
+        style={{ width: 'calc(100% + 200px)', height: '170px' }}
         aria-hidden="true"
       />
 
