@@ -22,6 +22,8 @@ const metadataCache = new Map();
 const folderCache = new Map();
 // Kết quả "thư mục này có phải thư mục Avatars gốc không" (parentId -> boolean)
 const avatarFolderCache = new Map();
+// Kết quả "thư mục này có nằm trong thư mục gốc được phép không" (folderId -> boolean)
+const allowedFolderCache = new Map();
 
 const AVATAR_KIND = 'avatar';
 const AVATAR_FOLDER_NAME = 'avatars';
@@ -465,12 +467,20 @@ async function fileIsInAllowedFolder(accessToken, rootFolderId, metadata, maxDep
   const parents = Array.isArray(metadata.parents) ? metadata.parents : [];
   if (parents.includes(rootFolderId)) return true;
 
+  for (const parentId of parents) {
+    if (parentId === rootFolderId || allowedFolderCache.get(parentId) === true) {
+      return true;
+    }
+  }
+
   if (currentDepth >= maxDepth) return false;
 
   for (const parentId of parents) {
     const parent = await getFileMetadata(accessToken, parentId, 'id,mimeType,parents,trashed').catch(() => null);
     if (parent && !parent.trashed && parent.mimeType === DRIVE_FOLDER_MIME_TYPE) {
       if (await fileIsInAllowedFolder(accessToken, rootFolderId, parent, maxDepth, currentDepth + 1)) {
+        allowedFolderCache.set(parentId, true);
+        if (allowedFolderCache.size > 2000) allowedFolderCache.delete(allowedFolderCache.keys().next().value);
         return true;
       }
     }
@@ -690,12 +700,19 @@ const worker = {
         const avatarMetadata = await assertImageCanBeServed(accessToken, rootFolderId, fileId);
         // Endpoint này không có chữ ký: chỉ file avatar mới được phục vụ, không phải trang truyện
         await assertFileIsAvatar(accessToken, rootFolderId, avatarMetadata);
-        const driveRes = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }
-        );
+        let driveRes;
+        for (let attempt = 1; ; attempt++) {
+          driveRes = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
+
+          if (driveRes.ok || attempt >= 3 || !(await isRetryableDriveResponse(driveRes))) break;
+          const delay = 300 * 2 ** (attempt - 1);
+          await sleep(delay);
+        }
 
         if (!driveRes.ok) {
           throw httpError('Avatar not found', driveRes.status);
@@ -740,12 +757,19 @@ const worker = {
         const accessToken = await getAccessToken(env);
         // Chỉ phục vụ file ảnh nằm trong thư mục Drive được phép (không cho đọc file bất kỳ của tài khoản OAuth)
         await assertImageCanBeServed(accessToken, getRootFolderId(env), fileId);
-        const driveRes = await fetch(
-          `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
-          {
-            headers: { Authorization: `Bearer ${accessToken}` },
-          }
-        );
+        let driveRes;
+        for (let attempt = 1; ; attempt++) {
+          driveRes = await fetch(
+            `https://www.googleapis.com/drive/v3/files/${encodeURIComponent(fileId)}?alt=media&supportsAllDrives=true`,
+            {
+              headers: { Authorization: `Bearer ${accessToken}` },
+            }
+          );
+
+          if (driveRes.ok || attempt >= 3 || !(await isRetryableDriveResponse(driveRes))) break;
+          const delay = 300 * 2 ** (attempt - 1);
+          await sleep(delay);
+        }
 
         if (!driveRes.ok) {
           throw httpError('Image not found', driveRes.status);

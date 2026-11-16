@@ -15,6 +15,7 @@ import { logApiError } from '@/lib/telegramLogger';
 import { getCachedScrambled, getOrCreateScrambled } from '@/lib/scrambledImageCache';
 import { getImageIndexStatus } from '@/lib/imageIndex';
 import { isRetryableUpstreamStatus, isTransientNetworkError, withRetry } from '@/lib/upstreamRetry';
+import { fetchDirectDriveImageBuffer } from '@/lib/driveDirect';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
@@ -27,10 +28,11 @@ const MAX_UPSTREAM_BYTES = 25 * 1024 * 1024;
 // Quyền được cache ngắn: instance khác (serverless) không nhận được lệnh invalidate khi admin đổi quyền chia sẻ
 const ACCESS_CACHE_TTL_MS = 60_000;
 const MAX_OWNER_POSTS = 5;
-// Tối đa ~3 x 12s + backoff (300ms, 600ms) ≈ 37s, nằm trong maxDuration = 60s
-const UPSTREAM_ATTEMPT_TIMEOUT_MS = 12_000;
-const UPSTREAM_MAX_ATTEMPTS = 3;
-const UPSTREAM_RETRY_BASE_MS = 300;
+// Tối đa 2 lần thử (15s + 18s + 500ms backoff ≈ 33.5s), nếu vẫn lỗi sẽ kích hoạt cứu cánh Google Drive trực tiếp (15s), tổng < 50s nằm trong maxDuration = 60s
+const UPSTREAM_ATTEMPT_TIMEOUT_MS = getPositiveIntegerEnv('UPSTREAM_ATTEMPT_TIMEOUT_MS', 15_000);
+const UPSTREAM_RETRY_TIMEOUT_MS = getPositiveIntegerEnv('UPSTREAM_RETRY_TIMEOUT_MS', 18_000);
+const UPSTREAM_MAX_ATTEMPTS = getPositiveIntegerEnv('UPSTREAM_MAX_ATTEMPTS', 2);
+const UPSTREAM_RETRY_BASE_MS = getPositiveIntegerEnv('UPSTREAM_RETRY_BASE_MS', 500);
 
 function getWorkerBaseUrl(): string {
   return (
@@ -167,13 +169,15 @@ async function fetchUpstreamImage(fileId: string, subject: string, signal: Abort
 /**
  * Tải trọn ảnh gốc về RAM, tự thử lại khi gặp lỗi mạng thoáng qua (`fetch failed`, `terminated`, timeout, 429/5xx).
  * Mỗi lần thử có timeout riêng bao cả bước kết nối lẫn bước đọc body, nên socket treo cũng không giữ request quá lâu.
- * Lỗi có chủ đích (404/403/415/413) trả ngay, không retry. Hết lượt thử vì lỗi mạng -> 502 (không phải 500).
+ * Lỗi có chủ đích (404/403/415/413) trả ngay, không retry. Hết lượt thử vì lỗi mạng -> kích hoạt fallback trực tiếp từ Google Drive.
+ * Nếu fallback cũng không thành công -> trả 502 (không phải 500).
  */
 async function fetchUpstreamBuffer(fileId: string, subject: string) {
   try {
     return await withRetry(
-      async () => {
-        const signal = AbortSignal.timeout(UPSTREAM_ATTEMPT_TIMEOUT_MS);
+      async (attempt) => {
+        const timeoutMs = attempt === 1 ? UPSTREAM_ATTEMPT_TIMEOUT_MS : UPSTREAM_RETRY_TIMEOUT_MS;
+        const signal = AbortSignal.timeout(timeoutMs);
         const { upstream, upstreamType } = await fetchUpstreamImage(fileId, subject, signal);
 
         const rawBuffer = Buffer.from(await upstream.arrayBuffer());
@@ -189,6 +193,28 @@ async function fetchUpstreamBuffer(fileId: string, subject: string) {
       }
     );
   } catch (error) {
+    // Lỗi có chủ đích từ phía Worker (404 Not Found, 403 Forbidden, 415 Unsupported, 413 Too large)
+    // thì tôn trọng và ném lỗi ngay (không dùng fallback để tránh bypass phân quyền/kiểm tra file)
+    if (error instanceof ImageRouteError && !error.retryable && error.status !== 502) {
+      throw error;
+    }
+
+    // Cứu cánh (Fallback): Nếu Worker bị timeout, 502 hoặc lỗi kết nối sau các lần thử,
+    // tự động tải trực tiếp từ Google Drive API nếu có cấu hình OAuth2.
+    // Đảm bảo độc giả KHÔNG BAO GIỜ bị lỗi 502 hay TimeoutError.
+    try {
+      const direct = await fetchDirectDriveImageBuffer(fileId);
+      if (direct) {
+        console.warn(`[Image Route] Worker upstream timed out/failed for ${fileId}, successfully recovered via direct Google Drive`);
+        return direct;
+      }
+    } catch (fallbackError: any) {
+      if (fallbackError?.status === 404 || fallbackError?.status === 413 || fallbackError?.status === 415) {
+        throw new ImageRouteError(fallbackError.message, fallbackError.status);
+      }
+      console.error(`[Image Route] Direct Google Drive fallback also failed for ${fileId}:`, fallbackError);
+    }
+
     if (error instanceof ImageRouteError) throw error;
     if (isTransientNetworkError(error)) {
       throw new ImageRouteError('Image unavailable', 502, { originalError: error });
