@@ -4,6 +4,7 @@ import { Providers } from "@/providers/ThemeProvider";
 import { SmoothScrollProvider } from "@/providers/SmoothScrollProvider";
 import { UploadProgressProvider } from "@/providers/UploadProgressProvider";
 import { SiteNav } from "@/components/SiteNav";
+import { SitePreloader } from "@/components/SitePreloader";
 import { GooeyToastProvider } from "@/components/GooeyToastProvider";
 import { DevPointerCaptureGuard } from "@/components/DevPointerCaptureGuard";
 import { DevToolsProtection } from "@/components/DevToolsProtection";
@@ -75,7 +76,11 @@ export const metadata: Metadata = {
   description:
     "Lubu Corp – Nền tảng đọc truyện tranh, tiểu thuyết và sáng tác nội dung sáng tạo.",
   icons: {
-    icon: "/logo.png",
+    icon: [
+      { url: "/favicon.ico" },
+      { url: "/logo.png", type: "image/png" },
+    ],
+    shortcut: "/favicon.ico",
     apple: "/logo.png",
   },
   openGraph: {
@@ -140,19 +145,20 @@ export default async function RootLayout({
           <div className="hidden sm:block absolute inset-0 bg-[linear-gradient(90deg,theme(colors.foreground)_1px,transparent_1px),linear-gradient(theme(colors.foreground)_1px,transparent_1px)] bg-[size:180px_180px] opacity-[0.025] dark:opacity-[0.03]" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/0 to-background/35 dark:to-background/55" />
         </div>
-        <div className="relative z-10 flex flex-col min-h-screen">
-          <DevPointerCaptureGuard />
-          <DevToolsProtection />
-          <Providers initialUser={initialUser}>
-            <UploadProgressProvider>
-              <SmoothScrollProvider>
+        <Providers initialUser={initialUser}>
+          <UploadProgressProvider>
+            <SmoothScrollProvider>
+              <SitePreloader />
+              <div className="relative z-10 flex flex-col min-h-screen">
+                <DevPointerCaptureGuard />
+                <DevToolsProtection />
                 <SiteNav />
                 {children}
                 <GooeyToastProvider />
-              </SmoothScrollProvider>
-            </UploadProgressProvider>
-          </Providers>
-        </div>
+              </div>
+            </SmoothScrollProvider>
+          </UploadProgressProvider>
+        </Providers>
         <SpeedInsights />
       </body>
     </html>

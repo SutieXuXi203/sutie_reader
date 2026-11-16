@@ -35,6 +35,7 @@ export function SiteNav() {
   const profileMenuRef = useRef<HTMLDivElement | null>(null);
 
   const isPostReaderPage = pathname.startsWith('/posts/');
+  const isHomeGuest = pathname === '/' && !user;
   const showProfileMenu = Boolean(user && isProfileMenuOpen);
 
   useEffect(() => {
@@ -62,7 +63,7 @@ export function SiteNav() {
     return () => cancelAnimationFrame(frame);
   }, [pathname]);
 
-  if (isPostReaderPage) return null;
+  if (isPostReaderPage || isHomeGuest) return null;
 
   return (
     <>

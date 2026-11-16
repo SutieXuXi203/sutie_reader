@@ -506,6 +506,27 @@ html.lenis body {
   animation: float 6s ease-in-out infinite;
 }
 
+@font-face {
+  font-family: 'UTM Cookies';
+  src: url('/fonts/UTM-Cookies.ttf') format('truetype');
+  font-weight: normal;
+  font-style: normal;
+  font-display: swap;
+}
+
+@keyframes bubble-bob {
+  0%, 100% {
+    transform: translateY(0px);
+  }
+  50% {
+    transform: translateY(-6px);
+  }
+}
+
+.animate-bubble-bob {
+  animation: bubble-bob 2.8s ease-in-out infinite;
+}
+
 @keyframes fade-in {
   from {
     opacity: 0;
@@ -835,6 +856,7 @@ html.lenis body {
   .animate-blob,
   .animate-float-y-soft,
   .animate-float,
+  .animate-bubble-bob,
   .animate-pulse {
     animation: none !important;
   }
