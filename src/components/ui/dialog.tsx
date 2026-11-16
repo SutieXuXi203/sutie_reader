@@ -58,11 +58,10 @@ function DialogOverlay({
       )}
       {...props}
     >
-      {/* Background kẻ caro đặc trưng của dự án */}
+      {/* Background kẻ caro đặc trưng của dự án đồng đều, không bị lệch sáng */}
       <div className="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,theme(colors.primary)_1px,transparent_0)] bg-[size:28px_28px] opacity-[0.06] dark:opacity-[0.04]" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,theme(colors.foreground)_1px,transparent_1px),linear-gradient(theme(colors.foreground)_1px,transparent_1px)] bg-[size:180px_180px] opacity-[0.03] dark:opacity-[0.04]" />
-        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/5 dark:to-white/5" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,theme(colors.primary)_1px,transparent_0)] bg-[size:28px_28px] opacity-[0.08] dark:opacity-[0.07]" />
+        <div className="absolute inset-0 bg-[linear-gradient(90deg,theme(colors.foreground)_1px,transparent_1px),linear-gradient(theme(colors.foreground)_1px,transparent_1px)] bg-[size:180px_180px] opacity-[0.05] dark:opacity-[0.055]" />
       </div>
       {children}
     </DialogPrimitive.Backdrop>

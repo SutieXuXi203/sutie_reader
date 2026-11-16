@@ -141,8 +141,8 @@ export default async function RootLayout({
           aria-hidden="true"
           style={{ contain: 'strict' }}
         >
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,theme(colors.primary)_1px,transparent_0)] bg-[size:28px_28px] opacity-[0.06] dark:opacity-[0.035]" />
-          <div className="hidden sm:block absolute inset-0 bg-[linear-gradient(90deg,theme(colors.foreground)_1px,transparent_1px),linear-gradient(theme(colors.foreground)_1px,transparent_1px)] bg-[size:180px_180px] opacity-[0.025] dark:opacity-[0.03]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_1px_1px,theme(colors.primary)_1px,transparent_0)] bg-[size:28px_28px] opacity-[0.08] dark:opacity-[0.06]" />
+          <div className="hidden sm:block absolute inset-0 bg-[linear-gradient(90deg,theme(colors.foreground)_1px,transparent_1px),linear-gradient(theme(colors.foreground)_1px,transparent_1px)] bg-[size:180px_180px] opacity-[0.04] dark:opacity-[0.055]" />
           <div className="absolute inset-0 bg-gradient-to-b from-background/0 via-background/0 to-background/35 dark:to-background/55" />
         </div>
         <Providers initialUser={initialUser}>
