@@ -157,7 +157,7 @@ export function SitePreloader() {
         <div className="absolute inset-0 bg-gradient-to-b from-transparent via-transparent to-black/5 dark:to-white/5" />
       </div>
 
-      <div className="relative z-10 flex flex-col items-center justify-center max-w-md sm:max-w-lg w-full px-4 sm:px-6">
+      <div className="relative z-10 flex flex-col items-center justify-center max-w-md sm:max-w-lg w-full px-4 sm:px-6 -translate-y-20 sm:-translate-y-16">
         {/* Bong bóng chat hình ảnh xuất hiện sau 1s nở êm ái, bập bềnh nhẹ nhàng, tuyệt đối không bị giật, biến mất hay méo hình */}
         <div className="relative w-64 h-64 sm:w-72 sm:h-72 -mb-8 sm:-mb-10 flex items-center justify-center">
           <AnimatePresence>
