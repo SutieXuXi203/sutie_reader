@@ -10,6 +10,7 @@ import { useTheme } from 'next-themes';
 import { Button } from '@/components/ui/button';
 import { AnimatedSun, AnimatedMoon } from '@/components/animate-ui/icons/AnimateIcon';
 import { useSyncExternalStore, useCallback } from 'react';
+import { flushSync } from 'react-dom';
 
 export function ThemeToggle() {
   const mounted = useSyncExternalStore(
@@ -18,7 +19,6 @@ export function ThemeToggle() {
     () => false
   );
   const { theme, resolvedTheme, setTheme } = useTheme();
-  const isTransitioningRef = useCallback(() => false, [])();
 
   const handleToggle = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
@@ -46,14 +46,37 @@ export function ThemeToggle() {
         Math.max(y, window.innerHeight - y)
       );
 
-      // Chuyển đổi trạng thái với View Transitions API (thời lượng rút ngắn 260ms để nhanh nhẹn, mượt mà và nhẹ nhàng)
+      // Tắt toàn bộ CSS transition trong lúc đổi theme để trình duyệt không phải
+      // chạy hàng trăm transition màu ngầm bên dưới lớp snapshot (nguyên nhân gây giật).
+      const killTransitions = document.createElement('style');
+      killTransitions.appendChild(
+        document.createTextNode(
+          '*,*::before,*::after{transition:none!important;animation-play-state:running}'
+        )
+      );
+      document.head.appendChild(killTransitions);
+
+      // Chuyển đổi trạng thái với View Transitions API.
+      // QUAN TRỌNG: next-themes chỉ áp class trong useEffect (trễ 1 nhịp), nên phải
+      // flushSync + gán class đồng bộ để snapshot "new" chụp đúng theme mới ngay lập tức.
       const transition = (document as unknown as {
-        startViewTransition: (cb: () => void) => { ready: Promise<void> };
+        startViewTransition: (cb: () => void) => {
+          ready: Promise<void>;
+          finished: Promise<void>;
+        };
       }).startViewTransition(() => {
-        setTheme(nextTheme);
+        const root = document.documentElement;
+        root.classList.remove('light', 'dark');
+        root.classList.add(nextTheme);
+        root.style.colorScheme = nextTheme;
+        flushSync(() => setTheme(nextTheme));
       });
 
-      transition.ready.then(() => {
+      const cleanup = () => killTransitions.remove();
+      transition.finished.then(cleanup, cleanup);
+
+      transition.ready
+        .then(() => {
         document.documentElement.animate(
           {
             clipPath: [
@@ -67,7 +90,10 @@ export function ThemeToggle() {
             pseudoElement: '::view-transition-new(root)',
           }
         );
-      });
+        })
+        .catch(() => {
+          // Transition bị bỏ qua (tab ẩn / bấm liên tiếp) — theme đã được áp, không cần xử lý
+        });
     },
     [resolvedTheme, theme, setTheme]
   );

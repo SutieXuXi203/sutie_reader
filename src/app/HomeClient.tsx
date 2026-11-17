@@ -517,10 +517,11 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
                     <div key={bm._id} className="group relative flex-shrink-0 w-[240px] sm:w-[280px] bg-card border border-border rounded-[8px] overflow-hidden hover:border-primary/50 transition-all shadow-sm">
                       <button
                         onClick={(e) => { e.preventDefault(); e.stopPropagation(); removeBookmark(bm.postId); }}
-                        className="absolute top-2.5 right-2.5 z-10 w-5 h-5 rounded-full bg-black/60 text-white/80 hover:text-white hover:bg-destructive/80 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-all cursor-pointer border-0"
+                        className="absolute top-2 right-2 z-10 w-7 h-7 md:top-2.5 md:right-2.5 md:w-5 md:h-5 rounded-full bg-black/60 text-white/80 hover:text-white hover:bg-destructive/80 flex items-center justify-center opacity-100 md:opacity-0 md:group-hover:opacity-100 focus-visible:opacity-100 transition-all cursor-pointer border-0"
                         title="Xóa đánh dấu"
+                        aria-label="Xóa đánh dấu"
                       >
-                        <X className="w-2.5 h-2.5" />
+                        <X className="w-3.5 h-3.5 md:w-2.5 md:h-2.5" />
                       </button>
 
                       <Link href={`/posts/${bm.postId}`} prefetch={false} className="block">

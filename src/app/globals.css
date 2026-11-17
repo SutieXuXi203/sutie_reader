@@ -528,12 +528,12 @@ html.lenis body {
   transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1), filter 0.18s cubic-bezier(0.16, 1, 0.3, 1);
 }
 
-.sutie-logo-effect:hover {
+.sutie-logo-link:hover .sutie-logo-effect {
   transform: translate(-1px, -1px);
   filter: drop-shadow(4px 4px 0px #09090b);
 }
 
-.sutie-logo-effect:active {
+.sutie-logo-link:active .sutie-logo-effect {
   transform: translate(1px, 1px);
   filter: drop-shadow(1.5px 1.5px 0px #09090b);
 }
@@ -543,11 +543,11 @@ html.lenis body {
   filter: drop-shadow(3px 3px 0px #ffffff);
 }
 
-.dark .sutie-logo-effect:hover {
+.dark .sutie-logo-link:hover .sutie-logo-effect {
   filter: drop-shadow(4px 4px 0px #ffffff);
 }
 
-.dark .sutie-logo-effect:active {
+.dark .sutie-logo-link:active .sutie-logo-effect {
   filter: drop-shadow(1.5px 1.5px 0px #ffffff);
 }
 

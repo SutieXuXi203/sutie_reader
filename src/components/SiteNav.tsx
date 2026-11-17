@@ -71,8 +71,8 @@ export function SiteNav() {
         <div className="max-w-7xl mx-auto h-full flex items-center justify-between px-4 sm:px-6 lg:px-8">
           
           {/* Logo / Brand */}
-          <Link href="/" className="flex items-center gap-2 select-none" aria-label="Sutie Trang chủ">
-            <span className="sutie-logo-effect text-[22px] sm:text-[24px] tracking-wide">
+          <Link href="/" className="sutie-logo-link flex items-center gap-2 h-full select-none" aria-label="Sutie Trang chủ">
+            <span className="sutie-logo-effect relative -top-[4px] leading-none text-[22px] sm:text-[24px] tracking-wide">
               Sutie
             </span>
           </Link>
