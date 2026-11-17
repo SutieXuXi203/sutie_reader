@@ -65,11 +65,12 @@ function imageError(message: string, status: number, headers?: HeadersInit) {
   );
 }
 
-/** Ảnh phụ thuộc người dùng: chỉ cache riêng tư ở trình duyệt, tuyệt đối không cho cache dùng chung (CDN/proxy) lưu lại */
+/** Ảnh phụ thuộc người dùng: chỉ cache riêng tư ở trình duyệt, tuyệt đối không cho cache dùng chung (CDN/proxy) lưu lại.
+ * Dùng max-age=31536000, immutable để trình duyệt lưu vĩnh viễn trên ổ cứng máy người đọc, đọc lần 2 không tốn mạng. */
 function privateImageHeaders(): Headers {
   const headers = new Headers();
   headers.set('Content-Type', 'image/webp');
-  headers.set('Cache-Control', 'private, max-age=86400');
+  headers.set('Cache-Control', 'private, max-age=31536000, immutable');
   headers.set('Vary', 'Cookie');
   headers.set('X-Content-Type-Options', 'nosniff');
   return headers;

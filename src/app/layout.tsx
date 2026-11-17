@@ -8,6 +8,7 @@ import { SitePreloader } from "@/components/SitePreloader";
 import { GooeyToastProvider } from "@/components/GooeyToastProvider";
 import { DevPointerCaptureGuard } from "@/components/DevPointerCaptureGuard";
 import { DevToolsProtection } from "@/components/DevToolsProtection";
+import { ServiceWorkerRegistration } from "@/components/ServiceWorkerRegistration";
 import "./globals.css";
 import "goey-toast/styles.css";
 import { cn } from "@/lib/utils";
@@ -150,6 +151,7 @@ export default async function RootLayout({
             <SmoothScrollProvider>
               <SitePreloader />
               <div className="relative z-10 flex flex-col min-h-screen">
+                <ServiceWorkerRegistration />
                 <DevPointerCaptureGuard />
                 <DevToolsProtection />
                 <SiteNav />
