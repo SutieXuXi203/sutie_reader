@@ -517,9 +517,9 @@ html.lenis body {
 .sutie-logo-effect {
   font-family: 'UTM Cookies', cursive, sans-serif;
   color: #ffffff;
-  -webkit-text-stroke: 2.8px #1d1a4a;
+  -webkit-text-stroke: 2.8px #09090b;
   paint-order: stroke fill;
-  filter: drop-shadow(3px 3px 0px #86efac);
+  filter: drop-shadow(3px 3px 0px #09090b);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
@@ -530,12 +530,25 @@ html.lenis body {
 
 .sutie-logo-effect:hover {
   transform: translate(-1px, -1px);
-  filter: drop-shadow(4px 4px 0px #86efac);
+  filter: drop-shadow(4px 4px 0px #09090b);
 }
 
 .sutie-logo-effect:active {
   transform: translate(1px, 1px);
-  filter: drop-shadow(1.5px 1.5px 0px #86efac);
+  filter: drop-shadow(1.5px 1.5px 0px #09090b);
+}
+
+.dark .sutie-logo-effect {
+  -webkit-text-stroke: 2.8px #09090b;
+  filter: drop-shadow(3px 3px 0px #ffffff);
+}
+
+.dark .sutie-logo-effect:hover {
+  filter: drop-shadow(4px 4px 0px #ffffff);
+}
+
+.dark .sutie-logo-effect:active {
+  filter: drop-shadow(1.5px 1.5px 0px #ffffff);
 }
 
 @keyframes bubble-bob {
