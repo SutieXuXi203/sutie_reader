@@ -1,13 +1,16 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { notify } from '@/lib/notify';
+import { cn } from '@/lib/utils';
 
 const getPasswordStrength = (pass: string) => {
     let score = 0;
@@ -64,9 +67,26 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [name, setName] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [pin, setPin] = useState('');
-    const [rememberMe] = useState(true);
+    const [rememberMe, setRememberMe] = useState(true);
+    const [pawsActive, setPawsActive] = useState(false);
+    const pawsTimerRef = useRef<NodeJS.Timeout | null>(null);
+
+    const triggerPawsAnimation = () => {
+        if (pawsTimerRef.current) {
+            clearTimeout(pawsTimerRef.current);
+        }
+        setPawsActive(true);
+        // Tự động thu hồi bàn tay sau 1.6 giây
+        pawsTimerRef.current = setTimeout(() => {
+            setPawsActive(false);
+        }, 1600);
+    };
 
     const resetState = () => {
+        if (pawsTimerRef.current) {
+            clearTimeout(pawsTimerRef.current);
+            pawsTimerRef.current = null;
+        }
         setError('');
         setSuccess('');
         setEmail('');
@@ -77,6 +97,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         setName('');
         setVerificationCode('');
         setPin('');
+        setPawsActive(false);
     };
 
     useEffect(() => {
@@ -88,6 +109,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
     const handleSubmit = async (e?: React.FormEvent, overridePin?: string, overrideCode?: string) => {
         if (e) e.preventDefault();
+        if (mode === 'login') {
+            triggerPawsAnimation();
+        }
         setIsLoading(true);
         setError('');
         setSuccess('');
@@ -188,6 +212,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 setMode('register');
             }
             setError(message);
+            setTimeout(() => setPawsActive(false), 800);
         } finally {
             setIsLoading(false);
         }
@@ -205,16 +230,28 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 if (!val) resetState();
             }}
         >
-            <DialogContent showCloseButton={false} className="sm:max-w-md max-h-[85vh] overflow-y-auto overscroll-contain custom-scrollbar bg-transparent border-0 ring-0 shadow-none">
-                <DialogHeader>
-                    <DialogTitle className="text-2xl font-bold text-center text-foreground mb-2">
+            <DialogContent
+                showCloseButton={false}
+                overlayClassName="bg-white/95 dark:bg-black/75 backdrop-blur-md"
+                topActions={
+                    <div className="fixed top-4 right-4 sm:top-5 sm:right-6 z-50">
+                        <ThemeToggle
+                            variant="ghost"
+                            className="border-0 ring-0 shadow-none bg-transparent hover:bg-transparent dark:hover:bg-transparent active:bg-transparent dark:active:bg-transparent text-foreground cursor-pointer"
+                        />
+                    </div>
+                }
+                className="sm:max-w-md max-h-[90vh] sm:max-h-[85vh] p-4 sm:p-6 overflow-y-auto overscroll-contain custom-scrollbar bg-transparent border-0 ring-0 shadow-none"
+            >
+                <DialogHeader className="mb-1 sm:mb-2">
+                    <DialogTitle className="text-xl sm:text-2xl font-bold text-center text-foreground mb-1 sm:mb-2">
                         {mode === 'login' && 'Chào mừng trở lại'}
                         {mode === 'register' && 'Tạo tài khoản mới'}
                         {mode === 'forgot-password' && 'Khôi phục mật khẩu'}
                         {mode === 'verify' && 'Xác thực tài khoản'}
                         {mode === 'pin' && 'Mã PIN bảo mật'}
                     </DialogTitle>
-                    <DialogDescription className="text-center text-neutral-500 dark:text-neutral-100">
+                    <DialogDescription className="text-xs sm:text-sm text-center text-neutral-600 dark:text-neutral-100">
                         {mode === 'login' && 'Đăng nhập để tiếp tục trải nghiệm của bạn'}
                         {mode === 'register' && ''}
                         {mode === 'forgot-password' && 'Nhập email để nhận liên kết đặt lại mật khẩu'}
@@ -243,7 +280,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 placeholder="Họ và tên"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
-                                className="pl-10"
+                                className="pl-10 bg-white/80 dark:bg-transparent shadow-xs"
                                 required
                             />
                         </div>
@@ -256,8 +293,11 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 type="text"
                                 placeholder="Email hoặc tên đăng nhập"
                                 value={email}
-                                onChange={(e) => setEmail(e.target.value)}
-                                className="pl-10"
+                                onChange={(e) => {
+                                    setEmail(e.target.value);
+                                    if (pawsActive) setPawsActive(false);
+                                }}
+                                className="pl-10 bg-white/80 dark:bg-transparent shadow-xs"
                                 required
                             />
                         </div>
@@ -275,8 +315,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                         const nextPassword = e.target.value;
                                         setPassword(nextPassword);
                                         if (!nextPassword) setShowPassword(false);
+                                        if (pawsActive) setPawsActive(false);
                                     }}
-                                    className="pl-10 pr-10"
+                                    className="pl-10 pr-10 bg-white/80 dark:bg-transparent shadow-xs"
                                     required
                                 />
                                 {password.length > 0 && (
@@ -336,7 +377,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                             setConfirmPassword(nextConfirmPassword);
                                             if (!nextConfirmPassword) setShowConfirmPassword(false);
                                         }}
-                                        className="pl-10 pr-10"
+                                        className="pl-10 pr-10 bg-white/80 dark:bg-transparent shadow-xs"
                                         required
                                     />
                                     {confirmPassword.length > 0 && (
@@ -481,26 +522,74 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         </div>
                     )}
 
-                    <Button
-                        type="submit"
-                        disabled={isLoading || (mode === 'pin' && pin.length !== 6) || (mode === 'verify' && verificationCode.length !== 6)}
-                        className="rounded-[8px] w-full shadow-lg"
-                    >
-                        {isLoading ? (
-                            <Loader2 className="w-5 h-5 animate-spin" />
-                        ) : (
+                    <div className="relative group">
+                        {mode === 'login' && (
                             <>
-                                {mode === 'login' && 'Đăng nhập'}
-                                {mode === 'register' && 'Đăng ký'}
-                                {mode === 'forgot-password' && 'Gửi liên kết'}
-                                {mode === 'verify' && 'Xác thực'}
-                                {mode === 'pin' && 'Xác nhận mã PIN'}
+                                {/* Tay trái bám vào cạnh bên trái của button (xuất hiện trước, thu hồi sau) */}
+                                <div
+                                    className={cn(
+                                        "absolute top-[1px] sm:top-[2px] -left-[15px] sm:-left-[18px] w-[22px] sm:w-[26px] pointer-events-none select-none z-10 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+                                        pawsActive
+                                            ? "opacity-100 translate-x-0 scale-100 group-hover:-translate-x-0.5 delay-0"
+                                            : "opacity-0 -translate-x-3 sm:-translate-x-4 scale-75 delay-150"
+                                    )}
+                                >
+                                    <Image
+                                        src="/images_login/cat_paw_left.png"
+                                        alt="Bàn tay mèo bám cạnh trái"
+                                        width={190}
+                                        height={255}
+                                        className="w-full h-auto drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
+                                        priority
+                                    />
+                                </div>
+
+                                {/* Tay phải đặt vị trí bên trên và trái của button (xuất hiện sau, thu hồi trước) */}
+                                <div
+                                    className={cn(
+                                        "absolute -top-[15px] sm:-top-[18px] left-[10px] sm:left-[12px] w-[34px] sm:w-[40px] pointer-events-none select-none z-10 transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+                                        pawsActive
+                                            ? "opacity-100 translate-y-0 scale-100 group-hover:-translate-y-0.5 delay-150"
+                                            : "opacity-0 -translate-y-3 sm:-translate-y-4 scale-75 delay-0"
+                                    )}
+                                >
+                                    <Image
+                                        src="/images_login/cat_paw_top.png"
+                                        alt="Bàn tay mèo bám viền trên"
+                                        width={217}
+                                        height={143}
+                                        className="w-full h-auto drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
+                                        priority
+                                    />
+                                </div>
                             </>
                         )}
-                    </Button>
+                        <Button
+                            type="submit"
+                            onClick={() => {
+                                if (mode === 'login') {
+                                    triggerPawsAnimation();
+                                }
+                            }}
+                            disabled={isLoading || (mode === 'pin' && pin.length !== 6) || (mode === 'verify' && verificationCode.length !== 6)}
+                            className="rounded-[8px] w-full shadow-lg h-9 sm:h-10 text-sm font-medium"
+                        >
+                            {isLoading ? (
+                                <Loader2 className="w-5 h-5 animate-spin" />
+                            ) : (
+                                <>
+                                    {mode === 'login' && 'Đăng nhập'}
+                                    {mode === 'register' && 'Đăng ký'}
+                                    {mode === 'forgot-password' && 'Gửi liên kết'}
+                                    {mode === 'verify' && 'Xác thực'}
+                                    {mode === 'pin' && 'Xác nhận mã PIN'}
+                                </>
+                            )}
+                        </Button>
+                    </div>
                 </form>
 
-                <div className="mt-6 text-center text-sm text-neutral-500 dark:text-neutral-300">
+                <div className="mt-4 sm:mt-6 text-center text-xs sm:text-sm text-neutral-500 dark:text-neutral-300">
                     {mode === 'login' && (
                         <p>
                             Chưa có tài khoản?{' '}

@@ -11,8 +11,15 @@ import { Button } from '@/components/ui/button';
 import { AnimatedSun, AnimatedMoon } from '@/components/animate-ui/icons/AnimateIcon';
 import { useSyncExternalStore, useCallback } from 'react';
 import { flushSync } from 'react-dom';
+import { cn } from '@/lib/utils';
 
-export function ThemeToggle() {
+export function ThemeToggle({
+  className,
+  variant = 'outline',
+}: {
+  className?: string;
+  variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link';
+} = {}) {
   const mounted = useSyncExternalStore(
     () => () => { },
     () => true,
@@ -22,6 +29,7 @@ export function ThemeToggle() {
 
   const handleToggle = useCallback(
     (e: React.MouseEvent<HTMLButtonElement>) => {
+      e.stopPropagation();
       const current = resolvedTheme || theme || 'dark';
       const nextTheme = current === 'dark' ? 'light' : 'dark';
 
@@ -104,9 +112,10 @@ export function ThemeToggle() {
 
   return (
     <Button
-      variant="outline"
+      type="button"
+      variant={variant}
       size="icon-sm"
-      className="rounded-full cursor-pointer transition-colors"
+      className={cn("rounded-full cursor-pointer transition-colors", className)}
       onClick={handleToggle}
       title={isDark ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối'}
       aria-label={isDark ? 'Chuyển sang giao diện Sáng' : 'Chuyển sang giao diện Tối'}

@@ -71,16 +71,19 @@ function DialogOverlay({
 function DialogContent({
   className,
   overlayClassName,
+  topActions,
   children,
   showCloseButton = true,
   ...props
 }: DialogPrimitive.Popup.Props & {
   showCloseButton?: boolean
   overlayClassName?: string
+  topActions?: React.ReactNode
 }) {
   return (
     <DialogPortal>
       <DialogOverlay className={overlayClassName} />
+      {topActions}
       <DialogPrimitive.Popup
         data-slot="dialog-content"
         data-lenis-prevent=""
