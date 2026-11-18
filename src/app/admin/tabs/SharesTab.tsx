@@ -17,7 +17,7 @@ import {
     Loader2,
 } from 'lucide-react';
 import { getOptimizedImageUrl } from '@/lib/utils';
-import { SharedStoryPost, formatGuestAccessTime } from '../types';
+import { SharedStoryPost, formatGuestAccessTime, formatReadingTime } from '../types';
 
 interface SharesTabProps {
     isActive: boolean;
@@ -190,7 +190,9 @@ export const SharesTab = memo(
                                                     </div>
                                                     <div className="text-right shrink-0">
                                                         <span className="inline-block px-1.5 py-0.5 rounded text-[9px] bg-primary/10 text-primary font-medium">
-                                                            Khách
+                                                            {guest.readingTime && guest.readingTime > 0
+                                                                ? `⏱ ${formatReadingTime(guest.readingTime)}`
+                                                                : 'Khách'}
                                                         </span>
                                                         <p className="text-[9px] text-muted-foreground mt-0.5">{formatGuestAccessTime(guest.lastAccessedAt)}</p>
                                                     </div>
@@ -327,6 +329,11 @@ export const SharesTab = memo(
                                                                 </div>
                                                                 <span className="font-medium text-foreground truncate max-w-[140px]">{guest.name}</span>
                                                                 <span className="text-[11px] text-muted-foreground truncate max-w-[160px]">({guest.email})</span>
+                                                                {guest.readingTime && guest.readingTime > 0 ? (
+                                                                    <span className="text-[10px] text-primary font-medium px-1.5 py-0.5 rounded bg-primary/10 whitespace-nowrap">
+                                                                        ⏱ {formatReadingTime(guest.readingTime)}
+                                                                    </span>
+                                                                ) : null}
                                                             </div>
                                                         ))}
                                                         {post.guestUsers.length > 3 && (

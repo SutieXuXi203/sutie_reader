@@ -244,6 +244,109 @@ export default function PostDetailClient({
     trackAccess();
   }, [post?._id, user?.email]);
 
+  // --- THEO DÕI THỜI GIAN ĐỌC & BÁO CÁO PHIÊN ĐỌC VỀ TELEGRAM ---
+  const accumulatedReadingSecondsRef = useRef<number>(0);
+  const lastUserActivityRef = useRef<number>(Date.now());
+  const visitedChaptersRef = useRef<Set<string>>(new Set());
+
+  // Lưu lại các chương đã xem trong phiên
+  useEffect(() => {
+    const curChapter = chapters[activeChapterIndex];
+    if (curChapter) {
+      const title =
+        curChapter.title ||
+        `Chương ${curChapter.chapterNumber ?? activeChapterIndex + 1}`;
+      visitedChaptersRef.current.add(title);
+    }
+  }, [activeChapterIndex, chapters]);
+
+  // Bộ đếm thời gian đọc tích cực (chỉ tính khi tab mở và có hoạt động người dùng trong vòng 3 phút)
+  useEffect(() => {
+    if (!user?.email || !post?._id) return;
+
+    const handleUserActivity = () => {
+      lastUserActivityRef.current = Date.now();
+    };
+
+    const activityEvents = ['scroll', 'mousemove', 'touchstart', 'keydown', 'click'];
+    activityEvents.forEach((ev) => {
+      window.addEventListener(ev, handleUserActivity, { passive: true });
+    });
+
+    const intervalId = setInterval(() => {
+      const isTabVisible = typeof document !== 'undefined' && document.visibilityState === 'visible';
+      const isRecentlyActive = Date.now() - lastUserActivityRef.current < 180_000; // 3 phút
+
+      if (isTabVisible && isRecentlyActive) {
+        accumulatedReadingSecondsRef.current += 1;
+      }
+    }, 1000);
+
+    return () => {
+      clearInterval(intervalId);
+      activityEvents.forEach((ev) => {
+        window.removeEventListener(ev, handleUserActivity);
+      });
+    };
+  }, [user?.email, post?._id]);
+
+  // Hàm gửi báo cáo phiên đọc khi kết thúc (rời trang, đóng tab)
+  const sendReadingSessionReport = useCallback(() => {
+    const duration = accumulatedReadingSecondsRef.current;
+    if (duration < 10) return; // Dưới 10s: bỏ qua để tránh spam bot
+    if (!user?.email || !post?._id) return;
+
+    // Reset bộ đếm ngay để tránh gửi trùng lặp nếu nhiều sự kiện unload/pagehide cùng kích hoạt
+    accumulatedReadingSecondsRef.current = 0;
+
+    const curChapter = chapters[activeChapterIndex];
+    const chapterTitle =
+      curChapter?.title ||
+      `Chương ${curChapter?.chapterNumber ?? activeChapterIndex + 1}`;
+
+    const payload = JSON.stringify({
+      durationSeconds: duration,
+      chapters: Array.from(visitedChaptersRef.current),
+      lastChapter: chapterTitle,
+      page: currentPage,
+    });
+
+    const endpoint = `/api/posts/${post._id}/reading-session`;
+
+    try {
+      fetch(endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: payload,
+        keepalive: true,
+      }).catch(() => {});
+    } catch {
+      if (typeof navigator !== 'undefined' && navigator.sendBeacon) {
+        navigator.sendBeacon(
+          endpoint,
+          new Blob([payload], { type: 'application/json' })
+        );
+      }
+    }
+  }, [user?.email, post?._id, chapters, activeChapterIndex, currentPage]);
+
+  useEffect(() => {
+    if (!user?.email || !post?._id) return;
+
+    const onExit = () => {
+      sendReadingSessionReport();
+    };
+
+    window.addEventListener('beforeunload', onExit);
+    window.addEventListener('pagehide', onExit);
+
+    return () => {
+      window.removeEventListener('beforeunload', onExit);
+      window.removeEventListener('pagehide', onExit);
+      onExit();
+    };
+  }, [user?.email, post?._id, sendReadingSessionReport]);
+
   // Nếu người dùng vừa đăng nhập mà bài viết chưa có nội dung chương (do SSR chặn bảo mật), tự động tải lại nội dung
   useEffect(() => {
     if (!user || !post?._id) return;

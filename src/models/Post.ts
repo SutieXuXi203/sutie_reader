@@ -28,6 +28,7 @@ export interface IPostAccessedUser {
   avatar?: string;
   role?: string;
   lastAccessedAt: Date;
+  readingTime?: number;
 }
 
 export interface IPost extends Document {
@@ -158,6 +159,7 @@ const PostSchema = new Schema<IPost>(
             avatar: { type: String, default: '' },
             role: { type: String, default: 'guest' },
             lastAccessedAt: { type: Date, default: Date.now },
+            readingTime: { type: Number, default: 0, min: 0 },
           },
           { _id: false }
         ),

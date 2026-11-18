@@ -115,6 +115,7 @@ export async function GET(request: NextRequest) {
           lastAccessedAt: u.lastAccessedAt
             ? new Date(u.lastAccessedAt).toISOString()
             : mostRecentAccess,
+          readingTime: typeof u.readingTime === 'number' ? u.readingTime : 0,
         };
       });
 

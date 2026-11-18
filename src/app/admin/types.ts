@@ -40,6 +40,7 @@ export interface SharedGuestUser {
     avatar?: string;
     role: 'guest';
     lastAccessedAt: string;
+    readingTime?: number;
 }
 
 export interface SharedStoryPost {
@@ -83,4 +84,16 @@ export const formatGuestAccessTime = (isoString?: string | Date) => {
         hour: '2-digit',
         minute: '2-digit',
     });
+};
+
+export const formatReadingTime = (seconds?: number): string => {
+    if (!seconds || seconds <= 0) return 'Dưới 1 phút';
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    const remSeconds = seconds % 60;
+    const parts: string[] = [];
+    if (hours > 0) parts.push(`${hours}h`);
+    if (minutes > 0) parts.push(`${minutes}m`);
+    if (remSeconds > 0 && hours === 0) parts.push(`${remSeconds}s`);
+    return parts.join(' ') || 'Dưới 1 phút';
 };
