@@ -233,7 +233,14 @@ export default function PostDetailClient({
     if (!post?._id || !user?.email) return;
     const trackAccess = async () => {
       try {
-        const data = await trackPostAccessAction(post._id);
+        const curChapter = chapters[activeChapterIndex];
+        const chapterTitle =
+          curChapter?.title ||
+          `Chương ${curChapter?.chapterNumber ?? activeChapterIndex + 1}`;
+        const data = await trackPostAccessAction(post._id, {
+          chapterTitle,
+          chapterNumber: curChapter?.chapterNumber ?? activeChapterIndex + 1,
+        });
         if (data.success && Array.isArray(data.accessedUsers)) {
           setAccessedUsers(data.accessedUsers);
         }
@@ -242,12 +249,13 @@ export default function PostDetailClient({
       }
     };
     trackAccess();
-  }, [post?._id, user?.email]);
+  }, [post?._id, user?.email]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // --- THEO DÕI THỜI GIAN ĐỌC & BÁO CÁO PHIÊN ĐỌC VỀ TELEGRAM ---
   const accumulatedReadingSecondsRef = useRef<number>(0);
   const lastUserActivityRef = useRef<number>(Date.now());
   const visitedChaptersRef = useRef<Set<string>>(new Set());
+  const hasReachedStoryEndRef = useRef<boolean>(false);
 
   // Lưu lại các chương đã xem trong phiên
   useEffect(() => {
@@ -259,6 +267,18 @@ export default function PostDetailClient({
       visitedChaptersRef.current.add(title);
     }
   }, [activeChapterIndex, chapters]);
+
+  // Đánh dấu đã đọc đến hết bộ truyện nếu đang ở chương cuối cùng và xem tới đáy/trang cuối
+  useEffect(() => {
+    const isLastChapter = activeChapterIndex >= chapters.length - 1;
+    const curChapter = chapters[activeChapterIndex];
+    if (isLastChapter && curChapter) {
+      const totalImgs = curChapter.images?.length || curChapter.imageCount || 0;
+      if (totalImgs > 0 && currentPage >= totalImgs - 1) {
+        hasReachedStoryEndRef.current = true;
+      }
+    }
+  }, [activeChapterIndex, chapters, currentPage]);
 
   // Bộ đếm thời gian đọc tích cực (chỉ tính khi tab mở và có hoạt động người dùng trong vòng 3 phút)
   useEffect(() => {
@@ -290,7 +310,7 @@ export default function PostDetailClient({
     };
   }, [user?.email, post?._id]);
 
-  // Hàm gửi báo cáo phiên đọc khi kết thúc (rời trang, đóng tab)
+  // Hàm gửi báo cáo phiên đọc khi kết thúc (rời trang, đóng tab, đọc xong)
   const sendReadingSessionReport = useCallback(() => {
     const duration = accumulatedReadingSecondsRef.current;
     if (duration < 10) return; // Dưới 10s: bỏ qua để tránh spam bot
@@ -304,11 +324,15 @@ export default function PostDetailClient({
       curChapter?.title ||
       `Chương ${curChapter?.chapterNumber ?? activeChapterIndex + 1}`;
 
+    const isLastChapter = activeChapterIndex >= chapters.length - 1;
+    const isFinished = isLastChapter && hasReachedStoryEndRef.current;
+
     const payload = JSON.stringify({
       durationSeconds: duration,
       chapters: Array.from(visitedChaptersRef.current),
       lastChapter: chapterTitle,
       page: currentPage,
+      isFinished,
     });
 
     const endpoint = `/api/posts/${post._id}/reading-session`;
@@ -847,6 +871,14 @@ export default function PostDetailClient({
           }
         }
         setCurrentPage((prev) => (prev === closestIdx ? prev : closestIdx));
+
+        if (
+          activeChapterIndex >= chapters.length - 1 &&
+          typeof window !== 'undefined' &&
+          window.innerHeight + window.scrollY >= document.body.offsetHeight - 400
+        ) {
+          hasReachedStoryEndRef.current = true;
+        }
       });
     };
 
@@ -1396,6 +1428,9 @@ export default function PostDetailClient({
                 <button
                   type="button"
                   onClick={() => {
+                    if (activeChapterIndex >= chapters.length - 1) {
+                      hasReachedStoryEndRef.current = true;
+                    }
                     if (typeof window !== 'undefined' && window.history.length > 1) {
                       router.back();
                     } else {

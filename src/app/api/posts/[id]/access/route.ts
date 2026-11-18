@@ -6,6 +6,7 @@ import { getAuthUser, isAdmin } from '@/lib/auth';
 import { canViewPost, type PostContext } from '@/lib/permissions';
 import { logApiError } from '@/lib/telegramLogger';
 import { recordPostAccess } from '@/lib/trackAccess';
+import { getClientIp } from '@/lib/clientIp';
 
 export async function POST(
   request: NextRequest,
@@ -24,9 +25,9 @@ export async function POST(
 
     await connectDB();
 
-    // Kiểm tra quyền cửa user đối với post (chỉ cần select các field cần thiết)
+    // Kiểm tra quyền cửa user đối với post (select các field cần thiết)
     const postForCheck = await Post.findById(id)
-      .select('accessType sharedWith accessedUsers chapters')
+      .select('title author translator accessType sharedWith accessedUsers chapters')
       .lean();
     if (!postForCheck) {
       return NextResponse.json({ error: 'Không tìm thấy bài viết' }, { status: 404 });
@@ -40,7 +41,13 @@ export async function POST(
       );
     }
 
-    await recordPostAccess(id, user);
+    const clientIp = getClientIp(request.headers);
+    await recordPostAccess(id, user, {
+      postTitle: postForCheck.title,
+      author: postForCheck.author,
+      translator: postForCheck.translator,
+      clientIp,
+    });
 
     // Chỉ admin mới nhận danh sách đầy đủ — query lại sau khi update để dữ liệu chính xác
     let mappedAccessedUsers: object[] = [];

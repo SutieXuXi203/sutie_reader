@@ -1,12 +1,14 @@
 'use server';
 
 import { ObjectId } from 'mongodb';
+import { headers } from 'next/headers';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { getCurrentUser } from '@/lib/server-auth';
 import { canViewPost, type PostContext } from '@/lib/permissions';
 import { logApiError } from '@/lib/telegramLogger';
 import { recordPostAccess } from '@/lib/trackAccess';
+import { getClientIp } from '@/lib/clientIp';
 
 export interface AccessedUserDto {
   userId?: string;
@@ -15,9 +17,13 @@ export interface AccessedUserDto {
   avatar: string;
   role: string;
   lastAccessedAt: string;
+  readingTime?: number;
 }
 
-export async function trackPostAccessAction(postId: string): Promise<{
+export async function trackPostAccessAction(
+  postId: string,
+  chapterInfo?: { chapterTitle?: string; chapterNumber?: number }
+): Promise<{
   success: boolean;
   message?: string;
   error?: string;
@@ -36,7 +42,7 @@ export async function trackPostAccessAction(postId: string): Promise<{
     await connectDB();
 
     const postForCheck = await Post.findById(postId)
-      .select('accessType sharedWith accessedUsers chapters')
+      .select('title author translator accessType sharedWith accessedUsers chapters')
       .lean();
 
     if (!postForCheck) {
@@ -48,7 +54,16 @@ export async function trackPostAccessAction(postId: string): Promise<{
       return { success: false, error: decision.reason, message: decision.message };
     }
 
-    await recordPostAccess(postId, user);
+    const headerList = await headers();
+    const clientIp = getClientIp(headerList);
+
+    await recordPostAccess(postId, user, {
+      postTitle: postForCheck.title,
+      chapterTitle: chapterInfo?.chapterTitle,
+      author: postForCheck.author,
+      translator: postForCheck.translator,
+      clientIp,
+    });
 
     let mappedAccessedUsers: AccessedUserDto[] | undefined;
     if (user.role === 'admin') {
@@ -63,6 +78,7 @@ export async function trackPostAccessAction(postId: string): Promise<{
           u.lastAccessedAt instanceof Date
             ? u.lastAccessedAt.toISOString()
             : u.lastAccessedAt,
+        readingTime: typeof u.readingTime === 'number' ? u.readingTime : 0,
       }));
     }
 

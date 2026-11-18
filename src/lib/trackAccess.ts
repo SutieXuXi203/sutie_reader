@@ -2,24 +2,75 @@ import { ObjectId } from 'mongodb';
 import { Post } from '@/models/Post';
 import type { AuthUserContext } from '@/lib/permissions';
 import { getRedisClient } from './redis';
+import { checkMemoryRateLimit } from './memoryRateLimit';
+import { logApiAction } from './telegramLogger';
 
 export interface TrackedUser extends AuthUserContext {
   avatar?: string;
+}
+
+export interface PostAccessDetails {
+  postTitle?: string;
+  chapterTitle?: string;
+  author?: string;
+  translator?: string;
+  clientIp?: string;
 }
 
 /**
  * Ghi nhận người đọc vào `accessedUsers` bằng các thao tác nguyên tử (không đọc-rồi-ghi) nên hai request đầu tiên
  * song song của cùng một người không tạo ra hai bản ghi trùng.
  * Khi có Redis: Debounce ghi nhận (15 phút / lần cho cùng 1 tài khoản trên 1 truyện) để giảm thiểu thao tác ghi MongoDB.
+ * Đồng thời thông báo "Bắt đầu đọc truyện" về Telegram nếu là phiên đọc mới (cooldown 10 phút).
  */
-export async function recordPostAccess(postId: string, user: TrackedUser): Promise<void> {
+export async function recordPostAccess(
+  postId: string,
+  user: TrackedUser,
+  details?: PostAccessDetails
+): Promise<void> {
   const normalizedEmail = user.email.toLowerCase().trim();
 
+  let isFirstNotification = true;
   const redis = getRedisClient();
   if (redis) {
     try {
-      // SET track:${postId}:${normalizedEmail} 1 EX 900 NX
-      // Trả về 'OK' nếu là lượt truy cập đầu tiên trong 15 phút; null nếu đã ghi nhận trước đó
+      // SET track:start:${postId}:${normalizedEmail} 1 EX 600 NX
+      // Trả về 'OK' nếu là lượt bắt đầu đọc đầu tiên trong 10 phút; null nếu đã ghi nhận trước đó
+      const isFirst = await redis.set(`track:start:${postId}:${normalizedEmail}`, '1', 'EX', 600, 'NX');
+      isFirstNotification = Boolean(isFirst);
+    } catch {
+      // Graceful fallback nếu Redis gặp sự cố
+      isFirstNotification = checkMemoryRateLimit(`track:start:${postId}:${normalizedEmail}`, 1, 600_000).allowed;
+    }
+  } else {
+    isFirstNotification = checkMemoryRateLimit(`track:start:${postId}:${normalizedEmail}`, 1, 600_000).allowed;
+  }
+
+  // Gửi thông báo bắt đầu đọc truyện về Telegram nếu là phiên mới
+  if (isFirstNotification && details?.postTitle) {
+    void logApiAction({
+      module: 'Đọc truyện (Reader)',
+      action: 'Bắt đầu đọc truyện',
+      user: {
+        id: user.id,
+        email: user.email,
+        name: user.name,
+        role: user.role,
+      },
+      details: {
+        'Truyện': details.postTitle,
+        'Chương bắt đầu': details.chapterTitle || 'Chương 1',
+        ...(details.author ? { 'Tác giả': details.author } : {}),
+        ...(details.translator ? { 'Dịch giả': details.translator } : {}),
+        ...(details.clientIp ? { 'Client IP': details.clientIp } : {}),
+      },
+      level: 'info',
+    });
+  }
+
+  // Debounce ghi nhận DB: 15 phút / lần cho cùng 1 tài khoản trên 1 truyện
+  if (redis) {
+    try {
       const isFirstWithinWindow = await redis.set(`track:${postId}:${normalizedEmail}`, '1', 'EX', 900, 'NX');
       if (!isFirstWithinWindow) {
         return;

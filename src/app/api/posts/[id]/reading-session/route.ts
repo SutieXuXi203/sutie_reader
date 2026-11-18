@@ -13,6 +13,7 @@ const readingSessionSchema = z.object({
   chapters: z.array(z.string().max(100)).max(50).optional(),
   lastChapter: z.string().max(100).optional(),
   page: z.number().int().min(0).max(1000).optional(),
+  isFinished: z.boolean().optional(),
 });
 
 export async function POST(
@@ -43,7 +44,7 @@ export async function POST(
       );
     }
 
-    const { durationSeconds, chapters, lastChapter, page } = parsed.data;
+    const { durationSeconds, chapters, lastChapter, page, isFinished } = parsed.data;
 
     // Bỏ qua nếu thời gian đọc dưới 10 giây (tránh click nhầm/lướt qua làm loãng dữ liệu và spam bot Telegram)
     if (durationSeconds < 10) {
@@ -73,29 +74,57 @@ export async function POST(
 
     const { totalReadingTime } = await recordReadingSession(id, user, durationSeconds);
 
-    // Gửi báo cáo kết thúc phiên đọc về Telegram
-    void logApiAction({
-      module: 'Đọc truyện (Reader)',
-      action: 'Kết thúc phiên đọc truyện',
-      request,
-      user: {
-        id: user.id,
-        email: user.email,
-        name: user.name,
-        role: user.role,
-      },
-      details: {
-        'Truyện': postForCheck.title,
-        'Thời gian đọc phiên này': formatReadingDuration(durationSeconds),
-        'Chương đã xem':
-          chapters && chapters.length > 0
-            ? chapters.join(', ')
-            : lastChapter || 'Chương 1',
-        ...(typeof page === 'number' ? { 'Trang dừng lại': `Trang ${page + 1}` } : {}),
-        'Tổng thời gian đọc tích lũy': formatReadingDuration(totalReadingTime),
-      },
-      level: 'info',
-    });
+    const formattedDuration = formatReadingDuration(durationSeconds);
+    const formattedTotal = formatReadingDuration(totalReadingTime);
+    const viewedChapters =
+      chapters && chapters.length > 0
+        ? chapters.join(', ')
+        : lastChapter || 'Chương 1';
+
+    if (isFinished) {
+      // Báo cáo hoàn thành trọn vẹn bộ truyện về Telegram
+      void logApiAction({
+        module: 'Đọc truyện (Reader)',
+        action: 'Đã hoàn thành bộ truyện',
+        request,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        details: {
+          'Truyện': postForCheck.title,
+          'Trạng thái': 'Đã đọc hết bộ truyện (Hoàn thành chương cuối)',
+          'Thời gian đọc phiên này': formattedDuration,
+          'Chương đã xem': viewedChapters,
+          'Tổng thời gian đọc tích lũy': formattedTotal,
+        },
+        level: 'success',
+      });
+    } else {
+      // Báo cáo thoát truyện giữa chừng về Telegram
+      const stoppedAt = `${lastChapter || 'Chương 1'}${typeof page === 'number' ? ` / Trang ${page + 1}` : ''}`;
+      void logApiAction({
+        module: 'Đọc truyện (Reader)',
+        action: 'Thoát truyện giữa chừng',
+        request,
+        user: {
+          id: user.id,
+          email: user.email,
+          name: user.name,
+          role: user.role,
+        },
+        details: {
+          'Truyện': postForCheck.title,
+          'Trạng thái': `Thoát giữa chừng (Dừng tại ${stoppedAt})`,
+          'Thời gian đọc phiên này': formattedDuration,
+          'Chương đã xem': viewedChapters,
+          'Tổng thời gian đọc tích lũy': formattedTotal,
+        },
+        level: 'info',
+      });
+    }
 
     return NextResponse.json({
       success: true,
