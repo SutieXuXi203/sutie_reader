@@ -94,6 +94,7 @@ export async function POST(
           role: user.role,
         },
         details: {
+          'Tên người dùng': user.name || user.email.split('@')[0],
           'Truyện': postForCheck.title,
           'Trạng thái': 'Đã đọc hết bộ truyện (Hoàn thành chương cuối)',
           'Thời gian đọc phiên này': formattedDuration,
@@ -116,6 +117,7 @@ export async function POST(
           role: user.role,
         },
         details: {
+          'Tên người dùng': user.name || user.email.split('@')[0],
           'Truyện': postForCheck.title,
           'Trạng thái': `Thoát giữa chừng (Dừng tại ${stoppedAt})`,
           'Thời gian đọc phiên này': formattedDuration,

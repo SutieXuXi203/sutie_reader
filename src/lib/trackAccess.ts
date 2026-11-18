@@ -51,6 +51,7 @@ export async function recordPostAccess(
     void logApiAction({
       module: 'Đọc truyện (Reader)',
       action: 'Bắt đầu đọc truyện',
+      clientIp: details.clientIp,
       user: {
         id: user.id,
         email: user.email,
@@ -58,11 +59,11 @@ export async function recordPostAccess(
         role: user.role,
       },
       details: {
+        'Tên người dùng': user.name || user.email.split('@')[0],
         'Truyện': details.postTitle,
         'Chương bắt đầu': details.chapterTitle || 'Chương 1',
         ...(details.author ? { 'Tác giả': details.author } : {}),
         ...(details.translator ? { 'Dịch giả': details.translator } : {}),
-        ...(details.clientIp ? { 'Client IP': details.clientIp } : {}),
       },
       level: 'info',
     });

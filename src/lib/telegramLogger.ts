@@ -343,6 +343,7 @@ export interface ApiActionLogOptions {
   module: string;
   action: string;
   request?: NextRequest | Request | null;
+  clientIp?: string;
   user?: { email?: string; id?: string; role?: string; name?: string } | null;
   details?: Record<string, unknown> | string[] | string;
   level?: 'info' | 'success' | 'warn';
@@ -355,17 +356,21 @@ export const logApiAction = async ({
   module,
   action,
   request,
+  clientIp,
   user,
   details,
   level = 'info',
 }: ApiActionLogOptions): Promise<void> => {
   try {
     const time = getVietnamTimeString();
-    const ip = extractClientIp(request);
+    const ip = clientIp || extractClientIp(request);
     
     let userInfo = 'Hệ thống';
     if (user?.email) {
-      userInfo = `${user.email} (${user.role || 'user'})`;
+      const displayName = user.name?.trim();
+      userInfo = displayName
+        ? `${displayName} (${user.email} - ${user.role || 'user'})`
+        : `${user.email} (${user.role || 'user'})`;
     }
 
     let header = '[HOẠT ĐỘNG]';
