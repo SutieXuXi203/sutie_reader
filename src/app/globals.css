@@ -881,16 +881,65 @@ html.lenis body {
 
 /* Hiệu ứng rung gãy đôi input khi người dùng không nhập thông tin tài khoản */
 @keyframes input-snap-break {
-  0% { transform: scale(1); }
-  20% { transform: scale(0.97) translateX(-4px); }
-  40% { transform: scale(0.97) translateX(4px); }
-  60% { transform: scale(0.98) translateX(-2px); }
-  80% { transform: scale(0.99) translateX(2px); }
-  100% { transform: scale(1); }
+  0% { transform: translate(0, 0) scale(1); }
+  10% { transform: translate(0, -7px) scale(1.04, 0.94); }
+  25% { transform: translate(-9px, 3px) rotate(-1.5deg); }
+  40% { transform: translate(8px, -2px) rotate(1.2deg); }
+  55% { transform: translate(-5px, 1px) rotate(-0.6deg); }
+  75% { transform: translate(3px, 0) rotate(0.3deg); }
+  100% { transform: translate(0, 0) scale(1); }
 }
 
 .animate-snap-break {
-  animation: input-snap-break 0.35s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  animation: input-snap-break 0.42s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/*
+ * Ô input bị đầu nhân vật đánh gãy: hai nửa giật mạnh sang hai bên (lực va chạm),
+ * sau đó rơi xuống theo trọng lực, xoay tròn và biến mất. Giữ trạng thái cuối (both) = vô hình.
+ */
+@keyframes shatter-left {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.1, 0.9, 0.3, 1);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(-22px, -10px) rotate(-11deg);
+    animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(-120px, 110px) rotate(-48deg) scale(0.8);
+  }
+}
+
+@keyframes shatter-right {
+  0% {
+    opacity: 1;
+    transform: translate(0, 0) rotate(0deg);
+    animation-timing-function: cubic-bezier(0.1, 0.9, 0.3, 1);
+  }
+  18% {
+    opacity: 1;
+    transform: translate(24px, -12px) rotate(13deg);
+    animation-timing-function: cubic-bezier(0.55, 0, 0.9, 0.5);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(130px, 100px) rotate(52deg) scale(0.8);
+  }
+}
+
+.animate-shatter-left {
+  transform-origin: 50% 50%;
+  animation: shatter-left 0.8s both;
+}
+
+.animate-shatter-right {
+  transform-origin: 50% 50%;
+  animation: shatter-right 0.85s both;
 }
 
 /*
@@ -923,29 +972,37 @@ html.lenis body {
   }
 }
 
-/* Nhập sai / để trống: trồi lên, CỘC đỉnh đầu vào đáy ô Mật khẩu, bẹp đầu rồi nhún hẳn xuống sau nút */
+/*
+ * Nhập sai / để trống: lao lên nhanh dần (tăng tốc), CỘC mạnh đỉnh đầu vào đáy ô Mật khẩu, bẹp đầu,
+ * bật ngược xuống choáng váng rồi nhún hẳn xuống trốn sau nút. Va chạm ở mốc 30% (khớp MASCOT_BONK).
+ */
 @keyframes mascot-bonk {
   0% {
     transform: translateY(var(--mascot-hide));
-    animation-timing-function: cubic-bezier(0.3, 0.7, 0.4, 1);
+    animation-timing-function: cubic-bezier(0.6, 0, 1, 0.6);
   }
-  38% {
-    /* Đỉnh đầu chạm đúng đáy ô Mật khẩu (đỉnh được ghim nhờ transform-origin top) */
-    transform: translateY(var(--mascot-contact)) scale(0.97, 1.04);
-    animation-timing-function: ease-out;
+  30% {
+    /* Đỉnh đầu đập trúng đáy ô Mật khẩu ở tốc độ cao nhất, đầu bị kéo dài vì lao nhanh */
+    transform: translateY(var(--mascot-contact)) scale(0.93, 1.09);
+    animation-timing-function: cubic-bezier(0, 0.8, 0.3, 1);
   }
-  46% {
-    /* CỘC! bẹp đầu lại */
-    transform: translateY(var(--mascot-contact)) scale(1.1, 0.86) rotate(-3deg);
-    animation-timing-function: ease-out;
+  36% {
+    /* CỘC! bẹp dí đầu lại */
+    transform: translateY(var(--mascot-contact)) scale(1.2, 0.76) rotate(-5deg);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
+  }
+  48% {
+    /* Bật ngược xuống mạnh, choáng */
+    transform: translateY(calc(var(--mascot-contact) + 26px)) scale(0.96, 1.05) rotate(4deg);
+    animation-timing-function: ease-in-out;
   }
   58% {
-    /* Bật ngược xuống, choáng */
-    transform: translateY(calc(var(--mascot-contact) + 12px)) scale(0.98, 1.02) rotate(2deg);
+    transform: translateY(calc(var(--mascot-contact) + 14px)) rotate(-3deg);
+    animation-timing-function: ease-in-out;
   }
   70% {
-    /* Cố ngoi lên lần nữa nhưng không được */
-    transform: translateY(calc(var(--mascot-contact) + 5px)) rotate(-1.5deg);
+    /* Lảo đảo, không ngoi lên nổi nữa */
+    transform: translateY(calc(var(--mascot-contact) + 18px)) rotate(2deg);
     animation-timing-function: cubic-bezier(0.55, 0, 0.75, 0.2);
   }
   100% {
@@ -957,93 +1014,147 @@ html.lenis body {
 .animate-mascot-bonk {
   transform-origin: 50% 0%;
   transform: translateY(var(--mascot-hide));
-  animation: mascot-bonk 0.75s both;
+  animation: mascot-bonk 0.8s both;
 }
 
 /*
- * Nhập đúng: trồi thẳng lên (0–36%, tuyến tính), rồi ngửa hết lên – phình to từ mép nút
- * vượt qua đỉnh ô Email (36–60%, tuyến tính) => phá vỡ lần lượt ô Mật khẩu và ô Email.
- * Mốc thời gian phải khớp MASCOT_BURST trong AuthDialog.tsx.
+ * Nhập đúng (1.1s): đang ló thì LÙI hẳn xuống sau nút (chỉ còn đôi tay bám mép), nén người lấy đà,
+ * rồi BẬT vọt lên (tuyến tính, rất nhanh) xuyên vỡ ô Mật khẩu và ô Email, kéo dãn người khi lên tới
+ * đỉnh, bẹp lại rồi lắc đầu. Mốc 32–44% phải khớp MASCOT_BURST trong AuthDialog.tsx.
+ * Không tịnh tiến lên quá translateY(0) và góc lắc ≤ 2.5° để mép cắt phẳng ở đáy ảnh không lộ ra.
  */
 @keyframes mascot-burst {
   0% {
-    transform: translateY(var(--mascot-hide)) scale(1);
+    transform: translateY(var(--mascot-peek));
+    animation-timing-function: cubic-bezier(0.55, 0, 0.7, 0.4);
+  }
+  20% {
+    /* Lùi hẳn xuống sau nút */
+    transform: translateY(var(--mascot-hide));
+    animation-timing-function: ease-in-out;
+  }
+  32% {
+    /* Nén người lấy đà */
+    transform: translateY(calc(var(--mascot-hide) + 6px)) scale(1.04, 0.94);
     animation-timing-function: linear;
   }
-  36% {
-    transform: translateY(0) scale(1);
-    animation-timing-function: linear;
+  44% {
+    /* BẬT! vọt lên hết, người kéo dãn vì tốc độ */
+    transform: translateY(0) scale(0.95, 1.07);
+    animation-timing-function: cubic-bezier(0.2, 0.8, 0.3, 1);
   }
-  60% {
-    transform: translateY(0) scale(calc(var(--mascot-burst-scale) * 1.06)) rotate(-2deg);
+  52% {
+    transform: translateY(0) scale(1.07, 0.93);
     animation-timing-function: ease-out;
   }
-  78% {
-    transform: translateY(0) scale(calc(var(--mascot-burst-scale) * 0.97)) rotate(1deg);
+  60% {
+    transform: translateY(0) scale(1) rotate(-2.5deg);
+    animation-timing-function: ease-in-out;
+  }
+  72% {
+    transform: translateY(0) rotate(2deg);
+    animation-timing-function: ease-in-out;
+  }
+  84% {
+    transform: translateY(0) rotate(-1deg);
     animation-timing-function: ease-in-out;
   }
   100% {
-    transform: translateY(0) scale(var(--mascot-burst-scale)) rotate(0deg);
+    transform: translateY(0) rotate(0deg);
   }
 }
 
 .animate-mascot-burst {
-  transform: scale(var(--mascot-burst-scale));
-  animation: mascot-burst 0.9s both;
+  transform: translateY(0);
+  animation: mascot-burst 1.1s both;
 }
 
-/* Vệt rung "CỘC!" hai bên đỉnh đầu */
-@keyframes impact-wave-left {
-  0% { opacity: 0; transform: translate(10px, 4px) rotate(10deg) scale(0.6); }
-  30% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
-  100% { opacity: 0; transform: translate(-8px, -2px) rotate(-8deg) scale(1.05); }
+/* Đôi tay khi bật: ghì xuống mép nút lúc lấy đà, đạp mạnh lúc đầu vọt lên rồi về chỗ (khớp mascot-burst) */
+@keyframes paws-brace {
+  0%, 20% { transform: translateY(0) scale(1); }
+  32% { transform: translateY(3px) scale(1.06, 0.9); }
+  40% { transform: translateY(-4px) scale(0.97, 1.05); }
+  52% { transform: translateY(1px) scale(1.02, 0.98); }
+  64%, 100% { transform: translateY(0) scale(1); }
 }
 
-@keyframes impact-wave-right {
-  0% { opacity: 0; transform: translate(-10px, 4px) rotate(-10deg) scale(0.6); }
-  30% { opacity: 1; transform: translate(0, 0) rotate(0deg) scale(1); }
-  100% { opacity: 0; transform: translate(8px, -2px) rotate(8deg) scale(1.05); }
+.animate-paws-brace {
+  transform-origin: 50% 100%;
+  animation: paws-brace 1.1s ease-out both;
 }
 
-.animate-impact-wave-left {
-  animation: impact-wave-left 0.38s ease-out both;
+/* Tia "CỘC!" (ImpactBurst): bung mạnh từ điểm va chạm, nảy nhẹ rồi tắt */
+@keyframes impact-pop {
+  /* Phóng từ điểm va chạm (transform-origin đặt theo từng bên trong ImpactBurst) */
+  0% { opacity: 0; transform: scale(0.2); }
+  22% { opacity: 1; transform: scale(1.18); }
+  45% { opacity: 1; transform: scale(0.96); }
+  70% { opacity: 1; transform: scale(1); }
+  100% { opacity: 0; transform: scale(1.08); }
 }
 
-.animate-impact-wave-right {
-  animation: impact-wave-right 0.38s ease-out both;
+.animate-impact-pop {
+  animation: impact-pop 0.46s cubic-bezier(0.2, 0.8, 0.3, 1) both;
 }
 
-/* Mảnh vỡ văng ra từ vết nứt khi ô input bị phá */
-@keyframes shard-fly-left {
-  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.5); }
-  15% { opacity: 1; }
-  100% { opacity: 0; transform: translate(-46px, -30px) rotate(-200deg) scale(1); }
+/*
+ * Mảnh vỡ ô input (SVG): bắn ra từ vết nứt, vồng lên (--shard-up) rồi rơi xuống (--shard-dy) theo
+ * trọng lực, xoay tròn (--shard-rot) và mờ dần. Thời lượng/độ trễ đặt riêng từng mảnh trong AuthDialog.tsx.
+ */
+@keyframes shard-fly {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) rotate(0deg) scale(0.4);
+    animation-timing-function: cubic-bezier(0.15, 0.7, 0.4, 1);
+  }
+  8% {
+    opacity: 1;
+  }
+  40% {
+    opacity: 1;
+    transform: translate(calc(-50% + var(--shard-dx) * 0.55), calc(-50% + var(--shard-up))) rotate(calc(var(--shard-rot) * 0.45)) scale(1);
+    animation-timing-function: cubic-bezier(0.5, 0, 0.9, 0.6);
+  }
+  100% {
+    opacity: 0;
+    transform: translate(calc(-50% + var(--shard-dx)), calc(-50% + var(--shard-dy))) rotate(var(--shard-rot)) scale(0.85);
+  }
 }
 
-@keyframes shard-fly-right {
-  0% { opacity: 0; transform: translate(0, 0) rotate(0deg) scale(0.5); }
-  15% { opacity: 1; }
-  100% { opacity: 0; transform: translate(50px, -24px) rotate(220deg) scale(1); }
+.animate-shard-fly {
+  opacity: 0;
+  animation-name: shard-fly;
+  animation-fill-mode: both;
 }
 
-.animate-shard-left {
-  animation: shard-fly-left 0.65s cubic-bezier(0.2, 0.7, 0.4, 1) both;
-}
-
-.animate-shard-right {
-  animation: shard-fly-right 0.7s cubic-bezier(0.2, 0.7, 0.4, 1) both;
-}
-
-/* Hiệu ứng rung va đập của ô input Mật khẩu khi bị đầu nhân vật cộc trúng */
+/* Ô Mật khẩu bị đầu nhân vật cộc trúng: hất mạnh lên, phồng nhẹ rồi rung lắc cả dọc lẫn ngang */
 @keyframes field-bonked {
-  0%, 100% { transform: translateY(0); }
-  25% { transform: translateY(-4px) rotate(-1.5deg); }
-  50% { transform: translateY(2px) rotate(1deg); }
-  75% { transform: translateY(-1px) rotate(-0.5deg); }
+  0% { transform: translate(0, 0) rotate(0deg) scale(1); }
+  10% { transform: translate(-2px, -15px) rotate(-4.2deg) scale(1.05, 0.95); }
+  24% { transform: translate(5px, 6px) rotate(3deg) scale(1); }
+  38% { transform: translate(-4px, -6px) rotate(-2.2deg); }
+  52% { transform: translate(3px, 3px) rotate(1.4deg); }
+  68% { transform: translate(-2px, -2px) rotate(-0.7deg); }
+  84% { transform: translate(1px, 1px) rotate(0.3deg); }
+  100% { transform: translate(0, 0) rotate(0deg) scale(1); }
 }
 
 .animate-field-bonked {
-  animation: field-bonked 0.32s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+  animation: field-bonked 0.5s cubic-bezier(0.36, 0.07, 0.19, 0.97) both;
+}
+
+/* Ô Email rung theo dư chấn của cú cộc */
+@keyframes field-aftershock {
+  0%, 100% { transform: translate(0, 0) rotate(0deg); }
+  10% { transform: translate(0, 0); }
+  24% { transform: translate(-3px, -7px) rotate(1.7deg); }
+  42% { transform: translate(3px, 3px) rotate(-1.1deg); }
+  60% { transform: translate(-2px, -2px) rotate(0.6deg); }
+  80% { transform: translate(1px, 1px) rotate(-0.2deg); }
+}
+
+.animate-field-aftershock {
+  animation: field-aftershock 0.5s ease-out both;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -1065,12 +1176,21 @@ html.lenis body {
   .animate-snap-break,
   .animate-mascot-bonk,
   .animate-mascot-burst,
+  .animate-paws-brace,
   .animate-field-bonked,
-  .animate-impact-wave-left,
-  .animate-impact-wave-right,
-  .animate-shard-left,
-  .animate-shard-right {
+  .animate-field-aftershock,
+  .animate-impact-pop,
+  .animate-shard-fly,
+  .animate-shatter-left,
+  .animate-shatter-right {
     animation: none !important;
+  }
+
+  /* Không có chuyển động: ô bị phá biến mất ngay, không để lại mảnh vỡ đứng yên */
+  .animate-shard-fly,
+  .animate-shatter-left,
+  .animate-shatter-right {
+    opacity: 0 !important;
   }
 
   .reveal {

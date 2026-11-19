@@ -30,13 +30,51 @@ interface MascotMetrics {
     hide: number;
     peek: number;
     contact: number;
-    burstScale: number;
 }
 
-const DEFAULT_MASCOT_METRICS: MascotMetrics = { hide: 90, peek: 62, contact: 54, burstScale: 1.6 };
+const DEFAULT_MASCOT_METRICS: MascotMetrics = { hide: 90, peek: 62, contact: 54 };
 
-/** Phải khớp với keyframes mascot-burst trong globals.css (0.9s: 0–36% trồi lên, 36–60% phình to vượt đỉnh) */
-const MASCOT_BURST = { riseMs: 324, growMs: 216, overshoot: 1.06 };
+/**
+ * Phải khớp keyframes mascot-burst trong globals.css (1.1s): 0–20% lùi xuống, 20–32% lấy đà,
+ * 32–44% bật thẳng lên (tuyến tính) => riseStartMs = 352, riseMs = 132.
+ */
+const MASCOT_BURST = { riseStartMs: 352, riseMs: 132, topImpactMs: 60 };
+
+/** Thời gian giữ hộp thoại để hiệu ứng phá vỡ diễn ra trọn vẹn trước khi đóng / sang bước PIN */
+const MASCOT_BURST_HOLD_MS = 1450;
+
+/** Phải khớp keyframes mascot-bonk (0.8s, va chạm ở 30%) và field-bonked (0.5s) trong globals.css */
+const MASCOT_BONK = { impactMs: 240, shakeMs: 520 };
+
+/** Thời gian đầu nhân vật trốn hẳn sau nút sau khi cộc đầu, trước khi tự ló lên lại */
+const MASCOT_REAPPEAR_DELAY_MS = 600;
+
+/** Hai nửa ô input bị gãy (cắt theo đường nứt zigzag ở giữa) */
+const SHATTER_HALVES = [
+    {
+        side: 'left',
+        clipPath: 'polygon(0% 0%, 50% 0%, 48.5% 25%, 50.5% 50%, 48% 75%, 50% 100%, 0% 100%)',
+        animation: 'animate-shatter-left',
+    },
+    {
+        side: 'right',
+        clipPath: 'polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%, 48% 75%, 50.5% 50%, 48.5% 25%)',
+        animation: 'animate-shatter-right',
+    },
+] as const;
+
+/**
+ * Mảnh vỡ của chính ô input (vẽ bằng SVG, cùng chất liệu nền + viền đỏ với 2 nửa gãy).
+ * points: đa giác trong hộp 0–20; size: px; dx/up/dy: bắn ngang, vồng lên rồi rơi xuống (px); rot: độ xoay.
+ */
+const SHATTER_SHARDS = [
+    { points: '2,1 19,4 11,19', size: 13, dx: -78, up: -34, dy: 46, rot: -280, dur: 0.75, delay: 0 },
+    { points: '1,6 14,1 19,15 6,19', size: 11, dx: 86, up: -30, dy: 52, rot: 310, dur: 0.8, delay: 0.02 },
+    { points: '3,2 18,8 8,18', size: 9, dx: -42, up: -48, dy: 30, rot: -200, dur: 0.7, delay: 0.04 },
+    { points: '2,10 10,1 19,12 9,19', size: 8, dx: 50, up: -52, dy: 26, rot: 230, dur: 0.72, delay: 0.03 },
+    { points: '1,1 19,7 4,17', size: 7, dx: -104, up: -14, dy: 60, rot: -340, dur: 0.85, delay: 0.05 },
+    { points: '4,1 19,10 1,19', size: 6, dx: 112, up: -18, dy: 64, rot: 360, dur: 0.88, delay: 0.06 },
+] as const;
 
 /**
  * Hiệu ứng "gãy đôi" (Broken/Cracked in half) cho input khi đầu nhân vật half_head xuyên phá lúc đăng nhập đúng
@@ -53,68 +91,117 @@ function BrokenInputWrapper({
     ref?: React.Ref<HTMLDivElement>;
 }) {
     return (
-        <div ref={ref} className={cn("relative isolate transition-all duration-300", isBroken && "animate-snap-break", className)}>
-            {children}
+        <div ref={ref} className={cn("relative isolate", isBroken && "animate-snap-break", className)}>
+            {/* Ô input thật: ẩn ngay khi bị phá (vẫn giữ chỗ để bố cục không xô lệch), hiện lại khi tự chữa lành */}
+            <div className={cn("relative transition-opacity", isBroken ? "opacity-0 duration-75" : "opacity-100 duration-300")}>
+                {children}
+            </div>
             {isBroken && (
-                <>
-                    {/* Mảnh vỡ văng ra từ vết nứt */}
-                    <Image
-                        src="/images_login/shard_1.png"
-                        alt=""
-                        aria-hidden
-                        width={141}
-                        height={167}
-                        className="absolute left-1/2 top-1/2 w-[14px] h-auto -ml-[7px] -mt-[8px] pointer-events-none z-30 animate-shard-left"
-                    />
-                    <Image
-                        src="/images_login/shard_2.png"
-                        alt=""
-                        aria-hidden
-                        width={195}
-                        height={158}
-                        className="absolute left-1/2 top-1/2 w-[17px] h-auto -ml-[8px] -mt-[7px] pointer-events-none z-30 animate-shard-right"
-                    />
-                    {/* Nửa bên trái gãy nghiêng xuống dưới-trái */}
-                    <div
-                        className="absolute inset-0 pointer-events-none z-10 origin-bottom-left transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                        style={{
-                            clipPath: 'polygon(0% 0%, 50% 0%, 48.5% 25%, 50.5% 50%, 48% 75%, 50% 100%, 0% 100%)',
-                            transform: 'rotate(-3.5deg) translateY(3.5px) translateX(-2px)'
-                        }}
-                    >
-                        <div className="w-full h-full rounded-[8px] border-2 border-red-500/80 dark:border-red-500/90 bg-red-500/10 dark:bg-red-950/25 shadow-[-2px_4px_12px_rgba(239,68,68,0.25)]" />
-                    </div>
+                <div aria-hidden className="absolute inset-0 pointer-events-none">
+                    {/* Hai nửa ô input bị đánh gãy: giật mạnh sang hai bên rồi văng xuống và biến mất */}
+                    {SHATTER_HALVES.map((half) => (
+                        <div
+                            key={half.side}
+                            className={cn("absolute inset-0 z-10", half.animation)}
+                            style={{ clipPath: half.clipPath }}
+                        >
+                            <div className="w-full h-full rounded-md border-2 border-red-500/80 dark:border-red-500/90 bg-white/80 dark:bg-red-950/30 shadow-[0_6px_16px_rgba(239,68,68,0.35)]" />
+                        </div>
+                    ))}
 
-                    {/* Nửa bên phải gãy nghiêng xuống dưới-phải */}
-                    <div
-                        className="absolute inset-0 pointer-events-none z-10 origin-bottom-right transition-all duration-400 ease-[cubic-bezier(0.34,1.56,0.64,1)]"
-                        style={{
-                            clipPath: 'polygon(50% 0%, 100% 0%, 100% 100%, 50% 100%, 48% 75%, 50.5% 50%, 48.5% 25%)',
-                            transform: 'rotate(3.5deg) translateY(4px) translateX(2px)'
-                        }}
-                    >
-                        <div className="w-full h-full rounded-[8px] border-2 border-red-500/80 dark:border-red-500/90 bg-red-500/10 dark:bg-red-950/25 shadow-[2px_4px_12px_rgba(239,68,68,0.25)]" />
-                    </div>
-
-                    {/* Vết nứt tia sét phát sáng ở trung tâm */}
-                    <svg
-                        className="absolute left-1/2 top-0 bottom-0 w-[14px] h-full -translate-x-1/2 pointer-events-none z-20 overflow-visible"
-                        viewBox="0 0 14 44"
-                        preserveAspectRatio="none"
-                        fill="none"
-                    >
-                        <path
-                            d="M7 0 L3 11 L10 22 L3 33 L7 44"
-                            stroke="#ef4444"
-                            strokeWidth="2.5"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
-                            className="filter drop-shadow-[0_0_6px_rgba(239,68,68,0.6)]"
-                        />
-                    </svg>
-                </>
+                    {/* Mảnh vỡ của ô input bắn ra từ vết nứt, vồng lên rồi rơi xuống, xoay tròn */}
+                    {SHATTER_SHARDS.map((shard) => (
+                        <svg
+                            key={shard.points + shard.dx}
+                            viewBox="0 0 20 20"
+                            width={shard.size}
+                            height={shard.size}
+                            className="absolute left-1/2 top-1/2 z-30 overflow-visible animate-shard-fly"
+                            style={{
+                                '--shard-dx': `${shard.dx}px`,
+                                '--shard-up': `${shard.up}px`,
+                                '--shard-dy': `${shard.dy}px`,
+                                '--shard-rot': `${shard.rot}deg`,
+                                animationDuration: `${shard.dur}s`,
+                                animationDelay: `${shard.delay}s`,
+                            } as React.CSSProperties}
+                        >
+                            <polygon
+                                points={shard.points}
+                                strokeWidth="2"
+                                strokeLinejoin="round"
+                                className="fill-white dark:fill-red-950 stroke-red-500"
+                            />
+                        </svg>
+                    ))}
+                </div>
             )}
         </div>
+    );
+}
+
+/**
+ * Tia nhấn mạnh hình tam giác cho mỗi bên: đỉnh nhọn hướng vào điểm va chạm, đáy rộng toả ra ngoài.
+ * angle: hướng tia (độ, trục y hướng xuống: 180 = trái, 270 = lên, 360 = phải); from/to: khoảng cách
+ * từ điểm va chạm; width: nửa bề rộng đáy. Hai bên cố ý khác nhau (3 tia / 2 tia) như nét vẽ tay.
+ */
+const IMPACT_RAYS = {
+    left: [
+        { angle: 194, from: 6, to: 28, width: 6 },
+        { angle: 229, from: 7, to: 37, width: 8.5 },
+        { angle: 263, from: 9, to: 25, width: 4.5 },
+    ],
+    right: [
+        { angle: 288, from: 8, to: 30, width: 6.5 },
+        { angle: 329, from: 6, to: 33, width: 7.5 },
+    ],
+} as const;
+
+/**
+ * Hiệu ứng "CỘC!" khi đầu nhân vật đập vào ô Mật khẩu: chùm tia vàng nhạt viền cam bung ra từ
+ * điểm va chạm. Điểm va chạm là góc dưới phía trong của SVG (bên trái: góc dưới-phải, bên phải: góc dưới-trái).
+ */
+function ImpactBurst({ side, className }: { side: 'left' | 'right'; className?: string }) {
+    const size = 40;
+    const focus = { x: side === 'left' ? size : 0, y: size };
+    const rays = IMPACT_RAYS[side].map(({ angle, from, to, width }) => {
+        const rad = (angle * Math.PI) / 180;
+        const dir = { x: Math.cos(rad), y: Math.sin(rad) };
+        const perp = { x: -dir.y, y: dir.x };
+        const tip = { x: focus.x + dir.x * from, y: focus.y + dir.y * from };
+        const base = { x: focus.x + dir.x * to, y: focus.y + dir.y * to };
+        const tipHalf = width * 0.18;
+        return [
+            [tip.x + perp.x * tipHalf, tip.y + perp.y * tipHalf],
+            [base.x + perp.x * width, base.y + perp.y * width],
+            [base.x - perp.x * width, base.y - perp.y * width],
+            [tip.x - perp.x * tipHalf, tip.y - perp.y * tipHalf],
+        ]
+            .map(([x, y]) => `${x.toFixed(1)},${y.toFixed(1)}`)
+            .join(' ');
+    });
+
+    return (
+        <svg
+            aria-hidden
+            viewBox={`0 0 ${size} ${size}`}
+            className={cn(
+                "w-[34px] h-[34px] sm:w-[38px] sm:h-[38px] overflow-visible animate-impact-pop",
+                side === 'left' ? "origin-bottom-right" : "origin-bottom-left [animation-delay:45ms]",
+                className
+            )}
+        >
+            {rays.map((points) => (
+                <polygon
+                    key={points}
+                    points={points}
+                    fill="#FCE38A"
+                    stroke="#F5A524"
+                    strokeWidth="2.6"
+                    strokeLinejoin="round"
+                />
+            ))}
+        </svg>
     );
 }
 
@@ -164,6 +251,8 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [pawsActive, setPawsActive] = useState(false);
     const [brokenFields, setBrokenFields] = useState({ email: false, password: false });
     const [mascotAction, setMascotAction] = useState<'bonk' | 'burst' | null>(null);
+    // Sau khi cộc đầu: thụt xuống biến mất rồi tự ló lên lại (không cần rê chuột) cho tới lần tương tác sau
+    const [mascotPeek, setMascotPeek] = useState(false);
     // Tăng mỗi lần kích hoạt để remount đầu nhân vật => animation CSS luôn chạy lại từ đầu
     const [mascotRun, setMascotRun] = useState(0);
     const [mascotMetrics, setMascotMetrics] = useState<MascotMetrics>(DEFAULT_MASCOT_METRICS);
@@ -220,7 +309,6 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
         const ceiling = (lineY - passwordField.getBoundingClientRect().bottom) / scale;
         const emailRect = emailField.getBoundingClientRect();
-        const reach = (lineY - emailRect.top) / scale;
         const emailMiddle = (lineY - (emailRect.top + emailRect.bottom) / 2) / scale;
 
         const next: MascotMetrics = {
@@ -229,15 +317,13 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             peek: headHeight - Math.max(ceiling - 8, 6),
             // Cộc đầu: đỉnh đầu chạm đúng đáy ô Mật khẩu
             contact: headHeight - Math.max(ceiling, 8),
-            // Phá vỡ: đầu ngửa hết lên vượt qua đỉnh ô Email
-            burstScale: Math.max(1.2, (reach + 14) / headHeight),
         };
         setMascotMetrics((prev) =>
-            prev.hide === next.hide && prev.peek === next.peek && prev.contact === next.contact && prev.burstScale === next.burstScale
+            prev.hide === next.hide && prev.peek === next.peek && prev.contact === next.contact
                 ? prev
                 : next
         );
-        return { ceiling, emailMiddle, headHeight, burstScale: next.burstScale };
+        return { ceiling, emailMiddle, headHeight };
     };
 
     const triggerHeadBonk = () => {
@@ -245,35 +331,47 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         measureMascot();
         setBrokenFields({ email: false, password: false });
         setIsPasswordBonked(false);
+        setMascotPeek(false);
         setMascotAction('bonk');
         setMascotRun((run) => run + 1);
-        // Mốc va chạm trùng keyframe 38% của animation mascot-bonk (0.75s)
-        scheduleMascot(() => setIsPasswordBonked(true), 285);
-        scheduleMascot(() => setIsPasswordBonked(false), 285 + 380);
+        // Mốc va chạm trùng keyframe 30% của animation mascot-bonk (0.8s)
+        scheduleMascot(() => setIsPasswordBonked(true), MASCOT_BONK.impactMs);
+        scheduleMascot(() => setIsPasswordBonked(false), MASCOT_BONK.impactMs + MASCOT_BONK.shakeMs);
     };
 
     const triggerHeadBurst = () => {
         clearMascotTimers();
         const m = measureMascot();
         setIsPasswordBonked(false);
+        setMascotPeek(false);
         setMascotAction('burst');
         setMascotRun((run) => run + 1);
-        // Đầu lao từ dưới lên: xuyên ô Mật khẩu trước, sau đó tới ô Email.
-        // Thời điểm vỡ tính theo vị trí đỉnh đầu trong 2 đoạn tuyến tính của keyframes mascot-burst.
-        let passwordAt = 150;
-        let emailAt = 420;
+        // Đầu lùi xuống lấy đà rồi bật thẳng lên: xuyên ô Mật khẩu trước, ô Email vỡ ngay sau.
+        // Thời điểm vỡ tính theo vị trí đỉnh đầu trong đoạn bật lên tuyến tính của keyframes mascot-burst;
+        // nếu đầu không với tới ô Email thì ô Email vỡ do dư chấn ngay khi đầu bật lên hết.
+        let passwordAt = MASCOT_BURST.riseStartMs + MASCOT_BURST.riseMs * 0.6;
+        let emailAt = MASCOT_BURST.riseStartMs + MASCOT_BURST.riseMs + MASCOT_BURST.topImpactMs;
         if (m) {
             const h = m.headHeight;
-            const peakTop = h * m.burstScale * MASCOT_BURST.overshoot;
             const crossAt = (y: number) =>
-                y <= h
-                    ? MASCOT_BURST.riseMs * ((y + 6) / (h + 6))
-                    : MASCOT_BURST.riseMs + MASCOT_BURST.growMs * Math.min(1, (y - h) / Math.max(peakTop - h, 1));
+                MASCOT_BURST.riseStartMs +
+                (y <= h ? MASCOT_BURST.riseMs * ((y + 6) / (h + 6)) : MASCOT_BURST.riseMs + MASCOT_BURST.topImpactMs);
             passwordAt = crossAt(m.ceiling + 6);
-            emailAt = Math.max(passwordAt + 80, crossAt(m.emailMiddle));
+            emailAt = Math.max(passwordAt + 90, crossAt(m.emailMiddle));
         }
         scheduleMascot(() => setBrokenFields((f) => ({ ...f, password: true })), Math.round(passwordAt));
         scheduleMascot(() => setBrokenFields({ email: true, password: true }), Math.round(emailAt));
+    };
+
+    /**
+     * Người dùng tự chuyển màn (Quên mật khẩu / Đăng ký / Quay lại / Đăng nhập): xoá thông báo của màn cũ
+     * và mã PIN đang nhập dở. Chuyển màn do máy chủ trả về (sang PIN, xác thực xong) vẫn dùng setMode để giữ thông báo.
+     */
+    const switchMode = (nextMode: typeof mode) => {
+        setError('');
+        setSuccess('');
+        setPin('');
+        setMode(nextMode);
     };
 
     const resetState = () => {
@@ -295,6 +393,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         setPawsActive(false);
         setBrokenFields({ email: false, password: false });
         setMascotAction(null);
+        setMascotPeek(false);
         setIsPasswordBonked(false);
     };
 
@@ -304,6 +403,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         setMascotMode(mode);
         setBrokenFields({ email: false, password: false });
         setMascotAction(null);
+        setMascotPeek(false);
         setIsPasswordBonked(false);
     }
     // Huỷ các mốc hẹn giờ còn treo của chế độ cũ (cleanup chạy khi mode đổi)
@@ -401,6 +501,11 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             }
 
             if (data.requirePin) {
+                // Máy chủ chỉ yêu cầu PIN khi mật khẩu đã đúng => vẫn phát hiệu ứng phá vỡ 2 ô input trước khi sang bước PIN
+                if (mode === 'login') {
+                    triggerHeadBurst();
+                    await new Promise((resolve) => setTimeout(resolve, MASCOT_BURST_HOLD_MS));
+                }
                 setMode('pin');
                 setSuccess(data.message || 'Vui lòng nhập mã PIN bảo mật để hoàn tất đăng nhập');
                 setIsLoading(false);
@@ -417,7 +522,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 if (mode === 'login') {
                     triggerHeadBurst();
                     // Đợi chuyển động ngửa hết lên và phá vỡ 2 ô input diễn ra trọn vẹn
-                    await new Promise((resolve) => setTimeout(resolve, 1250));
+                    await new Promise((resolve) => setTimeout(resolve, MASCOT_BURST_HOLD_MS));
                 }
                 notify.success(data.message || 'Đăng nhập thành công');
                 login(data.user);
@@ -487,7 +592,12 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         />
                     </div>
                 }
-                className="sm:max-w-md max-h-[90vh] sm:max-h-[85vh] p-4 sm:p-6 overflow-y-auto overscroll-contain custom-scrollbar bg-transparent border-0 ring-0 shadow-none"
+                className={cn(
+                    "sm:max-w-md max-h-[90vh] sm:max-h-[85vh] p-4 sm:p-6 overscroll-contain no-scrollbar bg-transparent border-0 ring-0 shadow-none",
+                    // Khi linh vật cộc đầu / phá vỡ ô input, đầu và mảnh vỡ bay ra ngoài khung:
+                    // để tràn tự do thay vì tạo vùng cuộn (không cắt hình, không bật thanh cuộn)
+                    mascotAction || isAnyFieldBroken ? "overflow-visible" : "overflow-y-auto"
+                )}
             >
                 <DialogHeader className="mb-1 sm:mb-2">
                     <DialogTitle className="text-xl sm:text-2xl font-bold text-center text-foreground mb-1 sm:mb-2">
@@ -533,7 +643,11 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     )}
 
                     {mode !== 'pin' && mode !== 'verify' && (
-                        <BrokenInputWrapper ref={emailFieldRef} isBroken={brokenFields.email && mode === 'login'}>
+                        <BrokenInputWrapper
+                            ref={emailFieldRef}
+                            isBroken={brokenFields.email && mode === 'login'}
+                            className={isPasswordBonked ? "animate-field-aftershock" : undefined}
+                        >
                             <Mail
                                 className={cn(
                                     "absolute left-3 top-3 h-4 w-4 text-neutral-400 transition-all duration-300",
@@ -784,7 +898,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         <div className="flex items-center justify-end">
                             <button
                                 type="button"
-                                onClick={() => setMode('forgot-password')}
+                                onClick={() => switchMode('forgot-password')}
                                 className="text-xs text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
                             >
                                 Quên mật khẩu?
@@ -792,125 +906,129 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                         </div>
                     )}
 
-                    <div className="relative group" onPointerEnter={mode === 'login' ? () => measureMascot() : undefined}>
-                        {mode === 'login' && (
-                            <>
-                                {/*
-                                  Sân khấu của đầu nhân vật half_head: đáy sân khấu trùng mép trên nút Đăng nhập
-                                  và bị cắt (clip-path) tại đó => đầu trông như trồi lên từ phía sau/dưới nút.
-                                */}
-                                <div
-                                    ref={mascotStageRef}
-                                    aria-hidden
-                                    className="mascot-stage absolute inset-x-0 bottom-full h-[260px] pointer-events-none select-none z-10"
-                                    style={{
-                                        '--mascot-hide': `${mascotMetrics.hide}px`,
-                                        '--mascot-peek': `${mascotMetrics.peek}px`,
-                                        '--mascot-contact': `${mascotMetrics.contact}px`,
-                                        '--mascot-burst-scale': mascotMetrics.burstScale,
-                                    } as React.CSSProperties}
-                                >
-                                    <div
-                                        key={mascotRun}
-                                        ref={mascotHeadRef}
-                                        onAnimationEnd={(event) => {
-                                            if (event.animationName === 'mascot-bonk') setMascotAction(null);
-                                        }}
-                                        className={cn(
-                                            "mascot-head absolute bottom-0 inset-x-0 mx-auto w-[130px] sm:w-[150px]",
-                                            mascotAction === 'bonk' && "animate-mascot-bonk",
-                                            mascotAction === 'burst' && "animate-mascot-burst",
-                                            !mascotAction && "mascot-head-idle",
-                                            pawsActive && !mascotAction && "mascot-head-peek"
-                                        )}
-                                    >
-                                        <Image
-                                            src="/images_login/half_head_trimmed.png"
-                                            alt=""
-                                            width={1476}
-                                            height={811}
-                                            className="w-full h-auto drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)]"
-                                            draggable={false}
-                                            priority
-                                        />
-                                    </div>
+                    {/* Chế độ PIN không có nút: mã tự gửi khi nhập/dán đủ 6 số, chỉ hiện vòng xoay khi đang xác minh */}
+                    {mode === 'pin' && isLoading && (
+                        <div className="flex justify-center" role="status" aria-label="Đang xác minh mã PIN">
+                            <Loader2 className="w-5 h-5 animate-spin text-neutral-500 dark:text-neutral-300" />
+                        </div>
+                    )}
 
-                                    {/* Vệt rung "CỘC!" hai bên đỉnh đầu khi va vào đáy ô Mật khẩu */}
-                                    {isPasswordBonked && (
+                    {mode !== 'pin' && (
+                        <div className="relative group" onPointerEnter={mode === 'login' ? () => measureMascot() : undefined}>
+                            {mode === 'login' && (
+                                <>
+                                    {/*
+                                      Sân khấu của đầu nhân vật half_head: đáy sân khấu trùng mép trên nút Đăng nhập
+                                      và bị cắt (clip-path) tại đó => đầu trông như trồi lên từ phía sau/dưới nút.
+                                    */}
+                                    <div
+                                        ref={mascotStageRef}
+                                        aria-hidden
+                                        className="mascot-stage absolute inset-x-0 bottom-full h-[260px] pointer-events-none select-none z-10"
+                                        style={{
+                                            '--mascot-hide': `${mascotMetrics.hide}px`,
+                                            '--mascot-peek': `${mascotMetrics.peek}px`,
+                                            '--mascot-contact': `${mascotMetrics.contact}px`,
+                                        } as React.CSSProperties}
+                                    >
                                         <div
-                                            className="absolute inset-x-0 mx-auto w-[150px] sm:w-[170px]"
-                                            style={{ bottom: `${Math.max(mascotMetrics.hide - 6 - mascotMetrics.contact - 22, 0)}px` }}
+                                            key={mascotRun}
+                                            ref={mascotHeadRef}
+                                            onAnimationEnd={(event) => {
+                                                if (event.animationName !== 'mascot-bonk') return;
+                                                // Đầu đã trốn hẳn sau nút => chờ một nhịp rồi tự ló lên lại
+                                                setMascotAction(null);
+                                                scheduleMascot(() => setMascotPeek(true), MASCOT_REAPPEAR_DELAY_MS);
+                                            }}
+                                            className={cn(
+                                                "mascot-head absolute bottom-0 inset-x-0 mx-auto w-[130px] sm:w-[150px]",
+                                                mascotAction === 'bonk' && "animate-mascot-bonk",
+                                                mascotAction === 'burst' && "animate-mascot-burst",
+                                                !mascotAction && "mascot-head-idle",
+                                                (pawsActive || mascotPeek) && !mascotAction && "mascot-head-peek"
+                                            )}
                                         >
                                             <Image
-                                                src="/images_login/impact_wave_1.png"
+                                                src="/images_login/half_head_2_trimmed.png"
                                                 alt=""
-                                                width={89}
-                                                height={142}
-                                                className="absolute left-0 bottom-0 w-[11px] h-auto animate-impact-wave-left"
-                                            />
-                                            <Image
-                                                src="/images_login/impact_wave_2.png"
-                                                alt=""
-                                                width={85}
-                                                height={130}
-                                                className="absolute right-0 bottom-0 w-[11px] h-auto animate-impact-wave-right"
+                                                width={1486}
+                                                height={842}
+                                                sizes="(min-width: 640px) 150px, 130px"
+                                                className="w-full h-auto drop-shadow-[0_4px_10px_rgba(0,0,0,0.35)]"
+                                                draggable={false}
+                                                priority
                                             />
                                         </div>
-                                    )}
-                                </div>
 
-                                {/* Đôi bàn tay mèo đặt ở mép trên của nút đăng nhập */}
-                                <div className="absolute -top-[14px] sm:-top-[16px] left-1/2 -translate-x-1/2 pointer-events-none select-none z-20">
-                                    <div
-                                        className={cn(
-                                            "w-[110px] sm:w-[130px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
-                                            "opacity-0 -translate-y-3.5 scale-90",
-                                            "group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100",
-                                            pawsActive && "opacity-100 translate-y-0 scale-100"
+                                        {/* Tia "CỘC!" vàng viền cam bung ra hai bên đỉnh đầu, ngay tại điểm va vào đáy ô Mật khẩu */}
+                                        {isPasswordBonked && (
+                                            <div
+                                                className="absolute inset-x-0 mx-auto w-[124px] sm:w-[144px]"
+                                                style={{ bottom: `${Math.max(mascotMetrics.hide - 6 - mascotMetrics.contact - 4, 0)}px` }}
+                                            >
+                                                <ImpactBurst side="left" className="absolute left-0 bottom-0" />
+                                                <ImpactBurst side="right" className="absolute right-0 bottom-0" />
+                                            </div>
                                         )}
-                                    >
-                                        <Image
-                                            src="/images_login/cat_two_paws.png"
-                                            alt="Đôi bàn tay mèo bám nút đăng nhập"
-                                            width={647}
-                                            height={136}
-                                            className="w-full h-auto drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]"
-                                            priority
-                                        />
                                     </div>
-                                </div>
-                            </>
-                        )}
-                        <Button
-                            type="submit"
-                            onClick={() => {
-                                if (mode === 'login' && email.trim() && password) {
-                                    triggerPawsAnimation();
-                                }
-                            }}
-                            disabled={isLoading || (mode === 'pin' && pin.length !== 6) || (mode === 'verify' && verificationCode.length !== 6)}
-                            className="rounded-[8px] w-full shadow-lg h-9 sm:h-10 text-sm font-medium"
-                        >
-                            {isLoading ? (
-                                <Loader2 className="w-5 h-5 animate-spin" />
-                            ) : (
-                                <>
-                                    {mode === 'login' && 'Đăng nhập'}
-                                    {mode === 'register' && 'Đăng ký'}
-                                    {mode === 'forgot-password' && 'Gửi liên kết'}
-                                    {mode === 'verify' && 'Xác thực'}
-                                    {mode === 'pin' && 'Xác nhận mã PIN'}
+
+                                    {/* Đôi bàn tay mèo đặt ở mép trên của nút đăng nhập */}
+                                    <div className="absolute -top-[14px] sm:-top-[16px] left-1/2 -translate-x-1/2 pointer-events-none select-none z-20">
+                                        <div
+                                            className={cn(
+                                                "w-[110px] sm:w-[130px] transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]",
+                                                "opacity-0 -translate-y-3.5 scale-90",
+                                                "group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100",
+                                                // Khi bật phá ô: đầu lùi xuống nhưng đôi tay vẫn bám mép nút
+                                                (pawsActive || mascotAction === 'burst' || (mascotPeek && !mascotAction)) && "opacity-100 translate-y-0 scale-100"
+                                            )}
+                                        >
+                                            <Image
+                                                src="/images_login/cat_two_paws.png"
+                                                alt="Đôi bàn tay mèo bám nút đăng nhập"
+                                                width={647}
+                                                height={136}
+                                                sizes="(min-width: 640px) 130px, 110px"
+                                                className={cn(
+                                                    "w-full h-auto drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]",
+                                                    mascotAction === 'burst' && "animate-paws-brace"
+                                                )}
+                                                priority
+                                            />
+                                        </div>
+                                    </div>
                                 </>
                             )}
-                        </Button>
-                    </div>
+                            <Button
+                                type="submit"
+                                onClick={() => {
+                                    if (mode === 'login' && email.trim() && password) {
+                                        triggerPawsAnimation();
+                                    }
+                                }}
+                                disabled={isLoading || (mode === 'verify' && verificationCode.length !== 6)}
+                                className="rounded-[8px] w-full shadow-lg h-9 sm:h-10 text-sm font-medium"
+                            >
+                                {isLoading ? (
+                                    <Loader2 className="w-5 h-5 animate-spin" />
+                                ) : (
+                                    <>
+                                        {mode === 'login' && 'Đăng nhập'}
+                                        {mode === 'register' && 'Đăng ký'}
+                                        {mode === 'forgot-password' && 'Gửi liên kết'}
+                                        {mode === 'verify' && 'Xác thực'}
+                                    </>
+                                )}
+                            </Button>
+                        </div>
+                    )}
                 </form>
 
                 <div className="mt-4 sm:mt-6 text-center text-xs sm:text-sm text-neutral-500 dark:text-neutral-300">
                     {mode === 'login' && (
                         <p>
                             Chưa có tài khoản?{' '}
-                            <button onClick={() => setMode('register')} className="text-primary font-semibold hover:underline decoration-2">
+                            <button type="button" onClick={() => switchMode('register')} className="text-primary font-semibold hover:underline decoration-2">
                                 Đăng ký ngay
                             </button>
                         </p>
@@ -918,7 +1036,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     {mode === 'pin' && (
                         <p>
                             Muốn đăng nhập tài khoản khác?{' '}
-                            <button type="button" onClick={() => { setMode('login'); setPin(''); }} className="text-primary font-semibold hover:underline decoration-2">
+                            <button type="button" onClick={() => switchMode('login')} className="text-primary font-semibold hover:underline decoration-2">
                                 Quay lại
                             </button>
                         </p>
@@ -926,7 +1044,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     {(mode === 'register' || mode === 'forgot-password' || mode === 'verify') && (
                         <p>
                             Đã có tài khoản?{' '}
-                            <button type="button" onClick={() => setMode('login')} className="text-primary font-semibold hover:underline decoration-2">
+                            <button type="button" onClick={() => switchMode('login')} className="text-primary font-semibold hover:underline decoration-2">
                                 Đăng nhập
                             </button>
                         </p>
