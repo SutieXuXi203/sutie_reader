@@ -135,6 +135,8 @@ Dành riêng cho tài khoản có vai trò `admin`, bố cục chia thành các 
 * **Hộp thoại Chia sẻ Quyền đọc (`ShareDialog.tsx`)**:
   * Cho phép chủ sở hữu nhập email người xem để cấp quyền truy cập vào truyện hoặc chương bị khóa.
   * Hiển thị danh sách người đang có quyền truy cập kèm nút thu hồi quyền một chạm.
+* **Thanh Tiến Trình Màn Hình Chờ (`SakugaProgressBar.tsx`, dùng trong `SitePreloader`)**:
+  * Bo góc `rounded-[8px]` đồng bộ với nút và ô nhập (không dùng dạng viên thuốc `rounded-full`). Phần đã chạy bo `rounded-[6px]` vì nằm trong viền 2px của rãnh, để góc trong khớp góc ngoài; ô phần trăm bo `rounded-[8px]`.
 * **Thanh Tiến Trình Tải Lên (`UploadProgressWidget.tsx`)**:
   * Khung widget nổi thu nhỏ ở góc màn hình, hiển thị tiến độ % upload ảnh chương truyện lên Google Drive theo thời gian thực mà không làm gián đoạn việc duyệt web.
 

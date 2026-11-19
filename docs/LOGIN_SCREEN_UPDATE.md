@@ -52,6 +52,7 @@ Màn hình Đăng nhập (`AuthDialog.tsx`) là điểm chạm đầu tiên tron
 * **Phong cách hiển thị (Không viền & Không nền hover - Pure Borderless)**: Sử dụng `variant="ghost"` và `border-0 ring-0 shadow-none bg-transparent hover:bg-transparent dark:hover:bg-transparent text-foreground cursor-pointer`, loại bỏ hoàn toàn viền và nền khi hover, chỉ giữ lại chuyển động xoay thanh thoát của biểu tượng Sun / Moon.
 * **Cơ chế hoạt động**: Sử dụng `ThemeToggle` tích hợp hiệu ứng chuyển cảnh mặt nạ vòng tròn (*Circular Mask Transition* theo chuẩn Motion Prompt #017 qua View Transitions API), cho phép chuyển đổi tức thì giữa chế độ Sáng (Light Mode) và Tối (Dark Mode) mà không cần đóng hộp thoại.
 * **Ngăn chặn lan truyền sự kiện**: Tích hợp `e.stopPropagation()` và khai báo `type="button"` rõ ràng nhằm tránh xung đột với sự kiện đóng modal hay submit form.
+* **Nhân vật phản ứng khi đổi giao diện**: `ThemeToggle` có prop tuỳ chọn `onToggle(nextTheme)` (các nơi khác dùng nút này không bị ảnh hưởng). Trong `AuthDialog`, `handleThemeToggle` chờ hiệu ứng chuyển màu xong (`THEME_CHAT.delayMs` = 320ms) rồi cho nhân vật ló lên nói 1 trong 10 câu theo giao diện vừa chuyển sang (`THEME_CHATS.dark` / `THEME_CHATS.light`), tự tắt sau 3.6s (`THEME_CHAT.showMs`). Xem bảng ở §4.1.
 
 ---
 
@@ -105,15 +106,23 @@ Toàn bộ cụm nhân vật gồm Đầu (`half_head_2_trimmed.png`) và Đôi 
 ### 4.1. Trạng thái Thường, Rê Chuột & Bong Bóng Thoại (Idle, Hover, Typing & Speech Bubbles)
 | Tình huống | Nhân vật | Bong bóng thoại (`MascotBubble`) |
 | :--- | :--- | :--- |
+| **Vừa mở trang đăng nhập** (sau khi màn hình chờ tắt, `usePreloader().isPreloading === false`) | Ló lên sau 0.9s, tự tắt sau 5.5s (`GREETING_CHAT`) | 1 trong **100 câu chào** `GREETING_CHATS` kèm giới thiệu hôm nay: chỗ trống `{thu}`/`{Thu}` (thứ), `{ngay}` (dd/mm), `{buoi}` (sáng/trưa/chiều/tối) điền theo giờ máy người dùng (`buildGreeting`). Vd: "Chào bạn! Hôm nay thứ Năm nè", "Buổi chiều thứ Năm, đọc ha?". Trường hợp dài nhất ≤ 32 ký tự |
 | Rê chuột vào nút Đăng nhập (chỉ chuột thật) | Ló sừng/tai, đôi tay bám mép | 1 trong **100 câu chào** `HOVER_CHATS` ("Hey!", "Ú òa!"...), mọc sang phải từ đỉnh đầu, ≤ 13 ký tự |
-| Đang gõ ô **Email** | Ló lên xem, đôi tay bám mép | 1 trong **20 câu** `EMAIL_CHATS`, canh mép phải khung, ngay trên góc phải đầu |
-| Đang gõ ô **Mật khẩu** (kể cả Tab sang nút hiện/ẩn) | **Trốn hẳn**, chỉ còn đôi tay | 1 trong **20 câu** `PASSWORD_CHATS`, căn giữa trục đôi tay (điện thoại: canh trái), đuôi chỉ xuống bàn tay trái |
+| Đang gõ ô **Email** | Ló lên xem, đôi tay bám mép | 1 trong **70 câu** `EMAIL_CHATS` (≤ 27 ký tự), canh mép phải khung, ngay trên góc phải đầu |
+| Đang gõ ô **Mật khẩu** (kể cả Tab sang nút hiện/ẩn) | **Trốn hẳn**, chỉ còn đôi tay | 1 trong **70 câu** `PASSWORD_CHATS` (≤ 31 ký tự), căn giữa trục đôi tay (điện thoại: canh trái), đuôi chỉ xuống bàn tay trái |
 | Sau một lần cộc đầu | Trốn 600ms rồi tự ló lên, không cần rê chuột | — |
-| Đăng nhập **sai từ lần thứ 2** (401) hoặc **bị khoá tạm** (429) | Ló lên sau cú cộc, kể cả khi vẫn focus ô Mật khẩu (bấm Enter) | Câu gợi ý `HINT_CHATS` luân phiên nhóm **Quên mật khẩu** / **Đăng ký**, link tương ứng nhấp nháy cam (`mascot-hint-pulse`). Tắt khi người dùng gõ tiếp vào một ô. Khoá tạm: chỉ gợi ý chờ / Quên mật khẩu |
+| Bấm nút đổi giao diện **Sáng / Tối** | Ló lên (kể cả khi đang focus ô Mật khẩu), tự trở lại trạng thái cũ sau 3.6s | 1 trong 10 câu theo giao diện mới: tối "Chuyển qua phe bóng đêm!"... / sáng "Trời sáng, dậy đọc truyện!"... |
+| Bấm Đăng nhập khi **còn để trống** ô | Cộc đầu rồi ló lên | 1 trong 8 câu `HINT_CHATS.empty` ("Bạn chưa nhập gì mà!"...) |
+| Đăng nhập **sai lần 1** (401) | Cộc đầu rồi ló lên | 1 trong 20 câu `HINT_CHATS.wrong` ("Ui, sai mất rồi bạn ơi!"...) |
+| Đăng nhập **sai từ lần 2** (401) hoặc **bị khoá tạm** (429) | Cộc đầu rồi ló lên | Gợi ý luân phiên `HINT_CHATS.forgot` / `register`, link tương ứng nhấp nháy cam (`mascot-hint-pulse`). Khoá tạm: `HINT_CHATS.locked`, nhấp nháy Quên mật khẩu |
+| **Đăng nhập thành công** | Lùi xuống rồi bật lên phá vỡ ô nhập | 1 trong 20 câu `SUCCESS_CHATS` ("Chào mừng bạn trở lại!"...), tài khoản có PIN: 1 trong 20 câu `SUCCESS_PIN_CHATS` nhắc nhập PIN. Gõ nhanh 28ms/ký tự; hộp thoại giữ 2.3s (`MASCOT_BURST_HOLD_MS`) để kịp đọc |
+
+* **Câu chào khi mở trang**: hộp thoại tự đặt con trỏ vào ô Email lúc mở, nhưng việc đó **không** bị tính là đang nhập, nên câu chào vẫn hiện. Câu chào tắt hẳn khi người dùng gõ hoặc bấm vào một ô; nó cũng nhường chỗ khi rê chuột vào nút, đổi giao diện hoặc sau một lần thất bại.
+* **Ưu tiên**: câu về giao diện (thao tác mới nhất) đứng trên tất cả trong 3.6s nó hiện. Ngoài thời gian đó, phản hồi sau thất bại (để trống / sai / gợi ý / khoá) luôn được ưu tiên hơn câu chào khi rê chuột (chuột thường vẫn nằm trên nút vừa bấm) và hơn các câu khi đang nhập (kể cả khi bấm Enter trong ô Mật khẩu), cho tới khi người dùng gõ tiếp vào một ô.
 
 * **Câu ngẫu nhiên** (`useRotatingChat`): mỗi lần bấm vào ô / rê vào nút bốc một câu mới (không lặp câu vừa nói); nếu vẫn đang nhập thì cứ 4.5s (`CHAT_ROTATE_MS`) đổi câu khác.
 * **Gõ chữ** (`TypewriterText`): bong bóng bật nảy ra (`mascot-bubble-pop`), chữ hiện dần 38ms/ký tự kèm con trỏ nhấp nháy (`mascot-caret`). Bề rộng giữ sẵn bằng bản chữ vô hình nên bong bóng không giãn khi gõ. `prefers-reduced-motion`: hiện đủ câu ngay.
-* **Không bao giờ tràn khung / đè "Quên mật khẩu?"**: đã đo đủ 140 câu ở khổ máy tính và 375px. Đuôi bong bóng có miếng nền trắng phủ viền đáy nên liền khối. Bong bóng mật khẩu dùng `@container` + `cqw` để đuôi chỉ đúng bàn tay trái khi canh trái trên điện thoại.
+* **Không bao giờ tràn khung / đè "Quên mật khẩu?"**: đã đo đủ 240 câu (100 chào + 70 Email + 70 Mật khẩu) ở khổ máy tính và 375px. Đuôi bong bóng có miếng nền trắng phủ viền đáy nên liền khối. Bong bóng mật khẩu dùng `@container` + `cqw` để đuôi chỉ đúng bàn tay trái khi canh trái trên điện thoại.
 * **Vì sao không phân biệt "sai mật khẩu" và "không có tài khoản"**: API cố ý trả cùng lỗi 401 (và băm mật khẩu giả để thời gian phản hồi như nhau) nhằm chống dò tài khoản theo `SECURITY_RULES.md`. Giao diện không được thêm cách nào để phân biệt, nên nhân vật gợi ý luân phiên cả hai hướng.
 * Trạng thái cộc đầu được giải phóng bằng hẹn giờ (`MASCOT_BONK.durationMs`) thay vì `animationend`, để nhân vật không bị kẹt (và bong bóng không bị khoá) khi trình duyệt không phát sự kiện đó.
 
@@ -133,8 +142,8 @@ Toàn bộ cụm nhân vật gồm Đầu (`half_head_2_trimmed.png`) và Đôi 
 3. **Bật mạnh** (32–44%, tuyến tính, ~130ms): đầu vọt thẳng lên, người kéo dãn vì tốc độ, đôi tay đạp lên. Đỉnh đầu xuyên qua ô `Mật khẩu` ⇒ **ô Mật khẩu vỡ trước**. **Ô Email vỡ sau**: lúc đỉnh đầu chạm tới nếu với được, nếu không thì vỡ do dư chấn ~60ms sau khi đầu bật lên hết. Thời điểm vỡ tính từ toạ độ đo được (`MASCOT_BURST = { riseStartMs: 352, riseMs: 132, topImpactMs: 60 }` phải khớp keyframes).
 4. **Tiếp đất** (44–100%): bẹp lại `scale(1.07, 0.93)` rồi lắc đầu nhẹ (≤ 2.5°). Đầu chỉ nhô lên, không phóng to; mép cắt phẳng ở đáy ảnh không bao giờ lộ khỏi nút.
 5. Mỗi ô bị đánh gãy đôi (`BrokenInputWrapper`): ô thật ẩn ngay, hai nửa giật mạnh sang hai bên rồi rơi xuống, xoay và **biến mất** (0.8–0.85s), kèm 6 mảnh vụn SVG cùng chất liệu ô input văng ra (`animate-shard-fly`). Không có vết nứt hay chớp sáng.
-6. Đầu dừng ở tư thế nhô hết lên, sau 1.45s hộp thoại đóng và vào ứng dụng.
-7. **Tài khoản có mã PIN** (`requirePin`): máy chủ chỉ yêu cầu PIN sau khi mật khẩu đã đúng, nên hiệu ứng phá vỡ vẫn chạy đủ 1.45s (`MASCOT_BURST_HOLD_MS`) rồi mới chuyển sang bước nhập PIN.
+6. Đầu dừng ở tư thế nhô hết lên, sau 2.3s hộp thoại đóng và vào ứng dụng.
+7. **Tài khoản có mã PIN** (`requirePin`): máy chủ chỉ yêu cầu PIN sau khi mật khẩu đã đúng, nên hiệu ứng phá vỡ vẫn chạy đủ 2.3s (`MASCOT_BURST_HOLD_MS`) rồi mới chuyển sang bước nhập PIN.
 
 ### 4.4. Tài nguyên phụ
 * Hiệu ứng va chạm và mảnh vỡ đều vẽ bằng SVG ngay trong `AuthDialog.tsx`, không dùng ảnh.

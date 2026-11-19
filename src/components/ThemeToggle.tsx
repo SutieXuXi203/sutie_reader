@@ -16,9 +16,12 @@ import { cn } from '@/lib/utils';
 export function ThemeToggle({
   className,
   variant = 'outline',
+  onToggle,
 }: {
   className?: string;
   variant?: 'default' | 'outline' | 'secondary' | 'ghost' | 'link';
+  /** Gọi sau khi người dùng bấm đổi giao diện, kèm giao diện mới */
+  onToggle?: (nextTheme: 'light' | 'dark') => void;
 } = {}) {
   const mounted = useSyncExternalStore(
     () => () => { },
@@ -32,6 +35,7 @@ export function ThemeToggle({
       e.stopPropagation();
       const current = resolvedTheme || theme || 'dark';
       const nextTheme = current === 'dark' ? 'light' : 'dark';
+      onToggle?.(nextTheme);
 
       // Kiểm tra hỗ trợ View Transitions API và prefers-reduced-motion
       if (
@@ -103,7 +107,7 @@ export function ThemeToggle({
           // Transition bị bỏ qua (tab ẩn / bấm liên tiếp) — theme đã được áp, không cần xử lý
         });
     },
-    [resolvedTheme, theme, setTheme]
+    [resolvedTheme, theme, setTheme, onToggle]
   );
 
   if (!mounted) return null;

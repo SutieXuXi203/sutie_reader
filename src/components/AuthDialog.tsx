@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input';
 import { Mail, Lock, User, Loader2, Eye, EyeOff } from 'lucide-react';
 import { useAuth } from '@/providers/AuthContext';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { usePreloader } from '@/providers/PreloaderContext';
 import { notify } from '@/lib/notify';
 import { cn } from '@/lib/utils';
 
@@ -40,8 +41,93 @@ const DEFAULT_MASCOT_METRICS: MascotMetrics = { hide: 90, peek: 62, contact: 54 
  */
 const MASCOT_BURST = { riseStartMs: 352, riseMs: 132, topImpactMs: 60 };
 
-/** Thời gian giữ hộp thoại để hiệu ứng phá vỡ diễn ra trọn vẹn trước khi đóng / sang bước PIN */
-const MASCOT_BURST_HOLD_MS = 1450;
+/**
+ * Thời gian giữ hộp thoại để hiệu ứng phá vỡ diễn ra trọn vẹn và nhân vật kịp nói xong câu chúc mừng
+ * trước khi đóng / sang bước PIN.
+ */
+const MASCOT_BURST_HOLD_MS = 2300;
+
+/** Câu nhân vật nói khi người dùng bấm đổi giao diện Sáng / Tối (theo giao diện vừa chuyển sang) */
+const THEME_CHATS = {
+    dark: [
+        'Tối rồi, đọc truyện đêm ha?',
+        'Bật đèn ngủ cho mắt nè',
+        'Chế độ tối êm mắt ghê',
+        'Ui, trời tối thui rồi!',
+        'Đọc đêm nhớ ngủ sớm nha',
+        'Tối thế này hợp đọc truyện',
+        'Mắt bạn sẽ cảm ơn đó ^^',
+        'Chuyển qua phe bóng đêm!',
+        'Tắt đèn rồi, hù nè!',
+        'Dark mode đỉnh của chóp',
+    ],
+    light: [
+        'Sáng bừng lên rồi nè!',
+        'Chói mắt quá trời ơi!',
+        'Chào buổi sáng nha bạn ^^',
+        'Mở rèm cho nắng vào nè',
+        'Light mode cũng xinh ghê',
+        'Sáng sủa thế này mới vui',
+        'Ui, mình bị lóa mắt rồi',
+        'Trời sáng, dậy đọc truyện!',
+        'Nắng lên rồi bạn ơi~',
+        'Đổi gió sang chế độ sáng',
+    ],
+} as const;
+
+/** Chờ hiệu ứng chuyển màu (~260ms) xong mới nói, rồi giữ câu nói trong khoảng này */
+const THEME_CHAT = { delayMs: 320, showMs: 3600 };
+
+/** Câu chúc mừng nhân vật nói khi đăng nhập thành công (bật lên phá vỡ ô nhập) */
+const SUCCESS_CHATS = [
+    'Đăng nhập thành công rồi!',
+    'Yeah! Vào thôi bạn ơi!',
+    'Chào mừng bạn trở lại!',
+    'Tuyệt vời, đúng rồi đó!',
+    'Mở cửa! Mời bạn vào ^^',
+    'Bùm! Vào được rồi nè!',
+    'Hoan hô! Đúng mật khẩu!',
+    'Đi đọc truyện thôi nào!',
+    'Mình biết bạn làm được mà',
+    'Chuẩn không cần chỉnh!',
+    'Welcome back nha :3',
+    'Vào nhà thôi bạn ơi~',
+    'Truyện đang chờ bạn đó!',
+    'Đúng rồi! Giỏi quá đi!',
+    'Phá cửa thành công!',
+    'Yay! Gặp lại bạn rồi!',
+    'Xong! Chúc đọc vui nha',
+    'Mật khẩu chuẩn luôn!',
+    'Ok, mời bạn vào nè ^^',
+    'Lên đường đọc truyện thôi!',
+] as const;
+
+/** 20 câu khi mật khẩu đúng nhưng tài khoản còn cần mã PIN: nhắc sang bước nhập PIN (tối đa 27 ký tự) */
+const SUCCESS_PIN_CHATS = [
+    'Đúng rồi! Còn mã PIN nữa nè',
+    'Chuẩn rồi! Nhập PIN nha',
+    'Gần xong rồi, nhập PIN đi~',
+    'Bước cuối: mã PIN nha bạn',
+    'Giỏi quá! Giờ tới mã PIN',
+    'Còn một bước nữa thôi nè!',
+    'Nhập mã PIN là xong nha',
+    'Mã PIN 6 số nha bạn ơi',
+    'Khoá thứ hai: mã PIN nè',
+    'Sắp vào được rồi, PIN đi!',
+    'Bảo mật hai lớp nha ^^',
+    'Nhớ mã PIN chứ hả bạn?',
+    'Một cửa nữa thôi, cố lên!',
+    'Gõ 6 số bí mật đi bạn~',
+    'Mình trốn để bạn nhập PIN',
+    'Đúng mật khẩu rồi, giỏi ghê',
+    'PIN xong là đọc truyện liền',
+    'Tài khoản xịn nên có PIN',
+    'Thêm mã PIN cho chắc nha',
+    'Còn mỗi mã PIN thôi nè :3',
+] as const;
+
+/** Câu chúc mừng gõ nhanh hơn câu thường để kịp đọc trong lúc giữ hộp thoại */
+const SUCCESS_CHAT_CHAR_MS = 28;
 
 /** Phải khớp keyframes mascot-bonk (0.8s, va chạm ở 30%) và field-bonked (0.5s) trong globals.css */
 const MASCOT_BONK = { impactMs: 240, shakeMs: 520, durationMs: 800 };
@@ -232,7 +318,7 @@ const HOVER_CHATS = [
     'Kìa kìa!', 'Ghé chơi hả?', 'Quẹo lựa!', 'Ố dề!', 'Moshi moshi!',
 ] as const;
 
-/** 20 câu nhân vật nói ngẫu nhiên khi người dùng đang nhập Email (giữ ngắn để vừa bong bóng trên điện thoại) */
+/** 70 câu nhân vật nói ngẫu nhiên khi người dùng đang nhập Email (tối đa 27 ký tự để vừa bong bóng trên điện thoại) */
 const EMAIL_CHATS = [
     'Bạn đang nhập Email à ?',
     'Email đẹp ghê đó nha!',
@@ -254,9 +340,59 @@ const EMAIL_CHATS = [
     'Bạn quay lại rồi! Vui quá',
     'Từ từ, mình chưa đọc kịp',
     'Nhập xong là vào đọc liền!',
+    'Gõ email kiểu gì vậy ta?',
+    'Email dài ghê ha bạn!',
+    'Mình đọc ké xíu nha :3',
+    'Có phải Gmail không đó?',
+    'Nhớ gõ đủ đuôi .com nha',
+    'Ngón tay bạn nhanh thiệt!',
+    'Mình đếm được mấy chữ rồi',
+    'Email này xịn ghê luôn',
+    'Gõ sai thì xoá đi nha~',
+    'Mình hóng bạn lâu lắm rồi',
+    'Bạn đọc truyện gì hôm nay?',
+    'Hôm nay trời đẹp ha bạn',
+    'Bạn ăn sáng chưa đó?',
+    'Từ từ thôi, không vội đâu',
+    'Có cần mình nhắc gì hông?',
+    'Email bạn dễ thương ghê',
+    'Nhớ kiểm tra dấu chấm nha',
+    'Ủa, email này lạ ghê ta',
+    'Gõ xong nhớ bấm Đăng nhập',
+    'Mình nhìn kỹ lắm nha :3',
+    'Hơi bị chuyên nghiệp đó!',
+    'Chữ @ nằm ở phím số 2 nè',
+    'Bạn gõ bằng mấy ngón vậy?',
+    'Đừng để lộ email nha~',
+    'Hehe, gõ tiếp đi bạn',
+    'Nghe tiếng phím vui tai ghê',
+    'Có truyện mới đợi bạn đó',
+    'Bạn vào đọc liền nha!',
+    'Email đẹp như người luôn',
+    'Gõ chậm lại xíu, mình đọc',
+    'Ui, sắp xong rồi kìa!',
+    'Mình ghi nhớ rồi nha ^^',
+    'Bạn là fan truyện nào nè?',
+    'Đăng nhập xong đọc gì đây?',
+    'Mình cổ vũ bạn nè!',
+    'Gõ đi gõ đi, mình đợi~',
+    'Có chắc là email này chưa?',
+    'Bạn hay đọc truyện đêm hả?',
+    'Nhớ uống nước nữa nha',
+    'Mình thích tên email này',
+    'Gõ phím mà như đánh đàn',
+    'Có ai đọc cùng bạn hông?',
+    'Bạn quay lại là vui rồi',
+    'Viết hoa hay viết thường?',
+    'Email hay tên đăng nhập?',
+    'Sai chính tả là mình thấy',
+    'Còn thiếu gì không ta?',
+    'Mình đứng đây canh nha',
+    'Bạn gõ đều tay ghê!',
+    'Xong email rồi tới mật khẩu',
 ] as const;
 
-/** 20 câu nhân vật nói ngẫu nhiên khi người dùng đang nhập Mật khẩu (nhân vật đang trốn, không nhìn trộm) */
+/** 70 câu nhân vật nói ngẫu nhiên khi người dùng đang nhập Mật khẩu (nhân vật đang trốn; tối đa 31 ký tự để không đè "Quên mật khẩu?") */
 const PASSWORD_CHATS = [
     'Bạn nhập đi mình trốn đây !! :3',
     'Mình nhắm mắt rồi nè, gõ đi~',
@@ -278,6 +414,56 @@ const PASSWORD_CHATS = [
     'Gõ cẩn thận kẻo sai nha~',
     'Xong là vào đọc truyện liền!',
     'Không nhìn, không nhìn :3',
+    'Mình quay mặt đi rồi nè',
+    'Bịt tai luôn cho chắc :3',
+    'Không nghe, không thấy gì!',
+    'Trốn kỹ rồi, gõ thoải mái',
+    'Mật khẩu nhớ có số nha',
+    'Thêm ký tự đặc biệt đi~',
+    'Đừng dùng ngày sinh nha bạn',
+    'Mình chỉ thấy dấu chấm thôi',
+    'Gõ đi, mình ngó lơ rồi',
+    'Bí mật của bạn an toàn nha',
+    'Mình ngủ gật rồi zzz...',
+    'Ai nhìn trộm là mình cắn',
+    'Mình canh cửa cho bạn nè',
+    'Nhớ mật khẩu kỹ vào nha',
+    'Dài hơn 8 ký tự là đẹp',
+    'Hihi, mình đâu có nhìn',
+    'Che mắt bằng hai tay rồi',
+    'Mình đang đếm cừu nè 1, 2...',
+    'Gõ xong nói mình nha~',
+    'Mật khẩu chỉ bạn biết thôi',
+    'Đừng chia sẻ cho ai nha',
+    'Mình nghe tiếng gõ thôi à',
+    'Gõ chậm cho chắc nha bạn',
+    'Coi chừng bật Caps Lock nha',
+    'Mình trốn dưới nút nè',
+    'Không ló đầu đâu, hứa đó',
+    'Mình nhắm tịt mắt luôn rồi',
+    'Bảo mật là số một nha!',
+    'Đổi mật khẩu thường xuyên nha',
+    'Mình hát cho đỡ tò mò nè',
+    'La la la... không nghe gì',
+    'Mình ra ngoài đứng chờ nha',
+    'Gõ xong là mình ra liền',
+    'Bạn gõ tự tin lên nào!',
+    'Mật khẩu mạnh như bạn vậy',
+    'Mình tin bạn nhớ đúng mà',
+    'Đừng để trình duyệt lưu bừa',
+    'Một chút nữa thôi là xong',
+    'Mình nín thở chờ nè...',
+    'Tò mò ghê mà ráng nhịn',
+    'Không nhìn đâu, thật đó!',
+    'Mình úp mặt vào tường rồi',
+    'Gõ đi bạn, an toàn rồi',
+    'Mình đếm tới 100 luôn nè',
+    'Bàn phím của bạn êm ghê',
+    'Nhập xong bấm Đăng nhập nha',
+    'Mình giữ bí mật giùm nha',
+    'Không phải mình nhìn đâu!',
+    'Mật khẩu đúng là vào liền',
+    'Cố lên, sắp vào đọc rồi!',
 ] as const;
 
 /**
@@ -299,6 +485,40 @@ const HINT_CHATS = {
         'Email này đăng ký chưa ta?',
         'Tạo tài khoản mới đi bạn ơi',
     ],
+    /** Sai lần đầu (401): nhân vật than vừa cộc đầu vì nhập sai */
+    wrong: [
+        'Ui, sai mất rồi bạn ơi!',
+        'Hình như sai đâu đó rồi',
+        'Sai rồi, thử lại nha~',
+        'Ơ, không đúng rồi nè',
+        'Cộc đầu đau quá :<',
+        'Sai mật khẩu hay email ta?',
+        'Bình tĩnh, thử lại nha',
+        'Hic, cửa chưa mở rồi',
+        'Gõ nhầm chỗ nào rồi đó',
+        'Thử lại lần nữa nha bạn',
+        'Không sao, ai cũng sai mà',
+        'Kiểm tra lại giúp mình nha',
+        'Ui da, đụng trúng đầu!',
+        'Chưa đúng đâu bạn ơi',
+        'Mật khẩu chưa chuẩn rồi',
+        'Coi lại email xem sao',
+        'Hụt rồi, cố lên nào!',
+        'Sai xíu thôi, thử lại!',
+        'Đầu mình u một cục rồi',
+        'Lần này chưa được rồi :<',
+    ],
+    /** Bấm Đăng nhập khi còn để trống ô */
+    empty: [
+        'Bạn chưa nhập gì mà!',
+        'Trống trơn à, gõ vào đi~',
+        'Email đâu rồi bạn ơi?',
+        'Quên nhập mật khẩu kìa!',
+        'Gõ gì đó rồi bấm nha',
+        'Ô trống thì sao vào được',
+        'Nhập đủ hai ô nha bạn',
+        'Chưa điền mà đã bấm rồi!',
+    ],
     /** Bị khoá tạm vì sai quá nhiều (429): chỉ gợi ý chờ hoặc lấy lại mật khẩu */
     locked: [
         'Khoá tạm rồi, nghỉ xíu nha :<',
@@ -307,7 +527,7 @@ const HINT_CHATS = {
     ],
 } as const;
 
-/** Từ lần sai thứ mấy (liên tiếp) thì nhân vật bắt đầu gợi ý */
+/** Từ lần sai thứ mấy (liên tiếp) thì nhân vật chuyển từ than "sai rồi" sang gợi ý Quên mật khẩu / Đăng ký */
 const HINT_AFTER_FAILS = 2;
 
 /** Đang nhập lâu thì cứ mỗi khoảng này nhân vật đổi sang câu khác */
@@ -317,6 +537,135 @@ const CHAT_ROTATE_MS = 4500;
 const pickChat = (count: number, previous: number) => {
     const next = Math.floor(Math.random() * (count - 1));
     return next >= previous ? next + 1 : next;
+};
+
+/** Bốc ngẫu nhiên một câu bất kỳ trong danh sách */
+const pickAnyChat = (count: number) => Math.floor(Math.random() * count);
+
+/**
+ * 100 câu chào khi vừa mở trang đăng nhập, kèm giới thiệu hôm nay. Chỗ trống được điền theo giờ máy người dùng:
+ * {thu} / {Thu} = thứ trong tuần (viết thường / viết hoa đầu câu), {ngay} = dd/mm, {buoi} = sáng / trưa / chiều / tối.
+ * Trường hợp dài nhất ("Chủ nhật", "chiều") vẫn ≤ 32 ký tự để vừa bong bóng.
+ */
+const GREETING_CHATS = [
+    'Chào bạn! Hôm nay {thu} nè',
+    'Hello! Hôm nay {thu}, {ngay}',
+    'Chào buổi {buoi} nha bạn ^^',
+    'Hôm nay {ngay}, đọc gì đây?',
+    '{Thu} vui vẻ nha bạn ơi!',
+    'Xin chào! Ngày {ngay} đẹp ghê',
+    'Hí! Buổi {buoi} {thu} nè',
+    'Chào nha, hôm nay {thu} đó',
+    '{Thu} rồi, đọc truyện thôi!',
+    'Ngày {ngay} chúc bạn vui nha',
+    'Chào buổi {buoi}, {thu} nè!',
+    'Hello bạn, {thu} an lành nha',
+    'Hôm nay là {thu}, {ngay} nha',
+    'Ê, {thu} rồi kìa bạn ơi!',
+    'Chào bạn, {ngay} nhiều niềm vui',
+    'Buổi {buoi} tốt lành nha ^^',
+    '{Thu} này đọc gì hay ta?',
+    'Hế lô! Hôm nay {ngay} nè',
+    'Chào mừng bạn, {thu} vui nha',
+    'Mình chào bạn! {Thu} nè :3',
+    'Đã {ngay} rồi, nhanh ghê ta',
+    'Chúc {thu} tràn năng lượng',
+    'Chào buổi {buoi}! Ăn gì chưa?',
+    'Hôm nay {thu}, trời đẹp ha',
+    'Yo! {Thu} ngày {ngay} đó',
+    'Chào bạn hiền, {thu} vui vẻ!',
+    'Ngày {ngay}: ngày đọc truyện!',
+    '{Thu} đẹp trời quá bạn ơi',
+    'Chào buổi {buoi} bạn yêu ^^',
+    'Bạn tới rồi! {Thu} vui ghê',
+    'Hôm nay {ngay}, có chương mới',
+    'Xin chào! {Thu} an yên nha',
+    'Hí hí, {thu} rồi nè bạn',
+    'Chào nha! Hôm nay là {ngay}',
+    'Buổi {buoi} {thu}, đọc ha?',
+    '{Thu} gặp bạn là vui rồi',
+    'Chào bạn, {ngay} cố lên nha!',
+    'Hello! Buổi {buoi} vui vẻ nha',
+    'Hôm nay {thu}, nghỉ ngơi xíu',
+    'Mình đợi bạn cả {thu} luôn',
+    'Chào! Ngày {ngay} may mắn nha',
+    '{Thu} rồi, xả stress thôi!',
+    'Buổi {buoi} nhớ uống nước nha',
+    'Hôm nay {ngay}, bạn khỏe hông?',
+    'Hello, {thu} của bạn sao rồi?',
+    'Chào bạn! Lại một {thu} mới',
+    'Ngày {ngay} vui như tết nha',
+    '{Thu} đọc truyện là chân ái',
+    'Chào buổi {buoi} đáng yêu nha',
+    'Gặp lại rồi! {Thu}, {ngay}',
+    '{Thu} này bạn rảnh hông?',
+    'Hôm nay {ngay}, cười lên nào!',
+    '{Thu} vui vẻ, đọc truyện nhé',
+    'Xin chào buổi {buoi} nha bạn!',
+    'Ê bạn! Hôm nay {ngay} đó',
+    'Chào bạn, chúc {thu} suôn sẻ',
+    '{Thu} tới rồi, vào chơi đi!',
+    'Ngày {ngay}, mình nhớ bạn ghê',
+    'Chào! Buổi {buoi} nay đẹp ha',
+    'Hôm nay {thu}, đọc vài chương',
+    'Hello! {ngay} là ngày đẹp nè',
+    'Chào buổi {buoi}, vào đọc đi~',
+    '{Thu} này có gì vui ta?',
+    'Chào bạn! Hôm nay {ngay} á',
+    'Mình chào bạn, {thu} an vui',
+    'Ngày {ngay} chúc bạn may mắn',
+    'Buổi {buoi} {thu} đọc truyện',
+    'Chào nha! {Thu} không âu lo',
+    'Hôm nay là {ngay}, nhớ nha',
+    'Hi bạn! {Thu} đầy nắng nè',
+    'Chào buổi {buoi} nhé bạn ơi',
+    '{Thu}, {ngay}. Bắt đầu thôi!',
+    'Chào bạn, {thu} đọc gì nè?',
+    'Ngày {ngay}, mình ở đây nè',
+    'Hế lô, buổi {buoi} vui nha!',
+    '{Thu} rồi, nạp năng lượng nào',
+    'Chào bạn! {ngay} thật đặc biệt',
+    'Hôm nay {thu}, chill xíu nha',
+    'Chào buổi {buoi}! Nhớ mình hông?',
+    '{Thu} ngày {ngay}, chào bạn!',
+    'Hello! Đọc gì vào {thu} nè?',
+    'Chào bạn, ngày {ngay} rực rỡ',
+    'Buổi {buoi} an lành nha bạn',
+    '{Thu} vui, đọc càng vui',
+    'Chào nha! Hôm nay {ngay} rồi',
+    'Ngày {ngay}, chúc bạn bình an',
+    'Chào! {Thu} nhiều truyện hay',
+    'Hí lô! Buổi {buoi} {thu} nè',
+    'Hôm nay {thu}, mình chào bạn!',
+    'Chào! Mới đó mà {ngay} rồi',
+    '{Thu} này bạn có hẹn không?',
+    'Chào buổi {buoi}, khỏe hông nè?',
+    'Hôm nay {ngay}, mình vui lắm',
+    'Xin chào, {thu} tuyệt vời nha',
+    'Chào bạn! Ngày {ngay} đáng nhớ',
+    '{Thu} đến rồi, đọc liền thôi',
+    'Chào buổi {buoi}, mời bạn vào!',
+    'Hôm nay {thu}, {ngay}. Hello!',
+    '{Thu} đọc thả ga nha bạn',
+    'Ngày {ngay}, chào bạn thân yêu',
+] as const;
+
+/** Câu chào hiện sau khi hộp thoại mở và màn hình chờ đã tắt, giữ trong khoảng này */
+const GREETING_CHAT = { delayMs: 900, showMs: 5500 };
+
+const WEEKDAYS = ['Chủ nhật', 'thứ Hai', 'thứ Ba', 'thứ Tư', 'thứ Năm', 'thứ Sáu', 'thứ Bảy'] as const;
+
+/** Điền thứ / ngày / buổi của hôm nay vào một câu chào ngẫu nhiên */
+const buildGreeting = (now: Date) => {
+    const weekday = WEEKDAYS[now.getDay()];
+    const date = `${String(now.getDate()).padStart(2, '0')}/${String(now.getMonth() + 1).padStart(2, '0')}`;
+    const hour = now.getHours();
+    const session = hour >= 4 && hour < 11 ? 'sáng' : hour < 13 && hour >= 11 ? 'trưa' : hour >= 13 && hour < 18 ? 'chiều' : 'tối';
+    return GREETING_CHATS[pickAnyChat(GREETING_CHATS.length)]
+        .replace('{Thu}', weekday.charAt(0).toUpperCase() + weekday.slice(1))
+        .replace('{thu}', weekday)
+        .replace('{ngay}', date)
+        .replace('{buoi}', session);
 };
 
 /**
@@ -344,7 +693,7 @@ const TYPEWRITER = { charMs: 38, startDelayMs: 140 };
  * không giãn ra trong lúc gõ. Mỗi lần bong bóng được dựng lại thì gõ lại từ đầu.
  * prefers-reduced-motion: hiện đủ câu ngay.
  */
-function TypewriterText({ text }: { text: string }) {
+function TypewriterText({ text, charMs = TYPEWRITER.charMs }: { text: string; charMs?: number }) {
     const chars = Array.from(text);
     const [count, setCount] = useState(() =>
         typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? chars.length : 0
@@ -355,10 +704,10 @@ function TypewriterText({ text }: { text: string }) {
         if (isDone) return;
         const timer = setTimeout(
             () => setCount((current) => current + 1),
-            count === 0 ? TYPEWRITER.startDelayMs : TYPEWRITER.charMs
+            count === 0 ? TYPEWRITER.startDelayMs : charMs
         );
         return () => clearTimeout(timer);
-    }, [count, isDone]);
+    }, [count, isDone, charMs]);
 
     return (
         <span className="relative inline-block">
@@ -382,11 +731,14 @@ function TypewriterText({ text }: { text: string }) {
  */
 function MascotBubble({
     text,
+    charMs,
     anchor = 'head',
     className,
     style,
 }: {
     text: string;
+    /** Tốc độ gõ (ms/ký tự), mặc định TYPEWRITER.charMs */
+    charMs?: number;
     anchor?: 'head' | 'head-right' | 'paws';
     className?: string;
     style?: React.CSSProperties;
@@ -407,7 +759,7 @@ function MascotBubble({
             )}
             style={style}
         >
-            <TypewriterText text={text} />
+            <TypewriterText text={text} charMs={charMs} />
             {/* Đuôi bong bóng: miếng nền trắng phủ lên đoạn viền đáy để đuôi liền với bong bóng (không có gạch ngang) */}
             <svg
                 aria-hidden
@@ -481,29 +833,82 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     // Số lần đăng nhập sai liên tiếp (401) và cờ bị khoá tạm (429) => nhân vật gợi ý Quên mật khẩu / Đăng ký
     const [loginFailCount, setLoginFailCount] = useState(0);
     const [isLoginLocked, setIsLoginLocked] = useState(false);
+    // Câu chào kèm giới thiệu hôm nay khi vừa mở trang đăng nhập (null = không nói)
+    const [greetingChat, setGreetingChat] = useState<string | null>(null);
+    const { isPreloading } = usePreloader();
+    // Câu nhân vật nói khi vừa đổi giao diện Sáng / Tối (null = không nói)
+    const [themeChat, setThemeChat] = useState<string | null>(null);
+    const themeChatTimersRef = useRef<NodeJS.Timeout[]>([]);
+    // Câu chúc mừng khi đăng nhập thành công, hiện lúc nhân vật đã bật lên hết (null = chưa / không nói)
+    const [successChat, setSuccessChat] = useState<string | null>(null);
     const [isHintDismissed, setIsHintDismissed] = useState(false);
-    // Gợi ý sau khi sai nhiều lần: hiện khi nhân vật đã ló lên lại sau cú cộc, ưu tiên hơn các câu khi đang nhập
-    // (người dùng hay bấm Enter ngay trong ô Mật khẩu) cho tới khi người dùng gõ tiếp vào một ô.
-    const hintTarget: 'forgot' | 'register' =
-        isLoginLocked || loginFailCount % 2 === 0 ? 'forgot' : 'register';
+    // Lần bấm Đăng nhập gần nhất bị chặn vì còn để trống ô (chưa gọi API)
+    const [isEmptyAttempt, setIsEmptyAttempt] = useState(false);
+    // Phản hồi sau mỗi lần đăng nhập thất bại: hiện khi nhân vật đã ló lên lại sau cú cộc và được ưu tiên hơn
+    // câu chào khi rê chuột (chuột thường vẫn nằm trên nút vừa bấm) lẫn các câu khi đang nhập (người dùng hay
+    // bấm Enter ngay trong ô Mật khẩu), cho tới khi người dùng gõ tiếp vào một ô.
+    //   để trống -> "empty" | sai lần đầu -> "wrong" | sai từ lần 2 -> gợi ý "forgot"/"register" | khoá tạm -> "locked"
+    const feedbackKind: keyof typeof HINT_CHATS = isLoginLocked
+        ? 'locked'
+        : isEmptyAttempt
+            ? 'empty'
+            : loginFailCount >= HINT_AFTER_FAILS
+                ? (loginFailCount % 2 === 0 ? 'forgot' : 'register')
+                : 'wrong';
+    // Link được nhấp nháy theo gợi ý (khoá tạm => Quên mật khẩu)
+    const hintTarget: 'forgot' | 'register' | null =
+        feedbackKind === 'locked' || feedbackKind === 'forgot' ? 'forgot' : feedbackKind === 'register' ? 'register' : null;
+    // Vừa bấm đổi giao diện: nhân vật ló lên nói về giao diện mới, ưu tiên hơn mọi bong bóng khác trong lúc hiện
+    const isThemeChatVisible = !!themeChat && !mascotAction && mode === 'login';
     const isHintVisible =
         mode === 'login' &&
-        (isLoginLocked || loginFailCount >= HINT_AFTER_FAILS) &&
+        (isLoginLocked || isEmptyAttempt || loginFailCount >= 1) &&
         !isHintDismissed &&
         mascotPeek &&
-        !mascotAction;
-    const isMascotHiding = !mascotAction && !isHintVisible && isPasswordFocused && mode === 'login';
+        !mascotAction &&
+        !isThemeChatVisible;
+    // Câu chào lúc mở trang: nhường chỗ khi người dùng gõ / bấm vào ô (tắt hẳn câu chào), rê chuột hoặc đổi giao diện.
+    // Hộp thoại tự đặt con trỏ vào ô Email lúc mở KHÔNG tính là "đang nhập", nên câu chào vẫn hiện.
+    const isGreetingVisible =
+        !!greetingChat &&
+        mode === 'login' &&
+        !mascotAction &&
+        !isHintVisible &&
+        !isThemeChatVisible &&
+        !isButtonHovered;
+    const isMascotHiding =
+        !mascotAction &&
+        !isHintVisible &&
+        !isThemeChatVisible &&
+        !isGreetingVisible &&
+        isPasswordFocused &&
+        mode === 'login';
     const isMascotPeeking =
-        !mascotAction && !isMascotHiding && (pawsActive || mascotPeek || (isEmailFocused && mode === 'login'));
-    const isEmailPeeking = !mascotAction && !isHintVisible && isEmailFocused && mode === 'login';
+        !mascotAction &&
+        !isMascotHiding &&
+        (pawsActive || mascotPeek || isThemeChatVisible || isGreetingVisible || (isEmailFocused && mode === 'login'));
+    const isEmailPeeking =
+        !mascotAction && !isHintVisible && !isThemeChatVisible && !isGreetingVisible && isEmailFocused && mode === 'login';
     // Đang nhập Email / Mật khẩu: nhân vật nói câu ngẫu nhiên và đổi câu sau vài giây
     const emailChat = useRotatingChat(EMAIL_CHATS, isEmailPeeking);
     const passwordChat = useRotatingChat(PASSWORD_CHATS, isMascotHiding);
-    const hintChat = useRotatingChat(
-        isLoginLocked ? HINT_CHATS.locked : HINT_CHATS[hintTarget],
-        isHintVisible
+    const hintChat = useRotatingChat(HINT_CHATS[feedbackKind], isHintVisible);
+    const hoverChat = useRotatingChat(
+        HOVER_CHATS,
+        isButtonHovered && !mascotAction && !isHintVisible && !isThemeChatVisible
     );
-    const hoverChat = useRotatingChat(HOVER_CHATS, isButtonHovered && !mascotAction && !isHintVisible);
+
+    /** Bấm đổi giao diện: chờ hiệu ứng chuyển màu xong rồi nhân vật nói một câu ngẫu nhiên, tự tắt sau vài giây */
+    const handleThemeToggle = (nextTheme: 'light' | 'dark') => {
+        themeChatTimersRef.current.forEach(clearTimeout);
+        const lines = THEME_CHATS[nextTheme];
+        const line = lines[pickAnyChat(lines.length)];
+        setThemeChat(null);
+        themeChatTimersRef.current = [
+            setTimeout(() => setThemeChat(line), THEME_CHAT.delayMs),
+            setTimeout(() => setThemeChat(null), THEME_CHAT.delayMs + THEME_CHAT.showMs),
+        ];
+    };
     // Tăng mỗi lần kích hoạt để remount đầu nhân vật => animation CSS luôn chạy lại từ đầu
     const [mascotRun, setMascotRun] = useState(0);
     const [mascotMetrics, setMascotMetrics] = useState<MascotMetrics>(DEFAULT_MASCOT_METRICS);
@@ -594,11 +999,16 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         scheduleMascot(() => setMascotPeek(true), MASCOT_BONK.durationMs + MASCOT_REAPPEAR_DELAY_MS);
     };
 
-    const triggerHeadBurst = () => {
+    const triggerHeadBurst = (outcome: 'login' | 'pin' = 'login') => {
         clearMascotTimers();
         const m = measureMascot();
         setIsPasswordBonked(false);
         setMascotPeek(false);
+        setSuccessChat(null);
+        // Nhân vật bật lên hết thì nói câu chúc mừng (bốc ngẫu nhiên)
+        const lines = outcome === 'pin' ? SUCCESS_PIN_CHATS : SUCCESS_CHATS;
+        const line = lines[pickAnyChat(lines.length)];
+        scheduleMascot(() => setSuccessChat(line), MASCOT_BURST.riseStartMs + MASCOT_BURST.riseMs);
         setMascotAction('burst');
         setMascotRun((run) => run + 1);
         // Đầu lùi xuống lấy đà rồi bật thẳng lên: xuyên ô Mật khẩu trước, ô Email vỡ ngay sau.
@@ -630,6 +1040,8 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     };
 
     const resetState = () => {
+        setSuccessChat(null);
+        setIsEmptyAttempt(false);
         setLoginFailCount(0);
         setIsLoginLocked(false);
         setIsHintDismissed(false);
@@ -659,6 +1071,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [mascotMode, setMascotMode] = useState(mode);
     if (mascotMode !== mode) {
         setMascotMode(mode);
+        setSuccessChat(null);
         setBrokenFields({ email: false, password: false });
         setMascotAction(null);
         setMascotPeek(false);
@@ -683,6 +1096,18 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
     useEffect(() => clearMascotTimers, []);
 
+    // Vừa mở hộp thoại (và màn hình chờ đã tắt): nhân vật ló lên chào và giới thiệu hôm nay, tự tắt sau vài giây
+    useEffect(() => {
+        if (!open || isPreloading) return;
+        const showTimer = setTimeout(() => setGreetingChat(buildGreeting(new Date())), GREETING_CHAT.delayMs);
+        const hideTimer = setTimeout(() => setGreetingChat(null), GREETING_CHAT.delayMs + GREETING_CHAT.showMs);
+        return () => {
+            clearTimeout(showTimer);
+            clearTimeout(hideTimer);
+        };
+    }, [open, isPreloading]);
+    useEffect(() => () => themeChatTimersRef.current.forEach(clearTimeout), []);
+
     useEffect(() => {
         if (open) {
             setMode(initialMode);
@@ -695,14 +1120,12 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
 
         // Kiểm tra hợp lệ khi đăng nhập: nếu chưa nhập tài khoản/mật khẩu, nhân vật cộc đầu vào ô mật khẩu rồi nhún xuống
         if (mode === 'login') {
-            if (!email.trim()) {
+            if (!email.trim() || !password) {
                 triggerHeadBonk();
-                setError('Vui lòng nhập tài khoản hoặc email.');
-                return;
-            }
-            if (!password) {
-                triggerHeadBonk();
-                setError('Vui lòng nhập mật khẩu.');
+                setIsEmptyAttempt(true);
+                setIsHintDismissed(false);
+                hintChat.reroll();
+                setError(!email.trim() ? 'Vui lòng nhập tài khoản hoặc email.' : 'Vui lòng nhập mật khẩu.');
                 return;
             }
             triggerPawsAnimation();
@@ -761,7 +1184,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             if (data.requirePin) {
                 // Máy chủ chỉ yêu cầu PIN khi mật khẩu đã đúng => vẫn phát hiệu ứng phá vỡ 2 ô input trước khi sang bước PIN
                 if (mode === 'login') {
-                    triggerHeadBurst();
+                    triggerHeadBurst('pin');
                     await new Promise((resolve) => setTimeout(resolve, MASCOT_BURST_HOLD_MS));
                 }
                 setMode('pin');
@@ -809,6 +1232,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 if (apiError.status === 401 || apiError.status === 429) {
                     if (apiError.status === 401) setLoginFailCount((count) => count + 1);
                     else setIsLoginLocked(true);
+                    setIsEmptyAttempt(false);
                     setIsHintDismissed(false);
                     hintChat.reroll();
                 }
@@ -851,6 +1275,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                 topActions={
                     <div className="fixed top-4 right-4 sm:top-5 sm:right-6 z-50">
                         <ThemeToggle
+                            onToggle={handleThemeToggle}
                             variant="ghost"
                             className="border-0 ring-0 shadow-none bg-transparent hover:bg-transparent dark:hover:bg-transparent active:bg-transparent dark:active:bg-transparent text-foreground cursor-pointer"
                         />
@@ -921,6 +1346,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                             <Input
                                 type="text"
                                 placeholder="Email hoặc tên đăng nhập"
+                                onPointerDown={() => setGreetingChat(null)}
                                 value={email}
                                 onFocus={() => {
                                     healFields();
@@ -930,6 +1356,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 onBlur={() => setIsEmailFocused(false)}
                                 onChange={(e) => {
                                     setEmail(e.target.value);
+                                    setGreetingChat(null);
                                     setIsHintDismissed(true);
                                     healFields();
                                     if (pawsActive) setPawsActive(false);
@@ -959,6 +1386,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 <Input
                                     type={showPassword && password.length > 0 ? 'text' : 'password'}
                                     placeholder="Mật khẩu"
+                                    onPointerDown={() => setGreetingChat(null)}
                                     value={password}
                                     onFocus={() => {
                                         healFields();
@@ -969,6 +1397,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     onChange={(e) => {
                                         const nextPassword = e.target.value;
                                         setPassword(nextPassword);
+                                        setGreetingChat(null);
                                         setIsHintDismissed(true);
                                         if (!nextPassword) setShowPassword(false);
                                         healFields();
@@ -1261,10 +1690,45 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     </div>
 
                                     {/* Bong bóng chào ngẫu nhiên ("Hey!"...) bật ra cạnh đầu nhân vật khi rê chuột vào nút (ẩn khi đang cộc / bật phá / nhập mật khẩu) */}
-                                    {/* Sai nhiều lần: gợi ý Quên mật khẩu / Đăng ký (link tương ứng nhấp nháy) */}
+                                    {/* Đăng nhập thành công: nhân vật bật lên hết rồi nói câu chúc mừng ngay trên góc phải đỉnh đầu */}
+                                    {mascotAction === 'burst' && successChat && (
+                                        <MascotBubble
+                                            key={successChat}
+                                            text={successChat}
+                                            charMs={SUCCESS_CHAT_CHAR_MS}
+                                            anchor="head-right"
+                                            className="whitespace-nowrap py-0.5 text-[11px] sm:text-xs leading-snug"
+                                            // Đáy bong bóng cao hơn đỉnh đầu (đã bật hết: cao hide - 6 px) một chút
+                                            style={{ bottom: `calc(100% + ${Math.max(mascotMetrics.hide - 6 + 6, 60)}px)` }}
+                                        />
+                                    )}
+
+                                    {/* Vừa mở trang: nhân vật ló lên chào và giới thiệu hôm nay */}
+                                    {isGreetingVisible && greetingChat && (
+                                        <MascotBubble
+                                            key={greetingChat}
+                                            text={greetingChat}
+                                            anchor="head-right"
+                                            className="whitespace-nowrap py-0.5 text-[11px] sm:text-xs leading-snug"
+                                            style={{ bottom: `calc(100% + ${Math.max(mascotMetrics.hide - 6 - mascotMetrics.peek + 10, 18)}px)` }}
+                                        />
+                                    )}
+
+                                    {/* Vừa đổi giao diện Sáng / Tối: nhân vật ló lên nói về giao diện mới */}
+                                    {isThemeChatVisible && themeChat && (
+                                        <MascotBubble
+                                            key={themeChat}
+                                            text={themeChat}
+                                            anchor="head-right"
+                                            className="whitespace-nowrap py-0.5 text-[11px] sm:text-xs leading-snug"
+                                            style={{ bottom: `calc(100% + ${Math.max(mascotMetrics.hide - 6 - mascotMetrics.peek + 10, 18)}px)` }}
+                                        />
+                                    )}
+
+                                    {/* Sau khi thất bại: than để trống / sai, hoặc gợi ý Quên mật khẩu / Đăng ký (link tương ứng nhấp nháy) */}
                                     {isHintVisible && (
                                         <MascotBubble
-                                            key={`${hintTarget}-${hintChat.index}`}
+                                            key={`${feedbackKind}-${hintChat.index}`}
                                             text={hintChat.text}
                                             anchor="head-right"
                                             className="whitespace-nowrap py-0.5 text-[11px] sm:text-xs leading-snug"
@@ -1272,7 +1736,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                         />
                                     )}
 
-                                    {isButtonHovered && !mascotAction && !isMascotHiding && !isEmailPeeking && !isHintVisible && (
+                                    {isButtonHovered && !mascotAction && !isMascotHiding && !isEmailPeeking && !isHintVisible && !isThemeChatVisible && (
                                         <MascotBubble
                                             key={hoverChat.index}
                                             text={hoverChat.text}
