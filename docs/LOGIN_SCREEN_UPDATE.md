@@ -3,7 +3,7 @@
 > **Nhánh thực hiện**: `feat/login-screen`  
 > **Thành phần chính**: `AuthDialog.tsx`  
 > **Tài nguyên đồ họa**: Thư mục ảnh `images_login`  
-> **Ngày cập nhật**: 18/11/2026  
+> **Ngày cập nhật**: 19/11/2026  
 > **Trạng thái**: Đã hoàn thiện, kiểm thử tự động đạt 214/214 tests, đóng gói build production sạch 0 lỗi.
 
 ---
@@ -17,8 +17,8 @@ Màn hình Đăng nhập (`AuthDialog.tsx`) là điểm chạm đầu tiên tron
    - Bảo toàn bán kính bo góc chuẩn hệ thống `rounded-[8px]` trên nút hành động, đồng bộ với các trường nhập liệu (`Input`), thẻ truyện (`PostCard`) và khung hộp thoại (`Dialog`).
 
 2. **Bổ sung tương tác sinh động (Micro-interactions)**:
-   - Tích hợp minh họa hình ảnh đôi bàn tay mèo bám góc nút bấm khi người dùng thực hiện thao tác Đăng nhập.
-   - Hoạt họa nảy lò xo (*Spring Easing*) với trình tự xuất hiện so le (*Staggered*) và chu trình tự động thu hồi đảo ngược mềm mại.
+   - Linh vật (`half_head_trimmed.png`) cùng đôi bàn tay mèo (`cat_two_paws.png`) ló lên từ sau nút Đăng nhập khi rê chuột.
+   - Nhập sai / để trống: linh vật **cộc đầu** vào ô Mật khẩu rồi thụt xuống. Nhập đúng: linh vật **ngửa đầu phá vỡ** lần lượt ô Mật khẩu và ô Email trước khi vào ứng dụng (chi tiết tại §4).
 
 3. **Tối ưu hóa đa thiết bị (Responsive Execution)**:
    - Tỉ lệ hiển thị cân đối hoàn hảo trên cả màn hình di động nhỏ hẹp (Mobile `< 640px`) và máy tính để bàn (Desktop `≥ 640px`).
@@ -53,122 +53,113 @@ Màn hình Đăng nhập (`AuthDialog.tsx`) là điểm chạm đầu tiên tron
 
 ---
 
-## 🐾 3. Kiến Trúc Minh Họa Đôi Bàn Tay Mèo (Cat Paws Architecture)
+## 🐾 3. Kiến Trúc Minh Họa Linh Vật & Đôi Bàn Tay (Mascot & Cat Paws Architecture)
 
 ### 3.1. Danh mục Tài nguyên Đồ họa
-* **`cat_foot.png` / `cat_foot_v2.png`**: Bộ ảnh gốc độ phân giải cao `1024x176` chứa đầy đủ 2 bàn chân mèo với đệm thịt hồng và viền nét sắc nét.
-* **`cat_paw_left.png`**:
-  * Độ phân giải: `190px x 255px`.
-  * Xoay góc: **75° ngược chiều kim đồng hồ (CCW)**.
-  * Vai trò: Mô phỏng bàn tay trái của chú mèo đang vươn từ bên sườn bám vào mép đứng bên trái nút.
-* **`cat_paw_top.png`**:
-  * Độ phân giải: `217px x 143px`.
-  * Hướng: Nằm ngang tự nhiên.
-  * Vai trò: Mô phỏng bàn tay phải vươn từ trên cao đặt lên mép ngang bên trên nút.
+* **`half_head.png` / `half_head_trimmed.png`**:
+  * Độ phân giải: `1476px x 811px` (tỉ lệ chuẩn `1.82:1`).
+  * Đặc điểm: Nửa trên khuôn mặt chú rồng/mèo lông trắng tai hồng, sừng đen, đôi mắt anime long lanh với mép đáy được cắt phẳng tuyệt đối để nhô lên từ phía dưới viền nút Đăng nhập.
+* **`cat_two_paws.png`**:
+  * Độ phân giải: `647px x 136px`.
+  * Trích xuất nguyên bản từ bộ ảnh gốc `cat_foot.png`, gồm đầy đủ 2 bàn tay mèo cân đối, đệm thịt hồng bám chặt trên mép trên nút.
+* **`cat_foot.png` / `cat_foot_v2.png`**: Bộ ảnh gốc độ phân giải cao `1024x176` chứa 2 bàn chân mèo.
 
 ### 3.2. Giải phẫu học Tọa độ Bám Viền (Anatomy & Positioning)
-Để tạo cảm giác hai bàn tay thuộc về cùng một chú mèo đang bám vào góc trên-bên trái của chiếc thẻ:
+Toàn bộ cụm nhân vật gồm Đầu (`half_head_trimmed.png`) và Đôi bàn tay (`cat_two_paws.png`) nằm tại **tâm ngang** của nút Đăng nhập:
 
 ```
-          [Bàn tay trên - cat_paw_top.png]
-          (Móc sâu 7-8px qua mép trên)
-                   vvvvvv
-           ╭───▼▼▼▼▼───────────────────────────────────────╮
- [Bàn tay  │                                               │
-  trái]    │                  ĐĂNG NHẬP                    │
-   ►►►     │                                               │
-(Móc sâu   ╰───────────────────────────────────────────────╯
- 7-8px qua
- mép trái)
+                            [Đầu Nhân Vật - half_head_trimmed.png]
+                                 (Nhô lên từ phía sau nút)
+                                      ╭────────────╮
+                                     (   ʘ      ʘ   )
+                          [Đôi Bàn Tay Mèo - cat_two_paws.png]
+                                ( ฅ              ฅ )
+           ╭───────────────────────────────────────────────────────╮
+           │                                                       │
+           │                       ĐĂNG NHẬP                       │
+           │                                                       │
+           ╰───────────────────────────────────────────────────────╯
 ```
 
 | Thành phần | Thuộc tính CSS (Mobile) | Thuộc tính CSS (Desktop `≥ 640px`) | Cơ chế hiển thị |
 | :--- | :--- | :--- | :--- |
-| **Bàn tay trái** (`cat_paw_left.png`) | `w-[22px] top-[1px] -left-[15px]` | `sm:w-[26px] sm:top-[2px] sm:-left-[18px]` | Bám cạnh đứng, móng vuốt và đệm phủ tràn 7–8px lên mặt nút. |
-| **Bàn tay trên** (`cat_paw_top.png`) | `w-[34px] -top-[15px] left-[10px]` | `sm:w-[40px] sm:-top-[18px] sm:left-[12px]` | Bám viền trên, móng vuốt quắp xuống 7–8px phủ lên viền nút. |
-
-* **Hiệu ứng chiều sâu**: Cả 2 bàn tay đều có lớp đổ bóng `drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]` với thứ tự hiển thị `z-10` đè lên mặt nút `Button`.
-* **Ngăn chặn cản trở tương tác**: Thuộc tính `pointer-events-none select-none` đảm bảo người dùng nhấp chuột vào vị trí bàn tay thì sự kiện click vẫn truyền xuyên thẳng xuống nút Đăng nhập bên dưới.
+| **Đầu nhân vật** (`half_head`) | `w-[130px] mx-auto` trong `.mascot-stage` (`bottom-full`) | `sm:w-[150px]` | Bị cắt tại mép trên nút, ló lên khi rê chuột, cộc đầu khi sai hoặc ngửa hết lên phá 2 ô input khi đúng. |
+| **Đôi bàn tay** (`cat_two_paws`) | `w-[110px] -top-[14px] left-1/2` | `sm:w-[130px] sm:-top-[16px]` | Móc sâu 9–11px qua mép trên, móng vuốt và đệm thịt hồng đặt tự nhiên trên viền nút. |
 
 ---
 
-## ⚡ 4. Kịch Bản Chuyển Động & Hoạt Họa (Animation & Timing)
+## ⚡ 4. Kịch Bản Chuyển Động & Hoạt Họa Vật Lý (Mascot Physical Dynamics)
 
-### 4.1. Đường cong Gia tốc (Spring Easing)
-Sử dụng hàm gia tốc lò xo vật lý:
-```css
-transition-all duration-300 ease-[cubic-bezier(0.34,1.56,0.64,1)]
-```
-Hàm số này giúp bàn tay khi vươn ra có độ nảy nhẹ (overshoot 156%) trước khi ổn định tại vị trí bám, tái hiện phản xạ tự nhiên của loài mèo.
+### 4.0. Sân khấu & Đo toạ độ động (`.mascot-stage`)
+* Đầu nhân vật nằm trong một "sân khấu" có đáy trùng **mép trên nút Đăng nhập**, chỉ bị cắt cạnh dưới (`clip-path: inset(-400px -400px 0 -400px)`) ⇒ đầu luôn trông như **trồi lên từ phía sau/dưới nút**, mép cắt phẳng của ảnh không bao giờ lộ ra.
+* `measureMascot()` đo khoảng cách thật (chia theo tỉ lệ scale của hộp thoại) và ghi vào biến CSS:
+  * `--mascot-hide`: vị trí ẩn hoàn toàn sau nút.
+  * `--mascot-peek`: ló sừng/tai, chừa khe ~8px dưới ô Mật khẩu.
+  * `--mascot-contact`: đỉnh đầu chạm đúng đáy ô Mật khẩu (trần).
+  * `--mascot-burst-scale`: hệ số phình để đỉnh đầu vượt qua đỉnh ô Email.
+* Đo lại khi mở hộp thoại, khi rê chuột vào nút, khi kích thước thay đổi (`ResizeObserver`) và ngay trước mỗi lần cộc/phá.
 
-### 4.2. Vòng đời Trình tự So le (Staggered Lifecycle)
+### 4.1. Trạng thái Thường / Rê Chuột (Idle & Hover Peeking)
+* Khi rê chuột vào vùng nút (hoặc đang gửi yêu cầu đăng nhập), đầu nhân vật ló sừng và tai lên khỏi mép nút cùng 2 bàn tay bám mép, nhưng **không chạm ô Mật khẩu**. Rê ra ngoài thì thụt xuống lại.
 
-```mermaid
-sequenceDiagram
-    autonumber
-    actor User as Người Dùng
-    participant UI as Giao Diện Nút Đăng Nhập
-    participant LeftPaw as Tay Trái (Bám Cạnh Trái)
-    participant TopPaw as Tay Trên (Bám Viền Trên)
-    participant Timer as Bộ Đếm Thời Gian (1600ms)
+### 4.2. Kịch Bản 1: Khi Nhập Sai Hoặc Để Trống (Head Bonk & Recoil) — `mascot-bonk` 0.75s
+1. Đầu trồi lên từ sau nút (`transform-origin: top` để đỉnh đầu được ghim vào trần).
+2. **CỘC!** tại mốc 38% (~285ms): đỉnh đầu chạm đúng đáy ô `Mật khẩu`; ô rung giật (`animate-field-bonked`) kèm 2 vệt rung `impact_wave_1/2.png` hai bên đỉnh đầu.
+3. Đầu bẹp lại (`scale(1.1, 0.86)`), bật xuống choáng, cố ngoi lần nữa nhưng không được.
+4. Nhún hẳn xuống, trốn sau nút; khi animation kết thúc trở về trạng thái thường (hover lại sẽ ló lên).
 
-    Note over LeftPaw,TopPaw: Trạng thái ban đầu: Ẩn (opacity-0 scale-75)
-    User->>UI: Bấm "Đăng nhập" hoặc nhấn phím Enter
-    UI->>LeftPaw: Kích hoạt tức thì (t = 0ms, delay-0)
-    Note over LeftPaw: Bật ra bám cạnh đứng bên trái
-    UI->>TopPaw: Kích hoạt so le (t = 150ms, delay-150)
-    Note over TopPaw: Bật xuống bám viền trên của nút
-    UI->>Timer: Khởi tạo đếm lùi 1600ms
-    Note over LeftPaw,TopPaw: Giữ trạng thái bám chắc trên nút
-    Timer-->>TopPaw: Hết 1600ms: Rút tay trên về trước (delay-0)
-    Note over TopPaw: Trượt lên trên & mờ dần
-    Timer-->>LeftPaw: Rút tay trái về sau (delay-150)
-    Note over LeftPaw: Trượt sang trái & mờ dần (t = 1750ms)
-    Note over LeftPaw,TopPaw: Trở về trạng thái ẩn ban đầu
-```
+### 4.3. Kịch Bản 2: Khi Nhập Đúng Mật Khẩu (Burst Through & Shatter Inputs) — `mascot-burst` 0.9s
+1. 0–36% (tuyến tính): đầu trồi thẳng lên khỏi nút, xuyên qua ô `Mật khẩu` ⇒ **ô Mật khẩu vỡ trước**.
+2. 36–60% (tuyến tính): đầu ngửa hết lên, phình to từ mép nút (`scale(--mascot-burst-scale × 1.06)`) vượt qua giữa ô `Email` ⇒ **ô Email vỡ sau**. Thời điểm vỡ từng ô được tính từ toạ độ đo được (hằng `MASCOT_BURST` trong `AuthDialog.tsx` phải khớp keyframes).
+3. Mỗi ô vỡ đôi (`BrokenInputWrapper`) kèm 2 mảnh vỡ `shard_1/2.png` văng ra từ vết nứt.
+4. Đầu dừng ở tư thế ngửa hết lên, sau 1.25s hộp thoại đóng và vào ứng dụng.
 
-### 4.3. Chi tiết các bước chuyển tiếp CSS
-
-1. **Trạng thái Ẩn (`pawsActive === false`)**:
-   * *Tay trái*: `opacity-0 -translate-x-3 sm:-translate-x-4 scale-75 delay-150`
-   * *Tay trên*: `opacity-0 -translate-y-3 sm:-translate-y-4 scale-75 delay-0`
-2. **Trạng thái Hiện (`pawsActive === true`)**:
-   * *Tay trái*: `opacity-100 translate-x-0 scale-100 delay-0`
-   * *Tay trên*: `opacity-100 translate-y-0 scale-100 delay-150`
-3. **Phản hồi khi Rê Chuột (Hover effect)**:
-   * Khi `pawsActive === true`, người dùng di chuột qua cụm nút:
-     * Tay trái rướn nhẹ sang trái: `group-hover:-translate-x-0.5`.
-     * Tay trên rướn nhẹ lên trên: `group-hover:-translate-y-0.5`.
-
-### 4.4. Xử lý Ngoại lệ & Quản lý Bộ nhớ (Lifecycle & Edge Cases)
-* **Tự động thu hồi khi lỗi**: Trong khối `catch` của `handleSubmit`, nếu API trả về lỗi xác thực, bàn tay được thiết lập thu hồi sau `800ms` (`setTimeout(() => setPawsActive(false), 800)`).
-* **Reset khi người dùng thao tác form**: Khi người dùng đóng modal hoặc gọi hàm `resetState()`, cờ `pawsActive` lập tức trở về `false` và `clearTimeout(pawsTimerRef.current)` được gọi để tránh rò rỉ bộ nhớ.
+### 4.4. Tài nguyên phụ
+* `shard_1.png`, `shard_2.png`: cắt sát (trim) từ `sfx_1.png`, `sfx_2.png`.
+* `impact_wave_1.png`, `impact_wave_2.png`: cắt sát từ `wave_1.png`, `wave_2.png`.
 
 ---
 
-## 📱 5. Bảng Thông Số Responsive Đa Thiết Bị
+## ⚡ 5. Cấu Trúc Khối Nứt & Góc Nghiêng Gãy Đôi (`BrokenInputWrapper`)
+
+```
+                        [Hiệu Ứng Gãy Đôi & Vết Nứt Tia Sét]
+             ╭──────────────────╮ ⚡ ╭──────────────────╮
+             │ ✉ Email hoặc tên │ ⚡ │      đăng nhập   │
+             ╰──────────────────╯ ⚡ ╰──────────────────╯
+               (Nghiêng -3.5° ↙)       (Nghiêng +3.5° ↘)
+```
+
+* **Nửa bên trái (`half-left`)**: Độ rộng 51%, xoay nghiêng `-3.5°` và thụt xuống `3.5px` (`origin-bottom-left`).
+* **Nửa bên phải (`half-right`)**: Độ rộng 51%, xoay nghiêng `+3.5°` và thụt xuống `4px` (`origin-bottom-right`).
+* **Vết nứt tia sét trung tâm**: Đường nét SVG hình zigzag đỏ phát sáng nối hai nửa gãy vỡ.
+* **Cơ chế tự chữa lành**: Khi focus hoặc gõ phím, hai nửa tự động khép lại nguyên vẹn với lò xo vật lý.
+
+---
+
+## 📱 6. Bảng Thông Số Responsive Đa Thiết Bị
 
 | Đặc tính / Phần tử | Mobile Viewport (< 640px) | Desktop Viewport (≥ 640px) |
 | :--- | :--- | :--- |
 | **Chiều cao Nút Đăng nhập** | `h-9` (36px) | `h-10` (40px) |
 | **Cỡ chữ Nút Đăng nhập** | `text-sm` (14px) | `text-sm` (14px) |
 | **Bán kính Bo góc Nút** | `rounded-[8px]` | `rounded-[8px]` |
-| **Độ rộng Tay Trái** | `w-[22px]` | `w-[26px]` |
-| **Tọa độ Tay Trái** | `top-[1px] -left-[15px]` | `top-[2px] -left-[18px]` |
-| **Độ dịch ẩn Tay Trái** | `-translate-x-3` (-12px) | `-translate-x-4` (-16px) |
-| **Độ rộng Tay Trên** | `w-[34px]` | `w-[40px]` |
-| **Tọa độ Tay Trên** | `-top-[15px] left-[10px]` | `-top-[18px] left-[12px]` |
-| **Độ dịch ẩn Tay Trên** | `-translate-y-3` (-12px) | `-translate-y-4` (-16px) |
+| **Độ rộng Đôi Bàn Tay** | `w-[110px]` | `sm:w-[130px]` |
+| **Tọa độ Đôi Bàn Tay** | `-top-[14px] left-1/2 -translate-x-1/2` | `sm:-top-[16px] left-1/2 -translate-x-1/2` |
+| **Độ dịch ẩn Bàn Tay** | `-translate-y-3.5 scale-90` | `-translate-y-3.5 scale-90` |
+| **Góc Nghiêng Gãy Input (Trái/Phải)** | `-3.5°` / `+3.5°` | `-3.5°` / `+3.5°` |
 | **Padding Khung Hộp Thoại** | `p-4` (16px) | `p-6` (24px) |
 | **Chiều cao Khung Tối Đa** | `max-h-[90vh]` | `max-h-[85vh]` |
 
 ---
 
-## 🛡️ 6. Tuân Thủ Quy Chuẩn Kiến Trúc & An Toàn
+## 🛡️ 7. Tuân Thủ Quy Chuẩn Kiến Trúc & An Toàn
 
-1. **Next.js 16.3.5 & React 19**:
+1. **Next.js 16.4.6 & React 19**:
    * Khai báo rõ ràng chỉ thị `'use client'` ở dòng đầu tiên của `AuthDialog.tsx`.
-   * Sử dụng component `Image` của Next.js với thuộc tính `priority` để tải trước hình ảnh bàn tay, loại bỏ độ trễ hiển thị (FOUC).
+   * Sử dụng component `Image` của Next.js với thuộc tính `priority` để tải trước ảnh linh vật và đôi bàn tay, loại bỏ độ trễ hiển thị (FOUC).
+   * Trạng thái linh vật được reset ngay trong lúc render khi đổi `mode` (không gọi `setState` trong effect), hẹn giờ còn treo được huỷ qua cleanup của effect.
+   * Mọi lớp hoạt họa mới đều bị tắt khi người dùng bật `prefers-reduced-motion`.
 2. **Quy tắc Routing & Middleware**:
    * Tuyệt đối không can thiệp hoặc tạo file `middleware.ts`, giữ nguyên cơ chế điều hướng proxy tại `src/proxy.ts`.
 3. **Bảo mật Đăng nhập**:
@@ -176,7 +167,7 @@ sequenceDiagram
 
 ---
 
-## 🧪 7. Nghiệm Thu & Kiểm Thử Hệ Thống
+## 🧪 8. Nghiệm Thu & Kiểm Thử Hệ Thống
 
 Tuân thủ nghiêm ngặt quy trình kiểm thử tại `TESTING_MONITORING.md`:
 
