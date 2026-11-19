@@ -291,33 +291,6 @@ function ImpactBurst({ side, className }: { side: 'left' | 'right'; className?: 
     );
 }
 
-/**
- * 100 câu chào ngẫu nhiên khi rê chuột vào nút Đăng nhập. Bong bóng này mọc sang phải từ đỉnh đầu nên
- * mỗi câu tối đa 13 ký tự để không tràn khung (kể cả trên điện thoại).
- */
-const HOVER_CHATS = [
-    'Hey!', 'Hello!', 'Chào nha!', 'Hí hí!', 'Ê ê!',
-    'Hế lô!', 'Yo!', 'Hi hi ^^', 'Bấm đi!', 'Bấm nè!',
-    'Vào thôi!', 'Đi nào!', 'Lẹ lên nè!', 'Chờ gì nữa?', 'Ơ kìa!',
-    'Ủa alo?', 'Alo alo!', 'Ping!', 'Boo!', 'Ú òa!',
-    'Bắt được rồi!', 'Hehe :3', 'Ngày đẹp ha!', 'Xin chào!', 'Nhớ bạn ghê!',
-    'Lâu quá ta!', 'Ê bạn ơi!', 'Bạn đó hả?', 'Tới rồi nè!', 'Nhấn vô đi!',
-    'Click đi!', 'Gâu... meo!', 'Meo meo!', 'Meo~', 'Rừ rừ...',
-    'Nhìn gì đó?', 'Gì dợ?', 'Hihi!', 'Ơ, bạn kìa!', 'Chơi không?',
-    'Đọc hông nè?', 'Chương mới nè', 'Hóng quá đi!', 'Cố lên!', 'Fighting!',
-    'Tuyệt vời!', 'Đỉnh nóc!', 'Xịn xò!', 'Quá dữ!', 'Oke la!',
-    "Let's go!", 'Go go go!', 'Vô đi bạn!', 'Bấm cái nhẹ~', 'Chọt mình hả?',
-    'Nhột quá!', 'Á, nhột!', 'Đừng chọt!', 'Hứ!', 'Hờn rồi nha!',
-    'Đùa thôi :D', 'Yêu bạn!', 'Thương ghê!', 'Cưng xỉu!', 'Dễ thương ha!',
-    'Bạn xinh ghê!', 'Hello bạn!', 'Mình ở đây!', 'Thấy mình hơm', 'Cúc cu!',
-    'Hù!', 'Bùm!', 'Tèn ten!', 'Ta-da!', 'Wow!',
-    'Ồ la la!', 'Ui da!', 'Ơ hay!', 'Ừm hửm?', 'Gì nè?',
-    'Sẵn sàng chưa', 'Lên đường!', 'Xuất phát!', 'Đi đọc thôi!', 'Có mình nè!',
-    'Khỏe hông?', 'Ăn cơm chưa?', 'Ngủ đủ chưa?', 'Uống nước đi!', 'Nghỉ xíu nha!',
-    'Đợi bạn mãi!', 'Tới rồi hả!', 'Hí lô!', 'Chào xìn xò!', 'Hú hú!',
-    'Kìa kìa!', 'Ghé chơi hả?', 'Quẹo lựa!', 'Ố dề!', 'Moshi moshi!',
-] as const;
-
 /** 70 câu nhân vật nói ngẫu nhiên khi người dùng đang nhập Email (tối đa 27 ký tự để vừa bong bóng trên điện thoại) */
 const EMAIL_CHATS = [
     'Bạn đang nhập Email à ?',
@@ -829,7 +802,6 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [isEmailFocused, setIsEmailFocused] = useState(false);
     // Đang gõ ô Mật khẩu: nhân vật trốn hẳn xuống (chỉ còn đôi tay) để không "nhìn trộm" mật khẩu
     const [isPasswordFocused, setIsPasswordFocused] = useState(false);
-    const [isButtonHovered, setIsButtonHovered] = useState(false);
     // Số lần đăng nhập sai liên tiếp (401) và cờ bị khoá tạm (429) => nhân vật gợi ý Quên mật khẩu / Đăng ký
     const [loginFailCount, setLoginFailCount] = useState(0);
     const [isLoginLocked, setIsLoginLocked] = useState(false);
@@ -845,8 +817,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     // Lần bấm Đăng nhập gần nhất bị chặn vì còn để trống ô (chưa gọi API)
     const [isEmptyAttempt, setIsEmptyAttempt] = useState(false);
     // Phản hồi sau mỗi lần đăng nhập thất bại: hiện khi nhân vật đã ló lên lại sau cú cộc và được ưu tiên hơn
-    // câu chào khi rê chuột (chuột thường vẫn nằm trên nút vừa bấm) lẫn các câu khi đang nhập (người dùng hay
-    // bấm Enter ngay trong ô Mật khẩu), cho tới khi người dùng gõ tiếp vào một ô.
+    // các câu khi đang nhập (người dùng hay bấm Enter ngay trong ô Mật khẩu), cho tới khi người dùng gõ tiếp vào một ô.
     //   để trống -> "empty" | sai lần đầu -> "wrong" | sai từ lần 2 -> gợi ý "forgot"/"register" | khoá tạm -> "locked"
     const feedbackKind: keyof typeof HINT_CHATS = isLoginLocked
         ? 'locked'
@@ -867,15 +838,14 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         mascotPeek &&
         !mascotAction &&
         !isThemeChatVisible;
-    // Câu chào lúc mở trang: nhường chỗ khi người dùng gõ / bấm vào ô (tắt hẳn câu chào), rê chuột hoặc đổi giao diện.
+    // Câu chào lúc mở trang: nhường chỗ khi người dùng gõ / bấm vào ô (tắt hẳn câu chào) hoặc đổi giao diện.
     // Hộp thoại tự đặt con trỏ vào ô Email lúc mở KHÔNG tính là "đang nhập", nên câu chào vẫn hiện.
     const isGreetingVisible =
         !!greetingChat &&
         mode === 'login' &&
         !mascotAction &&
         !isHintVisible &&
-        !isThemeChatVisible &&
-        !isButtonHovered;
+        !isThemeChatVisible;
     const isMascotHiding =
         !mascotAction &&
         !isHintVisible &&
@@ -893,10 +863,6 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const emailChat = useRotatingChat(EMAIL_CHATS, isEmailPeeking);
     const passwordChat = useRotatingChat(PASSWORD_CHATS, isMascotHiding);
     const hintChat = useRotatingChat(HINT_CHATS[feedbackKind], isHintVisible);
-    const hoverChat = useRotatingChat(
-        HOVER_CHATS,
-        isButtonHovered && !mascotAction && !isHintVisible && !isThemeChatVisible
-    );
 
     /** Bấm đổi giao diện: chờ hiệu ứng chuyển màu xong rồi nhân vật nói một câu ngẫu nhiên, tự tắt sau vài giây */
     const handleThemeToggle = (nextTheme: 'light' | 'dark') => {
@@ -1684,15 +1650,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     {mode !== 'pin' && (
                         <div
                             className="relative group @container"
-                            onPointerEnter={(event) => {
-                                if (mode !== 'login') return;
-                                measureMascot();
-                                // Chỉ chuột thật mới "rê" được; chạm trên điện thoại không bật bong bóng Hey!
-                                if (event.pointerType !== 'mouse') return;
-                                setIsButtonHovered(true);
-                                hoverChat.reroll();
+                            onPointerEnter={() => {
+                                if (mode === 'login') measureMascot();
                             }}
-                            onPointerLeave={() => setIsButtonHovered(false)}
                         >
                             {mode === 'login' && (
                                 <>
@@ -1790,15 +1750,6 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                             anchor="head-right"
                                             className="whitespace-nowrap py-0.5 text-[11px] sm:text-xs leading-snug"
                                             style={{ bottom: `calc(100% + ${Math.max(mascotMetrics.hide - 6 - mascotMetrics.peek + 10, 18)}px)` }}
-                                        />
-                                    )}
-
-                                    {isButtonHovered && !mascotAction && !isMascotHiding && !isEmailPeeking && !isHintVisible && !isThemeChatVisible && (
-                                        <MascotBubble
-                                            key={hoverChat.index}
-                                            text={hoverChat.text}
-                                            className="ml-[34px] sm:ml-[40px] whitespace-nowrap text-xs sm:text-sm tracking-wide"
-                                            style={{ bottom: `calc(100% + ${Math.max(mascotMetrics.hide - 6 - mascotMetrics.peek - 6, 10)}px)` }}
                                         />
                                     )}
 

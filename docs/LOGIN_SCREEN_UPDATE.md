@@ -120,7 +120,7 @@ Toàn bộ cụm nhân vật gồm Đầu (`half_head_2_trimmed.png`) và Đôi 
 | Tình huống | Nhân vật | Bong bóng thoại (`MascotBubble`) |
 | :--- | :--- | :--- |
 | **Vừa mở trang đăng nhập** (sau khi màn hình chờ tắt, `usePreloader().isPreloading === false`) | Ló lên sau 0.9s, tự tắt sau 5.5s (`GREETING_CHAT`) | 1 trong **100 câu chào** `GREETING_CHATS` kèm giới thiệu hôm nay: chỗ trống `{thu}`/`{Thu}` (thứ), `{ngay}` (dd/mm), `{buoi}` (sáng/trưa/chiều/tối) điền theo giờ máy người dùng (`buildGreeting`). Vd: "Chào bạn! Hôm nay thứ Năm nè", "Buổi chiều thứ Năm, đọc ha?". Trường hợp dài nhất ≤ 32 ký tự |
-| Rê chuột vào nút Đăng nhập (chỉ chuột thật) | Ló sừng/tai, đôi tay bám mép | 1 trong **100 câu chào** `HOVER_CHATS` ("Hey!", "Ú òa!"...), mọc sang phải từ đỉnh đầu, ≤ 13 ký tự |
+| Rê chuột vào nút Đăng nhập (trên máy tính) | Đôi tay mèo bám mép nút (`group-hover`) | Không hiện bong bóng thoại (đã loại bỏ theo yêu cầu trải nghiệm) |
 | Đang gõ ô **Email** | Ló lên xem, đôi tay bám mép | 1 trong **70 câu** `EMAIL_CHATS` (≤ 27 ký tự), canh mép phải khung, ngay trên góc phải đầu |
 | Đang gõ ô **Mật khẩu** (kể cả Tab sang nút hiện/ẩn) | **Trốn hẳn**, chỉ còn đôi tay | 1 trong **70 câu** `PASSWORD_CHATS` (≤ 31 ký tự), căn giữa trục đôi tay (điện thoại: canh trái), đuôi chỉ xuống bàn tay trái |
 | Sau một lần cộc đầu | Trốn 600ms rồi tự ló lên, không cần rê chuột | — |
