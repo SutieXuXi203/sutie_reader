@@ -972,6 +972,81 @@ html.lenis body {
   }
 }
 
+/* Đang nhập mật khẩu: trốn hẳn sau nút kể cả khi rê chuột (chỉ còn đôi tay bám mép) */
+.group:hover .mascot-head-idle.mascot-head-hiding,
+.mascot-head-idle.mascot-head-hiding {
+  transform: translateY(var(--mascot-hide, 100%));
+}
+
+/* Bong bóng thoại của nhân vật: bật nảy ra từ phía nhân vật ngay khi được dựng, rồi chữ được gõ dần */
+@keyframes mascot-bubble-pop {
+  0% { opacity: 0; transform: translateY(8px) scale(0.5) rotate(-6deg); }
+  60% { opacity: 1; }
+  100% { opacity: 1; transform: translateY(0) scale(1) rotate(0deg); }
+}
+
+.mascot-bubble {
+  transform-origin: 12px 120%;
+  animation: mascot-bubble-pop 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) both;
+}
+
+/* Bật ra từ chỗ đuôi chỉ vào nhân vật */
+.mascot-bubble.mascot-bubble-paws {
+  transform-origin: calc(50cqw - 28px) 130%;
+}
+
+@media (min-width: 640px) {
+  .mascot-bubble.mascot-bubble-paws {
+    transform-origin: calc(50% - 33px) 130%;
+  }
+}
+
+.mascot-bubble.mascot-bubble-head-right {
+  transform-origin: 18px 130%;
+}
+
+/* Link được nhân vật gợi ý (Quên mật khẩu? / Đăng ký ngay): nảy nhẹ và đổi màu cam để người dùng thấy ngay */
+@keyframes mascot-hint-pulse {
+  0%, 100% { transform: scale(1); color: inherit; }
+  50% { transform: scale(1.06); color: #f59e0b; }
+}
+
+.mascot-hint-pulse {
+  display: inline-block;
+  /* Phóng to từ mép phải để link nằm sát mép khung không bị lấn ra ngoài */
+  transform-origin: 100% 50%;
+  text-decoration: underline;
+  text-decoration-color: #f59e0b;
+  text-underline-offset: 3px;
+  animation: mascot-hint-pulse 1.1s ease-in-out infinite;
+}
+
+/* Con trỏ gõ chữ: nhấp nháy trong lúc gõ, tắt hẳn sau khi gõ xong một nhịp */
+@keyframes mascot-caret-blink {
+  0%, 45% { opacity: 1; }
+  50%, 95% { opacity: 0; }
+  100% { opacity: 1; }
+}
+
+@keyframes mascot-caret-off {
+  0%, 70% { opacity: 1; }
+  100% { opacity: 0; }
+}
+
+.mascot-caret {
+  display: inline-block;
+  width: 1.5px;
+  height: 1em;
+  margin-left: 1px;
+  vertical-align: -0.12em;
+  background: currentColor;
+  animation: mascot-caret-blink 0.7s steps(1) infinite;
+}
+
+.mascot-caret.mascot-caret-done {
+  animation: mascot-caret-off 0.9s ease-out forwards;
+}
+
 /*
  * Nhập sai / để trống: lao lên nhanh dần (tăng tốc), CỘC mạnh đỉnh đầu vào đáy ô Mật khẩu, bẹp đầu,
  * bật ngược xuống choáng váng rồi nhún hẳn xuống trốn sau nút. Va chạm ở mốc 30% (khớp MASCOT_BONK).
@@ -1177,6 +1252,9 @@ html.lenis body {
   .animate-mascot-bonk,
   .animate-mascot-burst,
   .animate-paws-brace,
+  .mascot-bubble,
+  .mascot-hint-pulse,
+  .mascot-caret,
   .animate-field-bonked,
   .animate-field-aftershock,
   .animate-impact-pop,

@@ -102,8 +102,20 @@ Toàn bộ cụm nhân vật gồm Đầu (`half_head_2_trimmed.png`) và Đôi 
   * `--mascot-contact`: đỉnh đầu chạm đúng đáy ô Mật khẩu (trần).
 * Đo lại khi mở hộp thoại, khi rê chuột vào nút, khi kích thước thay đổi (`ResizeObserver`) và ngay trước mỗi lần cộc/phá.
 
-### 4.1. Trạng thái Thường / Rê Chuột (Idle & Hover Peeking)
-* Khi rê chuột vào vùng nút (hoặc đang gửi yêu cầu đăng nhập), đầu nhân vật ló sừng và tai lên khỏi mép nút cùng 2 bàn tay bám mép, nhưng **không chạm ô Mật khẩu**. Rê ra ngoài thì thụt xuống lại. Riêng sau một lần cộc đầu, đầu tự ló lên và giữ nguyên (xem §4.2).
+### 4.1. Trạng thái Thường, Rê Chuột & Bong Bóng Thoại (Idle, Hover, Typing & Speech Bubbles)
+| Tình huống | Nhân vật | Bong bóng thoại (`MascotBubble`) |
+| :--- | :--- | :--- |
+| Rê chuột vào nút Đăng nhập (chỉ chuột thật) | Ló sừng/tai, đôi tay bám mép | 1 trong **100 câu chào** `HOVER_CHATS` ("Hey!", "Ú òa!"...), mọc sang phải từ đỉnh đầu, ≤ 13 ký tự |
+| Đang gõ ô **Email** | Ló lên xem, đôi tay bám mép | 1 trong **20 câu** `EMAIL_CHATS`, canh mép phải khung, ngay trên góc phải đầu |
+| Đang gõ ô **Mật khẩu** (kể cả Tab sang nút hiện/ẩn) | **Trốn hẳn**, chỉ còn đôi tay | 1 trong **20 câu** `PASSWORD_CHATS`, căn giữa trục đôi tay (điện thoại: canh trái), đuôi chỉ xuống bàn tay trái |
+| Sau một lần cộc đầu | Trốn 600ms rồi tự ló lên, không cần rê chuột | — |
+| Đăng nhập **sai từ lần thứ 2** (401) hoặc **bị khoá tạm** (429) | Ló lên sau cú cộc, kể cả khi vẫn focus ô Mật khẩu (bấm Enter) | Câu gợi ý `HINT_CHATS` luân phiên nhóm **Quên mật khẩu** / **Đăng ký**, link tương ứng nhấp nháy cam (`mascot-hint-pulse`). Tắt khi người dùng gõ tiếp vào một ô. Khoá tạm: chỉ gợi ý chờ / Quên mật khẩu |
+
+* **Câu ngẫu nhiên** (`useRotatingChat`): mỗi lần bấm vào ô / rê vào nút bốc một câu mới (không lặp câu vừa nói); nếu vẫn đang nhập thì cứ 4.5s (`CHAT_ROTATE_MS`) đổi câu khác.
+* **Gõ chữ** (`TypewriterText`): bong bóng bật nảy ra (`mascot-bubble-pop`), chữ hiện dần 38ms/ký tự kèm con trỏ nhấp nháy (`mascot-caret`). Bề rộng giữ sẵn bằng bản chữ vô hình nên bong bóng không giãn khi gõ. `prefers-reduced-motion`: hiện đủ câu ngay.
+* **Không bao giờ tràn khung / đè "Quên mật khẩu?"**: đã đo đủ 140 câu ở khổ máy tính và 375px. Đuôi bong bóng có miếng nền trắng phủ viền đáy nên liền khối. Bong bóng mật khẩu dùng `@container` + `cqw` để đuôi chỉ đúng bàn tay trái khi canh trái trên điện thoại.
+* **Vì sao không phân biệt "sai mật khẩu" và "không có tài khoản"**: API cố ý trả cùng lỗi 401 (và băm mật khẩu giả để thời gian phản hồi như nhau) nhằm chống dò tài khoản theo `SECURITY_RULES.md`. Giao diện không được thêm cách nào để phân biệt, nên nhân vật gợi ý luân phiên cả hai hướng.
+* Trạng thái cộc đầu được giải phóng bằng hẹn giờ (`MASCOT_BONK.durationMs`) thay vì `animationend`, để nhân vật không bị kẹt (và bong bóng không bị khoá) khi trình duyệt không phát sự kiện đó.
 
 ### 4.2. Kịch Bản 1: Khi Nhập Sai Hoặc Để Trống (Head Bonk & Recoil) — `mascot-bonk` 0.8s
 1. Đầu lao lên **nhanh dần** từ sau nút (`transform-origin: top` để đỉnh đầu được ghim vào trần), thân đầu hơi kéo dài vì tốc độ.

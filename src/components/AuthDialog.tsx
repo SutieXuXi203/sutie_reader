@@ -44,7 +44,7 @@ const MASCOT_BURST = { riseStartMs: 352, riseMs: 132, topImpactMs: 60 };
 const MASCOT_BURST_HOLD_MS = 1450;
 
 /** Phải khớp keyframes mascot-bonk (0.8s, va chạm ở 30%) và field-bonked (0.5s) trong globals.css */
-const MASCOT_BONK = { impactMs: 240, shakeMs: 520 };
+const MASCOT_BONK = { impactMs: 240, shakeMs: 520, durationMs: 800 };
 
 /** Thời gian đầu nhân vật trốn hẳn sau nút sau khi cộc đầu, trước khi tự ló lên lại */
 const MASCOT_REAPPEAR_DELAY_MS = 600;
@@ -205,6 +205,226 @@ function ImpactBurst({ side, className }: { side: 'left' | 'right'; className?: 
     );
 }
 
+/**
+ * 100 câu chào ngẫu nhiên khi rê chuột vào nút Đăng nhập. Bong bóng này mọc sang phải từ đỉnh đầu nên
+ * mỗi câu tối đa 13 ký tự để không tràn khung (kể cả trên điện thoại).
+ */
+const HOVER_CHATS = [
+    'Hey!', 'Hello!', 'Chào nha!', 'Hí hí!', 'Ê ê!',
+    'Hế lô!', 'Yo!', 'Hi hi ^^', 'Bấm đi!', 'Bấm nè!',
+    'Vào thôi!', 'Đi nào!', 'Lẹ lên nè!', 'Chờ gì nữa?', 'Ơ kìa!',
+    'Ủa alo?', 'Alo alo!', 'Ping!', 'Boo!', 'Ú òa!',
+    'Bắt được rồi!', 'Hehe :3', 'Ngày đẹp ha!', 'Xin chào!', 'Nhớ bạn ghê!',
+    'Lâu quá ta!', 'Ê bạn ơi!', 'Bạn đó hả?', 'Tới rồi nè!', 'Nhấn vô đi!',
+    'Click đi!', 'Gâu... meo!', 'Meo meo!', 'Meo~', 'Rừ rừ...',
+    'Nhìn gì đó?', 'Gì dợ?', 'Hihi!', 'Ơ, bạn kìa!', 'Chơi không?',
+    'Đọc hông nè?', 'Chương mới nè', 'Hóng quá đi!', 'Cố lên!', 'Fighting!',
+    'Tuyệt vời!', 'Đỉnh nóc!', 'Xịn xò!', 'Quá dữ!', 'Oke la!',
+    "Let's go!", 'Go go go!', 'Vô đi bạn!', 'Bấm cái nhẹ~', 'Chọt mình hả?',
+    'Nhột quá!', 'Á, nhột!', 'Đừng chọt!', 'Hứ!', 'Hờn rồi nha!',
+    'Đùa thôi :D', 'Yêu bạn!', 'Thương ghê!', 'Cưng xỉu!', 'Dễ thương ha!',
+    'Bạn xinh ghê!', 'Hello bạn!', 'Mình ở đây!', 'Thấy mình hơm', 'Cúc cu!',
+    'Hù!', 'Bùm!', 'Tèn ten!', 'Ta-da!', 'Wow!',
+    'Ồ la la!', 'Ui da!', 'Ơ hay!', 'Ừm hửm?', 'Gì nè?',
+    'Sẵn sàng chưa', 'Lên đường!', 'Xuất phát!', 'Đi đọc thôi!', 'Có mình nè!',
+    'Khỏe hông?', 'Ăn cơm chưa?', 'Ngủ đủ chưa?', 'Uống nước đi!', 'Nghỉ xíu nha!',
+    'Đợi bạn mãi!', 'Tới rồi hả!', 'Hí lô!', 'Chào xìn xò!', 'Hú hú!',
+    'Kìa kìa!', 'Ghé chơi hả?', 'Quẹo lựa!', 'Ố dề!', 'Moshi moshi!',
+] as const;
+
+/** 20 câu nhân vật nói ngẫu nhiên khi người dùng đang nhập Email (giữ ngắn để vừa bong bóng trên điện thoại) */
+const EMAIL_CHATS = [
+    'Bạn đang nhập Email à ?',
+    'Email đẹp ghê đó nha!',
+    'Gõ từ từ thôi, mình đợi ^^',
+    'Nhớ gõ đúng chính tả nha~',
+    'Có chữ @ chưa đó bạn?',
+    'Mình đang nhìn nè :3',
+    'Hôm nay đọc truyện gì đây?',
+    'Ủa, gõ nhanh dữ vậy!',
+    'Email này nghe quen quen...',
+    'Cố lên, sắp xong rồi!',
+    'Mình hóng bạn vào lắm đó',
+    'Xong rồi nhập mật khẩu nha',
+    'Bạn gõ phím êm ghê ^^',
+    'Chương mới ra rồi đó!',
+    'Đừng gõ nhầm .con nha :v',
+    'Hehe, mình thấy hết rồi',
+    'Tên đăng nhập cũng được nha',
+    'Bạn quay lại rồi! Vui quá',
+    'Từ từ, mình chưa đọc kịp',
+    'Nhập xong là vào đọc liền!',
+] as const;
+
+/** 20 câu nhân vật nói ngẫu nhiên khi người dùng đang nhập Mật khẩu (nhân vật đang trốn, không nhìn trộm) */
+const PASSWORD_CHATS = [
+    'Bạn nhập đi mình trốn đây !! :3',
+    'Mình nhắm mắt rồi nè, gõ đi~',
+    'Không nhìn đâu, thề đó!',
+    'Mình trốn kỹ lắm rồi nha',
+    'Mật khẩu là bí mật nha ^^',
+    'Gõ đi, mình bịt mắt rồi',
+    'Tay mình che mắt rồi nè :3',
+    'Nhớ đừng dùng 123456 nha',
+    'Có chữ hoa chưa đó bạn?',
+    'Suỵt... mình không thấy gì',
+    'Mình đếm tới 10 rồi ra nha',
+    'Đừng để ai nhìn trộm nha!',
+    'Gõ xong gọi mình dậy nha',
+    'Mình ngủ một xíu đây zzz',
+    'Mật khẩu mạnh là đỉnh nhất!',
+    'Bạn nhớ mật khẩu chứ hả?',
+    'Mình trốn sau nút nè hihi',
+    'Gõ cẩn thận kẻo sai nha~',
+    'Xong là vào đọc truyện liền!',
+    'Không nhìn, không nhìn :3',
+] as const;
+
+/**
+ * Gợi ý khi đăng nhập sai nhiều lần. API cố ý trả cùng một lỗi 401 cho "sai mật khẩu" và "không có tài khoản"
+ * (chống dò tài khoản - SECURITY_RULES), nên nhân vật gợi ý luân phiên cả hai hướng và làm nhấp nháy link tương ứng.
+ */
+const HINT_CHATS = {
+    forgot: [
+        'Quên mật khẩu rồi hả bạn?',
+        'Thử "Quên mật khẩu?" xem nha',
+        'Sai hoài, lấy lại mật khẩu đi~',
+        'Kiểm tra Caps Lock giúp mình nha',
+        'Mật khẩu khó nhớ ghê ha :<',
+    ],
+    register: [
+        'Bạn có tài khoản chưa nhỉ?',
+        'Chưa có tài khoản? Đăng ký nè!',
+        'Đăng ký ngay, mình đợi nè ^^',
+        'Email này đăng ký chưa ta?',
+        'Tạo tài khoản mới đi bạn ơi',
+    ],
+    /** Bị khoá tạm vì sai quá nhiều (429): chỉ gợi ý chờ hoặc lấy lại mật khẩu */
+    locked: [
+        'Khoá tạm rồi, nghỉ xíu nha :<',
+        'Hay bấm "Quên mật khẩu?" nhé',
+        'Đợi chút rồi thử lại nha bạn',
+    ],
+} as const;
+
+/** Từ lần sai thứ mấy (liên tiếp) thì nhân vật bắt đầu gợi ý */
+const HINT_AFTER_FAILS = 2;
+
+/** Đang nhập lâu thì cứ mỗi khoảng này nhân vật đổi sang câu khác */
+const CHAT_ROTATE_MS = 4500;
+
+/** Bốc ngẫu nhiên một câu khác câu vừa nói */
+const pickChat = (count: number, previous: number) => {
+    const next = Math.floor(Math.random() * (count - 1));
+    return next >= previous ? next + 1 : next;
+};
+
+/**
+ * Câu thoại ngẫu nhiên cho một ô nhập: reroll() bốc câu mới (gọi khi người dùng bấm vào ô),
+ * và trong lúc active thì tự đổi câu sau mỗi CHAT_ROTATE_MS.
+ */
+function useRotatingChat(lines: readonly string[], active: boolean) {
+    const [index, setIndex] = useState(0);
+    const reroll = () => setIndex((current) => pickChat(lines.length, current));
+
+    useEffect(() => {
+        if (!active) return;
+        const timer = setInterval(() => setIndex((current) => pickChat(lines.length, current)), CHAT_ROTATE_MS);
+        return () => clearInterval(timer);
+    }, [active, lines.length]);
+
+    return { index, text: lines[index % lines.length], reroll };
+}
+
+/** Tốc độ gõ chữ trong bong bóng thoại (ms/ký tự) và độ trễ trước ký tự đầu (chờ bong bóng bật ra) */
+const TYPEWRITER = { charMs: 38, startDelayMs: 140 };
+
+/**
+ * Chữ hiện dần như đang gõ, kèm con trỏ nhấp nháy. Giữ sẵn bề rộng của cả câu (bản vô hình) để bong bóng
+ * không giãn ra trong lúc gõ. Mỗi lần bong bóng được dựng lại thì gõ lại từ đầu.
+ * prefers-reduced-motion: hiện đủ câu ngay.
+ */
+function TypewriterText({ text }: { text: string }) {
+    const chars = Array.from(text);
+    const [count, setCount] = useState(() =>
+        typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches ? chars.length : 0
+    );
+    const isDone = count >= chars.length;
+
+    useEffect(() => {
+        if (isDone) return;
+        const timer = setTimeout(
+            () => setCount((current) => current + 1),
+            count === 0 ? TYPEWRITER.startDelayMs : TYPEWRITER.charMs
+        );
+        return () => clearTimeout(timer);
+    }, [count, isDone]);
+
+    return (
+        <span className="relative inline-block">
+            <span className="invisible">{text}</span>
+            <span className="absolute inset-0">
+                {chars.slice(0, count).join('')}
+                <span className={cn("mascot-caret", isDone && "mascot-caret-done")} />
+            </span>
+        </span>
+    );
+}
+
+/**
+ * Bong bóng thoại của nhân vật (kiểu truyện tranh: nền trắng, viền đen, bóng đổ cứng), đuôi chỉ về nhân vật.
+ * Bong bóng chỉ được dựng khi cần hiện: bật nảy ra rồi gõ chữ.
+ * anchor:
+ *  - 'head': mọc sang phải từ đỉnh đầu (câu ngắn, vd "Hey!").
+ *  - 'head-right': canh mép phải khung, ngay trên góc phải đầu đang ló (không che mặt nhân vật).
+ *  - 'paws': căn giữa đúng trục đôi tay (điện thoại: canh trái), đuôi chỉ xuống bàn tay trái (lúc đầu đang trốn).
+ *    Cần khối cha là container (@container) vì đuôi được đặt theo đơn vị cqw.
+ */
+function MascotBubble({
+    text,
+    anchor = 'head',
+    className,
+    style,
+}: {
+    text: string;
+    anchor?: 'head' | 'head-right' | 'paws';
+    className?: string;
+    style?: React.CSSProperties;
+}) {
+    return (
+        <div
+            role="status"
+            className={cn(
+                "mascot-bubble absolute z-30 pointer-events-none select-none",
+                "rounded-2xl border-2 border-neutral-900 bg-white px-3 py-1 font-extrabold text-neutral-900 shadow-[2px_3px_0_rgba(0,0,0,0.85)]",
+                anchor === 'head' && "left-1/2",
+                anchor === 'head-right' && "mascot-bubble-head-right right-0",
+                // Điện thoại: canh trái để không đè "Quên mật khẩu?"; từ sm: căn giữa đúng trục đôi tay
+                // Điện thoại: bề rộng tối thiểu phủ qua bàn tay trái để câu ngắn vẫn chứa trọn đuôi
+                anchor === 'paws' &&
+                    "mascot-bubble-paws left-0 min-w-[calc(50cqw-4px)] text-center sm:left-1/2 sm:min-w-0 sm:-translate-x-1/2",
+                className
+            )}
+            style={style}
+        >
+            <TypewriterText text={text} />
+            {/* Đuôi bong bóng: miếng nền trắng phủ lên đoạn viền đáy để đuôi liền với bong bóng (không có gạch ngang) */}
+            <svg
+                aria-hidden
+                className={cn(
+                    "absolute -bottom-[11px] w-[14px] h-[12px] overflow-visible",
+                    // Điện thoại (bong bóng canh trái): 50cqw = tâm khối nút. Từ sm (bong bóng căn giữa): 50% = tâm bong bóng = tâm khối nút
+                    anchor === 'paws' ? "left-[calc(50cqw-31px)] sm:left-[calc(50%-36px)]" : "left-[10px]"
+                )}
+                viewBox="0 0 14 12"
+            >
+                <path d="M1.2 -2.2 H12.8 V0.4 L3 11 L1.2 0.4 Z" className="fill-white" />
+                <path d="M1 0 L3 11 L13 0" fill="none" className="stroke-neutral-900" strokeWidth="2" strokeLinejoin="round" strokeLinecap="round" />
+            </svg>
+        </div>
+    );
+}
+
 interface AuthUser {
     id: string;
     email: string;
@@ -253,6 +473,37 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [mascotAction, setMascotAction] = useState<'bonk' | 'burst' | null>(null);
     // Sau khi cộc đầu: thụt xuống biến mất rồi tự ló lên lại (không cần rê chuột) cho tới lần tương tác sau
     const [mascotPeek, setMascotPeek] = useState(false);
+    // Đang gõ ô Email: nhân vật ló lên xem cùng đôi tay bám mép nút
+    const [isEmailFocused, setIsEmailFocused] = useState(false);
+    // Đang gõ ô Mật khẩu: nhân vật trốn hẳn xuống (chỉ còn đôi tay) để không "nhìn trộm" mật khẩu
+    const [isPasswordFocused, setIsPasswordFocused] = useState(false);
+    const [isButtonHovered, setIsButtonHovered] = useState(false);
+    // Số lần đăng nhập sai liên tiếp (401) và cờ bị khoá tạm (429) => nhân vật gợi ý Quên mật khẩu / Đăng ký
+    const [loginFailCount, setLoginFailCount] = useState(0);
+    const [isLoginLocked, setIsLoginLocked] = useState(false);
+    const [isHintDismissed, setIsHintDismissed] = useState(false);
+    // Gợi ý sau khi sai nhiều lần: hiện khi nhân vật đã ló lên lại sau cú cộc, ưu tiên hơn các câu khi đang nhập
+    // (người dùng hay bấm Enter ngay trong ô Mật khẩu) cho tới khi người dùng gõ tiếp vào một ô.
+    const hintTarget: 'forgot' | 'register' =
+        isLoginLocked || loginFailCount % 2 === 0 ? 'forgot' : 'register';
+    const isHintVisible =
+        mode === 'login' &&
+        (isLoginLocked || loginFailCount >= HINT_AFTER_FAILS) &&
+        !isHintDismissed &&
+        mascotPeek &&
+        !mascotAction;
+    const isMascotHiding = !mascotAction && !isHintVisible && isPasswordFocused && mode === 'login';
+    const isMascotPeeking =
+        !mascotAction && !isMascotHiding && (pawsActive || mascotPeek || (isEmailFocused && mode === 'login'));
+    const isEmailPeeking = !mascotAction && !isHintVisible && isEmailFocused && mode === 'login';
+    // Đang nhập Email / Mật khẩu: nhân vật nói câu ngẫu nhiên và đổi câu sau vài giây
+    const emailChat = useRotatingChat(EMAIL_CHATS, isEmailPeeking);
+    const passwordChat = useRotatingChat(PASSWORD_CHATS, isMascotHiding);
+    const hintChat = useRotatingChat(
+        isLoginLocked ? HINT_CHATS.locked : HINT_CHATS[hintTarget],
+        isHintVisible
+    );
+    const hoverChat = useRotatingChat(HOVER_CHATS, isButtonHovered && !mascotAction && !isHintVisible);
     // Tăng mỗi lần kích hoạt để remount đầu nhân vật => animation CSS luôn chạy lại từ đầu
     const [mascotRun, setMascotRun] = useState(0);
     const [mascotMetrics, setMascotMetrics] = useState<MascotMetrics>(DEFAULT_MASCOT_METRICS);
@@ -337,6 +588,10 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         // Mốc va chạm trùng keyframe 30% của animation mascot-bonk (0.8s)
         scheduleMascot(() => setIsPasswordBonked(true), MASCOT_BONK.impactMs);
         scheduleMascot(() => setIsPasswordBonked(false), MASCOT_BONK.impactMs + MASCOT_BONK.shakeMs);
+        // Hết cú cộc (đầu đã trốn hẳn sau nút) => chờ một nhịp rồi tự ló lên lại.
+        // Dùng hẹn giờ thay vì animationend để không bị kẹt khi trình duyệt không phát sự kiện đó.
+        scheduleMascot(() => setMascotAction(null), MASCOT_BONK.durationMs);
+        scheduleMascot(() => setMascotPeek(true), MASCOT_BONK.durationMs + MASCOT_REAPPEAR_DELAY_MS);
     };
 
     const triggerHeadBurst = () => {
@@ -375,6 +630,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     };
 
     const resetState = () => {
+        setLoginFailCount(0);
+        setIsLoginLocked(false);
+        setIsHintDismissed(false);
         if (pawsTimerRef.current) {
             clearTimeout(pawsTimerRef.current);
             pawsTimerRef.current = null;
@@ -548,6 +806,12 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             const message = getErrorMessage(apiError);
             if (mode === 'login') {
                 triggerHeadBonk();
+                if (apiError.status === 401 || apiError.status === 429) {
+                    if (apiError.status === 401) setLoginFailCount((count) => count + 1);
+                    else setIsLoginLocked(true);
+                    setIsHintDismissed(false);
+                    hintChat.reroll();
+                }
             }
             if (apiError.status === 403) {
                 notify.warning(
@@ -658,9 +922,15 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 type="text"
                                 placeholder="Email hoặc tên đăng nhập"
                                 value={email}
-                                onFocus={healFields}
+                                onFocus={() => {
+                                    healFields();
+                                    setIsEmailFocused(true);
+                                    emailChat.reroll();
+                                }}
+                                onBlur={() => setIsEmailFocused(false)}
                                 onChange={(e) => {
                                     setEmail(e.target.value);
+                                    setIsHintDismissed(true);
                                     healFields();
                                     if (pawsActive) setPawsActive(false);
                                 }}
@@ -690,10 +960,16 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     type={showPassword && password.length > 0 ? 'text' : 'password'}
                                     placeholder="Mật khẩu"
                                     value={password}
-                                    onFocus={healFields}
+                                    onFocus={() => {
+                                        healFields();
+                                        setIsPasswordFocused(true);
+                                        passwordChat.reroll();
+                                    }}
+                                    onBlur={() => setIsPasswordFocused(false)}
                                     onChange={(e) => {
                                         const nextPassword = e.target.value;
                                         setPassword(nextPassword);
+                                        setIsHintDismissed(true);
                                         if (!nextPassword) setShowPassword(false);
                                         healFields();
                                         if (pawsActive) setPawsActive(false);
@@ -709,6 +985,9 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                         type="button"
                                         onClick={() => setShowPassword((current) => !current)}
                                         onMouseDown={(event) => event.preventDefault()}
+                                        // Tab sang nút hiện/ẩn mật khẩu vẫn tính là đang nhập mật khẩu => nhân vật tiếp tục trốn
+                                        onFocus={() => setIsPasswordFocused(true)}
+                                        onBlur={() => setIsPasswordFocused(false)}
                                         className="absolute right-2 top-1/2 flex h-7 w-7 -translate-y-1/2 items-center justify-center rounded-[8px] text-neutral-400 transition-colors hover:bg-secondary hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/50"
                                         aria-label={showPassword ? 'Ẩn mật khẩu' : 'Hiện mật khẩu'}
                                         aria-pressed={showPassword}
@@ -899,7 +1178,10 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                             <button
                                 type="button"
                                 onClick={() => switchMode('forgot-password')}
-                                className="text-xs text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors"
+                                className={cn(
+                                    "text-xs text-neutral-600 dark:text-neutral-300 hover:text-primary dark:hover:text-primary transition-colors",
+                                    isHintVisible && hintTarget === 'forgot' && "mascot-hint-pulse"
+                                )}
                             >
                                 Quên mật khẩu?
                             </button>
@@ -914,7 +1196,18 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     )}
 
                     {mode !== 'pin' && (
-                        <div className="relative group" onPointerEnter={mode === 'login' ? () => measureMascot() : undefined}>
+                        <div
+                            className="relative group @container"
+                            onPointerEnter={(event) => {
+                                if (mode !== 'login') return;
+                                measureMascot();
+                                // Chỉ chuột thật mới "rê" được; chạm trên điện thoại không bật bong bóng Hey!
+                                if (event.pointerType !== 'mouse') return;
+                                setIsButtonHovered(true);
+                                hoverChat.reroll();
+                            }}
+                            onPointerLeave={() => setIsButtonHovered(false)}
+                        >
                             {mode === 'login' && (
                                 <>
                                     {/*
@@ -934,18 +1227,13 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                         <div
                                             key={mascotRun}
                                             ref={mascotHeadRef}
-                                            onAnimationEnd={(event) => {
-                                                if (event.animationName !== 'mascot-bonk') return;
-                                                // Đầu đã trốn hẳn sau nút => chờ một nhịp rồi tự ló lên lại
-                                                setMascotAction(null);
-                                                scheduleMascot(() => setMascotPeek(true), MASCOT_REAPPEAR_DELAY_MS);
-                                            }}
                                             className={cn(
                                                 "mascot-head absolute bottom-0 inset-x-0 mx-auto w-[130px] sm:w-[150px]",
                                                 mascotAction === 'bonk' && "animate-mascot-bonk",
                                                 mascotAction === 'burst' && "animate-mascot-burst",
                                                 !mascotAction && "mascot-head-idle",
-                                                (pawsActive || mascotPeek) && !mascotAction && "mascot-head-peek"
+                                                isMascotPeeking && "mascot-head-peek",
+                                                isMascotHiding && "mascot-head-hiding"
                                             )}
                                         >
                                             <Image
@@ -972,6 +1260,50 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                         )}
                                     </div>
 
+                                    {/* Bong bóng chào ngẫu nhiên ("Hey!"...) bật ra cạnh đầu nhân vật khi rê chuột vào nút (ẩn khi đang cộc / bật phá / nhập mật khẩu) */}
+                                    {/* Sai nhiều lần: gợi ý Quên mật khẩu / Đăng ký (link tương ứng nhấp nháy) */}
+                                    {isHintVisible && (
+                                        <MascotBubble
+                                            key={`${hintTarget}-${hintChat.index}`}
+                                            text={hintChat.text}
+                                            anchor="head-right"
+                                            className="whitespace-nowrap py-0.5 text-[11px] sm:text-xs leading-snug"
+                                            style={{ bottom: `calc(100% + ${Math.max(mascotMetrics.hide - 6 - mascotMetrics.peek + 10, 18)}px)` }}
+                                        />
+                                    )}
+
+                                    {isButtonHovered && !mascotAction && !isMascotHiding && !isEmailPeeking && !isHintVisible && (
+                                        <MascotBubble
+                                            key={hoverChat.index}
+                                            text={hoverChat.text}
+                                            className="ml-[34px] sm:ml-[40px] whitespace-nowrap text-xs sm:text-sm tracking-wide"
+                                            style={{ bottom: `calc(100% + ${Math.max(mascotMetrics.hide - 6 - mascotMetrics.peek - 6, 10)}px)` }}
+                                        />
+                                    )}
+
+                                    {/* Đang nhập mật khẩu: đầu trốn hẳn, bong bóng nói chuyện ngay trên đôi tay */}
+                                    {isMascotHiding && (
+                                        <MascotBubble
+                                            key={passwordChat.index}
+                                            text={passwordChat.text}
+                                            anchor="paws"
+                                            className="whitespace-nowrap px-2.5 py-0.5 text-[11px] leading-snug"
+                                            style={{ bottom: 'calc(100% + 17px)' }}
+                                        />
+                                    )}
+
+                                    {/* Đang nhập Email: đầu ló lên xem, bong bóng hỏi ở góc trên bên phải đầu */}
+                                    {isEmailPeeking && (
+                                        <MascotBubble
+                                            key={emailChat.index}
+                                            text={emailChat.text}
+                                            anchor="head-right"
+                                            className="whitespace-nowrap py-0.5 text-[11px] sm:text-xs leading-snug"
+                                            // Đáy bong bóng = đáy ô Mật khẩu + 2px (ceiling = hide - 6 - peek + 8) => luôn nằm trên hàng "Quên mật khẩu?"
+                                            style={{ bottom: `calc(100% + ${Math.max(mascotMetrics.hide - 6 - mascotMetrics.peek + 10, 18)}px)` }}
+                                        />
+                                    )}
+
                                     {/* Đôi bàn tay mèo đặt ở mép trên của nút đăng nhập */}
                                     <div className="absolute -top-[14px] sm:-top-[16px] left-1/2 -translate-x-1/2 pointer-events-none select-none z-20">
                                         <div
@@ -980,7 +1312,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                                 "opacity-0 -translate-y-3.5 scale-90",
                                                 "group-hover:opacity-100 group-hover:translate-y-0 group-hover:scale-100",
                                                 // Khi bật phá ô: đầu lùi xuống nhưng đôi tay vẫn bám mép nút
-                                                (pawsActive || mascotAction === 'burst' || (mascotPeek && !mascotAction)) && "opacity-100 translate-y-0 scale-100"
+                                                (isMascotPeeking || isMascotHiding || mascotAction === 'burst') && "opacity-100 translate-y-0 scale-100"
                                             )}
                                         >
                                             <Image
@@ -1028,7 +1360,14 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     {mode === 'login' && (
                         <p>
                             Chưa có tài khoản?{' '}
-                            <button type="button" onClick={() => switchMode('register')} className="text-primary font-semibold hover:underline decoration-2">
+                            <button
+                                type="button"
+                                onClick={() => switchMode('register')}
+                                className={cn(
+                                    "text-primary font-semibold hover:underline decoration-2",
+                                    isHintVisible && hintTarget === 'register' && "mascot-hint-pulse"
+                                )}
+                            >
                                 Đăng ký ngay
                             </button>
                         </p>
