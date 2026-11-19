@@ -127,12 +127,16 @@ Dành riêng cho tài khoản có vai trò `admin`, bố cục chia thành các 
 * **Hộp thoại Đăng nhập / Đăng ký (`AuthDialog.tsx`)**:
   * Chuyển đổi tab mượt mà giữa "Đăng nhập", "Đăng ký tài khoản" và "Quên mật khẩu".
   * Giao diện nhập mã OTP xác thực email 6 ô số tự động nhảy con trỏ chuột sang ô kế tiếp.
+  * Hiệu ứng bàn tay mèo bám nút Đăng nhập kèm animation lò xo so le (*Staggered Spring Animation*) và tự động thu hồi mượt mà.
+  * Tích hợp nút chuyển đổi giao diện Sáng / Tối (`ThemeToggle`) không viền, không nền hover ở góc trên bên phải màn hình. Chi tiết xem tại [Tài liệu Cập nhật Màn hình Login](LOGIN_SCREEN_UPDATE.md).
 * **Hộp thoại Hồ sơ cá nhân (`ProfileDialog.tsx`)**:
   * Đổi tên hiển thị, cập nhật mật khẩu mới.
   * Tích hợp công cụ tải và cắt xén ảnh đại diện tròn theo tỉ lệ 1:1 (`react-easy-crop`).
 * **Hộp thoại Chia sẻ Quyền đọc (`ShareDialog.tsx`)**:
   * Cho phép chủ sở hữu nhập email người xem để cấp quyền truy cập vào truyện hoặc chương bị khóa.
   * Hiển thị danh sách người đang có quyền truy cập kèm nút thu hồi quyền một chạm.
+* **Thanh Tiến Trình Màn Hình Chờ (`SakugaProgressBar.tsx`, dùng trong `SitePreloader`)**:
+  * Bo góc `rounded-[8px]` đồng bộ với nút và ô nhập (không dùng dạng viên thuốc `rounded-full`). Phần đã chạy bo `rounded-[6px]` vì nằm trong viền 2px của rãnh, để góc trong khớp góc ngoài; ô phần trăm bo `rounded-[8px]`.
 * **Thanh Tiến Trình Tải Lên (`UploadProgressWidget.tsx`)**:
   * Khung widget nổi thu nhỏ ở góc màn hình, hiển thị tiến độ % upload ảnh chương truyện lên Google Drive theo thời gian thực mà không làm gián đoạn việc duyệt web.
 

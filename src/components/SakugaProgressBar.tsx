@@ -719,7 +719,8 @@ export function SakugaProgressBar({
       {/* Modern Sakuga Progress Bar Track & Fill */}
       <div
         className={cn(
-          "relative w-full h-[20px] sm:h-[22px] rounded-full overflow-hidden transition-all duration-200 z-10",
+          // Bo góc 8px đồng bộ với nút / ô nhập của hệ thống thiết kế (không dùng dạng viên thuốc rounded-full)
+          "relative w-full h-[20px] sm:h-[22px] rounded-[8px] overflow-hidden transition-all duration-200 z-10",
           isDark
             ? "bg-neutral-900 border-2 border-neutral-700/80 shadow-[0_2px_12px_rgba(0,0,0,0.5)]"
             : "bg-neutral-100 border-2 border-neutral-300 shadow-[0_2px_8px_rgba(0,0,0,0.08)]"
@@ -728,7 +729,8 @@ export function SakugaProgressBar({
         {/* Animated Fill Bar */}
         <div
           className={cn(
-            "relative h-full transition-all duration-100 ease-out rounded-full overflow-hidden",
+            // Nằm trong viền 2px của rãnh => bo 6px để góc trong khớp góc ngoài 8px
+            "relative h-full transition-all duration-100 ease-out rounded-[6px] overflow-hidden",
             isDark
               ? "bg-white shadow-[0_0_12px_rgba(255,255,255,0.85)]"
               : "bg-neutral-950 shadow-[0_0_8px_rgba(0,0,0,0.25)]"
@@ -763,7 +765,7 @@ export function SakugaProgressBar({
         </span>
         <div
           className={cn(
-            "px-2.5 py-0.5 rounded-[6px] text-[11px] sm:text-[12px] font-mono font-bold tabular-nums transition-all duration-200 border",
+            "px-2.5 py-0.5 rounded-[8px] text-[11px] sm:text-[12px] font-mono font-bold tabular-nums transition-all duration-200 border",
             isDark
               ? "bg-neutral-900/90 border-neutral-700/80 text-white shadow-[2px_2px_0_rgba(255,255,255,0.15)]"
               : "bg-white border-neutral-300 text-neutral-900 shadow-[2px_2px_0_rgba(0,0,0,0.1)]"
