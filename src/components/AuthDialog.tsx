@@ -1270,6 +1270,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             }}
         >
             <DialogContent
+                initialFocus={false}
                 showCloseButton={false}
                 overlayClassName="bg-white/95 dark:bg-black/75 backdrop-blur-md"
                 topActions={
@@ -1317,11 +1318,41 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                     </p>
                 )}
 
-                <form onSubmit={handleSubmit} noValidate className="space-y-4 mt-4">
+                <form
+                    onSubmit={handleSubmit}
+                    noValidate
+                    autoComplete="off"
+                    data-lpignore="true"
+                    data-form-type="other"
+                    className="space-y-4 mt-4"
+                >
+                    {/* Input giả tàng hình để thu hút & triệt tiêu cơ chế gợi ý tự động điền / popup tài khoản của Google Chrome & trình duyệt */}
+                    <input
+                        type="text"
+                        name="fake_usernameremembered"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        autoComplete="username"
+                        className="sr-only pointer-events-none absolute -top-96 h-0 w-0 opacity-0"
+                    />
+                    <input
+                        type="password"
+                        name="fake_passwordremembered"
+                        tabIndex={-1}
+                        aria-hidden="true"
+                        autoComplete="current-password"
+                        className="sr-only pointer-events-none absolute -top-96 h-0 w-0 opacity-0"
+                    />
+
                     {mode === 'register' && (
                         <div className="relative">
                             <User className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                             <Input
+                                type="text"
+                                name="register_fullname"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                spellCheck={false}
                                 placeholder="Họ và tên"
                                 value={name}
                                 onChange={(e) => setName(e.target.value)}
@@ -1345,6 +1376,14 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                             />
                             <Input
                                 type="text"
+                                name="sutie_login_id"
+                                autoComplete="off"
+                                autoCorrect="off"
+                                autoCapitalize="none"
+                                spellCheck={false}
+                                data-lpignore="true"
+                                data-1p-ignore="true"
+                                data-form-type="other"
                                 placeholder="Email hoặc tên đăng nhập"
                                 onPointerDown={() => setGreetingChat(null)}
                                 value={email}
@@ -1385,6 +1424,14 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                 />
                                 <Input
                                     type={showPassword && password.length > 0 ? 'text' : 'password'}
+                                    name="sutie_login_secret"
+                                    autoComplete="new-password"
+                                    autoCorrect="off"
+                                    autoCapitalize="none"
+                                    spellCheck={false}
+                                    data-lpignore="true"
+                                    data-1p-ignore="true"
+                                    data-form-type="other"
                                     placeholder="Mật khẩu"
                                     onPointerDown={() => setGreetingChat(null)}
                                     value={password}
@@ -1462,6 +1509,14 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                     <Lock className="absolute left-3 top-3 h-4 w-4 text-neutral-400" />
                                     <Input
                                         type={showConfirmPassword && confirmPassword.length > 0 ? 'text' : 'password'}
+                                        name="register_confirm_credential"
+                                        autoComplete="new-password"
+                                        autoCorrect="off"
+                                        autoCapitalize="none"
+                                        spellCheck={false}
+                                        data-lpignore="true"
+                                        data-1p-ignore="true"
+                                        data-form-type="other"
                                         placeholder="Xác nhận mật khẩu"
                                         value={confirmPassword}
                                         onChange={(e) => {
@@ -1499,6 +1554,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                         key={index}
                                         type="text"
                                         maxLength={1}
+                                        autoComplete="one-time-code"
                                         value={verificationCode[index] || ''}
                                         onChange={(e) => {
                                             const value = e.target.value;
@@ -1556,6 +1612,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
                                         inputMode="numeric"
                                         pattern="[0-9]*"
                                         maxLength={1}
+                                        autoComplete="one-time-code"
                                         value={pin[index] || ''}
                                         onChange={(e) => {
                                             const value = e.target.value;

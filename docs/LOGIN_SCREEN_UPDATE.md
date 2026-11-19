@@ -54,6 +54,19 @@ Màn hình Đăng nhập (`AuthDialog.tsx`) là điểm chạm đầu tiên tron
 * **Ngăn chặn lan truyền sự kiện**: Tích hợp `e.stopPropagation()` và khai báo `type="button"` rõ ràng nhằm tránh xung đột với sự kiện đóng modal hay submit form.
 * **Nhân vật phản ứng khi đổi giao diện**: `ThemeToggle` có prop tuỳ chọn `onToggle(nextTheme)` (các nơi khác dùng nút này không bị ảnh hưởng). Trong `AuthDialog`, `handleThemeToggle` chờ hiệu ứng chuyển màu xong (`THEME_CHAT.delayMs` = 320ms) rồi cho nhân vật ló lên nói 1 trong 10 câu theo giao diện vừa chuyển sang (`THEME_CHATS.dark` / `THEME_CHATS.light`), tự tắt sau 3.6s (`THEME_CHAT.showMs`). Xem bảng ở §4.1.
 
+### 2.4. Ngăn Chặn Tự Động Focus & Triệt Tiêu Gợi Ý Điền Của Google Chrome (No Auto-focus & Anti-Autofill)
+* **Ngăn tự động focus khi mở hộp thoại (`initialFocus={false}`)**:
+  * Mặc định, `@base-ui/react/dialog` tự động focus vào trường input đầu tiên (`email`) khi mở modal, khiến bàn phím ảo bật lên trên thiết bị di động hoặc kích hoạt cơ chế gợi ý mật khẩu của trình duyệt.
+  * Thiết lập `initialFocus={false}` trên `<DialogContent>` để chặn hành vi tự focus này, giúp người dùng chủ động tương tác và giữ trọn vẹn trải nghiệm thị giác tĩnh ban đầu.
+* **Triệt tiêu popup gợi ý điền thông tin đăng nhập của Google Chrome & trình quản lý mật khẩu**:
+  * Khi Google Chrome nhận diện cặp trường `email`/`username` và `password`, nó tự động hiển thị dropdown lưu mật khẩu (ví dụ "Sutie Xù Xì"), đè lên bong bóng thoại và đôi bàn tay mèo.
+  * **Giải pháp đa lớp đã áp dụng**:
+    1. Thiết lập `autoComplete="off"` và các cờ `data-lpignore="true"`, `data-form-type="other"` trên thẻ `<form>`.
+    2. Chèn 2 ô input ẩn giả lập (`fake_usernameremembered` và `fake_passwordremembered`) ở đầu form để thu hút và triệt tiêu thuật toán heuristic tự động bắt cặp tài khoản của Chromium.
+    3. Ô nhập tài khoản: đặt tên phi chuẩn `name="sutie_login_id"`, kết hợp `autoComplete="off"`, `autoCorrect="off"`, `autoCapitalize="none"`, `spellCheck={false}` cùng các cờ bỏ qua của 1Password/LastPass (`data-1p-ignore`, `data-lpignore`).
+    4. Ô nhập mật khẩu: đặt `name="sutie_login_secret"`, sử dụng chuẩn `autoComplete="new-password"`. Thuộc tính này báo hiệu với trình duyệt đây là trường mật khẩu mới, ngăn chặn Chrome bật danh sách gợi ý tài khoản đã lưu cũ.
+    5. Các ô mã OTP và mã PIN: gán thuộc tính `autoComplete="one-time-code"` chuẩn ngữ nghĩa.
+
 ---
 
 ## 🐾 3. Kiến Trúc Minh Họa Linh Vật & Đôi Bàn Tay (Mascot & Cat Paws Architecture)
