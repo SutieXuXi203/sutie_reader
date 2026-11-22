@@ -18,7 +18,12 @@ export function MotionSpinnerOverlay({
   onComplete,
   className,
 }: MotionSpinnerOverlayProps) {
-  const [isVisible, setIsVisible] = useState(false);
+  const [isVisible, setIsVisible] = useState(active);
+  const [prevActive, setPrevActive] = useState(active);
+  if (active !== prevActive) {
+    setPrevActive(active);
+    setIsVisible(active);
+  }
   const containerRef = useRef<HTMLDivElement | null>(null);
   const spinnerWrapRef = useRef<HTMLDivElement | null>(null);
   const checkWrapRef = useRef<HTMLDivElement | null>(null);
@@ -36,7 +41,6 @@ export function MotionSpinnerOverlay({
 
   useEffect(() => {
     if (!active) {
-      setIsVisible(false);
       if (rafRef.current) {
         cancelAnimationFrame(rafRef.current);
         rafRef.current = null;
@@ -46,11 +50,15 @@ export function MotionSpinnerOverlay({
 
     // Kiểm tra prefers-reduced-motion
     if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      finish();
-      return;
+      rafRef.current = requestAnimationFrame(() => finish());
+      return () => {
+        if (rafRef.current) {
+          cancelAnimationFrame(rafRef.current);
+          rafRef.current = null;
+        }
+      };
     }
 
-    setIsVisible(true);
     startTimeRef.current = performance.now();
 
     const loop = (now: number) => {

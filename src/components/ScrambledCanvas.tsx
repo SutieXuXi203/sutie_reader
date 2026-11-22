@@ -107,6 +107,7 @@ export const ScrambledCanvas = React.memo(function ScrambledCanvas({
 
   useEffect(() => {
     let cancelled = false;
+    const canvas = canvasRef.current;
     setStatus('loading');
     const img = new window.Image();
     if (!src.startsWith('/') && !src.startsWith('data:')) {
@@ -132,7 +133,6 @@ export const ScrambledCanvas = React.memo(function ScrambledCanvas({
       img.onload = null;
       img.onerror = null;
       // Giải phóng GPU VRAM và bộ nhớ Canvas lập tức khi unmount
-      const canvas = canvasRef.current;
       if (canvas) {
         canvas.width = 0;
         canvas.height = 0;

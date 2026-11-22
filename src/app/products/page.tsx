@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useDeferredValue, useMemo, useCallback, useRef } from 'react';
+import { useState, useEffect, useDeferredValue, useMemo, useCallback, useRef, useSyncExternalStore } from 'react';
 import { useRouter } from 'next/navigation';
 import { Search, Lock, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -9,6 +9,20 @@ import { useAuth } from '@/providers/AuthContext';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
 import { normalizeSearchText } from '@/lib/utils';
+
+const subscribeNoop = () => () => {};
+
+function readSavedProductsPage(): number {
+    if (typeof window === 'undefined') return 1;
+    const saved = sessionStorage.getItem('productsPage');
+    const parsed = saved ? parseInt(saved, 10) : NaN;
+    return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+function readUrlTag(): string {
+    if (typeof window === 'undefined') return '';
+    return new URLSearchParams(window.location.search).get('tag') || '';
+}
 
 
 const AuthDialog = dynamic(() => import('@/components/AuthDialog').then(m => ({ default: m.AuthDialog })), { ssr: false });
@@ -29,21 +43,20 @@ interface Post {
 
 export default function ProductsPage() {
     const [posts, setPosts] = useState<Post[]>([]);
-    const [searchTerm, setSearchTerm] = useState('');
-    const [currentPage, _setCurrentPage] = useState(1);
-
-    useEffect(() => {
-        if (typeof window !== 'undefined') {
-            const saved = sessionStorage.getItem('productsPage');
-            if (saved) {
-                _setCurrentPage(parseInt(saved, 10));
-            }
-        }
+    const urlTag = useSyncExternalStore(subscribeNoop, readUrlTag, () => '');
+    const [searchTermOverride, setSearchTermOverride] = useState<string | null>(null);
+    const searchTerm = searchTermOverride ?? urlTag;
+    const setSearchTerm = useCallback((value: string) => {
+        setSearchTermOverride(value);
     }, []);
+    const savedPage = useSyncExternalStore(subscribeNoop, readSavedProductsPage, () => 1);
+    const [pageOverride, setPageOverride] = useState<number | null>(null);
+    const currentPage = pageOverride ?? savedPage;
 
     const setCurrentPage = useCallback((page: number | ((prev: number) => number)) => {
-        _setCurrentPage(prev => {
-            const next = typeof page === 'function' ? page(prev) : page;
+        setPageOverride(prev => {
+            const current = prev ?? readSavedProductsPage();
+            const next = typeof page === 'function' ? page(current) : page;
             if (typeof window !== 'undefined') {
                 sessionStorage.setItem('productsPage', next.toString());
             }
@@ -84,17 +97,6 @@ export default function ProductsPage() {
 
     const [standaloneTags, setStandaloneTags] = useState<{ _id: string, name: string }[]>([]);
 
-    const fetchTags = useCallback(async () => {
-        try {
-            const response = await fetch('/api/tags', { credentials: 'same-origin' });
-            if (response.ok) {
-                setStandaloneTags(await response.json());
-            }
-        } catch (error) {
-            console.error('Lỗi khi tải tags:', error);
-        }
-    }, []);
-
     const fetchPosts = useCallback(async () => {
         try {
             setIsLoading(true);
@@ -111,19 +113,44 @@ export default function ProductsPage() {
     }, []);
 
     useEffect(() => {
-        if (!isAuthLoading && isAdmin) {
-            fetchPosts();
-            fetchTags();
-        }
-    }, [isAuthLoading, isAdmin, fetchPosts, fetchTags]);
+        if (isAuthLoading || !isAdmin) return;
+        let cancelled = false;
 
-    useEffect(() => {
-        const params = new URLSearchParams(window.location.search);
-        const tagFromUrl = params.get('tag');
-        if (tagFromUrl) {
-            setSearchTerm(tagFromUrl);
-        }
-    }, []);
+        const loadInitialData = async () => {
+            const loadPosts = async () => {
+                try {
+                    const response = await fetch('/api/posts', { credentials: 'same-origin' });
+                    if (response.ok && !cancelled) {
+                        const data = await response.json();
+                        if (!cancelled) setPosts(data);
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi tải bài viết:', error);
+                } finally {
+                    if (!cancelled) setIsLoading(false);
+                }
+            };
+
+            const loadTags = async () => {
+                try {
+                    const response = await fetch('/api/tags', { credentials: 'same-origin' });
+                    if (response.ok && !cancelled) {
+                        const data = await response.json();
+                        if (!cancelled) setStandaloneTags(data);
+                    }
+                } catch (error) {
+                    console.error('Lỗi khi tải tags:', error);
+                }
+            };
+
+            await Promise.all([loadPosts(), loadTags()]);
+        };
+
+        void loadInitialData();
+        return () => {
+            cancelled = true;
+        };
+    }, [isAuthLoading, isAdmin]);
 
     const isFirstRender = useRef(true);
     useEffect(() => {

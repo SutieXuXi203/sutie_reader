@@ -5,7 +5,6 @@ import Image from 'next/image';
 import { useAuth } from '@/providers/AuthContext';
 import { usePreloader } from '@/providers/PreloaderContext';
 import { useTheme } from 'next-themes';
-import { cn } from '@/lib/utils';
 import { motion, AnimatePresence } from 'framer-motion';
 import { SakugaProgressBar } from '@/components/SakugaProgressBar';
 

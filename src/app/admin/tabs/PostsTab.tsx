@@ -2,7 +2,6 @@
 
 import { useState, useMemo, memo } from 'react';
 import Image from 'next/image';
-import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/Pagination';
 import { FileText, Pencil, Trash2, Loader2, Tag } from 'lucide-react';
 import { getOptimizedImageUrl } from '@/lib/utils';

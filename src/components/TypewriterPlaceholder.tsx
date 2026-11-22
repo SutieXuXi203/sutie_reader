@@ -5,8 +5,21 @@
 // Áp dụng trực tiếp vào Placeholder của ô Input / Textarea
 // Giữ nguyên tiền tố cố định (prefix) và chỉ gõ/xóa lùi phần từ khóa thay đổi luân phiên (suffixes).
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useSyncExternalStore } from 'react';
 import { cn } from '@/lib/utils';
+
+function subscribeReducedMotion(callback: () => void): () => void {
+  if (typeof window === 'undefined') return () => {};
+  const mediaQuery = window.matchMedia('(prefers-reduced-motion: reduce)');
+  mediaQuery.addEventListener('change', callback);
+  return () => mediaQuery.removeEventListener('change', callback);
+}
+
+function getReducedMotionSnapshot(): boolean {
+  return typeof window !== 'undefined'
+    ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    : false;
+}
 
 export interface TypewriterPlaceholderProps {
   /** Phần tiền tố cố định không bị xóa lùi (ví dụ: "Tìm kiếm theo ") */
@@ -45,18 +58,16 @@ export const TypewriterPlaceholder: React.FC<TypewriterPlaceholderProps> = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [displayText, setDisplayText] = useState('');
   const [phase, setPhase] = useState<TypewriterPhase>('typing');
+  const prefersReducedMotion = useSyncExternalStore(
+    subscribeReducedMotion,
+    getReducedMotionSnapshot,
+    () => false
+  );
 
   const currentPlaceholder = placeholders[currentIndex] || '';
 
   useEffect(() => {
-    if (!visible || placeholders.length === 0) return;
-
-    // Hỗ trợ prefers-reduced-motion
-    if (typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches) {
-      setDisplayText(currentPlaceholder);
-      setPhase('holding');
-      return;
-    }
+    if (!visible || placeholders.length === 0 || prefersReducedMotion) return;
 
     let timeoutId: NodeJS.Timeout;
 
@@ -64,10 +75,16 @@ export const TypewriterPlaceholder: React.FC<TypewriterPlaceholderProps> = ({
       case 'typing': {
         if (displayText.length < currentPlaceholder.length) {
           timeoutId = setTimeout(() => {
-            setDisplayText(currentPlaceholder.slice(0, displayText.length + 1));
+            const nextText = currentPlaceholder.slice(0, displayText.length + 1);
+            setDisplayText(nextText);
+            if (nextText.length >= currentPlaceholder.length) {
+              setPhase('holding');
+            }
           }, typingSpeed);
         } else {
-          setPhase('holding');
+          timeoutId = setTimeout(() => {
+            setPhase('holding');
+          }, 0);
         }
         break;
       }
@@ -82,10 +99,16 @@ export const TypewriterPlaceholder: React.FC<TypewriterPlaceholderProps> = ({
       case 'deleting': {
         if (displayText.length > 0) {
           timeoutId = setTimeout(() => {
-            setDisplayText(displayText.slice(0, -1));
+            const nextText = displayText.slice(0, -1);
+            setDisplayText(nextText);
+            if (nextText.length === 0) {
+              setPhase('pausing');
+            }
           }, deleteSpeed);
         } else {
-          setPhase('pausing');
+          timeoutId = setTimeout(() => {
+            setPhase('pausing');
+          }, 0);
         }
         break;
       }
@@ -102,6 +125,7 @@ export const TypewriterPlaceholder: React.FC<TypewriterPlaceholderProps> = ({
     return () => clearTimeout(timeoutId);
   }, [
     visible,
+    prefersReducedMotion,
     displayText,
     phase,
     currentPlaceholder,
@@ -115,7 +139,8 @@ export const TypewriterPlaceholder: React.FC<TypewriterPlaceholderProps> = ({
 
   if (!visible) return null;
 
-  const isSolidCursor = phase === 'typing' || phase === 'deleting';
+  const shownText = prefersReducedMotion ? currentPlaceholder : displayText;
+  const isSolidCursor = !prefersReducedMotion && (phase === 'typing' || phase === 'deleting');
 
   return (
     <div
@@ -127,7 +152,7 @@ export const TypewriterPlaceholder: React.FC<TypewriterPlaceholderProps> = ({
     >
       <span className="truncate text-muted-foreground/70 font-normal">
         {prefix && <span className="opacity-90">{prefix}</span>}
-        {displayText}
+        {shownText}
       </span>
       {/* Con trỏ cursor: Solid khi gõ hoặc xóa, nhấp nháy bằng CSS GPU thuần khi dừng */}
       <span

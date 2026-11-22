@@ -16,6 +16,7 @@ import {
 } from '@/components/animate-ui/icons/AnimateIcon';
 import { Loader2, ChevronDown, Play, Pause, Settings, Check } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import dynamic from 'next/dynamic';
 import { useAuth } from '@/providers/AuthContext';
@@ -1174,10 +1175,13 @@ export default function PostDetailClient({
                     title={`${u.name || u.email} (${u.role === 'admin' ? 'Quản trị viên' : u.role === 'user' ? 'Thành viên' : 'Khách'})`}
                   >
                     {u.avatar ? (
-                      <img
+                      <Image
                         src={u.avatar}
                         alt={u.name || u.email}
-                        className="w-full h-full object-cover"
+                        fill
+                        sizes="32px"
+                        unoptimized
+                        className="object-cover"
                       />
                     ) : (
                       <span>{(u.name || u.email || '?').charAt(0).toUpperCase()}</span>

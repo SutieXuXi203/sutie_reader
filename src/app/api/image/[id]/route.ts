@@ -209,9 +209,10 @@ async function fetchUpstreamBuffer(fileId: string, subject: string) {
         console.warn(`[Image Route] Worker upstream timed out/failed for ${fileId}, successfully recovered via direct Google Drive`);
         return direct;
       }
-    } catch (fallbackError: any) {
-      if (fallbackError?.status === 404 || fallbackError?.status === 413 || fallbackError?.status === 415) {
-        throw new ImageRouteError(fallbackError.message, fallbackError.status);
+    } catch (fallbackError: unknown) {
+      const err = fallbackError as { status?: number; message?: string } | null;
+      if (err?.status === 404 || err?.status === 413 || err?.status === 415) {
+        throw new ImageRouteError(err.message || 'Image unavailable', err.status);
       }
       console.error(`[Image Route] Direct Google Drive fallback also failed for ${fileId}:`, fallbackError);
     }

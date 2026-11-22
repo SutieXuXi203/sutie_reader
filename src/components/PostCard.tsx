@@ -93,15 +93,20 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
     return post.images && post.images.length > 0 ? getOptimizedImageUrl(post.images[0]) : '';
   }, [post.images]);
 
+  const [prevInitialThumbSrc, setPrevInitialThumbSrc] = useState(initialThumbSrc);
   const [thumbSrc, setThumbSrc] = useState(initialThumbSrc);
   const [imgError, setImgError] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
   const retryCountRef = useRef(0);
 
-  useEffect(() => {
+  if (prevInitialThumbSrc !== initialThumbSrc) {
+    setPrevInitialThumbSrc(initialThumbSrc);
     setThumbSrc(initialThumbSrc);
     setImgError(false);
     setIsRetrying(false);
+  }
+
+  useEffect(() => {
     retryCountRef.current = 0;
   }, [initialThumbSrc]);
 

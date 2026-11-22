@@ -792,7 +792,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     const [name, setName] = useState('');
     const [verificationCode, setVerificationCode] = useState('');
     const [pin, setPin] = useState('');
-    const [rememberMe, setRememberMe] = useState(true);
+    const rememberMe = true;
     const [pawsActive, setPawsActive] = useState(false);
     const [brokenFields, setBrokenFields] = useState({ email: false, password: false });
     const [mascotAction, setMascotAction] = useState<'bonk' | 'burst' | null>(null);
@@ -1005,17 +1005,12 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         setMode(nextMode);
     };
 
-    const resetState = () => {
+    const resetFormState = () => {
         setSuccessChat(null);
         setIsEmptyAttempt(false);
         setLoginFailCount(0);
         setIsLoginLocked(false);
         setIsHintDismissed(false);
-        if (pawsTimerRef.current) {
-            clearTimeout(pawsTimerRef.current);
-            pawsTimerRef.current = null;
-        }
-        clearMascotTimers();
         setError('');
         setSuccess('');
         setEmail('');
@@ -1031,6 +1026,15 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
         setMascotAction(null);
         setMascotPeek(false);
         setIsPasswordBonked(false);
+    };
+
+    const resetState = () => {
+        if (pawsTimerRef.current) {
+            clearTimeout(pawsTimerRef.current);
+            pawsTimerRef.current = null;
+        }
+        clearMascotTimers();
+        resetFormState();
     };
 
     // Đổi chế độ (login/register/...) => xoá trạng thái nhân vật & ô vỡ ngay trong lúc render
@@ -1074,12 +1078,24 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
     }, [open, isPreloading]);
     useEffect(() => () => themeChatTimersRef.current.forEach(clearTimeout), []);
 
-    useEffect(() => {
+    const [prevOpenSync, setPrevOpenSync] = useState({ open, initialMode });
+    if (prevOpenSync.open !== open || (open && prevOpenSync.initialMode !== initialMode)) {
+        setPrevOpenSync({ open, initialMode });
         if (open) {
             setMode(initialMode);
-            resetState();
+            resetFormState();
         }
-    }, [open, initialMode]);
+    }
+
+    useEffect(() => {
+        if (!open) return;
+        if (pawsTimerRef.current) {
+            clearTimeout(pawsTimerRef.current);
+            pawsTimerRef.current = null;
+        }
+        mascotTimersRef.current.forEach(clearTimeout);
+        mascotTimersRef.current = [];
+    }, [open]);
 
     const handleSubmit = async (e?: React.FormEvent, overridePin?: string, overrideCode?: string) => {
         if (e) e.preventDefault();

@@ -1,6 +1,10 @@
 import { describe, it } from 'node:test';
 import assert from 'node:assert/strict';
-import { isDirectDriveConfigured, fetchDirectDriveImageBuffer } from './driveDirect';
+import { isDirectDriveConfigured, fetchDirectDriveImageBuffer, type DirectDriveError } from './driveDirect';
+
+function hasStatus(err: unknown, status: number): boolean {
+  return typeof err === 'object' && err !== null && (err as DirectDriveError).status === status;
+}
 
 const PNG_HEADER = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 0x00, 0x00, 0x00, 0x0d]);
 const VALID_PNG = Buffer.concat([PNG_HEADER, Buffer.alloc(20, 1)]);
@@ -63,7 +67,7 @@ describe('fetchDirectDriveImageBuffer', () => {
 
     await assert.rejects(
       fetchDirectDriveImageBuffer('SVG_FILE', { driveInstance: mockDrive }),
-      (err: any) => err.status === 415
+      (err: unknown) => hasStatus(err, 415)
     );
   });
 
@@ -79,7 +83,7 @@ describe('fetchDirectDriveImageBuffer', () => {
 
     await assert.rejects(
       fetchDirectDriveImageBuffer('BIG_FILE', { driveInstance: mockDrive, maxBytes: 50 }),
-      (err: any) => err.status === 413
+      (err: unknown) => hasStatus(err, 413)
     );
   });
 
@@ -87,7 +91,7 @@ describe('fetchDirectDriveImageBuffer', () => {
     const mockDrive = {
       files: {
         get: async () => {
-          const err: any = new Error('File not found');
+          const err: DirectDriveError = new Error('File not found');
           err.status = 404;
           throw err;
         },
@@ -96,7 +100,7 @@ describe('fetchDirectDriveImageBuffer', () => {
 
     await assert.rejects(
       fetchDirectDriveImageBuffer('NONEXISTENT_FILE', { driveInstance: mockDrive }),
-      (err: any) => err.status === 404
+      (err: unknown) => hasStatus(err, 404)
     );
   });
 

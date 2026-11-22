@@ -166,9 +166,9 @@ export function ShareDialog({
     }
   }, [postId]);
 
-  const [prevOpen, setPrevOpen] = useState(open);
-  if (open !== prevOpen) {
-    setPrevOpen(open);
+  const [prevOpenPost, setPrevOpenPost] = useState({ open, postId });
+  if (open !== prevOpenPost.open || (open && postId !== prevOpenPost.postId)) {
+    setPrevOpenPost({ open, postId });
     if (open) {
       setEmailInput('');
       setSelectedScope('all');
@@ -177,17 +177,39 @@ export function ShareDialog({
       setVisitorSearch('');
       setSelectedVisitor(null);
       setIsCompleting(false);
+      setIsLoading(Boolean(postId));
     } else {
       setIsCompleting(false);
+      setIsLoading(false);
     }
   }
 
   useEffect(() => {
-    if (!open) return;
+    if (!open || !postId) return;
     const controller = new AbortController();
-    fetchShareData(controller.signal);
+    const run = async () => {
+      try {
+        const res = await fetch(`/api/posts/${postId}/share`, { signal: controller.signal });
+        if (res.ok) {
+          const data = await res.json();
+          setShareData(data);
+        } else {
+          const err = await res.json().catch(() => ({}));
+          notify.error(err.error || 'Không thể tải thông tin chia sẻ');
+        }
+      } catch (err: unknown) {
+        if ((err as { name?: string } | null)?.name === 'AbortError') return;
+        console.error('Lỗi khi tải thông tin chia sẻ:', err);
+        notify.error('Lỗi kết nối máy chủ');
+      } finally {
+        if (!controller.signal.aborted) {
+          setIsLoading(false);
+        }
+      }
+    };
+    void run();
     return () => controller.abort();
-  }, [open, fetchShareData]);
+  }, [open, postId]);
 
   const allSharedUsers = useMemo(() => {
     const list: Array<SharedUserItem & { chapterNumber?: number; chapterTitle?: string }> = [];

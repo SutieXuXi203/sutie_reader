@@ -70,21 +70,20 @@ export default function AdminDashboard() {
     const { user, isLoading: isAuthLoading, checkAuth } = useAuth();
     const router = useRouter();
 
-    // Trạng thái đang kiểm tra xác thực bổ sung (khi token cũ chưa cập nhật role mới)
-    const [isRecheckingAuth, setIsRecheckingAuth] = useState(false);
+    // Trạng thái đã kiểm tra xác thực bổ sung (khi token cũ chưa cập nhật role mới)
+    const [hasRecheckedAuth, setHasRecheckedAuth] = useState(false);
+    const isRecheckingAuth = !isAuthLoading && (!user || user.role !== 'admin') && !hasRecheckedAuth;
 
     useEffect(() => {
-        // Nếu đang tải xác thực ban đầu, chờ xong
-        if (isAuthLoading) return;
-
-        // Nếu chưa có user hoặc role không phải admin, kiểm tra lại từ server một lần
-        if (!user || user.role !== 'admin') {
-            setIsRecheckingAuth(true);
-            void checkAuth().finally(() => setIsRecheckingAuth(false));
-        }
-    // Chỉ chạy khi lần đầu xác thực xong, không phụ thuộc vào user để tránh vòng lặp
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [isAuthLoading]);
+        if (!isRecheckingAuth) return;
+        let cancelled = false;
+        void checkAuth().finally(() => {
+            if (!cancelled) setHasRecheckedAuth(true);
+        });
+        return () => {
+            cancelled = true;
+        };
+    }, [isRecheckingAuth, checkAuth]);
 
     useEffect(() => {
         // Chỉ redirect khi CHẮC CHẮN đã hoàn thành tất cả việc kiểm tra auth
@@ -105,11 +104,6 @@ export default function AdminDashboard() {
         users: false,
         tags: false,
     });
-
-    const handleTabChange = useCallback((newTab: AdminTabKey) => {
-        setVisitedTabs((prev) => (prev[newTab] ? prev : { ...prev, [newTab]: true }));
-        setActiveTab(newTab);
-    }, []);
 
     // Core Data States
     const [posts, setPosts] = useState<Post[]>([]);
@@ -157,14 +151,27 @@ export default function AdminDashboard() {
     // Data Fetchers with On-Demand Caching
     const lastFetchRef = useRef<Record<string, number>>({});
 
+    const handleTabChange = useCallback((newTab: AdminTabKey) => {
+        setVisitedTabs((prev) => (prev[newTab] ? prev : { ...prev, [newTab]: true }));
+        if (newTab === 'shares' && !lastFetchRef.current['shares']) {
+            setIsSharesLoading(true);
+        } else if (newTab === 'users') {
+            if (!lastFetchRef.current['users']) {
+                setIsUsersLoading(true);
+                setUsersLoadError(null);
+            }
+            if (!lastFetchRef.current['deletedAccounts']) {
+                setIsDeletedAccountsLoading(true);
+            }
+        }
+        setActiveTab(newTab);
+    }, []);
+
     const fetchPosts = useCallback(async (force = false) => {
         if (!force && lastFetchRef.current['posts'] && Date.now() - lastFetchRef.current['posts'] < 60000) {
             return;
         }
-        setPosts((currentPosts) => {
-            if (currentPosts.length === 0) setIsLoadingPosts(true);
-            return currentPosts;
-        });
+        if (!lastFetchRef.current['posts']) setIsLoadingPosts(true);
         try {
             const res = await fetch('/api/posts', { credentials: 'same-origin' });
             if (res.ok) {
@@ -183,10 +190,7 @@ export default function AdminDashboard() {
         if (!force && lastFetchRef.current['shares'] && Date.now() - lastFetchRef.current['shares'] < 60000) {
             return;
         }
-        setSharedPosts((current) => {
-            if (current.length === 0) setIsSharesLoading(true);
-            return current;
-        });
+        if (!lastFetchRef.current['shares']) setIsSharesLoading(true);
         try {
             const res = await fetch('/api/admin/shares', { credentials: 'same-origin' });
             if (res.ok) {
@@ -226,10 +230,7 @@ export default function AdminDashboard() {
         if (!force && lastFetchRef.current['users'] && Date.now() - lastFetchRef.current['users'] < 60000) {
             return;
         }
-        setUsersList((current) => {
-            if (current.length === 0) setIsUsersLoading(true);
-            return current;
-        });
+        if (!lastFetchRef.current['users']) setIsUsersLoading(true);
         setUsersLoadError(null);
         try {
             const res = await fetch('/api/admin/users');
@@ -259,10 +260,7 @@ export default function AdminDashboard() {
         if (!force && lastFetchRef.current['deletedAccounts'] && Date.now() - lastFetchRef.current['deletedAccounts'] < 60000) {
             return;
         }
-        setDeletedAccounts((current) => {
-            if (current.length === 0) setIsDeletedAccountsLoading(true);
-            return current;
-        });
+        if (!lastFetchRef.current['deletedAccounts']) setIsDeletedAccountsLoading(true);
         try {
             const res = await fetch('/api/admin/deleted-accounts?limit=200');
             if (res.ok) {
@@ -279,23 +277,135 @@ export default function AdminDashboard() {
 
     // On-demand load based on activeTab
     useEffect(() => {
-        if (!isAuthLoading) {
-            if (!user || user.role !== 'admin') {
-                return;
+        if (isAuthLoading || !user || user.role !== 'admin') return;
+        let cancelled = false;
+        const isFresh = (key: string) =>
+            Boolean(lastFetchRef.current[key] && Date.now() - lastFetchRef.current[key] < 60000);
+
+        const loadPosts = async () => {
+            if (isFresh('posts')) return;
+            try {
+                const res = await fetch('/api/posts', { credentials: 'same-origin' });
+                if (res.ok && !cancelled) {
+                    const data = await res.json();
+                    if (!cancelled) {
+                        setPosts(data);
+                        lastFetchRef.current['posts'] = Date.now();
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching posts:', error);
+            } finally {
+                if (!cancelled) setIsLoadingPosts(false);
             }
-            if (activeTab === 'posts') {
-                void fetchPosts();
-                void fetchTags();
-            } else if (activeTab === 'users') {
-                void fetchUsers();
-                void fetchDeletedAccounts();
-            } else if (activeTab === 'shares') {
-                void fetchShares();
-            } else if (activeTab === 'tags') {
-                void fetchTags();
+        };
+
+        const loadTags = async () => {
+            if (isFresh('tags')) return;
+            try {
+                const res = await fetch('/api/tags', { credentials: 'same-origin' });
+                if (res.ok && !cancelled) {
+                    const data = await res.json();
+                    if (!cancelled) {
+                        setStandaloneTags(data);
+                        lastFetchRef.current['tags'] = Date.now();
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching tags:', error);
             }
+        };
+
+        const loadShares = async () => {
+            if (isFresh('shares')) return;
+            try {
+                const res = await fetch('/api/admin/shares', { credentials: 'same-origin' });
+                if (res.ok && !cancelled) {
+                    const data = await res.json();
+                    if (!cancelled) {
+                        setSharedPosts(data.posts || []);
+                        setSharesStats(data.stats || { totalStoriesWithGuests: 0, totalUniqueGuests: 0, totalGuestVisits: 0 });
+                        lastFetchRef.current['shares'] = Date.now();
+                    }
+                } else if (!cancelled) {
+                    const err = await res.json().catch(() => ({}));
+                    notify.error(err.error || 'Không thể tải danh sách chia sẻ');
+                }
+            } catch (error) {
+                console.error('Error fetching shares:', error);
+                if (!cancelled) notify.error('Lỗi kết nối khi tải danh sách chia sẻ');
+            } finally {
+                if (!cancelled) setIsSharesLoading(false);
+            }
+        };
+
+        const loadUsers = async () => {
+            if (isFresh('users')) return;
+            try {
+                const res = await fetch('/api/admin/users');
+                if (res.ok && !cancelled) {
+                    const data = await res.json();
+                    if (!cancelled) {
+                        setUsersList(data);
+                        setUsersLoadError(null);
+                        lastFetchRef.current['users'] = Date.now();
+                    }
+                    return;
+                }
+                if (!cancelled) {
+                    let errorMessage = 'Không thể tải danh sách người dùng.';
+                    try {
+                        const data = await res.json();
+                        if (data?.error) errorMessage = data.error;
+                    } catch { }
+                    setUsersLoadError(errorMessage);
+                    notify.error(errorMessage);
+                }
+            } catch (error) {
+                console.error('Error fetching users:', error);
+                if (!cancelled) {
+                    setUsersLoadError('Không thể tải danh sách người dùng do lỗi mạng.');
+                    notify.error('Không thể tải danh sách người dùng do lỗi mạng.');
+                }
+            } finally {
+                if (!cancelled) setIsUsersLoading(false);
+            }
+        };
+
+        const loadDeletedAccounts = async () => {
+            if (isFresh('deletedAccounts')) return;
+            try {
+                const res = await fetch('/api/admin/deleted-accounts?limit=200');
+                if (res.ok && !cancelled) {
+                    const data = await res.json();
+                    if (!cancelled) {
+                        setDeletedAccounts(data);
+                        lastFetchRef.current['deletedAccounts'] = Date.now();
+                    }
+                }
+            } catch (error) {
+                console.error('Error fetching deleted accounts:', error);
+            } finally {
+                if (!cancelled) setIsDeletedAccountsLoading(false);
+            }
+        };
+
+        if (activeTab === 'posts') {
+            void loadPosts();
+            void loadTags();
+        } else if (activeTab === 'users') {
+            void loadUsers();
+            void loadDeletedAccounts();
+        } else if (activeTab === 'shares') {
+            void loadShares();
+        } else if (activeTab === 'tags') {
+            void loadTags();
         }
-    }, [user, isAuthLoading, activeTab, fetchPosts, fetchUsers, fetchDeletedAccounts, fetchTags, fetchShares]);
+
+        return () => {
+            cancelled = true;
+        };
+    }, [user, isAuthLoading, activeTab]);
 
     // Computed Metadata
     const availablePostTags = useMemo(() => {

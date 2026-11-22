@@ -112,6 +112,21 @@ const revokeImagePreview = (image: ChapterImage) => {
   }
 };
 
+const mapChapterToEditState = (ch: Chapter, idx: number, idPrefix: string): ChapterEditState => ({
+  _id: ch._id,
+  title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
+  chapterNumber: ch.chapterNumber || idx + 1,
+  content: ch.content || '',
+  translator: ch.translator || '',
+  accessType: ch.accessType || 'inherit',
+  sharedWith: Array.isArray(ch.sharedWith) ? ch.sharedWith : [],
+  images: (Array.isArray(ch.images) ? ch.images : []).map((url, imgIdx) => ({
+    id: `${idPrefix}-${ch.chapterNumber || idx + 1}-${imgIdx}`,
+    isNew: false,
+    url,
+  })),
+});
+
 export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availableTags = [] }: EditPostFormProps) {
   const { showProgress, updateProgress } = useUploadProgress();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -137,130 +152,107 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
   const [reuploadingState, setReuploadingState] = useState<{ current: number, total: number } | null>(null);
   const chaptersRef = useRef<ChapterEditState[]>([]);
 
-  useEffect(() => {
-    if (!open) return;
+  const hasFullChapters =
+    Array.isArray(post.chapters) &&
+    post.chapters.length > 0 &&
+    post.chapters.some(
+      (ch) =>
+        (Array.isArray(ch.images) && ch.images.length > 0) ||
+        (typeof ch.content === 'string' && ch.content.length > 0)
+    );
+
+  const [prevOpenPost, setPrevOpenPost] = useState<{ open: boolean; post: Post }>({
+    open: false,
+    post,
+  });
+
+  if (prevOpenPost.open !== open || (open && prevOpenPost.post !== post)) {
+    setPrevOpenPost({ open, post });
     setIsExpanded(false);
     setExpandedImageLimit(0);
-    setTitle(post.title);
-    setTags(post.tags || []);
-    setAuthor(post.author);
-    setTranslator(post.translator || '');
-
-    const mapToChapterImage = (url: string): ChapterImage => ({
-      id: generateId(),
-      isNew: false,
-      url,
-    });
-
-    const hasFullChapters =
-      Array.isArray(post.chapters) &&
-      post.chapters.length > 0 &&
-      post.chapters.some(
-        (ch) =>
-          (Array.isArray(ch.images) && ch.images.length > 0) ||
-          (typeof ch.content === 'string' && ch.content.length > 0)
-      );
-
-    if (hasFullChapters && post.chapters) {
-      setChapters(
-        post.chapters.map((ch, idx) => ({
-          _id: ch._id,
-          title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
-          chapterNumber: ch.chapterNumber || idx + 1,
-          content: ch.content || '',
-          translator: ch.translator || '',
-          accessType: ch.accessType || 'inherit',
-          sharedWith: Array.isArray(ch.sharedWith) ? ch.sharedWith : [],
-          images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
-        }))
-      );
-      setSelectedChapterIndex(0);
-    } else {
-      // Hiển thị ngay thông tin metadata của các chương (tiêu đề, số chương, dịch giả, quyền)
+    if (open) {
+      setTitle(post.title);
+      setTags(post.tags || []);
+      setAuthor(post.author);
+      setTranslator(post.translator || '');
       if (Array.isArray(post.chapters) && post.chapters.length > 0) {
         setChapters(
-          post.chapters.map((ch, idx) => ({
-            _id: ch._id,
-            title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
-            chapterNumber: ch.chapterNumber || idx + 1,
-            content: ch.content || '',
-            translator: ch.translator || '',
-            accessType: ch.accessType || 'inherit',
-            sharedWith: Array.isArray(ch.sharedWith) ? ch.sharedWith : [],
-            images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
-          }))
+          post.chapters.map((ch, idx) => mapChapterToEditState(ch, idx, `init-${post._id}`))
         );
         setSelectedChapterIndex(0);
+      } else {
+        setChapters([]);
+        setSelectedChapterIndex(0);
       }
+      setIsLoadingDetails(!hasFullChapters);
+    } else {
+      setIsLoadingDetails(false);
+      setChapters([]);
+    }
+  }
 
-      setIsLoadingDetails(true);
-      fetch(`/api/posts/${post._id}`)
-        .then((res) => res.json())
-        .then((data: PostDetailsResponse) => {
-          const fetchedChapters: Chapter[] =
-            Array.isArray(data.chapters) && data.chapters.length > 0
-              ? data.chapters
-              : [
-                  {
-                    title: 'Chương 1',
-                    chapterNumber: 1,
-                    content: data.content || post.content || '',
-                    images: data.images || post.images || [],
-                    translator: data.translator || post.translator || '',
-                    accessType: 'inherit',
-                  },
-                ];
+  useEffect(() => {
+    if (!open || hasFullChapters) return;
 
-          setChapters(
-            fetchedChapters.map((ch, idx) => ({
-              _id: ch._id,
-              title: ch.title || `Chương ${ch.chapterNumber || idx + 1}`,
-              chapterNumber: ch.chapterNumber || idx + 1,
-              content: ch.content || '',
-              translator: ch.translator || '',
-              accessType: ch.accessType || 'inherit',
-              sharedWith: Array.isArray(ch.sharedWith) ? ch.sharedWith : [],
-              images: (Array.isArray(ch.images) ? ch.images : []).map(mapToChapterImage),
-            }))
-          );
-          setSelectedChapterIndex(0);
-        })
-        .catch((err) => {
-          console.error('Lỗi tải chi tiết truyện:', err);
-          if (!post.chapters || post.chapters.length === 0) {
-            setChapters([
+    const controller = new AbortController();
+    fetch(`/api/posts/${post._id}`, { signal: controller.signal })
+      .then((res) => res.json())
+      .then((data: PostDetailsResponse) => {
+        const fetchedChapters: Chapter[] =
+          Array.isArray(data.chapters) && data.chapters.length > 0
+            ? data.chapters
+            : [
+                {
+                  title: 'Chương 1',
+                  chapterNumber: 1,
+                  content: data.content || post.content || '',
+                  images: data.images || post.images || [],
+                  translator: data.translator || post.translator || '',
+                  accessType: 'inherit',
+                },
+              ];
+
+        setChapters(
+          fetchedChapters.map((ch, idx) => mapChapterToEditState(ch, idx, `fetched-${post._id}`))
+        );
+        setSelectedChapterIndex(0);
+      })
+      .catch((err: unknown) => {
+        if ((err as { name?: string } | null)?.name === 'AbortError') return;
+        console.error('Lỗi tải chi tiết truyện:', err);
+        if (!post.chapters || post.chapters.length === 0) {
+          setChapters([
+            mapChapterToEditState(
               {
                 title: 'Chương 1',
                 chapterNumber: 1,
                 content: post.content || '',
                 translator: post.translator || '',
                 accessType: 'inherit',
-                images: (post.images || []).map(mapToChapterImage),
+                images: post.images || [],
               },
-            ]);
-            setSelectedChapterIndex(0);
-          }
-        })
-        .finally(() => {
+              0,
+              `fallback-${post._id}`
+            ),
+          ]);
+          setSelectedChapterIndex(0);
+        }
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
           setIsLoadingDetails(false);
-        });
+        }
+      });
+
+    return () => controller.abort();
+  }, [open, hasFullChapters, post]);
+
+  useEffect(() => {
+    if (!open) {
+      chaptersRef.current.forEach((chapter) => chapter.images.forEach(revokeImagePreview));
     }
-  }, [post, open]);
-
-  useEffect(() => {
     chaptersRef.current = chapters;
-  }, [chapters]);
-
-  useEffect(() => {
-    if (open) return;
-    setIsExpanded(false);
-    setExpandedImageLimit(0);
-    setChapters((current) => {
-      if (current.length === 0) return current;
-      current.forEach((chapter) => chapter.images.forEach(revokeImagePreview));
-      return [];
-    });
-  }, [open]);
+  }, [open, chapters]);
 
   useEffect(() => () => {
     chaptersRef.current.forEach((chapter) => chapter.images.forEach(revokeImagePreview));
@@ -279,15 +271,23 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
     );
   };
 
+  const totalActiveImages = activeChapter.images.length;
+  const [prevExpandSync, setPrevExpandSync] = useState({ isExpanded, totalActiveImages });
+  if (
+    prevExpandSync.isExpanded !== isExpanded ||
+    prevExpandSync.totalActiveImages !== totalActiveImages
+  ) {
+    setPrevExpandSync({ isExpanded, totalActiveImages });
+    setExpandedImageLimit(
+      isExpanded ? Math.min(EXPANDED_INITIAL_IMAGE_COUNT, totalActiveImages) : 0
+    );
+  }
+
   useEffect(() => {
-    if (!isExpanded) {
-      setExpandedImageLimit(0);
-      return;
-    }
+    if (!isExpanded) return;
 
     const totalImages = activeChapter.images.length;
     const initialLimit = Math.min(EXPANDED_INITIAL_IMAGE_COUNT, totalImages);
-    setExpandedImageLimit(initialLimit);
     if (totalImages <= initialLimit) return;
 
     let nextLimit = initialLimit;
@@ -837,13 +837,14 @@ export function EditPostForm({ post, open, onOpenChange, onPostUpdated, availabl
               </span>
             )}
             {expanded ? (
-              <img
+              <Image
                 src={img.isNew ? img.url : getOptimizedImageUrl(img.url)}
                 alt={`Ảnh ${idx + 1}`}
-                loading="lazy"
-                decoding="async"
+                fill
+                sizes="(max-width: 420px) 45vw, (max-width: 768px) 28vw, 220px"
+                unoptimized
                 draggable={false}
-                className="h-full w-full object-cover"
+                className="object-cover"
               />
             ) : (
               <Image

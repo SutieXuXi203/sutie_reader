@@ -1,5 +1,5 @@
 'use client';
-import { useState, useEffect, useCallback, useDeferredValue, useMemo, Suspense, useRef } from 'react';
+import { useState, useEffect, useCallback, useDeferredValue, useMemo, Suspense, useRef, useSyncExternalStore } from 'react';
 import dynamic from 'next/dynamic';
 import {
   AnimatedBookOpen, AnimatedBookmarkCheck
@@ -117,6 +117,35 @@ async function fetchJsonWithTimeout<T>(
   }
 }
 
+const subscribeNoop = () => () => {};
+
+function readSavedHomePage(): number {
+  if (typeof window === 'undefined') return 1;
+  const saved = sessionStorage.getItem('homePage');
+  const parsed = saved ? parseInt(saved, 10) : NaN;
+  return Number.isFinite(parsed) && parsed > 0 ? parsed : 1;
+}
+
+async function loadPostsFromApi(): Promise<Post[]> {
+  const requestOptions: RequestInit = {
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  };
+  try {
+    return await fetchJsonWithTimeout<Post[]>('/api/posts', requestOptions);
+  } catch (firstError) {
+    console.warn('Retrying posts fetch:', firstError);
+    return await fetchJsonWithTimeout<Post[]>('/api/posts?retry=1', requestOptions);
+  }
+}
+
+async function loadTagsFromApi(): Promise<{ _id: string; name: string }[]> {
+  return fetchJsonWithTimeout<{ _id: string; name: string }[]>('/api/tags', {
+    credentials: 'same-origin',
+    headers: { Accept: 'application/json' },
+  });
+}
+
 interface HomeContentProps {
   initialPosts?: Post[];
   initialTags?: { _id: string; name: string }[];
@@ -125,17 +154,18 @@ interface HomeContentProps {
 function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) {
   const { user, isLoading: isAuthLoading, isAdmin } = useAuth();
   const { isPreloading } = usePreloader();
-  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(false);
+  const shouldAutoOpenAuth = !isPreloading && !isAuthLoading && !user;
+  const [prevAuthSync, setPrevAuthSync] = useState({ user, shouldAutoOpenAuth });
+  const [isAuthDialogOpen, setIsAuthDialogOpen] = useState(shouldAutoOpenAuth);
 
-  useEffect(() => {
+  if (prevAuthSync.user !== user || prevAuthSync.shouldAutoOpenAuth !== shouldAutoOpenAuth) {
+    setPrevAuthSync({ user, shouldAutoOpenAuth });
     if (user) {
       setIsAuthDialogOpen(false);
-      return;
-    }
-    if (!isPreloading && !isAuthLoading && !user) {
+    } else if (shouldAutoOpenAuth) {
       setIsAuthDialogOpen(true);
     }
-  }, [user, isPreloading, isAuthLoading]);
+  }
 
   const { blurMode } = useThumbnailBlur();
   const currentCacheKey = user ? `${user.id}:${user.role}` : ':guest';
@@ -149,20 +179,14 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
   const [standaloneTags, setStandaloneTags] = useState<{ _id: string; name: string }[]>(initialTagState);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOption, setSortOption] = useState<SortOption>('newest');
-  const [currentPage, _setCurrentPage] = useState(1);
-
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('homePage');
-      if (saved) {
-        _setCurrentPage(parseInt(saved, 10));
-      }
-    }
-  }, []);
+  const savedPage = useSyncExternalStore(subscribeNoop, readSavedHomePage, () => 1);
+  const [pageOverride, setPageOverride] = useState<number | null>(null);
+  const currentPage = pageOverride ?? savedPage;
 
   const setCurrentPage = useCallback((page: number | ((prev: number) => number)) => {
-    _setCurrentPage(prev => {
-      const next = typeof page === 'function' ? page(prev) : page;
+    setPageOverride(prev => {
+      const current = prev ?? readSavedHomePage();
+      const next = typeof page === 'function' ? page(current) : page;
       if (typeof window !== 'undefined') {
         sessionStorage.setItem('homePage', next.toString());
       }
@@ -205,19 +229,6 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     }
   }, [initialPosts, initialTags, currentCacheKey]);
 
-  const fetchBookmarks = useCallback(async () => {
-    try {
-      const res = await fetch('/api/bookmarks');
-      if (res.ok) {
-        const data = await res.json();
-        cachedBookmarks = data;
-        setBookmarks(data);
-      }
-    } catch (error) {
-      console.error('Lỗi khi tải bookmarks:', error);
-    }
-  }, []);
-
   const removeBookmark = useCallback(async (postId: string) => {
     try {
       await fetch(`/api/bookmarks/${postId}`, { method: 'DELETE' });
@@ -239,23 +250,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
         setIsLoading(true);
       }
 
-      const requestOptions: RequestInit = {
-        credentials: 'same-origin',
-        headers: { Accept: 'application/json' },
-      };
-      let data: Post[];
-      try {
-        data = await fetchJsonWithTimeout<Post[]>(
-          '/api/posts',
-          requestOptions
-        );
-      } catch (firstError) {
-        console.warn('Retrying posts fetch:', firstError);
-        data = await fetchJsonWithTimeout<Post[]>(
-          '/api/posts?retry=1',
-          requestOptions
-        );
-      }
+      const data = await loadPostsFromApi();
       cachedPosts = data;
       cachedPostsKey = resolvedKey;
       lastFetchTime = Date.now();
@@ -267,40 +262,82 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
     }
   }, [currentCacheKey]);
 
-  const fetchTags = useCallback(async () => {
-    try {
-      const data = await fetchJsonWithTimeout<{ _id: string; name: string }[]>(
-        '/api/tags',
-        {
-          credentials: 'same-origin',
-          headers: { Accept: 'application/json' },
-        }
-      );
-      cachedTags = data;
-      setStandaloneTags(data);
-    } catch (error) {
-      console.error('Lỗi khi tải tags:', error);
-    }
-  }, []);
-
   const prevUserIdRef = useRef<string | undefined>(userId);
   const userRole = user?.role;
   const prevUserRoleRef = useRef<string | undefined>(userRole);
   const isInitialMount = useRef(true);
 
+  const [prevUserSync, setPrevUserSync] = useState({ userId, userRole });
+  if (prevUserSync.userId !== userId || prevUserSync.userRole !== userRole) {
+    setPrevUserSync({ userId, userRole });
+    if (userId) {
+      setIsLoading(true);
+    } else {
+      setBookmarks([]);
+      if (initialPosts.length > 0) {
+        setPosts(initialPosts);
+        setStandaloneTags(initialTags);
+        setIsLoading(false);
+      } else {
+        setIsLoading(true);
+      }
+    }
+  }
+
   useEffect(() => {
+    let cancelled = false;
+
+    const loadBookmarks = async () => {
+      try {
+        const res = await fetch('/api/bookmarks');
+        if (res.ok) {
+          const data = await res.json();
+          cachedBookmarks = data;
+          if (!cancelled) setBookmarks(data);
+        }
+      } catch (error) {
+        console.error('Lỗi khi tải bookmarks:', error);
+      }
+    };
+
+    const loadPosts = async (resolvedKey: string) => {
+      try {
+        const data = await loadPostsFromApi();
+        cachedPosts = data;
+        cachedPostsKey = resolvedKey;
+        lastFetchTime = Date.now();
+        if (!cancelled) setPosts(data);
+      } catch (error) {
+        console.error('Lỗi khi tải bài viết:', error);
+      } finally {
+        if (!cancelled) setIsLoading(false);
+      }
+    };
+
+    const loadTags = async () => {
+      try {
+        const data = await loadTagsFromApi();
+        cachedTags = data;
+        if (!cancelled) setStandaloneTags(data);
+      } catch (error) {
+        console.error('Lỗi khi tải tags:', error);
+      }
+    };
+
     if (isInitialMount.current) {
       isInitialMount.current = false;
       prevUserIdRef.current = userId;
       prevUserRoleRef.current = userRole;
       if (userId) {
-        void fetchBookmarks();
+        void loadBookmarks();
       }
       if (initialPostState.length === 0) {
-        void fetchPosts(true);
-        void fetchTags();
+        void loadPosts(currentCacheKey);
+        void loadTags();
       }
-      return;
+      return () => {
+        cancelled = true;
+      };
     }
 
     const userChanged = prevUserIdRef.current !== userId;
@@ -312,24 +349,22 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
       cachedPosts = [];
       cachedPostsKey = '';
       lastFetchTime = 0;
-      setIsLoading(true);
       if (userId) {
         cachedBookmarks = [];
-        void fetchBookmarks();
-        void fetchPosts(true, currentCacheKey);
+        void loadBookmarks();
+        void loadPosts(currentCacheKey);
       } else {
-        setBookmarks([]);
         cachedBookmarks = [];
-        if (initialPosts.length > 0) {
-          setPosts(initialPosts);
-          setStandaloneTags(initialTags);
-          setIsLoading(false);
-        } else {
-          void fetchPosts(true, currentCacheKey);
+        if (initialPosts.length === 0) {
+          void loadPosts(currentCacheKey);
         }
       }
     }
-  }, [userId, userRole, initialPosts, initialTags, initialPostState.length, fetchBookmarks, fetchPosts, fetchTags, currentCacheKey]);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [userId, userRole, initialPosts.length, initialPostState.length, currentCacheKey]);
 
   const [prevInitialPosts, setPrevInitialPosts] = useState(initialPosts);
   if (prevInitialPosts !== initialPosts) {
