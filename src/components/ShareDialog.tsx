@@ -90,6 +90,7 @@ interface ShareDialogProps {
   onOpenChange: (open: boolean) => void;
   postId: string;
   postTitle: string;
+  onAccessTypeChange?: (postId: string, accessType: 'restricted' | 'public') => void;
 }
 
 const getInitials = (name?: string, email?: string) => {
@@ -117,6 +118,7 @@ export function ShareDialog({
   onOpenChange,
   postId,
   postTitle,
+  onAccessTypeChange,
 }: ShareDialogProps) {
   const { user, isAdmin } = useAuth();
   const [shareData, setShareData] = useState<ShareData | null>(null);
@@ -327,10 +329,11 @@ export function ShareDialog({
 
       if (res.ok) {
         setShareData((prev) => (prev ? { ...prev, accessType: newType } : prev));
+        onAccessTypeChange?.(postId, newType);
         notify.success(
           newType === 'restricted'
             ? 'Đã chuyển sang chế độ Hạn chế'
-            : 'Đã mở quyền cho bất kỳ ai có đường liên kết'
+            : 'Đã công khai truyện cho mọi người đọc'
         );
       } else {
         const err = await res.json().catch(() => ({}));
@@ -928,9 +931,17 @@ export function ShareDialog({
 
               {/* Section: General Access (Quyền truy cập chung) - Google Drive Style */}
               <div className="space-y-2 pt-2 border-t border-border/40">
-                <h3 className="text-sm font-medium text-foreground">
-                  Quyền truy cập chung
-                </h3>
+                <div className="flex items-center gap-2">
+                  <h3 className="text-sm font-medium text-foreground">
+                    Quyền truy cập chung
+                  </h3>
+                  {shareData?.accessType === 'public' && (
+                    <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-semibold bg-emerald-500/15 text-emerald-600 dark:text-emerald-400 border border-emerald-500/25">
+                      <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
+                      Đang công khai
+                    </span>
+                  )}
+                </div>
 
                 <div className="flex items-start gap-3 pt-1">
                   <div
@@ -941,7 +952,9 @@ export function ShareDialog({
                         : 'bg-secondary text-muted-foreground'
                     )}
                   >
-                    {shareData?.accessType === 'public' ? (
+                    {isUpdatingAccess ? (
+                      <Loader2 className="w-4 h-4 animate-spin" />
+                    ) : shareData?.accessType === 'public' ? (
                       <Globe className="w-4 h-4" />
                     ) : (
                       <Lock className="w-4 h-4" />
@@ -957,13 +970,20 @@ export function ShareDialog({
                           onValueChange={(val: 'restricted' | 'public' | null) => {
                             if (val) handleUpdateAccessType(val);
                           }}
-                          disabled={isUpdatingAccess}
+                          disabled={isLoading || isUpdatingAccess || !shareData}
                         >
-                          <SelectTrigger className="h-8 px-2.5 rounded-[8px] bg-secondary/80 hover:bg-secondary text-xs sm:text-sm font-medium text-foreground border-0 inline-flex items-center gap-1.5 cursor-pointer shadow-none transition-colors max-w-full">
+                          <SelectTrigger
+                            className={cn(
+                              'h-8 px-2.5 rounded-[8px] text-xs sm:text-sm font-medium border-0 inline-flex items-center gap-1.5 cursor-pointer shadow-none transition-colors max-w-full',
+                              shareData?.accessType === 'public'
+                                ? 'bg-emerald-500/15 hover:bg-emerald-500/20 text-emerald-700 dark:text-emerald-300'
+                                : 'bg-secondary/80 hover:bg-secondary text-foreground'
+                            )}
+                          >
                             <SelectValue placeholder="Chọn quyền">
                               {(val: 'restricted' | 'public' | null) => (
-                                <span className="truncate max-w-[155px] sm:max-w-none">
-                                  {val === 'public' ? 'Bất kỳ ai có đường liên kết' : 'Hạn chế'}
+                                <span className="truncate max-w-[175px] sm:max-w-none">
+                                  {val === 'public' ? 'Công khai cho mọi người' : 'Hạn chế'}
                                 </span>
                               )}
                             </SelectValue>
@@ -973,28 +993,38 @@ export function ShareDialog({
                             side="bottom"
                             sideOffset={4}
                             alignItemWithTrigger={false}
-                            className="rounded-[8px] border border-border bg-popover py-1.5 shadow-xl z-50 min-w-[240px]"
+                            className="rounded-[8px] border border-border bg-popover py-1.5 shadow-xl z-50 min-w-[270px]"
                           >
                             <SelectItem
                               value="restricted"
                               indicatorPosition="left"
                               className="py-2 text-xs sm:text-sm cursor-pointer rounded-[8px] hover:bg-secondary my-0.5 font-normal"
                             >
-                              Hạn chế
+                              <div className="space-y-0.5 text-left">
+                                <p className="font-medium text-xs sm:text-sm">Hạn chế</p>
+                                <p className="text-[10px] text-muted-foreground font-normal whitespace-normal">
+                                  Chỉ thành viên và người được cấp quyền mới xem được
+                                </p>
+                              </div>
                             </SelectItem>
                             <SelectItem
                               value="public"
                               indicatorPosition="left"
                               className="py-2 text-xs sm:text-sm cursor-pointer rounded-[8px] hover:bg-secondary my-0.5 font-normal"
                             >
-                              Bất kỳ ai có đường liên kết
+                              <div className="space-y-0.5 text-left">
+                                <p className="font-medium text-xs sm:text-sm">Công khai cho mọi người</p>
+                                <p className="text-[10px] text-muted-foreground font-normal whitespace-normal">
+                                  Hiển thị trên trang chủ cho cả tài khoản Khách và người có liên kết
+                                </p>
+                              </div>
                             </SelectItem>
                           </SelectContent>
                         </Select>
                       ) : (
-                        <span className="text-xs sm:text-sm font-medium text-foreground py-0.5 truncate max-w-[155px] sm:max-w-none">
+                        <span className="text-xs sm:text-sm font-medium text-foreground py-0.5 truncate max-w-[170px] sm:max-w-none">
                           {shareData?.accessType === 'public'
-                            ? 'Bất kỳ ai có đường liên kết'
+                            ? 'Công khai cho mọi người'
                             : 'Hạn chế'}
                         </span>
                       )}
@@ -1050,8 +1080,8 @@ export function ShareDialog({
 
                     <p className="text-xs text-muted-foreground leading-relaxed pl-0.5">
                       {shareData?.accessType === 'public'
-                        ? 'Bất kỳ ai có đường liên kết này đều có thể xem'
-                        : 'Chỉ những người có quyền truy cập mới có thể mở bằng đường liên kết này'}
+                        ? 'Hiển thị công khai trên trang chủ — mọi tài khoản (kể cả Khách) và người có đường liên kết đều có thể đọc'
+                        : 'Chỉ quản trị viên, thành viên và những người được cấp quyền mới có thể thấy và đọc truyện này'}
                     </p>
                   </div>
                 </div>

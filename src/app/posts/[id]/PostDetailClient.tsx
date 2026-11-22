@@ -1711,6 +1711,9 @@ export default function PostDetailClient({
           onOpenChange={setIsShareOpen}
           postId={post._id}
           postTitle={post.title}
+          onAccessTypeChange={(_id, nextType) => {
+            setPost((prev) => (prev ? { ...prev, accessType: nextType } : prev));
+          }}
         />
       )}
 

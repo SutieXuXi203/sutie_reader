@@ -76,6 +76,7 @@ export interface UpdatedPostPayload {
   tags?: string[];
   author?: string;
   translator?: string;
+  accessType?: 'restricted' | 'public';
   updatedAt?: string;
   chapterCount?: number;
   chapters?: Chapter[];

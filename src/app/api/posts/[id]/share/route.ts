@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { revalidatePath } from 'next/cache';
 import { ObjectId } from 'mongodb';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
@@ -175,15 +176,40 @@ export async function POST(
         return NextResponse.json({ error: 'Quyền truy cập không hợp lệ' }, { status: 400 });
       }
 
-      const updated = await Post.findByIdAndUpdate(id, { accessType }, { new: true }).select('accessType');
+      const updated = await Post.findByIdAndUpdate(id, { accessType }, { new: true }).select('title accessType');
       if (!updated) {
         return NextResponse.json({ error: 'Không tìm thấy truyện' }, { status: 404 });
       }
       await invalidateApiCache('posts:');
       await invalidateApiCache('img_access:');
+      await invalidateApiCache('admin:shares');
+      try {
+        revalidatePath('/');
+        revalidatePath('/products');
+        revalidatePath(`/posts/${id}`);
+      } catch {
+        // ignore outside Next request cache context (e.g. unit/integration tests)
+      }
+
+      const authUser = await getAuthUser(request);
+      void logApiAction({
+        module: 'Phân quyền truyện (Share)',
+        action: accessType === 'public' ? 'Công khai truyện cho mọi người' : 'Chuyển truyện về chế độ Hạn chế',
+        request,
+        user: authUser,
+        details: {
+          'Mã truyện': id,
+          'Tên truyện': updated.title || id,
+          'Chế độ hiển thị': accessType === 'public' ? 'Công khai (Hiện trên trang chủ cho cả Khách)' : 'Hạn chế',
+        },
+        level: 'info',
+      });
 
       return NextResponse.json({
-        message: 'Đã cập nhật quyền truy cập chung',
+        message:
+          accessType === 'public'
+            ? 'Đã công khai truyện cho mọi người đọc'
+            : 'Đã chuyển truyện sang chế độ Hạn chế',
         accessType: updated.accessType,
       });
     }

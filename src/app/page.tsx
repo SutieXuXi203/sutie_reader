@@ -4,6 +4,7 @@ import { Post } from '@/models/Post';
 import { Tag } from '@/models/Tag';
 import { getCurrentUser, type AuthUser } from '@/lib/server-auth';
 import { getApiCache, setApiCache } from '@/lib/api-cache';
+import { signImageUrls } from '@/lib/image-signing';
 import { filterPostsForUser, getAccessibleChapterInfo, type PostContext } from '@/lib/permissions';
 
 export const maxDuration = 60;
@@ -18,6 +19,7 @@ type InitialPost = {
   tags: string[];
   author: string;
   translator?: string;
+  accessType?: 'restricted' | 'public';
   createdAt: string;
   updatedAt: string;
   chapterCount: number;
@@ -124,24 +126,32 @@ async function getInitialCatalog(user: AuthUser | null): Promise<{
 
   return {
     initialPosts: visiblePosts.map((post) => {
+      const postId = typeof post._id === 'string' ? post._id : post._id?.toString?.() || '';
       const coverImage =
         typeof post.coverImage === 'string' && post.coverImage.trim()
           ? post.coverImage
           : '';
 
       const chapterInfo = getAccessibleChapterInfo(post as unknown as PostContext, user);
+      const rawImages = coverImage ? [coverImage] : [];
+      const safeImages = user
+        ? signImageUrls(rawImages, user.id, postId)
+        : rawImages.length > 0
+          ? [`/api/og-image/${postId}`]
+          : [];
 
       return {
-        _id: typeof post._id === 'string' ? post._id : post._id?.toString?.() || '',
+        _id: postId,
         title: post.title || '',
         description: post.description || '',
         tags: post.tags || [],
         author: post.author || 'Không rõ tác giả',
         translator: post.translator || '',
+        accessType: post.accessType || 'restricted',
         createdAt: serializeDate(post.createdAt),
         updatedAt: serializeDate(post.updatedAt),
         chapterCount: post.chapterCount || 0,
-        images: coverImage ? [coverImage] : [],
+        images: safeImages,
         accessibleChapterNumbers: chapterInfo.accessibleChapterNumbers,
         accessibleChapterLabel: chapterInfo.accessibleChapterLabel,
         isPartialAccess: chapterInfo.isPartialAccess,

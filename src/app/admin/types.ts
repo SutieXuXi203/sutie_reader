@@ -9,6 +9,7 @@ export interface Post {
     images: string[];
     author: string;
     translator?: string;
+    accessType?: 'restricted' | 'public';
     createdAt: string;
 }
 

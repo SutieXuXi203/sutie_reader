@@ -1,6 +1,6 @@
 'use client';
 import { AnimatedTrash, AnimatedEdit, AnimatedUser, AnimatedLanguages, AnimatedShare, AnimateIcon } from '@/components/animate-ui/icons/AnimateIcon';
-import { CalendarDays, ShieldAlert, Eye, RefreshCw, BookOpen } from 'lucide-react';
+import { CalendarDays, ShieldAlert, Eye, RefreshCw, BookOpen, Globe, Lock } from 'lucide-react';
 import React, { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { HoverCard } from 'radix-ui';
 import Image from 'next/image';
@@ -33,6 +33,7 @@ interface Post {
   }>;
   author: string;
   translator?: string;
+  accessType?: 'restricted' | 'public';
   chapterCount?: number;
   createdAt: string;
   updatedAt: string;
@@ -54,6 +55,12 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
   const [isEditOpen, setIsEditOpen] = useState(false);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false);
+  const [prevPostAccessType, setPrevPostAccessType] = useState(post.accessType);
+  const [localAccessType, setLocalAccessType] = useState<'restricted' | 'public'>(post.accessType || 'restricted');
+  if (prevPostAccessType !== post.accessType) {
+    setPrevPostAccessType(post.accessType);
+    setLocalAccessType(post.accessType || 'restricted');
+  }
   const [nsfwRevealed, setNsfwRevealed] = useState(false);
   const [showNsfwConfirm, setShowNsfwConfirm] = useState(false);
   const { isAdmin } = useAuth();
@@ -370,28 +377,50 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               </span>
             </div>
           )}
-          {/* Chapter Access Badge on Thumbnail */}
-          {post.accessibleChapterLabel ? (
-            <div
-              className={cn(
-                "absolute top-2 left-2 z-[6] inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 font-bold shadow-md select-none transition-transform pointer-events-none",
-                post.isPartialAccess
-                  ? "bg-amber-500 text-amber-950 border border-amber-300/40 text-[10px] sm:text-[11px]"
-                  : "bg-black/80 text-white/95 border border-white/15 text-[9.5px] sm:text-[10px]"
-              )}
-              title={post.isPartialAccess ? `Bạn được cấp quyền: ${post.accessibleChapterLabel}` : `Bộ truyện: ${post.accessibleChapterLabel}`}
-            >
-              <BookOpen className={cn("shrink-0", compact ? "w-3 h-3" : "w-3.5 h-3.5", post.isPartialAccess ? "text-amber-950" : "text-white/90")} />
-              <span className="truncate max-w-[120px]">{post.accessibleChapterLabel}</span>
+          {/* Chapter & Access Badges on Thumbnail */}
+          <div className="absolute top-2 inset-x-2 z-[6] flex items-start justify-between gap-1.5 pointer-events-none">
+            <div className="min-w-0">
+              {post.accessibleChapterLabel ? (
+                <div
+                  className={cn(
+                    "inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 font-bold shadow-md select-none transition-transform max-w-full",
+                    post.isPartialAccess
+                      ? "bg-amber-500 text-amber-950 border border-amber-300/40 text-[10px] sm:text-[11px]"
+                      : "bg-black/80 text-white/95 border border-white/15 text-[9.5px] sm:text-[10px]"
+                  )}
+                  title={post.isPartialAccess ? `Bạn được cấp quyền: ${post.accessibleChapterLabel}` : `Bộ truyện: ${post.accessibleChapterLabel}`}
+                >
+                  <BookOpen className={cn("shrink-0", compact ? "w-3 h-3" : "w-3.5 h-3.5", post.isPartialAccess ? "text-amber-950" : "text-white/90")} />
+                  <span className="truncate">{post.accessibleChapterLabel}</span>
+                </div>
+              ) : post.chapterCount && post.chapterCount > 0 ? (
+                <div
+                  className="inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 bg-black/80 text-white/95 border border-white/15 text-[9.5px] sm:text-[10px] font-medium shadow-md select-none max-w-full"
+                >
+                  <BookOpen className={cn("shrink-0 text-white/90", compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
+                  <span className="truncate">{post.chapterCount} chương</span>
+                </div>
+              ) : null}
             </div>
-          ) : post.chapterCount && post.chapterCount > 0 ? (
-            <div
-              className="absolute top-2 left-2 z-[6] inline-flex items-center gap-1 rounded-[6px] px-2 py-0.5 bg-black/80 text-white/95 border border-white/15 text-[9.5px] sm:text-[10px] font-medium shadow-md select-none pointer-events-none"
-            >
-              <BookOpen className={cn("shrink-0 text-white/90", compact ? "w-3 h-3" : "w-3.5 h-3.5")} />
-              <span>{post.chapterCount} chương</span>
-            </div>
-          ) : null}
+
+            {localAccessType === 'public' ? (
+              <div
+                className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 bg-emerald-600/90 text-white border border-emerald-400/35 backdrop-blur-sm text-[9.5px] sm:text-[10px] font-semibold shadow-md select-none shrink-0"
+                title="Công khai — Mọi tài khoản (kể cả Khách) đều thấy và đọc được"
+              >
+                <Globe className={cn("shrink-0", compact ? "w-2.5 h-2.5 sm:w-3 sm:h-3" : "w-3 h-3")} />
+                <span>Công khai</span>
+              </div>
+            ) : isAdmin ? (
+              <div
+                className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 bg-black/75 text-amber-300 border border-amber-400/30 backdrop-blur-sm text-[9.5px] sm:text-[10px] font-semibold shadow-md select-none shrink-0"
+                title="Hạn chế — Chỉ thành viên và người được cấp quyền mới thấy"
+              >
+                <Lock className={cn("shrink-0", compact ? "w-2.5 h-2.5 sm:w-3 sm:h-3" : "w-3 h-3")} />
+                <span>Hạn chế</span>
+              </div>
+            ) : null}
+          </div>
           <div className="absolute inset-0 bg-gradient-to-t from-primary/30 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity duration-300 pointer-events-none" />
           </GlareHover>
         </div>
@@ -643,6 +672,10 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
           onOpenChange={setIsShareOpen}
           postId={post._id}
           postTitle={post.title}
+          onAccessTypeChange={(id, nextType) => {
+            setLocalAccessType(nextType);
+            onUpdate?.({ _id: id, accessType: nextType });
+          }}
         />
       )}
     </>

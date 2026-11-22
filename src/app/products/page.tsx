@@ -5,6 +5,7 @@ import { Search, Lock, Plus } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Pagination } from '@/components/Pagination';
 import { PostCard } from '@/components/PostCard';
+import type { UpdatedPostPayload } from '@/components/EditPostForm';
 import { useAuth } from '@/providers/AuthContext';
 import dynamic from 'next/dynamic';
 import { Input } from '@/components/ui/input';
@@ -37,6 +38,7 @@ interface Post {
     images: string[];
     author: string;
     translator?: string;
+    accessType?: 'restricted' | 'public';
     createdAt: string;
     updatedAt: string;
 }
@@ -164,6 +166,28 @@ export default function ProductsPage() {
     const handlePostDeleted = useCallback((postId: string) => {
         setPosts((prev) => prev.filter((post) => post._id !== postId));
     }, []);
+
+    const handlePostUpdated = useCallback((updatedPost?: UpdatedPostPayload | null) => {
+        if (updatedPost && updatedPost._id) {
+            setPosts((prev) =>
+                prev.map((p) =>
+                    p._id === updatedPost._id
+                        ? {
+                              ...p,
+                              title: updatedPost.title ?? p.title,
+                              description: updatedPost.description ?? p.description,
+                              tags: updatedPost.tags ?? p.tags,
+                              author: updatedPost.author ?? p.author,
+                              translator: updatedPost.translator ?? p.translator,
+                              accessType: updatedPost.accessType ?? p.accessType,
+                              updatedAt: updatedPost.updatedAt ?? p.updatedAt,
+                          }
+                        : p
+                )
+            );
+        }
+        void fetchPosts();
+    }, [fetchPosts]);
 
     const deferredSearchTerm = useDeferredValue(searchTerm);
     const normalizedSearch = normalizeSearchText(isSearchComposing ? '' : deferredSearchTerm);
@@ -304,7 +328,7 @@ export default function ProductsPage() {
                                         key={post._id}
                                         post={post}
                                         onDelete={handlePostDeleted}
-                                        onUpdate={fetchPosts}
+                                        onUpdate={handlePostUpdated}
                                         availableTags={availableTags}
                                         compact
                                         priority={index < 4}

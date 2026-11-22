@@ -619,5 +619,29 @@ describe('Hệ Thống Phân Quyền & Vai Trò (Roles & Permissions)', () => {
       assert.equal(resChap2.allowed, false);
       assert.equal(resChap2.reason, 'REQUIRE_LOGIN');
     });
+
+    it('tài khoản guest không nằm trong sharedWith vẫn thấy và đọc toàn bộ chương inherit khi truyện được công khai (public)', () => {
+      const publicMultiChapterPost: PostContext = {
+        _id: 'post-pub-guest',
+        title: 'Truyện Công Khai Cho Guest',
+        accessType: 'public',
+        sharedWith: [],
+        chapters: [
+          { chapterNumber: 1, accessType: 'inherit' },
+          { chapterNumber: 2, accessType: 'inherit' },
+          { chapterNumber: 3, accessType: 'restricted', translator: 'Dịch Giả Riêng' },
+        ],
+      };
+
+      const visible = filterPostsForUser([publicMultiChapterPost], guestUserUnshared);
+      assert.equal(visible.length, 1);
+      assert.equal(visible[0]._id, 'post-pub-guest');
+
+      const [ch1, ch2, ch3] = publicMultiChapterPost.chapters as ChapterContext[];
+      assert.equal(canViewPost(guestUserUnshared, publicMultiChapterPost).allowed, true);
+      assert.equal(canViewChapter(guestUserUnshared, publicMultiChapterPost, ch1).allowed, true);
+      assert.equal(canViewChapter(guestUserUnshared, publicMultiChapterPost, ch2).allowed, true);
+      assert.equal(canViewChapter(guestUserUnshared, publicMultiChapterPost, ch3).allowed, false);
+    });
   });
 });

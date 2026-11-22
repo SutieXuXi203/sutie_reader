@@ -86,7 +86,7 @@ export const SharesTab = memo(
                                         : 'bg-secondary/70 text-foreground/80 hover:bg-secondary hover:text-foreground border border-border/60'
                                 }`}
                             >
-                                {filterVal === 'all' ? 'Tất cả' : filterVal === 'restricted' ? 'Giới hạn' : 'Công khai'}
+                                {filterVal === 'all' ? 'Tất cả' : filterVal === 'restricted' ? 'Hạn chế' : 'Công khai'}
                             </button>
                         ))}
                     </div>
@@ -143,7 +143,7 @@ export const SharesTab = memo(
                                                     {post.accessType === 'restricted' ? (
                                                         <>
                                                             <Lock className="w-2.5 h-2.5" />
-                                                            Giới hạn
+                                                            Hạn chế
                                                         </>
                                                     ) : (
                                                         <>
@@ -292,7 +292,7 @@ export const SharesTab = memo(
                                                                 {post.accessType === 'restricted' ? (
                                                                     <>
                                                                         <Lock className="w-2.5 h-2.5" />
-                                                                        Giới hạn
+                                                                        Hạn chế
                                                                     </>
                                                                 ) : (
                                                                     <>

@@ -63,6 +63,7 @@ interface Post {
   chapterCount?: number;
   author: string;
   translator?: string;
+  accessType?: 'restricted' | 'public';
   createdAt: string;
   updatedAt: string;
   accessibleChapterNumbers?: number[];
@@ -488,6 +489,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
             tags: updatedPost.tags ?? p.tags,
             author: updatedPost.author ?? p.author,
             translator: updatedPost.translator ?? p.translator,
+            accessType: updatedPost.accessType ?? p.accessType,
             updatedAt: updatedPost.updatedAt ?? new Date().toISOString(),
             chapterCount: updatedPost.chapterCount ?? p.chapterCount,
             chapters: updatedPost.chapters ?? p.chapters,
@@ -748,7 +750,7 @@ function HomeContent({ initialPosts = [], initialTags = [] }: HomeContentProps) 
               ) : filteredPosts.length === 0 ? (
                 <div className="text-center py-20 px-6 bg-card border border-border rounded-[8px]">
                   <p className="text-muted-foreground text-sm">
-                    {!isAdmin ? 'Chưa có truyện nào được chia sẻ với bạn.' : 'Danh sách đang trống.'}
+                    {!isAdmin ? 'Chưa có truyện nào được công khai hoặc chia sẻ với bạn.' : 'Danh sách đang trống.'}
                   </p>
                 </div>
               ) : (

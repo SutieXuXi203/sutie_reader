@@ -3,7 +3,7 @@
 import { useState, useMemo, memo } from 'react';
 import Image from 'next/image';
 import { Pagination } from '@/components/Pagination';
-import { FileText, Pencil, Trash2, Loader2, Tag } from 'lucide-react';
+import { FileText, Pencil, Trash2, Loader2, Tag, Globe, Lock, Share2 } from 'lucide-react';
 import { getOptimizedImageUrl } from '@/lib/utils';
 import { Post } from '../types';
 
@@ -16,6 +16,7 @@ interface PostsTabProps {
     availablePostTags: string[];
     onEditPost: (post: Post) => void;
     onDeletePost: (post: Post) => void;
+    onOpenShareDialog: (post: { id: string; title: string }) => void;
 }
 
 export const PostsTab = memo(
@@ -28,6 +29,7 @@ export const PostsTab = memo(
         availablePostTags,
         onEditPost,
         onDeletePost,
+        onOpenShareDialog,
     }: PostsTabProps) {
         const [postsPage, setPostsPage] = useState(1);
         const [postsPerPage, setPostsPerPage] = useState<number | 'all'>(15);
@@ -118,6 +120,30 @@ export const PostsTab = memo(
                                             )}
                                         </div>
                                         <div className="min-w-0 flex-1">
+                                            <div className="mb-1 flex items-center gap-1.5">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onOpenShareDialog({ id: post._id, title: post.title })}
+                                                    className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-[6px] text-[10px] font-medium cursor-pointer transition-opacity hover:opacity-85 ${
+                                                        post.accessType === 'public'
+                                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                                    }`}
+                                                    title="Nhấn để thay đổi quyền truy cập & chia sẻ"
+                                                >
+                                                    {post.accessType === 'public' ? (
+                                                        <>
+                                                            <Globe className="w-2.5 h-2.5" />
+                                                            Công khai
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Lock className="w-2.5 h-2.5" />
+                                                            Hạn chế
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </div>
                                             <p className="line-clamp-2 text-sm font-semibold leading-tight text-foreground">
                                                 {post.title}
                                             </p>
@@ -154,11 +180,19 @@ export const PostsTab = memo(
                                             </div>
                                         </div>
                                     </div>
-                                    <div className="mt-3 grid grid-cols-2 gap-2">
+                                    <div className="mt-3 grid grid-cols-3 gap-2">
+                                        <button
+                                            type="button"
+                                            onClick={() => onOpenShareDialog({ id: post._id, title: post.title })}
+                                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary cursor-pointer"
+                                        >
+                                            <Share2 className="w-4 h-4" />
+                                            Chia sẻ
+                                        </button>
                                         <button
                                             type="button"
                                             onClick={() => onEditPost(post)}
-                                            className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
+                                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary cursor-pointer"
                                         >
                                             <Pencil className="w-4 h-4" />
                                             Sửa
@@ -166,7 +200,7 @@ export const PostsTab = memo(
                                         <button
                                             type="button"
                                             onClick={() => onDeletePost(post)}
-                                            className="inline-flex h-9 items-center justify-center gap-2 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary"
+                                            className="inline-flex h-9 items-center justify-center gap-1.5 rounded-[8px] border border-border bg-background/70 text-xs font-medium text-foreground/85 transition-colors hover:bg-secondary hover:text-primary cursor-pointer"
                                         >
                                             <Trash2 className="w-4 h-4" />
                                             Xóa
@@ -186,6 +220,9 @@ export const PostsTab = memo(
                                         Bài viết
                                     </th>
                                     <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">
+                                        Hiển thị
+                                    </th>
+                                    <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">
                                         Tác giả
                                     </th>
                                     <th className="px-5 py-4 text-center border-r border-border/60 last:border-r-0">
@@ -199,14 +236,14 @@ export const PostsTab = memo(
                             <tbody className="divide-y divide-border">
                                 {isLoading ? (
                                     <tr>
-                                        <td colSpan={4} className="px-5 py-16 text-center text-neutral-500">
+                                        <td colSpan={5} className="px-5 py-16 text-center text-neutral-500">
                                             <Loader2 className="w-8 h-8 animate-spin mx-auto mb-3 text-primary" />
                                             <p className="text-sm">Đang tải...</p>
                                         </td>
                                     </tr>
                                 ) : filteredPosts.length === 0 ? (
                                     <tr>
-                                        <td colSpan={4} className="px-5 py-16 text-center">
+                                        <td colSpan={5} className="px-5 py-16 text-center">
                                             <div className="mx-auto flex w-fit flex-col items-center px-6 py-5">
                                                 <FileText className="w-10 h-10 mx-auto mb-3 text-primary/80" />
                                                 <p className="text-sm font-medium text-foreground/90">
@@ -264,6 +301,30 @@ export const PostsTab = memo(
                                                     </div>
                                                 </div>
                                             </td>
+                                            <td className="px-5 py-4 text-center border-r border-border/40 last:border-r-0 whitespace-nowrap">
+                                                <button
+                                                    type="button"
+                                                    onClick={() => onOpenShareDialog({ id: post._id, title: post.title })}
+                                                    className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-[6px] text-xs font-medium cursor-pointer transition-opacity hover:opacity-85 ${
+                                                        post.accessType === 'public'
+                                                            ? 'bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20'
+                                                            : 'bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20'
+                                                    }`}
+                                                    title="Nhấn để thay đổi quyền truy cập & chia sẻ"
+                                                >
+                                                    {post.accessType === 'public' ? (
+                                                        <>
+                                                            <Globe className="w-3 h-3" />
+                                                            Công khai
+                                                        </>
+                                                    ) : (
+                                                        <>
+                                                            <Lock className="w-3 h-3" />
+                                                            Hạn chế
+                                                        </>
+                                                    )}
+                                                </button>
+                                            </td>
                                             <td className="px-5 py-4 text-sm text-foreground/90 text-center border-r border-border/40 last:border-r-0">
                                                 {post.author}
                                             </td>
@@ -277,6 +338,15 @@ export const PostsTab = memo(
                                             <td className="px-5 py-4 border-r border-border/40 last:border-r-0">
                                                 <div className="flex justify-center gap-2">
                                                     <button
+                                                        type="button"
+                                                        onClick={() => onOpenShareDialog({ id: post._id, title: post.title })}
+                                                        className="p-2 text-foreground/85 hover:text-primary dark:hover:text-primary/80 hover:bg-secondary/80 rounded-[8px] transition-colors cursor-pointer"
+                                                        title="Chia sẻ & công khai"
+                                                    >
+                                                        <Share2 className="w-4 h-4" />
+                                                    </button>
+                                                    <button
+                                                        type="button"
                                                         onClick={() => onEditPost(post)}
                                                         className="p-2 text-foreground/85 hover:text-primary dark:hover:text-primary/80 hover:bg-secondary/80 rounded-[8px] transition-colors cursor-pointer"
                                                         title="Chỉnh sửa"
@@ -284,6 +354,7 @@ export const PostsTab = memo(
                                                         <Pencil className="w-4 h-4" />
                                                     </button>
                                                     <button
+                                                        type="button"
                                                         onClick={() => onDeletePost(post)}
                                                         className="p-2 text-foreground/85 hover:text-primary hover:bg-secondary/80 rounded-[8px] transition-colors cursor-pointer"
                                                         title="Xóa"
@@ -351,6 +422,7 @@ export const PostsTab = memo(
             prev.availablePostTags === next.availablePostTags &&
             prev.onEditPost === next.onEditPost &&
             prev.onDeletePost === next.onDeletePost &&
+            prev.onOpenShareDialog === next.onOpenShareDialog &&
             prev.onSearchTagClick === next.onSearchTagClick
         );
     }

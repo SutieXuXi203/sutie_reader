@@ -456,6 +456,13 @@ export default function AdminDashboard() {
         setIsShareDialogOpen(true);
     }, []);
 
+    const handleAccessTypeChange = useCallback((postId: string, nextAccessType: 'restricted' | 'public') => {
+        setPosts((prev) => prev.map((p) => (p._id === postId ? { ...p, accessType: nextAccessType } : p)));
+        setSharedPosts((prev) => prev.map((p) => (p._id === postId ? { ...p, accessType: nextAccessType } : p)));
+        delete lastFetchRef.current['posts'];
+        delete lastFetchRef.current['shares'];
+    }, []);
+
     const handleDeleteUser = useCallback((targetUser: AdminUser) => {
         if (targetUser.email === user?.email) {
             notify.warning('Bạn không thể xóa tài khoản của chính mình.');
@@ -887,6 +894,7 @@ export default function AdminDashboard() {
                                 availablePostTags={availablePostTags}
                                 onEditPost={handleEditPost}
                                 onDeletePost={handleDeletePost}
+                                onOpenShareDialog={handleOpenShareDialog}
                             />
 
                             {/* Shares Tab */}
@@ -1057,11 +1065,14 @@ export default function AdminDashboard() {
                         setIsShareDialogOpen(open);
                         if (!open) {
                             setSelectedSharePost(null);
-                            fetchShares();
+                            if (visitedTabs.shares) {
+                                fetchShares(true);
+                            }
                         }
                     }}
                     postId={selectedSharePost.id}
                     postTitle={selectedSharePost.title}
+                    onAccessTypeChange={handleAccessTypeChange}
                 />
             )}
         </div>
