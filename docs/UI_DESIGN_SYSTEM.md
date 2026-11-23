@@ -66,8 +66,9 @@ Trang chủ là trung tâm khám phá truyện với khả năng tương tác m�
    * **Thẻ Truyện (`PostCard.tsx`)**:
      * Tỉ lệ ảnh bìa chuẩn Manga/Webtoon: **`3:4`**.
      * Hiệu ứng vệt sáng kim loại (`GlareHover.tsx`): Khi rê chuột vào ảnh bìa, một vệt sáng ánh bạc lướt qua mượt mà.
-     * Huy hiệu số chương: Góc trên ảnh bìa hiển thị số chương hiện có (VD: `Chương 10`).
-     * Huy hiệu phân quyền: Thể hiện rõ truyện là `Công khai`, `Giới hạn`, hoặc `Được chia sẻ với bạn`.
+     * Huy hiệu số chương & phân quyền trên góc trên ảnh bìa (bố cục flex ngang không chồng lấp):
+       * Góc trái: số chương hiện có (VD: `10 chương`) hoặc phạm vi chương được chia sẻ riêng (`Chương 2, 4`).
+       * Góc phải: huy hiệu `Công khai` (nền xanh ngọc + icon `Globe`, hiển thị cho mọi vai trò) và `Hạn chế` (nền tối chữ hổ phách + icon `Lock`, hiển thị cho Admin); tự động cập nhật tức thì khi đổi quyền trong `ShareDialog`.
      * Tiêu đề truyện: Tối đa 2 dòng, tự động cắt ngắn với dấu `...` nếu quá dài.
 
 ---
@@ -107,15 +108,16 @@ Trang đọc truyện được thiết kế chuyên biệt để mang lại tr�
 
 Dành riêng cho tài khoản có vai trò `admin`, bố cục chia thành các tab quản lý chuyên sâu:
 
-1. **Tab Quản lý Truyện (Comics & Stories)**:
-   * Danh sách truyện dạng bảng có phân trang, tìm kiếm và lọc theo thể loại.
+1. **Tab Quản lý Truyện (Comics & Stories — `PostsTab.tsx`)**:
+   * Danh sách truyện dạng bảng (Desktop) và thẻ (Mobile) có phân trang, tìm kiếm và lọc theo thể loại.
+   * Hiển thị cột/huy hiệu trạng thái **`Công khai`** / **`Hạn chế`** trực tiếp trên từng bộ truyện (nhấp để mở nhanh hộp thoại Chia sẻ) cùng nút thao tác **`Chia sẻ`** bên cạnh Sửa / Xóa.
    * Form tạo mới / chỉnh sửa truyện ([CreatePostForm.tsx](../src/components/CreatePostForm.tsx), [EditPostForm.tsx](../src/components/EditPostForm.tsx)): Nhập tên, tác giả, dịch giả, tải ảnh bìa, chỉnh sửa tags.
    * Trình quản lý chương truyện: Thêm chương, sắp xếp thứ tự chương, upload hàng loạt ảnh chương lên Google Drive thông qua Cloudflare Worker, thiết lập phân quyền cho từng chương (`inherit`, `restricted`, `public`).
 2. **Tab Quản lý Thành viên (User Management)**:
    * Danh sách tài khoản người dùng, hiển thị email, ngày tạo, trạng thái xác thực OTP.
    * Bộ chọn phân quyền nhanh ([UserRoleSelect.tsx](../src/components/UserRoleSelect.tsx)): Thay đổi vai trò giữa `admin`, `user`, `guest` ngay trên bảng dữ liệu.
-3. **Tab Quản lý Chia sẻ (Share & Permissions)**:
-   * Xem và quản lý các quyền đọc truyện đã được chia sẻ cho từng người dùng qua email.
+3. **Tab Quản lý Chia sẻ (Share & Permissions — `SharesTab.tsx`)**:
+   * Theo dõi truyện có tài khoản `guest` truy cập, bộ lọc đồng nhất 3 mức (`Tất cả`, `Hạn chế`, `Công khai`) và đồng bộ tức thì với Tab Quản lý Truyện khi đổi trạng thái trong `ShareDialog`.
 4. **Tab Thống Kê & Lưu Trữ**:
    * Theo dõi danh sách độc giả đã truy cập link truyện (`accessedUsers`).
    * Kho lưu trữ tài khoản đã xóa ([DeletedAccount.ts](../src/models/DeletedAccount.ts)) phục vụ mục đích kiểm toán an ninh.
@@ -133,8 +135,11 @@ Dành riêng cho tài khoản có vai trò `admin`, bố cục chia thành các 
   * Đổi tên hiển thị, cập nhật mật khẩu mới.
   * Tích hợp công cụ tải và cắt xén ảnh đại diện tròn theo tỉ lệ 1:1 (`react-easy-crop`).
 * **Hộp thoại Chia sẻ Quyền đọc (`ShareDialog.tsx`)**:
-  * Cho phép chủ sở hữu nhập email người xem để cấp quyền truy cập vào truyện hoặc chương bị khóa.
-  * Hiển thị danh sách người đang có quyền truy cập kèm nút thu hồi quyền một chạm.
+  * Cho phép quản trị viên nhập email người xem để cấp quyền truy cập toàn bộ truyện hoặc từng chương cụ thể, kèm danh sách người đang có quyền và nút thu hồi quyền một chạm.
+  * Khu vực **Quyền truy cập chung** sử dụng **1 bộ chọn duy nhất** với 2 chế độ rõ ràng:
+    * **Hạn chế**: Chỉ quản trị viên, thành viên và người được cấp quyền mới thấy và đọc truyện.
+    * **Công khai cho mọi người**: Hiển thị trực tiếp trên trang chủ cho mọi tài khoản (kể cả vai trò thấp hơn như `guest`) và người có đường liên kết đọc mà không cần cấp quyền từng email; kèm nhãn trạng thái `Đang công khai` màu xanh ngọc.
+  * Hỗ trợ callback `onAccessTypeChange` để đồng bộ trạng thái `Công khai` / `Hạn chế` tức thì lên `PostCard`, `HomeClient`, `PostDetailClient` và Admin Dashboard.
 * **Thanh Tiến Trình Màn Hình Chờ (`SakugaProgressBar.tsx`, dùng trong `SitePreloader`)**:
   * Bo góc `rounded-[8px]` đồng bộ với nút và ô nhập (không dùng dạng viên thuốc `rounded-full`). Phần đã chạy bo `rounded-[6px]` vì nằm trong viền 2px của rãnh, để góc trong khớp góc ngoài; ô phần trăm bo `rounded-[8px]`.
 * **Thanh Tiến Trình Tải Lên (`UploadProgressWidget.tsx`)**:

@@ -34,8 +34,10 @@
 
 * **3 Vai trò chính**: `guest` (khách), `user` (thành viên chính thức, **toàn quyền đọc** mọi truyện/chương), `admin` (quản trị viên).
 * **Phân quyền cấp truyện (`Post.accessType`)**:
-  * `public`: Ai cũng có thể đọc truyện.
-  * `restricted`: `guest` chỉ được đọc nếu có trong `sharedWith` (theo email/userId); `user` và `admin` luôn được đọc.
+  * `public` (*Công khai cho mọi người*): Truyện hiển thị trực tiếp trên trang chủ cho mọi tài khoản (kể cả `guest` không nằm trong `sharedWith`) và cho phép đọc tất cả chương `inherit`/`public`; các chương đặt `restricted` riêng vẫn giữ nguyên khóa.
+  * `restricted` (*Hạn chế*): `guest` chỉ được thấy và đọc nếu có trong `sharedWith` (theo email/userId ở cấp truyện hoặc chương) hoặc truyện có chương `public` đọc thử; `user` và `admin` luôn được đọc.
+  * Khi Admin đổi `accessType` qua `POST /api/posts/[id]/share` (`action: 'update_access'`), server bắt buộc xóa cache `posts:`, `img_access:`, `admin:shares`, gọi `revalidatePath` cho `/`, `/products`, `/posts/[id]` và ghi nhật ký thao tác lên Telegram (`logApiAction`).
+  * SSR trang chủ (`src/app/page.tsx`) cũng phải ký ảnh bìa qua `signImageUrls()` (kèm `pid`) tương đồng với `GET /api/posts`, không trả trực tiếp URL Worker.
 * **Phân quyền cấp chương (`Chapter.accessType`)**:
   * `inherit`: Thừa hưởng phân quyền từ đầu truyện.
   * `restricted`: Chỉ người được cấp quyền riêng ở chương này (và admin/user) mới được đọc.

@@ -197,7 +197,7 @@ Mở trình duyệt tại địa chỉ: **[http://localhost:3000](http://localho
 ---
 
 ### Chạy bộ kiểm thử tự động (Test Suite):
-Kiểm tra toàn bộ 105 bài test về phân quyền, bảo mật JWT, chống crawler, rate limiting:
+Kiểm tra toàn bộ 215 bài test về phân quyền, bảo mật JWT, chống crawler, rate limiting:
 ```bash
 npm test
 ```
