@@ -327,21 +327,9 @@ body {
   animation-delay: 0.55s;
 }
 
-html.lenis,
-html.lenis body {
-  height: auto;
-}
-
-.lenis.lenis-smooth {
-  scroll-behavior: auto !important;
-}
-
-.lenis.lenis-smooth [data-lenis-prevent] {
+/* Vùng cuộn riêng (dialog, danh sách) không kéo theo trang phía sau */
+[data-lenis-prevent] {
   overscroll-behavior: contain;
-}
-
-.lenis.lenis-stopped {
-  overflow: clip;
 }
 
 .reveal {

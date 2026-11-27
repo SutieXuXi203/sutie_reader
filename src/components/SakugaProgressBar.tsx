@@ -665,10 +665,10 @@ export function SakugaProgressBar({
         }
         s.tag.x = 1.3;
 
-        // Giữ hiệu ứng chữ ドン! và trạng thái Hoàn tất trên màn hình 1.4s để người dùng chiêm ngưỡng rõ ràng
+        // Giữ hiệu ứng chữ ドン! và trạng thái Hoàn tất 0.6s rồi đóng, tránh bắt người dùng chờ
         setTimeout(() => {
           onDoneRef.current?.();
-        }, 1400);
+        }, 600);
       }
 
       // Update particle effects

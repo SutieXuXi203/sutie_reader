@@ -18,7 +18,7 @@
   * `next-themes` (v0.4): Quản lý chế độ sáng/tối (Dark / Light mode).
 * **Hiệu ứng & Animation**:
   * `framer-motion` (v12.35): Quản lý hoạt ảnh giao diện và dialogs.
-  * `lenis` (v1.3): Trải nghiệm cuộn trang siêu mượt (Smooth Scrolling).
+  * Cuộn trang native của trình duyệt (đã bỏ `lenis` để giảm lag trên desktop).
   * `gsap` (v3.15): Hiệu ứng tương tác nâng cao.
 * **Xử lý Ảnh Phía Client**:
   * `browser-image-compression` (v2.0): Nén ảnh trước khi tải lên.
@@ -197,7 +197,7 @@ Mở trình duyệt tại địa chỉ: **[http://localhost:3000](http://localho
 ---
 
 ### Chạy bộ kiểm thử tự động (Test Suite):
-Kiểm tra toàn bộ 215 bài test về phân quyền, bảo mật JWT, chống crawler, rate limiting:
+Kiểm tra toàn bộ 219 bài test về phân quyền, bảo mật JWT, chống crawler, rate limiting:
 ```bash
 npm test
 ```

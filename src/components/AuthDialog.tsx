@@ -1254,7 +1254,7 @@ export function AuthDialog({ open, onOpenChange, initialMode = 'login' }: AuthDi
             <DialogContent
                 initialFocus={false}
                 showCloseButton={false}
-                overlayClassName="bg-white/95 dark:bg-black/75 backdrop-blur-md"
+                overlayClassName="bg-white/95 dark:bg-black/85"
                 topActions={
                     <div className="fixed top-4 right-4 sm:top-5 sm:right-6 z-50">
                         <ThemeToggle

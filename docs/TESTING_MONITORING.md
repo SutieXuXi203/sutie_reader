@@ -4,13 +4,14 @@
 
 ---
 
-## 1. Bộ Kiểm Thử Bảo Mật & Ràng Buộc Schema (215 Tests + 40 Tests tích hợp)
+## 1. Bộ Kiểm Thử Bảo Mật & Ràng Buộc Schema (219 Tests + 40 Tests tích hợp)
 
-Dự án sở hữu bộ **215 bài kiểm thử đơn vị** (không cần DB) và **40 bài kiểm thử tích hợp** bao phủ các ranh giới an toàn:
+Dự án sở hữu bộ **219 bài kiểm thử đơn vị** (không cần DB) và **40 bài kiểm thử tích hợp** bao phủ các ranh giới an toàn:
 * `src/lib/security.test.ts`: Kiểm thử chống timing attacks, rate limiting, xáo trộn ảnh Scramble, ký số URL, bypass tham số `pre_scrambled`, mở khóa mã PIN.
 * `src/lib/permissions.test.ts`: Kiểm thử quyền hạn xem truyện (gồm chế độ công khai cho `guest` hiển thị trên trang chủ & đọc chương `inherit`), đọc chương phân lập, chia sẻ email độc giả, thu hồi quyền Admin.
 * `src/models/roles.test.ts`: Kiểm thử ràng buộc schema User, Role, Post, DeletedAccount.
 * `src/proxy.test.ts`: chạy `proxy.ts` thật (cổng PIN, /admin, ngoại lệ đường dẫn).
+* `src/lib/siteUrl.test.ts`: URL gốc công khai cho og:image/sitemap (không dùng URL deploy bị Vercel SSO chặn).
 * `src/lib/helpers.test.ts`, `src/lib/imageAccess.test.ts`: redirect an toàn, IP client, magic bytes, validation, `signImageUrls`, phân quyền ảnh.
 * `src/worker.test.ts`: chạy Cloudflare Worker thật với Drive giả lập (chữ ký, thư mục, upload).
 * `tests/integration/security-routes.test.ts`: gọi **route handler thật trên MongoDB thật** (khóa brute-force song song, IDOR ảnh, chương song song...).
@@ -29,7 +30,7 @@ Dự án sở hữu bộ **215 bài kiểm thử đơn vị** (không cần DB) 
 ```bash
 npm test
 ```
-* **Tiêu chuẩn nghiệm thu**: Toàn bộ **215 tests** (và 40 tests tích hợp khi có MongoDB + Redis test) phải đạt trạng thái **PASS 100%**. Nếu có bất kỳ test nào fail, Agent phải sửa chữa ngay lập tức trước khi thông báo hoàn tất.
+* **Tiêu chuẩn nghiệm thu**: Toàn bộ **219 tests** (và 40 tests tích hợp khi có MongoDB + Redis test) phải đạt trạng thái **PASS 100%**. Nếu có bất kỳ test nào fail, Agent phải sửa chữa ngay lập tức trước khi thông báo hoàn tất.
 
 ---
 

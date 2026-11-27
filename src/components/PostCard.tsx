@@ -405,7 +405,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
 
             {localAccessType === 'public' ? (
               <div
-                className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 bg-emerald-600/90 text-white border border-emerald-400/35 backdrop-blur-sm text-[9.5px] sm:text-[10px] font-semibold shadow-md select-none shrink-0"
+                className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 bg-emerald-600/90 text-white border border-emerald-400/35 text-[9.5px] sm:text-[10px] font-semibold shadow-md select-none shrink-0"
                 title="Công khai — Mọi tài khoản (kể cả Khách) đều thấy và đọc được"
               >
                 <Globe className={cn("shrink-0", compact ? "w-2.5 h-2.5 sm:w-3 sm:h-3" : "w-3 h-3")} />
@@ -413,7 +413,7 @@ export const PostCard = React.memo(function PostCard({ post, onDelete, onUpdate,
               </div>
             ) : isAdmin ? (
               <div
-                className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 bg-black/75 text-amber-300 border border-amber-400/30 backdrop-blur-sm text-[9.5px] sm:text-[10px] font-semibold shadow-md select-none shrink-0"
+                className="inline-flex items-center gap-1 rounded-[6px] px-1.5 py-0.5 bg-black/75 text-amber-300 border border-amber-400/30 text-[9.5px] sm:text-[10px] font-semibold shadow-md select-none shrink-0"
                 title="Hạn chế — Chỉ thành viên và người được cấp quyền mới thấy"
               >
                 <Lock className={cn("shrink-0", compact ? "w-2.5 h-2.5 sm:w-3 sm:h-3" : "w-3 h-3")} />

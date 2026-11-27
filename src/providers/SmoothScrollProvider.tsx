@@ -1,111 +1,38 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { usePathname } from 'next/navigation';
-import type Lenis from 'lenis';
+import { useEffect } from 'react';
 
+/**
+ * Cuộn trang dùng cơ chế gốc của trình duyệt (native scroll).
+ *
+ * Trước đây desktop dùng Lenis: mỗi nấc lăn chuột bị kéo dài 0.8s và có một vòng
+ * requestAnimationFrame chạy liên tục, khiến trang có cảm giác ì/lag và buộc các lớp
+ * backdrop-blur cố định vẽ lại mỗi khung hình. Native scroll được trình duyệt cuộn
+ * trên compositor thread nên mượt và phản hồi tức thì.
+ *
+ * Provider chỉ còn giữ việc cuộn mượt khi bấm liên kết neo (#id).
+ */
 export function SmoothScrollProvider({ children }: { children: React.ReactNode }) {
-  const lenisRef = useRef<Lenis | null>(null);
-  const rafIdRef = useRef<number | null>(null);
-  const pathname = usePathname();
-
   useEffect(() => {
-    if (rafIdRef.current !== null) {
-      cancelAnimationFrame(rafIdRef.current);
-      rafIdRef.current = null;
-    }
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-    if (lenisRef.current) {
-      lenisRef.current.destroy();
-      lenisRef.current = null;
-    }
-
-    const html = document.documentElement;
-    html.className = html.className.replace(/lenis(-\w+)?/g, '').trim();
-    html.style.removeProperty('overflow');
-
-    if (pathname.startsWith('/posts/')) return;
-
-    // Detect touch / mobile devices or reduced motion preference
-    const isTouchDevice =
-      typeof window !== 'undefined' &&
-      ('ontouchstart' in window || navigator.maxTouchPoints > 0 || window.matchMedia('(pointer: coarse)').matches);
-
-    const prefersReducedMotion =
-      typeof window !== 'undefined' &&
-      window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-
-    let cancelled = false;
-
-    // Smooth scroll for anchor clicks (works on both mobile and desktop)
     const handleClick = (e: MouseEvent) => {
-      const target = e.target as HTMLElement;
-      const anchor = target.closest('a[href^="#"]');
-      if (anchor) {
-        const href = anchor.getAttribute('href');
-        if (href && href.startsWith('#') && href.length > 1) {
-          const el = document.getElementById(href.slice(1));
-          if (el) {
-            e.preventDefault();
-            if (lenisRef.current) {
-              lenisRef.current.scrollTo(el, { offset: -20 });
-            } else {
-              el.scrollIntoView({ behavior: 'smooth' });
-            }
-          }
-        }
-      }
+      const target = e.target as HTMLElement | null;
+      const anchor = target?.closest?.('a[href^="#"]');
+      if (!anchor) return;
+      const href = anchor.getAttribute('href');
+      if (!href || href.length <= 1) return;
+      const el = document.getElementById(href.slice(1));
+      if (!el) return;
+      e.preventDefault();
+      // Trừ chiều cao header cố định (h-14 = 56px) + 16px khoảng thở
+      const top = el.getBoundingClientRect().top + window.scrollY - 72;
+      window.scrollTo({ top, behavior: prefersReducedMotion ? 'auto' : 'smooth' });
     };
 
     document.addEventListener('click', handleClick);
-
-    // On mobile or if reduced motion is requested, use native high-performance scrolling
-    if (isTouchDevice || prefersReducedMotion) {
-      return () => {
-        document.removeEventListener('click', handleClick);
-      };
-    }
-
-    const setupSmoothScroll = async () => {
-      const { default: LenisCtor } = await import('lenis');
-      if (cancelled) return;
-
-      const lenis = new LenisCtor({
-        duration: 0.8,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-        syncTouch: false,
-        touchMultiplier: 0,
-        infinite: false,
-      });
-
-      lenisRef.current = lenis;
-
-      function raf(time: number) {
-        lenis.raf(time);
-        rafIdRef.current = requestAnimationFrame(raf);
-      }
-
-      rafIdRef.current = requestAnimationFrame(raf);
-    };
-
-    void setupSmoothScroll();
-
-    return () => {
-      cancelled = true;
-      document.removeEventListener('click', handleClick);
-      if (rafIdRef.current !== null) {
-        cancelAnimationFrame(rafIdRef.current);
-        rafIdRef.current = null;
-      }
-      if (lenisRef.current) {
-        lenisRef.current.destroy();
-        lenisRef.current = null;
-      }
-      html.style.removeProperty('overflow');
-    };
-  }, [pathname]);
+    return () => document.removeEventListener('click', handleClick);
+  }, []);
 
   return <>{children}</>;
 }
-

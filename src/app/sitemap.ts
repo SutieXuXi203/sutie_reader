@@ -1,13 +1,12 @@
 import type { MetadataRoute } from 'next';
+import { getSiteUrl } from '@/lib/siteUrl';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 
 export const revalidate = 3600;
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  const baseUrl = getSiteUrl();
 
   const defaultRoutes: MetadataRoute.Sitemap = [
     {

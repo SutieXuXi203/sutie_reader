@@ -1,4 +1,5 @@
 import type { Metadata } from "next";
+import { getSiteUrl } from "@/lib/siteUrl";
 import localFont from "next/font/local";
 import { Providers } from "@/providers/ThemeProvider";
 import { SmoothScrollProvider } from "@/providers/SmoothScrollProvider";
@@ -15,61 +16,32 @@ import { cn } from "@/lib/utils";
 import { SpeedInsights } from "@vercel/speed-insights/next";
 import { getCurrentUser } from "@/lib/server-auth";
 
+// Chỉ nạp 3 trọng số thường được dùng thực tế (400/500/700), đã subset Latin + tiếng Việt
+// và nén WOFF2 (~166KB thay vì ~880KB OTF). Các weight 100–300 rơi về Regular,
+// 600–900 rơi về Bold theo thuật toán khớp font của trình duyệt.
 const sfPro = localFont({
   src: [
     {
-      path: "../../public/fonts/SFPRODISPLAYTHINITALIC.otf",
-      weight: "100",
-      style: "italic",
-    },
-    {
-      path: "../../public/fonts/SFPRODISPLAYULTRALIGHTITALIC.otf",
-      weight: "200",
-      style: "italic",
-    },
-    {
-      path: "../../public/fonts/SFPRODISPLAYLIGHTITALIC.otf",
-      weight: "300",
-      style: "italic",
-    },
-    {
-      path: "../../public/fonts/SFPRODISPLAYREGULAR.otf",
+      path: "../../public/fonts/SFPRODISPLAYREGULAR.woff2",
       weight: "400",
       style: "normal",
     },
     {
-      path: "../../public/fonts/SFPRODISPLAYMEDIUM.otf",
+      path: "../../public/fonts/SFPRODISPLAYMEDIUM.woff2",
       weight: "500",
       style: "normal",
     },
     {
-      path: "../../public/fonts/SFPRODISPLAYSEMIBOLDITALIC.otf",
-      weight: "600",
-      style: "italic",
-    },
-    {
-      path: "../../public/fonts/SFPRODISPLAYBOLD.otf",
+      path: "../../public/fonts/SFPRODISPLAYBOLD.woff2",
       weight: "700",
       style: "normal",
-    },
-    {
-      path: "../../public/fonts/SFPRODISPLAYHEAVYITALIC.otf",
-      weight: "800",
-      style: "italic",
-    },
-    {
-      path: "../../public/fonts/SFPRODISPLAYBLACKITALIC.otf",
-      weight: "900",
-      style: "italic",
     },
   ],
   variable: "--font-sans",
   display: "swap",
 });
 
-const siteUrl =
-  process.env.NEXT_PUBLIC_SITE_URL ||
-  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+const siteUrl = getSiteUrl();
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

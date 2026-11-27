@@ -7,7 +7,7 @@
 ## 🌈 1. Hệ Thống Thiết Kế Cốt Lõi (Core Design System)
 
 ### 1.1. Kiểu Chữ (Typography)
-* **Font chữ chủ đạo**: **SF Pro Display** (Font độc quyền của Apple), hỗ trợ đầy đủ 9 trọng số (Thin, UltraLight, Light, Regular, Medium, SemiBold, Bold, Heavy, Black Italic) qua biến CSS `--font-sans`.
+* **Font chữ chủ đạo**: **SF Pro Display** (Font độc quyền của Apple), nạp 3 trọng số Regular (400), Medium (500), Bold (700) dạng WOFF2 đã subset Latin + tiếng Việt qua biến CSS `--font-sans` (weight 100–300 dùng Regular, 600–900 dùng Bold). Không thêm lại các file OTF italic vì làm nặng trang ~700KB.
 * **Cấp bậc văn bản (Hierarchy)**:
   * `Heading 1` (`text-2xl sm:text-3xl font-extrabold`): Tiêu đề trang, tên truyện lớn.
   * `Heading 2` (`text-lg sm:text-xl font-bold`): Tiêu đề chương, nhóm danh mục.

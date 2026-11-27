@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { getSiteUrl } from '@/lib/siteUrl';
 import { connectDB } from '@/lib/db';
 import { Post } from '@/models/Post';
 import { ObjectId } from 'mongodb';
@@ -45,9 +46,7 @@ export async function generateMetadata({
     `Đọc ${title} trên ${SITE_NAME}`;
 
   // Dùng route /api/og-image/[postId] — public, không cần auth
-  const baseUrl =
-    process.env.NEXT_PUBLIC_SITE_URL ||
-    (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+  const baseUrl = getSiteUrl();
   const ogImage = `${baseUrl}/api/og-image/${id}`;
 
   return {

@@ -9,10 +9,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { SakugaProgressBar } from '@/components/SakugaProgressBar';
 
 const STICKER_FRAMES = [
-  '/images_welcome/sticker_vuive.png',
-  '/images_welcome/sticker_vuivehanhphuc.png',
+  '/images_welcome/sticker_vuive.webp',
+  '/images_welcome/sticker_vuivehanhphuc.webp',
 ];
-const BUBBLE_IMAGE = '/bubblechat_images/bubble_chat.png';
+const BUBBLE_IMAGE = '/bubblechat_images/bubble_chat.webp';
+// Đã xem màn hình chờ trong phiên này thì các lần tải lại sau bỏ qua luôn
+const PRELOADER_SEEN_KEY = 'lubu:preloader-seen';
 
 export function SitePreloader() {
   const { isLoading: isAuthLoading } = useAuth();
@@ -25,11 +27,27 @@ export function SitePreloader() {
   const [isFading, setIsFading] = useState(false);
   const [isMounted, setIsMounted] = useState(true);
 
-  // Kích hoạt bong bóng chat xuất hiện sau đúng 1 giây
+  // Lần tải lại trong cùng phiên: đóng màn hình chờ ngay, không bắt người dùng chờ lại
+  useEffect(() => {
+    let seen = false;
+    try {
+      seen = sessionStorage.getItem(PRELOADER_SEEN_KEY) === '1';
+    } catch {
+      seen = false;
+    }
+    if (!seen) return;
+    const frame = requestAnimationFrame(() => {
+      setIsMounted(false);
+      finishPreloader();
+    });
+    return () => cancelAnimationFrame(frame);
+  }, [finishPreloader]);
+
+  // Kích hoạt bong bóng chat xuất hiện sau 300ms
   useEffect(() => {
     const timer = setTimeout(() => {
       setShowBubble(true);
-    }, 1000);
+    }, 300);
     return () => clearTimeout(timer);
   }, []);
 
@@ -88,7 +106,7 @@ export function SitePreloader() {
     }
 
     const startTime = Date.now();
-    const minDuration = 3200; // Đảm bảo người dùng xem trọn vẹn hoạt ảnh nảy sau 1s và các nhịp nhún nhảy vui tươi
+    const minDuration = 1200; // Đủ để thấy bong bóng chat nảy lên, không bắt người dùng chờ lâu
 
     const timer = setInterval(() => {
       const elapsed = Date.now() - startTime;
@@ -105,11 +123,11 @@ export function SitePreloader() {
 
         // Mô phỏng đường cong tiến trình mượt mà nhịp nhàng theo thời lượng mới
         if (prev < 40) {
-          return prev + 1.4;
+          return prev + 3;
         } else if (prev < 75) {
-          return prev + 0.85;
+          return prev + 2;
         } else if (prev < 90) {
-          return prev + 0.45;
+          return prev + 1;
         }
         return prev;
       });
@@ -123,20 +141,25 @@ export function SitePreloader() {
 
   // 5. Kết thúc preloader khi hoạt ảnh "ドン!" và chúc mừng hoàn tất trọn vẹn
   const handleProgressDone = React.useCallback(() => {
+    try {
+      sessionStorage.setItem(PRELOADER_SEEN_KEY, '1');
+    } catch {
+      // Trình duyệt chặn storage: chỉ mất tính năng bỏ qua ở lần sau
+    }
     setIsFading(true);
     const unmountTimer = setTimeout(() => {
       setIsMounted(false);
       finishPreloader();
-    }, 500);
+    }, 300);
     return () => clearTimeout(unmountTimer);
   }, [finishPreloader]);
 
-  // Fallback an toàn: nếu sau khi đạt 100% mà 3.5s chưa hoàn tất thì tự động đóng
+  // Fallback an toàn: nếu sau khi đạt 100% mà 2s chưa hoàn tất thì tự động đóng
   useEffect(() => {
     if (progress < 100) return;
     const safetyTimer = setTimeout(() => {
       handleProgressDone();
-    }, 3500);
+    }, 2000);
     return () => clearTimeout(safetyTimer);
   }, [progress, handleProgressDone]);
 
@@ -144,7 +167,7 @@ export function SitePreloader() {
 
   return (
     <div
-      className={`fixed inset-0 z-[99999] bg-white dark:bg-black text-neutral-900 dark:text-white flex flex-col items-center justify-center select-none transition-all duration-500 ease-out overflow-hidden ${
+      className={`fixed inset-0 z-[99999] bg-white dark:bg-black text-neutral-900 dark:text-white flex flex-col items-center justify-center select-none transition-[opacity,transform] duration-300 ease-out overflow-hidden ${
         isFading ? 'opacity-0 scale-[1.03] pointer-events-none' : 'opacity-100 scale-100'
       }`}
       aria-hidden={isFading}
@@ -177,8 +200,8 @@ export function SitePreloader() {
                   <Image
                     src={BUBBLE_IMAGE}
                     alt="Bong bóng chat"
-                    width={1280}
-                    height={1280}
+                    width={640}
+                    height={640}
                     priority
                     className="w-full h-full object-contain filter drop-shadow-[0_8px_20px_rgba(0,0,0,0.12)]"
                     unoptimized
